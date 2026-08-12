@@ -30,8 +30,9 @@ public class WorkspaceContextFilter extends OncePerRequestFilter {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
-                // set(workspaceId, userId)：workspaceId 只来自可信 JWT claims
-                WorkspaceContext.set(jwt.getClaim("workspaceId"), Long.valueOf(jwt.getSubject()));
+                // set(workspaceId, userId, username)：全部来自可信 JWT claims
+                WorkspaceContext.set(jwt.getClaim("workspaceId"), Long.valueOf(jwt.getSubject()),
+                        jwt.getClaimAsString("username"));
             }
             filterChain.doFilter(request, response);
         } finally {

@@ -8,9 +8,9 @@ export interface TokenPayload {
   accessToken: string
   refreshToken: string
   expiresIn: number
-  workspaceId: number
+  workspaceId: string
   user: {
-    userId: number
+    userId: string
     username: string
     email?: string
     roles: string[]

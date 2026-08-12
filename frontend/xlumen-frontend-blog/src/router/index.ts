@@ -22,6 +22,24 @@ const router = createRouter({
       meta: { title: '首页' },
     },
     {
+      path: '/articles/:id',
+      name: 'article-detail',
+      component: () => import('@/modules/publishing/pages/ArticleDetailPage.vue'),
+      meta: { title: '文章详情' },
+    },
+    {
+      path: '/search',
+      name: 'search',
+      component: () => import('@/modules/publishing/pages/SearchPage.vue'),
+      meta: { title: '搜索' },
+    },
+    {
+      path: '/about',
+      name: 'about',
+      component: () => import('@/modules/blog/pages/AboutPage.vue'),
+      meta: { title: '关于' },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/modules/identity/pages/LoginPage.vue'),

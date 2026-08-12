@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/12 19:50
+> 更新日期：2026/8/12 21:40
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -14,11 +14,21 @@
 
 ## 2. 当前里程碑
 
-**文档体系、代码骨架（M01）与身份多租户（M02）：已完成。** 下一步：**M03 博客前台公开页**（F-0201~F-0203）。MVP 范围以 PRODUCT.md 第 5 节功能总表（37 项 MVP 功能）为准，落地顺序见第 5 节待办。
+**文档体系、代码骨架（M01）、身份多租户（M02）与博客前台公开页（M03）：已完成。** 下一步：**M04 内容管理与可见性**（F-0301~F-0302、F-0307）。MVP 范围以 PRODUCT.md 第 5 节功能总表（37 项 MVP 功能）为准，落地顺序见第 5 节待办。
 
 > 里程碑完成标准：代码骨架以 M01 定义为准（目录结构与 docs 一致，决策 D7）；MVP 模块以功能总表对应功能验收（完成定义见 PRODUCT.md 第 12 节）。
 
 ## 3. 已完成
+
+### 博客前台公开页（M03，2026-08-12）
+
+- F-0201 文章列表/详情：公开读走默认空间（决策 D9，identity WorkspaceApi 提供）；列表卡片含阅读时间/互动统计（批量 IN 统计防 N+1）；详情为已发布正文快照，Markdown 渲染（markdown-it + DOMPurify XSS 清洗，PRODUCT §10）+ 标题目录导航；草稿/私有文章 404（F-0307 由 ContentApi 保证）。
+- F-0202 分类/标签/搜索：cnt_article.category + tags(JSON) 公开筛选维度；关键词标题/摘要 LIKE（MVP 先 LIKE 后 ES）；分类 GROUP BY 聚合、标签 JSON_TABLE 聚合；搜索页组合筛选 + 命中高亮 + 服务端分页；顶栏搜索框。
+- F-0203 评论/点赞/阅读量：eng_comment（parent_id 回复 + user_name 冗余）/ eng_like（唯一键幂等切换）；评论与点赞需登录（SecurityConfig 仅 GET 与 view POST 匿名）；阅读量 Redis setIfAbsent 24h 防刷 + cnt_article.view_count 原子自增。
+- 页面：B01 首页（文章卡片 + 分类/标签侧栏 + 骨架/空态/重试）、B02 详情（目录导航 + Markdown 渲染 + 点赞/评论）、B03 搜索（组合筛选 + 高亮 + 分页）、B04 关于；App 顶栏升级（导航 + 搜索框）。
+- **雪花 ID 精度修复（重要）**：1.9e18 超出 JS Number 安全整数（2^53），后端 Long 统一序列化为 String（JacksonConfig，Boot 4 = Jackson 3 tools.jackson 包 + JacksonModule），前端 ID 类字段 string、统计数值 API 层 Number() 还原（BACKEND.md §5.3 已约定）。
+- 表结构：40_content.sql（cnt_article，公开读字段 M03 落地）/ 60_engagement.sql（eng_comment/eng_like）入库；测试文章（公开 3 + 草稿 1 + 私有 1）为验证数据，不进脚本。
+- 验证：接口全链路（列表/搜索/分类/标签/详情/404 过滤/阅读量防刷/评论/点赞切换/未登录 401/落库核实）+ E2E 8 个全部通过（public 6 + auth 1 + smoke 1）+ 前端 lint/stylelint/typecheck/test/build 全绿 + 浏览器实测（.browser-check/m03-*.png）。
 
 ### 身份与多租户（M02，2026-08-12）
 
@@ -57,7 +67,7 @@
 | --- | --- | --- | --- | --- |
 | M01 | 代码骨架（backend/xlumen-server 模块划分、frontend 双应用脚手架、SQL 初始化链路） | PRODUCT §5、BACKEND、FRONTEND、GLOBAL §4 | 已完成 | Qoder 代理 |
 | M02 | 身份与多租户（F-0101~F-0104） | PRODUCT §5 模块一 | 已完成 | Qoder 代理 |
-| M03 | 博客前台公开页（F-0201~F-0203） | PRODUCT §5 模块二、PROTOTYPE B01~B04 | 待办 | — |
+| M03 | 博客前台公开页（F-0201~F-0203） | PRODUCT §5 模块二、PROTOTYPE B01~B04 | 已完成 | Qoder 代理 |
 | M04 | 内容管理与可见性（F-0301~F-0302、F-0307） | PRODUCT §5 模块三、PROTOTYPE B10 | 待办 | — |
 | M05 | 文章知识索引 RAG：发布即索引（F-0402~F-0405、F-0407） | PRODUCT §5 模块四、BACKEND §13 | 待办 | — |
 | M06 | AI 核心引擎（F-0501~F-0503） | PRODUCT §5 模块五 | 待办 | — |
@@ -82,6 +92,7 @@
 
 > 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/12 21:40 · Qoder 代理：M03 博客前台公开页交付——F-0201 列表/详情（Markdown 渲染 + XSS 清洗 + 目录导航）、F-0202 分类/标签/搜索（组合筛选 + 命中高亮 + 分页）、F-0203 评论/点赞/阅读量（Redis 24h 防刷）；cnt_article/eng_comment/eng_like 入库；B01~B04 四页 + 顶栏导航搜索；修复雪花 ID 精度（Long→String 全局序列化）；后端接口全链路/E2E 8 个/门禁/浏览器实测全部通过（详见第 3 节与 CHANGELOG）。
 - 2026/8/12 19:50 · Qoder 代理：M02 身份与多租户交付——F-0101 注册/登录/登出/刷新（JWT + 刷新令牌 GETDEL 轮换防重放、防枚举统一延迟）、F-0102 注册即建空间、F-0103 五角色体系、F-0104 双层校验（接口权限 + Service 资源归属）；10_identity.sql 四张表入库；blog 前端 B08 登录注册页 + 401 单飞刷新 + 路由守卫；后端单测/接口全链路/E2E/浏览器实测全部通过（详见第 3 节与 CHANGELOG）。
 - 2026/8/12 19:05 · Qoder 代理：M01 代码骨架交付——后端 7 模块骨架与 common 基座类型、.env 配置体系、SQL 初始化链路（init-db.ps1 + sql/init 编号脚本，开发库 xlumen_dev 已在 159.75.6.183 初始化）、前端 blog/admin 双应用脚手架与根工程配置；后端编译/启动验证与前端质量门禁全部通过（详见第 3 节与 CHANGELOG）。
 - 2026/8/12 18:03 · Qoder 代理：Maven 模块压缩 12→7（新增决策 D15）——按未来微服务边界合并：identity(+platform)、content(+analytics)、publishing(+engagement)、ai(+chat+ai-enhance)，模块内按业务域分包、表前缀不变；BACKEND 模块表/依赖 DAG/分包规则、GLOBAL 结构树、FRONTEND 模块映射、README 同步。

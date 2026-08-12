@@ -118,6 +118,14 @@ Other Module → Api → Service → Mapper
 - Api 只暴露真实存在的跨模块能力，模块内部调用继续使用 Service；其他模块只能依赖目标模块 `api/`、`dto/`、`enums/` 中的公开类型。
 - 新增或修改 Api 时必须补充调用方测试，并检查 Maven 依赖方向。
 
+### 5.3 JSON 序列化约定（雪花 ID 精度）
+
+雪花 ID（1.9e18）超出 JS Number 安全整数（2^53），数字直传前端会丢精度（M03 详情路由踩坑）。约定：
+
+- **后端 Long 统一序列化为 String**：xlumen-boot 的 `JacksonConfig` 已全局配置（Spring Boot 4 = Jackson 3，`tools.jackson` 包，`JsonMapperBuilderCustomizer` + `JacksonModule` 注册 `ToStringSerializer`），全模块生效，业务代码无需逐字段标注。
+- **前端 ID 类字段一律 string 类型**（请求参数/路由参数/响应类型）；**统计与分页数值**（viewCount/commentCount/total 等）在**前端 API 层用 Number() 还原**，页面代码不感知。
+- 例外：非 ID 且前端需要精确数值的场景需显式评估；后续里程碑默认遵守本约定。
+
 示例（接口与实现成对出现，均带类注释）：
 
 ```java

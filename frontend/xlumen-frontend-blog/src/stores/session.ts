@@ -5,10 +5,10 @@ import { computed, ref } from 'vue'
 // 任何模块不得绕过这些操作直接改写会话。
 // 安全约束：刷新令牌只存内存不持久化（FRONTEND.md §7 持久化白名单），刷新页面需重新登录。
 export interface SessionSnapshot {
-  userId: number
+  userId: string
   username: string
   email?: string
-  workspaceId: number
+  workspaceId: string
   roles: string[]
 }
 

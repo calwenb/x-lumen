@@ -20,8 +20,9 @@ public final class WorkspaceContext {
      *
      * @param workspaceId 当前工作空间 ID
      * @param userId      当前用户 ID
+     * @param username    当前用户名（展示用，可空）
      */
-    public record Scope(Long workspaceId, Long userId) {
+    public record Scope(Long workspaceId, Long userId, String username) {
     }
 
     /**
@@ -31,7 +32,18 @@ public final class WorkspaceContext {
      * @param userId      用户 ID
      */
     public static void set(Long workspaceId, Long userId) {
-        HOLDER.set(new Scope(workspaceId, userId));
+        HOLDER.set(new Scope(workspaceId, userId, null));
+    }
+
+    /**
+     * 建立当前线程的工作空间上下文（含用户名，供评论等展示场景使用）。
+     *
+     * @param workspaceId 工作空间 ID
+     * @param userId      用户 ID
+     * @param username    用户名
+     */
+    public static void set(Long workspaceId, Long userId, String username) {
+        HOLDER.set(new Scope(workspaceId, userId, username));
     }
 
     /**
@@ -52,6 +64,16 @@ public final class WorkspaceContext {
     public static Long userId() {
         Scope scope = HOLDER.get();
         return scope == null ? null : scope.userId();
+    }
+
+    /**
+     * 获取当前用户名（展示用）。
+     *
+     * @return 用户名或 null
+     */
+    public static String username() {
+        Scope scope = HOLDER.get();
+        return scope == null ? null : scope.username();
     }
 
     /** 清理上下文（请求结束时调用，防止线程复用串号）。 */

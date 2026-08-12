@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/12 19:50
+> 更新日期：2026/8/12 21:40
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 
@@ -10,6 +10,12 @@
 | --- | --- | --- | --- |
 
 说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D15，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
+
+## 2026/8/12 21:40 · Qoder 代理（M03 博客前台公开页）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/12 21:40 | M03 博客前台公开页交付：F-0201 列表/详情（默认空间公开读、Markdown 渲染 markdown-it + DOMPurify XSS 清洗、标题目录导航、卡片阅读时间与互动统计）；F-0202 分类/标签/搜索（LIKE + JSON_CONTAINS/JSON_TABLE 聚合、组合筛选 + 命中高亮 + 服务端分页）；F-0203 评论/点赞/阅读量（eng_comment/eng_like 唯一键幂等切换、Redis setIfAbsent 24h 防刷 + view_count 原子自增）；40_content.sql（cnt_article）/ 60_engagement.sql 入库；B01~B04 四页 + 顶栏导航搜索；**雪花 ID 精度修复**：Long 全局序列化为 String（JacksonConfig，Jackson 3 tools.jackson 包），前端 ID string + 统计数值 API 层 Number()；LikeButton 乐观更新与 props 同步竞态修复；验证：接口全链路（含 404 过滤/防刷/点赞切换/未登录 401）+ E2E 8 个 + 门禁全绿 + 浏览器实测 | STATUS/BACKEND | D6（Redis 短期状态）/D9（默认空间） |
 
 ## 2026/8/12 19:50 · Qoder 代理（M02 身份与多租户）
 

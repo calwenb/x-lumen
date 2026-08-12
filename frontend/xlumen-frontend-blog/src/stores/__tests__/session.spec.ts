@@ -12,7 +12,7 @@ describe('session store', () => {
   it('establish 整体写入会话快照与令牌', () => {
     const session = useSessionStore()
     session.establish(
-      { userId: 1, username: 'tester', workspaceId: 100, roles: ['OWNER'] },
+      { userId: '1', username: 'tester', workspaceId: '100', roles: ['OWNER'] },
       'access-token',
       'refresh-token',
     )
@@ -25,7 +25,7 @@ describe('session store', () => {
   it('clear 清理会话并复位令牌', () => {
     const session = useSessionStore()
     session.establish(
-      { userId: 1, username: 'tester', workspaceId: 100, roles: ['OWNER'] },
+      { userId: '1', username: 'tester', workspaceId: '100', roles: ['OWNER'] },
       'access-token',
       'refresh-token',
     )

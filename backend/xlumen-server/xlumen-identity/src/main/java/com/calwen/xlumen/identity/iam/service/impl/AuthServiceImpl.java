@@ -151,6 +151,7 @@ public class AuthServiceImpl implements AuthService {
                 .expiresAt(now.plusSeconds(ACCESS_TOKEN_TTL_SECONDS))
                 .subject(String.valueOf(user.getId()))
                 .claim("workspaceId", workspaceId)
+                .claim("username", user.getUsername())
                 .claim("roles", roles)
                 .build();
         String accessToken = jwtEncoder.encode(JwtEncoderParameters.from(
