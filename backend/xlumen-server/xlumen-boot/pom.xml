@@ -58,6 +58,16 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- Security：OAuth2 resource-server + jose（JWT 认证，BACKEND.md §2/§15.3） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+
         <!-- MyBatis-Plus：Boot 4 专用 starter + 分页优化器（BACKEND.md §2） -->
         <dependency>
             <groupId>com.baomidou</groupId>

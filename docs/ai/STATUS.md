@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/12 19:05
+> 更新日期：2026/8/12 19:50
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -14,11 +14,21 @@
 
 ## 2. 当前里程碑
 
-**文档体系与代码骨架（M01）：已完成。** 下一步：**MVP 模块**（从 M02 身份与多租户开始）。MVP 范围以 PRODUCT.md 第 5 节功能总表（37 项 MVP 功能）为准，落地顺序见第 5 节待办 M02~M13。M01 交付：backend/xlumen-server（7 个 Maven 模块 + 配置体系 + SQL 初始化链路）、frontend 双应用脚手架（blog :5173 / admin :5174）、根工程配置（package.json/pnpm-workspace.yaml/.editorconfig/.gitignore）、scripts/init-db.ps1，目录结构与 docs 一致（决策 D7）。
+**文档体系、代码骨架（M01）与身份多租户（M02）：已完成。** 下一步：**M03 博客前台公开页**（F-0201~F-0203）。MVP 范围以 PRODUCT.md 第 5 节功能总表（37 项 MVP 功能）为准，落地顺序见第 5 节待办。
 
 > 里程碑完成标准：代码骨架以 M01 定义为准（目录结构与 docs 一致，决策 D7）；MVP 模块以功能总表对应功能验收（完成定义见 PRODUCT.md 第 12 节）。
 
 ## 3. 已完成
+
+### 身份与多租户（M02，2026-08-12）
+
+- F-0101 注册/登录/登出/刷新：JWT（HS256，15 分钟短时效）+ 刷新令牌（SHA-256 哈希存 Redis、GETDEL 轮换防重放、登出撤销）；注册即建空间（决策 D9）；登录失败统一提示 + 300ms 统一延迟防枚举（PRODUCT §10）。
+- F-0102 工作空间：MVP 单空间（iam_workspace + iam_workspace_member，注册自动创建默认空间与 OWNER 绑定）；`GET /api/v1/workspaces/current` 返回空间与角色。
+- F-0103 多角色：iam_role 五种角色（OWNER/ADMIN/EDITOR/AUTHOR/VISITOR）入库，JWT roles claim → ROLE_xxx 权限映射。
+- F-0104 双层校验：SecurityConfig 接口权限（方法级安全）+ Service 资源归属校验（WorkspaceContext 来自 JWT claims，不信任 URL/Header/DTO）；401/403 统一 JSON。
+- 表结构：10_identity.sql 新增 iam_role/iam_user/iam_workspace/iam_workspace_member（已执行入库）。
+- 前端（blog）：B08 登录/注册页（/login）、会话 Store 原子操作（establish/clear/setTokens）、401 单飞刷新（/auth/ 豁免）、路由守卫（guest/authenticated meta）、顶栏登录态与登出。
+- 验证：后端单测 3 个通过（注册冲突/登录失败/令牌签发）+ 接口全链路（注册/登录/刷新轮换/重放 401/登出撤销 401/未认证 401）+ E2E 2 个通过（冒烟、注册登录登出流程）+ 浏览器实测（.browser-check/m02-*.png 截图）；前端 lint/stylelint/typecheck/test/build 全绿。
 
 ### 代码骨架（M01，2026-08-12）
 
@@ -46,7 +56,7 @@
 | 编号 | 阶段/任务 | 依赖文档 | 状态 | 认领人 |
 | --- | --- | --- | --- | --- |
 | M01 | 代码骨架（backend/xlumen-server 模块划分、frontend 双应用脚手架、SQL 初始化链路） | PRODUCT §5、BACKEND、FRONTEND、GLOBAL §4 | 已完成 | Qoder 代理 |
-| M02 | 身份与多租户（F-0101~F-0104） | PRODUCT §5 模块一 | 待办 | — |
+| M02 | 身份与多租户（F-0101~F-0104） | PRODUCT §5 模块一 | 已完成 | Qoder 代理 |
 | M03 | 博客前台公开页（F-0201~F-0203） | PRODUCT §5 模块二、PROTOTYPE B01~B04 | 待办 | — |
 | M04 | 内容管理与可见性（F-0301~F-0302、F-0307） | PRODUCT §5 模块三、PROTOTYPE B10 | 待办 | — |
 | M05 | 文章知识索引 RAG：发布即索引（F-0402~F-0405、F-0407） | PRODUCT §5 模块四、BACKEND §13 | 待办 | — |
@@ -72,6 +82,7 @@
 
 > 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/12 19:50 · Qoder 代理：M02 身份与多租户交付——F-0101 注册/登录/登出/刷新（JWT + 刷新令牌 GETDEL 轮换防重放、防枚举统一延迟）、F-0102 注册即建空间、F-0103 五角色体系、F-0104 双层校验（接口权限 + Service 资源归属）；10_identity.sql 四张表入库；blog 前端 B08 登录注册页 + 401 单飞刷新 + 路由守卫；后端单测/接口全链路/E2E/浏览器实测全部通过（详见第 3 节与 CHANGELOG）。
 - 2026/8/12 19:05 · Qoder 代理：M01 代码骨架交付——后端 7 模块骨架与 common 基座类型、.env 配置体系、SQL 初始化链路（init-db.ps1 + sql/init 编号脚本，开发库 xlumen_dev 已在 159.75.6.183 初始化）、前端 blog/admin 双应用脚手架与根工程配置；后端编译/启动验证与前端质量门禁全部通过（详见第 3 节与 CHANGELOG）。
 - 2026/8/12 18:03 · Qoder 代理：Maven 模块压缩 12→7（新增决策 D15）——按未来微服务边界合并：identity(+platform)、content(+analytics)、publishing(+engagement)、ai(+chat+ai-enhance)，模块内按业务域分包、表前缀不变；BACKEND 模块表/依赖 DAG/分包规则、GLOBAL 结构树、FRONTEND 模块映射、README 同步。
 - 2026/8/12 17:58 · Qoder 代理：前台导航 F-0701 菜单标签 [AI 对话]→[AI 助理]，位置调整为首页右侧、分类左侧；PROTOTYPE/FRONTEND 同步。
