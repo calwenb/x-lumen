@@ -110,7 +110,7 @@ xlumen/
 └─ .gitignore                           # 忽略 .env、node_modules、target 等（M01 骨架阶段创建）
 ```
 
-> 标注说明：本次交付仅创建 docs/（7 份文档）与根 README.md；backend/、frontend/、scripts/ 与根工程配置（package.json、pnpm-workspace.yaml、.editorconfig、.gitignore）随 M01 代码骨架阶段创建。目录结构以本文与 BACKEND/FRONTEND 契约为准（决策 D7 文档先行，代码骨架不得偏离）。
+> 标注说明：docs/（7 份文档）与根 README.md 为文档体系交付；backend/、frontend/、scripts/ 与根工程配置（package.json、pnpm-workspace.yaml、.editorconfig、.gitignore）已随 M01 代码骨架创建（2026-08-12 交付）。目录结构以本文与 BACKEND/FRONTEND 契约为准（决策 D7 文档先行，代码骨架不得偏离）。
 
 ## 5. 技术基线
 

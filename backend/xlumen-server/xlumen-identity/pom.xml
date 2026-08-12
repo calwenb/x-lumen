@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- xlumen-identity：身份与多租户（iam_）+ 平台治理（plt_）。
+     工作空间与权限是全局横切能力，被所有业务模块依赖（BACKEND.md §4）。 -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.calwen.xlumen</groupId>
+        <artifactId>xlumen</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>xlumen-identity</artifactId>
+    <name>xlumen-identity</name>
+    <description>身份与多租户 + 平台治理（iam_ + plt_）</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-common</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

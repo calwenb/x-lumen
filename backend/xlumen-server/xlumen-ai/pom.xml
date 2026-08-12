@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- xlumen-ai：AI 引擎 + 对话 + 增值（ai_ + chat_ + ai_enhance_）。
+     依赖 knowledge（检索与引用溯源）；AI 完成后发布业务事件，不反向依赖 content（BACKEND.md §14，决策 D3）。 -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.calwen.xlumen</groupId>
+        <artifactId>xlumen</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>xlumen-ai</artifactId>
+    <name>xlumen-ai</name>
+    <description>AI 引擎 + 对话 + 增值（ai_ + chat_ + ai_enhance_）</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-identity</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-knowledge</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

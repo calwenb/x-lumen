@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/12 18:03
+> 更新日期：2026/8/12 19:05
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -14,14 +14,25 @@
 
 ## 2. 当前里程碑
 
-**文档体系：已完成（本次交付，含前后端职责重组与目录结构变更）。** 下一步：**代码骨架** → **MVP 模块**。MVP 范围以 PRODUCT.md 第 5 节功能总表（37 项 MVP 功能）为准，落地顺序见第 5 节待办 M01~M13。核心变更：前后端职责重组（blog 承载创作/阅读/互动/AI 对话全链路，admin 仅配置管理）、主页恢复为文章展示页（AI 对话降为菜单入口）、发布即索引（取消外部资料导入）、新增文章可见性（公开/私有，F-0307）、仓库目录重组（backend/xlumen-server + frontend/xlumen-frontend-blog/admin）。
+**文档体系与代码骨架（M01）：已完成。** 下一步：**MVP 模块**（从 M02 身份与多租户开始）。MVP 范围以 PRODUCT.md 第 5 节功能总表（37 项 MVP 功能）为准，落地顺序见第 5 节待办 M02~M13。M01 交付：backend/xlumen-server（7 个 Maven 模块 + 配置体系 + SQL 初始化链路）、frontend 双应用脚手架（blog :5173 / admin :5174）、根工程配置（package.json/pnpm-workspace.yaml/.editorconfig/.gitignore）、scripts/init-db.ps1，目录结构与 docs 一致（决策 D7）。
 
 > 里程碑完成标准：代码骨架以 M01 定义为准（目录结构与 docs 一致，决策 D7）；MVP 模块以功能总表对应功能验收（完成定义见 PRODUCT.md 第 12 节）。
 
-## 3. 已完成（文档体系）
+## 3. 已完成
 
-- `docs/ai/STATUS.md`（本文件）、`docs/ai/CHANGELOG.md`、`docs/product/PRODUCT.md`：本任务交付，已完成。
-- `docs/global/GLOBAL.md`、`docs/backend/BACKEND.md`、`docs/frontend/FRONTEND.md`、`docs/frontend/PROTOTYPE.md`、根 `README.md`：已完成（2026-08-12 交付）。
+### 代码骨架（M01，2026-08-12）
+
+- `backend/xlumen-server/`：父 POM + 7 个 Maven 模块（common 基座：ApiResponse/ErrorCode/BizException/RequestId(+Filter)/WorkspaceContext；identity/content/publishing/knowledge/ai 按 BACKEND §4 依赖 DAG；boot 装配：启动类、全局异常处理、MyBatis-Plus 分页、系统探活接口 `/api/v1/system/ping`）。
+- 配置体系（决策 D8）：`config/.env.example`（模板入库）+ `config/.env`（真实值不入库）；`application.yml` 经 `spring.config.import` 加载 .env；`logback-spring.xml` Appender 显式激活、级别经 `XLUMEN_LOG_LEVEL` 控制。
+- SQL 初始化链路：`sql/init/` 00_database.sql ~ 80_ai_enhance.sql（编号契约，90/95 随 V2/V3 创建）+ `scripts/init-db.ps1`（`-EnvFile` 解析 .env，`-Reset` 限 xlumen_dev/xlumen_test 且二次确认）。
+- 前端：pnpm Monorepo 双应用 `frontend/xlumen-frontend-blog`（:5173，10 个模块目录）与 `frontend/xlumen-frontend-admin`（:5174，5 个模块目录），Vue 3.5 + Vite 7 + TS strict（含 noUncheckedIndexedAccess 等四项）+ Element Plus + Pinia 3 + ESLint 9 flat + Stylelint + Vitest + Playwright，Design Token 落地 styles/tokens.css。
+- 根工程：`package.json`（`pnpm --dir` 代理 lint/stylelint/typecheck/test/build/test:e2e）、`pnpm-workspace.yaml`、`.editorconfig`、`.gitignore`。
+- 验证：后端 `mvn -T 1C clean verify` BUILD SUCCESS（JDK 25 / Spring Boot 4.1.0）；应用启动连接 MySQL（159.75.6.183，库 xlumen_dev 已初始化）与 Redis，`/actuator/health` UP；前端 lint/stylelint/typecheck/test/build 全部通过，E2E 冒烟见 CHANGELOG。
+
+### 文档体系（2026-08-12 交付）
+
+- `docs/ai/STATUS.md`（本文件）、`docs/ai/CHANGELOG.md`、`docs/product/PRODUCT.md`。
+- `docs/global/GLOBAL.md`、`docs/backend/BACKEND.md`、`docs/frontend/FRONTEND.md`、`docs/frontend/PROTOTYPE.md`、根 `README.md`。
 - 交付规范：新文档以实际链路为准；功能清单唯一来源为 PRODUCT.md 第 5 节总表，其他文档引用不复制。
 
 ## 4. 进行中
@@ -34,7 +45,7 @@
 
 | 编号 | 阶段/任务 | 依赖文档 | 状态 | 认领人 |
 | --- | --- | --- | --- | --- |
-| M01 | 代码骨架（backend/xlumen-server 模块划分、frontend 双应用脚手架、SQL 初始化链路） | PRODUCT §5、BACKEND、FRONTEND、GLOBAL §4 | 待办 | — |
+| M01 | 代码骨架（backend/xlumen-server 模块划分、frontend 双应用脚手架、SQL 初始化链路） | PRODUCT §5、BACKEND、FRONTEND、GLOBAL §4 | 已完成 | Qoder 代理 |
 | M02 | 身份与多租户（F-0101~F-0104） | PRODUCT §5 模块一 | 待办 | — |
 | M03 | 博客前台公开页（F-0201~F-0203） | PRODUCT §5 模块二、PROTOTYPE B01~B04 | 待办 | — |
 | M04 | 内容管理与可见性（F-0301~F-0302、F-0307） | PRODUCT §5 模块三、PROTOTYPE B10 | 待办 | — |
@@ -61,6 +72,7 @@
 
 > 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/12 19:05 · Qoder 代理：M01 代码骨架交付——后端 7 模块骨架与 common 基座类型、.env 配置体系、SQL 初始化链路（init-db.ps1 + sql/init 编号脚本，开发库 xlumen_dev 已在 159.75.6.183 初始化）、前端 blog/admin 双应用脚手架与根工程配置；后端编译/启动验证与前端质量门禁全部通过（详见第 3 节与 CHANGELOG）。
 - 2026/8/12 18:03 · Qoder 代理：Maven 模块压缩 12→7（新增决策 D15）——按未来微服务边界合并：identity(+platform)、content(+analytics)、publishing(+engagement)、ai(+chat+ai-enhance)，模块内按业务域分包、表前缀不变；BACKEND 模块表/依赖 DAG/分包规则、GLOBAL 结构树、FRONTEND 模块映射、README 同步。
 - 2026/8/12 17:58 · Qoder 代理：前台导航 F-0701 菜单标签 [AI 对话]→[AI 助理]，位置调整为首页右侧、分类左侧；PROTOTYPE/FRONTEND 同步。
 - 2026/8/12 17:51 · Qoder 代理：AI 命名确定——产品内 AI 统一称呼为**小光**（新增决策 D14），PRODUCT §8 命名规则、PROTOTYPE B00/B07/D01/D02 文案同步。

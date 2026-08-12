@@ -1,0 +1,17 @@
+/* 全局排版：仅引用 Design Token，不散落硬编码颜色（FRONTEND.md §10.1/§10.2） */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--xl-bg-page);
+  color: var(--xl-text-primary);
+  font-family: var(--xl-font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+#app {
+  min-height: 100vh;
+}

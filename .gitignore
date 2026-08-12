@@ -18,6 +18,9 @@ frontend/**/playwright-report/
 frontend/**/test-results/
 frontend/**/coverage/
 
+# ---- 验证产物 ----
+.browser-check/
+
 # ---- 编辑器与系统 ----
 .idea/workspace.xml
 .vscode/

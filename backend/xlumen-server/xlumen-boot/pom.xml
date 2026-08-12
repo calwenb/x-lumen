@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- xlumen-boot：装配层，唯一启动入口（决策 D1）。业务模块不得依赖 boot。 -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.calwen.xlumen</groupId>
+        <artifactId>xlumen</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>xlumen-boot</artifactId>
+    <name>xlumen-boot</name>
+    <description>装配层：应用启动、Security、中间件和配置装配（唯一启动入口）</description>
+
+    <dependencies>
+        <!-- 全部业务模块由 boot 聚合装配 -->
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-identity</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-content</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-publishing</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-knowledge</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-ai</artifactId>
+        </dependency>
+
+        <!-- Web / 校验 / 可观测 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Redis：仅短期状态（决策 D6） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- MyBatis-Plus：Boot 4 专用 starter + 分页优化器（BACKEND.md §2） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- OpenAPI 契约唯一来源（决策 D4） -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.calwen.xlumen.XlumenApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

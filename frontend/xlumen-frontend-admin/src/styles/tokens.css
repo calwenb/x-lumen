@@ -1,0 +1,24 @@
+/* Design Token（FRONTEND.md §10.1）：所有业务样式通过 var(--xl-xxx) 引用，禁止硬编码颜色。
+   MVP 仅 light 主题；dark 变体预留，V2 启用切换入口（F-1306）。 */
+:root {
+  --xl-bg-page: #f6f8fc;
+  --xl-bg-surface: #fff;
+  --xl-text-primary: #1f2937;
+  --xl-text-secondary: #667085;
+  --xl-text-muted: #98a2b3;
+  --xl-color-primary: #5367e8;
+  --xl-color-primary-hover: #4558d6;
+  --xl-color-ai: #12a594;
+  --xl-border: #e7eaf0;
+  --xl-font-sans: system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --xl-font-mono: 'JetBrains Mono', consolas, monospace;
+
+  /* 4px 基础间距（FRONTEND.md §10.1） */
+  --xl-space-1: 4px;
+  --xl-space-2: 8px;
+  --xl-space-3: 12px;
+  --xl-space-4: 16px;
+  --xl-space-6: 24px;
+  --xl-space-8: 32px;
+  --xl-radius-card: 12px;
+}

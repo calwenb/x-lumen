@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/12 18:03
+> 更新日期：2026/8/12 19:10
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 
@@ -10,6 +10,12 @@
 | --- | --- | --- | --- |
 
 说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D15，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
+
+## 2026/8/12 19:10 · Qoder 代理（M01 代码骨架）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/12 19:10 | M01 代码骨架交付：后端 backend/xlumen-server 父 POM + 7 模块（common 基座 ApiResponse/ErrorCode/BizException/RequestId(+Filter)/WorkspaceContext，业务模块按 BACKEND §4 依赖 DAG，boot 装配含全局异常处理/MyBatis-Plus 分页/探活接口）；配置体系 .env.example/.env + application.yml（spring.config.import 加载）+ logback-spring.xml（Appender 显式激活、级别走 XLUMEN_LOG_LEVEL）；SQL 初始化链路 sql/init 00~80（编号契约，90/95 随 V2/V3）+ scripts/init-db.ps1（-EnvFile/-Reset 二次确认）；前端 pnpm Monorepo 双应用（blog :5173 10 模块目录 / admin :5174 5 模块目录，Vue3.5+Vite7+TS5.8 strict+ESLint9 flat+Stylelint+Vitest+Playwright+Design Token）；根 package.json 代理脚本/pnpm-workspace/.editorconfig/.gitignore。验证：JDK 25 下 mvn clean verify 通过；应用启动连接 MySQL（159.75.6.183/xlumen_dev 已初始化）与 Redis 健康 UP、/api/v1/system/ping 返回统一响应；前端 lint/stylelint/typecheck/test/build/test:e2e 双应用全部通过 | STATUS/README/GLOBAL | D1/D7/D8/D12/D15 |
 
 ## 2026/8/12 18:03 · Qoder 代理（Maven 模块压缩 12→7）
 

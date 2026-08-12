@@ -1,0 +1,21 @@
+{
+  "name": "xlumen",
+  "version": "0.1.0",
+  "private": true,
+  "description": "xLumen 根脚本代理：通过 pnpm --dir 代理 blog/admin 双应用脚本（GLOBAL.md §6/§7）",
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev:blog": "pnpm --dir frontend/xlumen-frontend-blog dev",
+    "dev:admin": "pnpm --dir frontend/xlumen-frontend-admin dev",
+    "lint": "pnpm --dir frontend/xlumen-frontend-blog lint && pnpm --dir frontend/xlumen-frontend-admin lint",
+    "stylelint": "pnpm --dir frontend/xlumen-frontend-blog stylelint && pnpm --dir frontend/xlumen-frontend-admin stylelint",
+    "typecheck": "pnpm --dir frontend/xlumen-frontend-blog typecheck && pnpm --dir frontend/xlumen-frontend-admin typecheck",
+    "test": "pnpm --dir frontend/xlumen-frontend-blog test && pnpm --dir frontend/xlumen-frontend-admin test",
+    "build": "pnpm --dir frontend/xlumen-frontend-blog build && pnpm --dir frontend/xlumen-frontend-admin build",
+    "test:e2e": "pnpm --dir frontend/xlumen-frontend-blog test:e2e && pnpm --dir frontend/xlumen-frontend-admin test:e2e"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

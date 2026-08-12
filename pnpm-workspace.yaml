@@ -1,0 +1,3 @@
+packages:
+  - frontend/xlumen-frontend-blog
+  - frontend/xlumen-frontend-admin

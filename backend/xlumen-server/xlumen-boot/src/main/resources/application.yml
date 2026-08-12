@@ -1,0 +1,64 @@
+# xLumen 装配层配置（决策 D8：环境差异唯一载体为 config/.env，本文件只写占位符）
+spring:
+  application:
+    name: xlumen
+  # 加载 .env（UTF-8 无 BOM）：依次回退 config/、../config/、backend/xlumen-server/config/（GLOBAL.md §6.2）
+  config:
+    import:
+      - "optional:file:config/.env[.properties]"
+      - "optional:file:../config/.env[.properties]"
+      - "optional:file:backend/xlumen-server/config/.env[.properties]"
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${XLUMEN_DB_URL}
+    username: ${XLUMEN_DB_USERNAME}
+    password: ${XLUMEN_DB_PASSWORD}
+    hikari:
+      # 连接池按个人博客并发假设配置（PRODUCT §11 NFR）：小池 + 明确超时，避免连接耗尽
+      minimum-idle: 2
+      maximum-pool-size: 10
+      connection-timeout: 5000
+      pool-name: xlumen-hikari
+  data:
+    redis:
+      host: ${XLUMEN_REDIS_HOST}
+      port: ${XLUMEN_REDIS_PORT}
+      password: ${XLUMEN_REDIS_PASSWORD}
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 1
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      # 分级健康检查：liveness 应用存活，readiness 依赖可用（BACKEND.md §15.2）
+      group:
+        readiness:
+          include: readinessState,db,redis
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+springdoc:
+  # OpenAPI 契约唯一来源（决策 D4）：/v3/api-docs 与 /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  # 日志级别经 .env 变量控制，不写死（BACKEND.md §15.2）
+  level:
+    root: ${XLUMEN_LOG_LEVEL:INFO}
+    com.calwen.xlumen: ${XLUMEN_LOG_LEVEL:INFO}
