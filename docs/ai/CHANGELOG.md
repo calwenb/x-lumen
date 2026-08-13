@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/13 01:20
+> 更新日期：2026/8/13 14:00
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 
@@ -10,6 +10,12 @@
 | --- | --- | --- | --- |
 
 说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D15，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
+
+## 2026/8/13 14:00 · Qoder 代理（MVP 全量交付：M04~M13 + F-1301）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/13 14:00 | MVP 全部里程碑交付：M04 内容管理（CRUD+自动保存+乐观锁 version+8 状态机一次定版）；M06+M12 AI 基座（ModelGateway 供应商解析+熔断、AiTask 任务底座幂等+Redis 进度+SSE、场景配置表优先 .env 回退）；M07 AI 创作（写作异步任务+审校异源校验 checkHeterogeneous，默认写作 qwen-plus/审校 qwen-max）；M05 RAG（发布即索引：事件→切片→Embedding 32 片/批→kb_chunk/kb_index_version ACTIVATING→ACTIVE→STALE；NoopVectorStore 降级待 Milvus）；M08 AI 对话（小光 SSE chunk/citation/done+会话/消息落库+文章级问答）；M09 增值（摘要/SEO 结构化落库 ai_enhance_result）；M10 审核发布（双闸门 force_review 开关+驳回三要素+立即/定时发布 PublishJob 每分钟扫描+发布事件/审计/缓存失效）；M11 纠错（匿名提交+追踪号+Redis 限流 429）；F-1301 热点缓存（详情 cache-aside 空值哨兵+分类/标签聚合+evictAll+降级回源）；M13 管理后台（工作区设置/模型配置+连通性测试/审计日志 + admin 前端四页）；修复：Boot 4 .env 大写属性 relaxed binding 失效（AiProperties/KnowledgeAiProperties 改 @Value 显式绑定）、GlobalExceptionHandler 补 404/JSON 解析异常、ai 与 publishing 同名 Bean 显式命名、hutool-json 缺失、审校模型默认 qwen-max；验证：mvn verify BUILD SUCCESS+3 单测、双前端门禁全绿、运行时全链路（真实百炼审校/写作/摘要/SEO/Embedding/连通性测试、发布→索引→公开可见、定时发布到期执行、SSE 流式、匿名纠错+限流、Redis 缓存键落盘）；里程碑顺序变更（M05 后置、M06/M12 提前）已记录 | STATUS/BACKEND | D8（.env 唯一载体）/D13（发布即索引）/D14（小光命名）/D10（阶段调整） |
 
 ## 2026/8/13 01:20 · Qoder 代理（后端代码风格统一重构：传统 MVC 扁平化）
 

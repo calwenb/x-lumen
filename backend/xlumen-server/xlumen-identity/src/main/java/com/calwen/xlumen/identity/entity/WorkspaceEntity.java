@@ -29,11 +29,17 @@ public class WorkspaceEntity {
     /** 空间标识（唯一，uk_workspace_slug 承担业务唯一约束）。 */
     private String slug;
 
+    /** 空间简介（F-1201，可空）。 */
+    private String intro;
+
     /** 所有者用户 ID（逻辑外键 iam_user.id）。 */
     private Long ownerUserId;
 
     /** 状态：1 正常 0 停用。 */
     private Integer status;
+
+    /** 强制审核开关（F-1201，决策 D9）：1 开启 0 关闭。 */
+    private Integer forceReview;
 
     /** 创建时间。 */
     private LocalDateTime createdAt;

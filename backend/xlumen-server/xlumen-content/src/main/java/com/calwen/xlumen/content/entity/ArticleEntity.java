@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Getter;
 import lombok.Setter;
@@ -52,11 +53,15 @@ public class ArticleEntity {
     @TableField(typeHandler = JacksonTypeHandler.class)
     private List<String> tags;
 
-    /** 状态：1 草稿 2 已发布 3 已下架（8 状态机随 M10 细化）。 */
+    /** 状态：1 构思 2 草稿 3 待审核 4 已通过 5 定时发布 6 已发布 7 更新中 8 已下架（F-0901 八状态机，见 ArticleStatus）。 */
     private Integer status;
 
     /** 可见性：1 公开 0 私有（F-0307，私有不进公开列表与搜索）。 */
     private Integer visibility;
+
+    /** 版本号（乐观锁，审核/发布/更新必须校验，冲突 HTTP 409）。 */
+    @Version
+    private Long version;
 
     /** 阅读量（F-0203，Redis 防刷后自增）。 */
     private Long viewCount;

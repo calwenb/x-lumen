@@ -21,4 +21,12 @@
   --xl-space-6: 24px;
   --xl-space-8: 32px;
   --xl-radius-card: 12px;
+  --xl-radius: 8px;
+  --xl-radius-sm: 6px;
+
+  /* 语义色：错误/成功/警示，组件内禁止硬编码（白字 #fff 除外） */
+  --xl-bg-secondary: #eef1f7;
+  --xl-color-danger: #d92d20;
+  --xl-color-success: #12a594;
+  --xl-color-warning: #dc6803;
 }

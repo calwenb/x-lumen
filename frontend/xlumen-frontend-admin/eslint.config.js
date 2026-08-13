@@ -1,4 +1,5 @@
 import js from '@eslint/js'
+import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 import prettierPlugin from 'eslint-plugin-prettier'
 import pluginVue from 'eslint-plugin-vue'
@@ -23,6 +24,14 @@ export default [
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,
+      },
+    },
+  },
+  {
+    // 浏览器全局（window/document 等）：前端应用的标准运行环境
+    languageOptions: {
+      globals: {
+        ...globals.browser,
       },
     },
   },

@@ -1,5 +1,43 @@
--- 50_publishing.sql：xlumen-publishing 模块 review/release 域（pub_ 审核状态机/双闸门/发布幂等/公开读）
--- 表清单随 M10（F-0901~F-0905）与 M03（F-0201~F-0203）落地：pub_review（审核记录）、pub_release（发布记录）。
+-- 50_publishing.sql：xlumen-publishing 模块审核/发布域（pub_ 前缀）——M10 落地 F-0901~F-0905
+-- 表命名规则：单 Schema、无外键、主键 BIGINT 雪花 ID、业务表含 workspace_id、唯一键 uk_ 前缀（BACKEND.md §7/§8）。
+-- 主键由应用侧 IdUtil 雪花生成，本脚本不设置 AUTO_INCREMENT。
 
 USE `xlumen_dev`;
 SET NAMES utf8mb4;
+
+-- 文章审核记录（F-0902/F-0903）：AI 审校结果快照 ai_result_json；article_title 冗余展示字段（列表免 N+1）
+CREATE TABLE IF NOT EXISTS `pub_review` (
+    `id`                 BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
+    `workspace_id`       BIGINT       NOT NULL COMMENT '工作空间 ID',
+    `article_id`         BIGINT       NOT NULL COMMENT '文章 ID（逻辑外键 cnt_article.id）',
+    `article_title`      VARCHAR(200) NOT NULL DEFAULT '' COMMENT '文章标题（冗余展示字段）',
+    `version`            BIGINT       NOT NULL COMMENT '文章版本号（提交审核时快照）',
+    `reviewer_id`        BIGINT       NULL COMMENT '审核人用户 ID（逻辑外键 iam_user.id）',
+    `ai_task_id`         BIGINT       NULL COMMENT 'AI 审校任务 ID（逻辑外键 ai_task.id，可空）',
+    `ai_result_json`     TEXT         NULL COMMENT 'AI 审校结果快照（JSON 文本，可空）',
+    `status`             VARCHAR(16)  NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING 待审核/APPROVED 通过/REJECTED 驳回',
+    `reject_reason`      VARCHAR(500) NULL COMMENT '驳回原因',
+    `reject_position`    VARCHAR(200) NULL COMMENT '驳回位置',
+    `reject_expectation` VARCHAR(500) NULL COMMENT '驳回期望',
+    `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_review_ws_status_created` (`workspace_id`, `status`, `created_at`)
+) ENGINE = InnoDB COMMENT ='文章审核记录（F-0902/F-0903）';
+
+-- 文章发布记录（F-0904/F-0905）：唯一键 uk_release_ws_article_version 幂等；定时发布幂等执行
+CREATE TABLE IF NOT EXISTS `pub_release` (
+    `id`              BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
+    `workspace_id`    BIGINT       NOT NULL COMMENT '工作空间 ID',
+    `article_id`      BIGINT       NOT NULL COMMENT '文章 ID（逻辑外键 cnt_article.id）',
+    `article_title`   VARCHAR(200) NOT NULL DEFAULT '' COMMENT '文章标题（冗余展示字段）',
+    `version`         BIGINT       NOT NULL COMMENT '文章版本号（发布时快照）',
+    `visibility`      TINYINT      NOT NULL DEFAULT 1 COMMENT '可见性：1 公开 0 私有',
+    `publish_at`      DATETIME     NULL COMMENT '定时发布时间（NULL=立即发布）',
+    `released_at`     DATETIME     NULL COMMENT '实际发布时间',
+    `status`          VARCHAR(16)  NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING 待发布/DONE 已发布/FAILED 失败',
+    `idempotency_key` VARCHAR(64)  NOT NULL COMMENT '幂等键',
+    `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_release_ws_article_version` (`workspace_id`, `article_id`, `version`)
+) ENGINE = InnoDB COMMENT ='文章发布记录（F-0904/F-0905）';

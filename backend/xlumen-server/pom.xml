@@ -93,6 +93,11 @@
                 <artifactId>hutool-core</artifactId>
                 <version>${hutool.version}</version>
             </dependency>
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-json</artifactId>
+                <version>${hutool.version}</version>
+            </dependency>
 
             <!-- springdoc-openapi：OpenAPI 契约唯一来源（决策 D4），3.x 适配 Boot 4 -->
             <dependency>

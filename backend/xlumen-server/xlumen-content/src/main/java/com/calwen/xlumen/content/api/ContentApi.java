@@ -1,9 +1,11 @@
 package com.calwen.xlumen.content.api;
 
 import com.calwen.xlumen.content.api.dto.ArticleDetailDTO;
+import com.calwen.xlumen.content.api.dto.ArticlePublishDTO;
 import com.calwen.xlumen.content.api.dto.ArticleQueryDTO;
 import com.calwen.xlumen.content.api.dto.CategoryCountDTO;
 import com.calwen.xlumen.content.api.dto.ContentPageResult;
+import com.calwen.xlumen.content.api.dto.EditorArticleDTO;
 import com.calwen.xlumen.content.api.dto.PublishedArticleDTO;
 
 import java.util.List;
@@ -59,4 +61,23 @@ public interface ContentApi {
      * @return 是否自增成功（文章不存在或跨空间返回 false）
      */
     boolean incrementViewCount(Long workspaceId, Long articleId);
+
+    /**
+     * 查询编辑态文章（含草稿/私有，M04）：供 publishing 审核读取正文（M10）使用；不存在或跨空间返回 null。
+     *
+     * @param workspaceId 工作空间 ID
+     * @param articleId   文章 ID
+     * @return 编辑态文章或 null
+     */
+    EditorArticleDTO getEditorArticle(Long workspaceId, Long articleId);
+
+    /**
+     * 发布/状态迁移（M10，F-0901/F-0905）：publishing 通过本接口迁移文章状态与发布信息，
+     * 版本乐观锁校验，不一致返回 false（由调用方抛 409）。
+     *
+     * @param workspaceId 工作空间 ID
+     * @param dto         发布入参（文章 ID/期望版本/目标状态/可见性/发布时间）
+     * @return 是否迁移成功
+     */
+    boolean publishArticle(Long workspaceId, ArticlePublishDTO dto);
 }

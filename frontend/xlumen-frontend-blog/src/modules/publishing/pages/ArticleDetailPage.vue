@@ -5,7 +5,9 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import CommentList from '@/modules/engagement/components/CommentList.vue'
+import FeedbackDialog from '@/modules/engagement/components/FeedbackDialog.vue'
 import LikeButton from '@/modules/engagement/components/LikeButton.vue'
+import ArticleQaDialog from '@/modules/chat/components/ArticleQaDialog.vue'
 import { fetchArticle, reportView } from '@/modules/publishing/api/public'
 import { extractToc, renderMarkdown } from '@/modules/publishing/utils/markdown'
 
@@ -24,6 +26,10 @@ const articleId = computed(() => String(route.params.id))
 const toc = computed<TocItem[]>(() => (article.value ? extractToc(article.value.content) : []))
 const renderedHtml = computed(() => (article.value ? renderMarkdown(article.value.content) : ''))
 const updatedAt = computed(() => (article.value ? formatDate(article.value.updatedAt) : ''))
+
+// D02 文章级问答与 F-1001 读者纠错弹窗
+const showQa = ref(false)
+const showFeedback = ref(false)
 
 function formatDate(iso: string): string {
   return iso.slice(0, 10)
@@ -129,12 +135,22 @@ onMounted(async () => {
             :count="article.likeCount"
             @update:count="article.likeCount = $event"
           />
+          <button type="button" class="detail__action-button" @click="showQa = true">问「小光」</button>
+          <button type="button" class="detail__action-button" @click="showFeedback = true">纠错反馈</button>
           <span class="detail__actions-hint">登录后可点赞与评论</span>
         </div>
 
         <CommentList :article-id="article.id" @update:count="commentCount = $event" />
       </article>
     </div>
+
+    <ArticleQaDialog
+      v-if="showQa && article"
+      :article-id="article.id"
+      :article-title="article.title"
+      @close="showQa = false"
+    />
+    <FeedbackDialog v-if="showFeedback && article" :article-id="article.id" @close="showFeedback = false" />
   </main>
 </template>
 
@@ -274,6 +290,21 @@ onMounted(async () => {
 .detail__actions-hint {
   color: var(--xl-text-muted);
   font-size: 12px;
+}
+
+.detail__action-button {
+  padding: 6px 14px;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: transparent;
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.detail__action-button:hover {
+  border-color: var(--xl-color-primary);
+  color: var(--xl-color-primary);
 }
 
 /* Markdown 正文样式（B02）：与设计 token 对齐，代码块等保持可读 */

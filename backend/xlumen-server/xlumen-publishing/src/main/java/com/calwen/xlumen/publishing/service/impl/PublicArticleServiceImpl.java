@@ -15,6 +15,7 @@ import com.calwen.xlumen.publishing.dto.ArticleDetailVO;
 import com.calwen.xlumen.publishing.dto.ArticleQueryDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.service.CommentService;
+import com.calwen.xlumen.publishing.service.HotArticleCacheService;
 import com.calwen.xlumen.publishing.service.LikeService;
 import com.calwen.xlumen.publishing.service.PublicArticleService;
 import jakarta.annotation.Resource;
@@ -52,6 +53,9 @@ public class PublicArticleServiceImpl implements PublicArticleService {
     private LikeService likeService;
 
     @Resource
+    private HotArticleCacheService hotArticleCacheService;
+
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     @Override
@@ -83,21 +87,32 @@ public class PublicArticleServiceImpl implements PublicArticleService {
     @Override
     public ArticleDetailVO getArticle(Long articleId) {
         Long workspaceId = defaultWorkspace();
+        ArticleDetailVO vo = hotArticleCacheService.getArticle(workspaceId, articleId,
+                () -> buildArticleDetail(workspaceId, articleId));
+        if (vo == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "文章不存在或未公开");
+        }
+        // liked 为用户态，不缓存，命中缓存后按当前用户重算（避免跨用户串号）
+        Long userId = WorkspaceContext.userId();
+        vo.setLiked(userId != null && likeService.isLiked(workspaceId, articleId, userId));
+        return vo;
+    }
+
+    /** 组装文章详情（缓存回源）：互动统计批量取回，liked 置 false 由外层重算。 */
+    private ArticleDetailVO buildArticleDetail(Long workspaceId, Long articleId) {
         ArticleDetailDTO article = contentApi.getPublished(workspaceId, articleId);
         if (article == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "文章不存在或未公开");
+            return null;
         }
         long commentCount = commentService.countComments(workspaceId, List.of(articleId))
                 .getOrDefault(articleId, 0L);
         long likeCount = likeService.countLikes(workspaceId, List.of(articleId))
                 .getOrDefault(articleId, 0L);
-        Long userId = WorkspaceContext.userId();
-        boolean liked = userId != null && likeService.isLiked(workspaceId, articleId, userId);
         return ArticleDetailVO.builder()
                 .id(article.getId()).title(article.getTitle()).summary(article.getSummary()).content(article.getContent())
                 .authorName(article.getAuthorName()).category(article.getCategory()).tags(article.getTags())
                 .viewCount(article.getViewCount()).readMinutes(article.getReadMinutes())
-                .commentCount(commentCount).likeCount(likeCount).liked(liked)
+                .commentCount(commentCount).likeCount(likeCount).liked(false)
                 .publishedAt(article.getPublishedAt()).updatedAt(article.getUpdatedAt()).build();
     }
 
@@ -118,12 +133,14 @@ public class PublicArticleServiceImpl implements PublicArticleService {
 
     @Override
     public List<CategoryCountDTO> listCategories() {
-        return contentApi.listCategories(defaultWorkspace());
+        Long workspaceId = defaultWorkspace();
+        return hotArticleCacheService.getCategories(workspaceId, () -> contentApi.listCategories(workspaceId));
     }
 
     @Override
     public List<CategoryCountDTO> listTags() {
-        return contentApi.listTags(defaultWorkspace());
+        Long workspaceId = defaultWorkspace();
+        return hotArticleCacheService.getTags(workspaceId, () -> contentApi.listTags(workspaceId));
     }
 
     /** 默认公开空间（MVP 单空间，决策 D9）；无空间视为系统未初始化。 */

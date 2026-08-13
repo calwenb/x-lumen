@@ -27,4 +27,16 @@ public class WorkspaceApiImpl implements WorkspaceApi {
                 .last("LIMIT 1"));
         return workspace == null ? null : workspace.getId();
     }
+
+    @Override
+    public Boolean forceReviewEnabled(Long workspaceId) {
+        if (workspaceId == null) {
+            return true;
+        }
+        WorkspaceEntity workspace = workspaceMapper.selectById(workspaceId);
+        if (workspace == null) {
+            return true;
+        }
+        return workspace.getForceReview() == null || workspace.getForceReview() == 1;
+    }
 }

@@ -45,6 +45,60 @@ const router = createRouter({
       component: () => import('@/modules/identity/pages/LoginPage.vue'),
       meta: { guest: true, title: '登录' },
     },
+    {
+      path: '/studio',
+      name: 'workbench',
+      component: () => import('@/modules/workbench/pages/WorkbenchPage.vue'),
+      meta: { authenticated: true, title: '创作工作台' },
+    },
+    {
+      path: '/studio/articles',
+      name: 'article-list',
+      component: () => import('@/modules/content/pages/ArticleListPage.vue'),
+      meta: { authenticated: true, title: '文章管理' },
+    },
+    {
+      path: '/studio/articles/new',
+      name: 'article-new',
+      component: () => import('@/modules/content/pages/ArticleEditorPage.vue'),
+      meta: { authenticated: true, title: '新建文章' },
+    },
+    {
+      path: '/studio/articles/:id/edit',
+      name: 'article-edit',
+      component: () => import('@/modules/content/pages/ArticleEditorPage.vue'),
+      meta: { authenticated: true, title: '编辑文章' },
+    },
+    {
+      path: '/chat',
+      name: 'chat',
+      component: () => import('@/modules/chat/pages/ChatPage.vue'),
+      meta: { title: 'AI 助理' },
+    },
+    {
+      path: '/studio/writing',
+      name: 'writing',
+      component: () => import('@/modules/ai/pages/AiWritePage.vue'),
+      meta: { authenticated: true, title: 'AI 写作' },
+    },
+    {
+      path: '/studio/review',
+      name: 'review-center',
+      component: () => import('@/modules/publishing/pages/ReviewCenterPage.vue'),
+      meta: { authenticated: true, title: '审核中心' },
+    },
+    {
+      path: '/studio/releases',
+      name: 'release-list',
+      component: () => import('@/modules/publishing/pages/ReleasePage.vue'),
+      meta: { authenticated: true, title: '发布管理' },
+    },
+    {
+      path: '/studio/knowledge',
+      name: 'index-status',
+      component: () => import('@/modules/knowledge/pages/IndexStatusPage.vue'),
+      meta: { authenticated: true, title: 'RAG 索引' },
+    },
   ],
 })
 

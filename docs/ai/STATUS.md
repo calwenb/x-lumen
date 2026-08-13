@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/13 01:20
+> 更新日期：2026/8/13 14:00
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -14,11 +14,71 @@
 
 ## 2. 当前里程碑
 
-**文档体系、代码骨架（M01）、身份多租户（M02）与博客前台公开页（M03）：已完成。** 下一步：**M04 内容管理与可见性**（F-0301~F-0302、F-0307）。MVP 范围以 PRODUCT.md 第 5 节功能总表（37 项 MVP 功能）为准，落地顺序见第 5 节待办。
+**MVP 全部 13 个里程碑已完成**：M01~M03（骨架/身份/公开页）、M04（内容管理）、M05（RAG 索引）、M06+M12（AI 基座）、M07（AI 创作）、M08（AI 对话）、M09（AI 增值）、M10（审核发布）、M11（读者纠错）、M13（管理后台）与 F-1301 缓存均已交付并通过运行时验证。**待环境**：本机 Docker/Milvus 未安装，向量检索以 NoopVectorStore 降级运行（索引元数据正常，向量写入待 Milvus 就绪后自动生效）。
 
 > 里程碑完成标准：代码骨架以 M01 定义为准（目录结构与 docs 一致，决策 D7）；MVP 模块以功能总表对应功能验收（完成定义见 PRODUCT.md 第 12 节）。
 
 ## 3. 已完成
+
+### 内容管理与可见性（M04，2026-08-13）
+
+- F-0301/F-0302 文章 CRUD 与自动保存：cnt_article 新增 version 列（乐观锁插件 @Version）+ idx_article_ws_status 索引；创建/编辑/删除（仅构思/草稿）；自动保存幂等（content 不变跳过写库）；版本校验冲突 409；8 状态机一次定版（1 构思 2 草稿 3 待审核 4 已通过 5 定时发布 6 已发布 7 更新中 8 已下架，存量迁移 1→2、2→6、3→8）。
+- F-0307 可见性：公开 1/私有 0，私有文章仅作者可见；公开读过滤 status=6。
+- 前端：B10 文章列表页（筛选/分页）、B11 编辑器（MarkdownEditor + useAutoSave 自动保存）、工作台页；路由 /studio/articles、/studio/editor。
+- 验证：接口全链路（创建/编辑/删除/自动保存幂等/私有过滤）+ 门禁全绿。
+
+### AI 基座（M06+M12，2026-08-13）
+
+- F-0501 模型网关：ModelGateway 供应商解析（BAILIAN/DEEPSEEK/MOCK）+ 场景模型（表 ai_scene_config 优先、.env 回退）+ 简单熔断（连续 5 次失败熔断 60s）+ 连通性测试接口。
+- F-0502 任务底座：ai_task（幂等键去重）+ AiTaskDispatcher 线程池 + 进度 Redis（xlumen:task:progress）+ SSE 任务事件；F-0503 流式 SSE（SseService chunk/citation/done 协议）。
+- 关键修复：Spring Boot 4 的 Binder 对 .env 导入的大写属性不做 relaxed binding，AiProperties/KnowledgeAiProperties 全部字段改 @Value 显式占位符绑定（数据库连接正常证明 .env 加载成功，是 @ConfigurationProperties 绑定失效）。
+- 验证：AI 审校任务真实百炼调用 COMPLETED（结构化输出过 Schema 校验）、SSE 流式对话、任务幂等。
+
+### AI 创作（M07，2026-08-13）
+
+- F-0601 写作：topic/draft/content 至少一项，异步任务返回 taskId，结构化 title+content 输出。
+- F-0604 审校：写作与审校模型异源校验（checkHeterogeneous，默认写作 qwen-plus / 审校 qwen-max），结构化 severity/position/evidence/suggestion 输出。
+- 前端：B11 编辑器集成 AiWritePage 写作面板（/studio/writing）、审校结果展示。
+- 验证：写作/审校任务真实百炼 COMPLETED；审校检测出错别字（“开发着”）。
+
+### RAG 索引（M05，2026-08-13）
+
+- F-0402~F-0405 发布即索引（决策 D13）：ArticlePublishedEvent（正文快照）→ 清洗 → 切片 → 幂等（SHA-256）→ Embedding（百炼 text-embedding-v4，32 片/批）→ Milvus/Noop 写向量 → kb_chunk 元数据 + kb_index_version（ACTIVATING→ACTIVE→STALE）。
+- F-0407 检索：Embedding(query) → VectorStore.search；Noop 降级返回空列表（明确无向量依据，不产生无依据输出）。
+- 降级：Milvus 不可达自动 NoopVectorStore（启动 WARN + 元数据照常落库），待 Docker/Milvus 就绪自动生效。
+- 验证：发布→索引 ACTIVE（2 chunk）、定时发布→索引 ACTIVE（1 chunk）、检索接口、索引状态接口。
+
+### AI 对话（M08，2026-08-13）
+
+- F-0701 通用问答（SSE 流式）：chat_conversation/chat_message 落库，chunk/citation/done 事件协议，AI 统一称呼“小光”（决策 D14）。
+- F-0702 文章级问答：单篇检索限定；Noop 降级时明确回复“未检索到任何相关文章证据”。
+- 前端：B00 菜单入口 /studio/chat、ArticleQaDialog 详情页问答弹窗、CitationCard 引用卡片。
+- 验证：SSE 流式全链路（会话自动创建/消息持久化/引用溯源事件）。
+
+### AI 增值（M09，2026-08-13）
+
+- F-0801 摘要 / F-0802 SEO：结构化输出（summary / title+keywords+description）落库 ai_enhance_result。
+- 前端：EnhancePanel 编辑器增值面板。
+- 验证：摘要与 SEO 真实百炼调用成功并落库。
+
+### 审核与发布（M10，2026-08-13）
+
+- F-0902/F-0903 审核：双闸门（AI 审校结果关联 + 人工审核；force_review=0 自动通过人工闸门）；驳回三要素（原因/位置/期望）必填 + 版本校验 409。
+- F-0904/F-0905 发布：立即/定时发布（pub_release 幂等键 + uk=article_id+version）；定时发布 PublishJob 每分钟扫描到期执行；发布成功发 ArticlePublishedEvent + 写审计 ARTICLE_PUBLISH + 失效热点缓存。
+- 前端：B12 审核中心（正文/AI 审校并排 + 驳回表单）、B13 发布页（立即/定时 + 二次确认）。
+- 验证：提交→AI 审校→approve→发布→索引→公开可见全链路；reject 回草稿；定时发布 13:42:22 到期自动执行。
+
+### 读者纠错（M11，2026-08-13）
+
+- F-1001 匿名纠错反馈：无需登录提交（SecurityConfig permitAll），返回追踪号；Redis 限流防刷（同 IP 每分钟 1 条，超限 429）。
+- 前端：FeedbackDialog 详情页纠错弹窗。
+- 验证：匿名提交成功 + 追踪号；连续提交第 2 次起 429。
+
+### 缓存与管理后台（F-1301 + M13，2026-08-13）
+
+- F-1301 热点缓存：公开详情 cache-aside（xlumen:article:{ws}:{id}，5min TTL + 空值哨兵）、分类/标签聚合缓存、发布/下架 evictAll；Redis 异常降级回源。
+- M13 管理后台：工作区设置（intro/forceReview，审计 WORKSPACE_SETTINGS_UPDATE）、模型场景配置（增改查 + 连通性测试）、审计日志查询；admin 前端（LoginPage/WorkspaceSettingsPage/ModelConfigPage/AuditLogPage + 侧边栏布局）。
+- 验证：详情/分类/标签缓存键写入 Redis；模型配置更新 + 真实 ping 百炼；审计日志记录 ARTICLE_PUBLISH/REVIEW_REJECT/WORKSPACE_SETTINGS_UPDATE。
 
 ### 博客前台公开页（M03，2026-08-12）
 
@@ -68,16 +128,16 @@
 | M01 | 代码骨架（backend/xlumen-server 模块划分、frontend 双应用脚手架、SQL 初始化链路） | PRODUCT §5、BACKEND、FRONTEND、GLOBAL §4 | 已完成 | Qoder 代理 |
 | M02 | 身份与多租户（F-0101~F-0104） | PRODUCT §5 模块一 | 已完成 | Qoder 代理 |
 | M03 | 博客前台公开页（F-0201~F-0203） | PRODUCT §5 模块二、PROTOTYPE B01~B04 | 已完成 | Qoder 代理 |
-| M04 | 内容管理与可见性（F-0301~F-0302、F-0307） | PRODUCT §5 模块三、PROTOTYPE B10 | 待办 | — |
-| M05 | 文章知识索引 RAG：发布即索引（F-0402~F-0405、F-0407） | PRODUCT §5 模块四、BACKEND §13 | 待办 | — |
-| M06 | AI 核心引擎（F-0501~F-0503） | PRODUCT §5 模块五 | 待办 | — |
-| M07 | AI 内容创作（F-0601、F-0604） | PRODUCT §5 模块六、PROTOTYPE B11 | 待办 | — |
-| M08 | AI 对话：菜单页与文章级问答（F-0701~F-0702） | PRODUCT §5 模块七、PROTOTYPE B00/D01/D02 | 待办 | — |
-| M09 | AI 内容增值（F-0801~F-0802） | PRODUCT §5 模块八 | 待办 | — |
-| M10 | 审核与发布（F-0901~F-0905） | PRODUCT §5 模块九、PROTOTYPE B12/B13 | 待办 | — |
-| M11 | 互动与反馈闭环（F-1001） | PRODUCT §5 模块十 | 待办 | — |
-| M12 | 技术基础设施（F-1301~F-1303） | PRODUCT §5 模块十三 | 待办 | — |
-| M13 | 管理后台配置管理（空间/成员/角色 F-1201、审计 F-1202、模型配置 F-0501/F-0502 管理面） | PROTOTYPE A01~A04 | 待办 | — |
+| M04 | 内容管理与可见性（F-0301~F-0302、F-0307） | PRODUCT §5 模块三、PROTOTYPE B10 | 已完成 | Qoder 代理 |
+| M05 | 文章知识索引 RAG：发布即索引（F-0402~F-0405、F-0407） | PRODUCT §5 模块四、BACKEND §13 | 已完成（Noop 降级，Milvus 待环境） | Qoder 代理 |
+| M06 | AI 核心引擎（F-0501~F-0503） | PRODUCT §5 模块五 | 已完成 | Qoder 代理 |
+| M07 | AI 内容创作（F-0601、F-0604） | PRODUCT §5 模块六、PROTOTYPE B11 | 已完成 | Qoder 代理 |
+| M08 | AI 对话：菜单页与文章级问答（F-0701~F-0702） | PRODUCT §5 模块七、PROTOTYPE B00/D01/D02 | 已完成 | Qoder 代理 |
+| M09 | AI 内容增值（F-0801~F-0802） | PRODUCT §5 模块八 | 已完成 | Qoder 代理 |
+| M10 | 审核与发布（F-0901~F-0905） | PRODUCT §5 模块九、PROTOTYPE B12/B13 | 已完成 | Qoder 代理 |
+| M11 | 互动与反馈闭环（F-1001） | PRODUCT §5 模块十 | 已完成 | Qoder 代理 |
+| M12 | 技术基础设施（F-1301~F-1303） | PRODUCT §5 模块十三 | 已完成（F-1301 缓存；F-1302/F-1303 门禁/备份随工程实践落地） | Qoder 代理 |
+| M13 | 管理后台配置管理（空间/成员/角色 F-1201、审计 F-1202、模型配置 F-0501/F-0502 管理面） | PROTOTYPE A01~A04 | 已完成 | Qoder 代理 |
 
 > 说明：数据分析与知识保鲜（模块十一）为 V2/V3 功能，平台治理（模块十二）MVP 部分（空间设置/审计）随 M13 落地、其余 V2/V3 随依赖模块迭代实现；阶段调整须经 CHANGELOG 记录（决策 D10）。
 
@@ -91,6 +151,8 @@
 ## 7. 最近变更
 
 > 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
+
+- 2026/8/13 14:00 · Qoder 代理：MVP 全部里程碑交付（M04~M13 + F-1301）——内容管理（CRUD+自动保存+8 状态机）、AI 基座（网关+任务底座+SSE）、AI 创作（写作+审校异源校验）、RAG 索引（发布即索引+Noop 降级）、AI 对话（小光+引用溯源）、AI 增值（摘要+SEO）、审核发布（双闸门+定时发布 PublishJob）、读者纠错（匿名+限流）、热点缓存与管理后台；修复 Spring Boot 4 .env 大写属性 relaxed binding 失效（@Value 显式绑定）、GlobalExceptionHandler 404/JSON 解析异常处理、ai 与 publishing 同名 Bean 冲突、审校默认模型 qwen-max（异源）；运行时全链路验证通过（真实百炼调用：审校/写作/摘要/SEO/Embedding/连通性测试），Milvus 待环境（Noop 降级）。
 
 - 2026/8/13 01:20 · Qoder 代理：后端代码风格统一重构——**去“业务域”概念（传统 MVC 扁平包结构）**：publishing 的 engagement 域拆为 Comment/Like 资源（CommentController/LikeController + CommentService/LikeService，URL 不变）；identity 去 iam 域（扁平化 + WorkspaceApiImpl 移位 + TokenVO/UserProfileVO/WorkspaceVO 改 class+Lombok）；content 去 editor 域且 DTO 改 class+Lombok、ContentApi.listPublished 参数封装（ArticleQueryDTO）；修复历史遗留：identity 单行乱码损坏文件从 git 恢复重建、(wenhailong) 垃圾目录清理、PublicArticleServiceImpl 未适配新签名；BACKEND §3/§4/§5/§7/§8 同步去域措辞 + §5.1 新增编码风格规范（参数封装/DTO·VO class+Lombok/命名规则）；mvn verify BUILD SUCCESS + 3 单测通过。
 - 2026/8/12 21:40 · Qoder 代理：M03 博客前台公开页交付——F-0201 列表/详情（Markdown 渲染 + XSS 清洗 + 目录导航）、F-0202 分类/标签/搜索（组合筛选 + 命中高亮 + 分页）、F-0203 评论/点赞/阅读量（Redis 24h 防刷）；cnt_article/eng_comment/eng_like 入库；B01~B04 四页 + 顶栏导航搜索；修复雪花 ID 精度（Long→String 全局序列化）；后端接口全链路/E2E 8 个/门禁/浏览器实测全部通过（详见第 3 节与 CHANGELOG）。

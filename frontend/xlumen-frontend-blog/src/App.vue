@@ -50,6 +50,8 @@ function submitSearch(): void {
       <div class="app-header__account">
         <RouterLink v-if="!session.loggedIn" class="app-header__link" to="/login">登录</RouterLink>
         <template v-else>
+          <RouterLink class="app-header__link" :to="{ name: 'chat' }">AI 助理</RouterLink>
+          <RouterLink class="app-header__link" :to="{ name: 'workbench' }">创作中心</RouterLink>
           <span class="app-header__user">{{ session.snapshot?.username }}</span>
           <button type="button" class="app-header__link app-header__button" @click="handleLogout">
             登出

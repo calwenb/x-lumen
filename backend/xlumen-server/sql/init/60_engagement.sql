@@ -33,3 +33,20 @@ CREATE TABLE IF NOT EXISTS `eng_like` (
     UNIQUE KEY `uk_like_ws_article_user` (`workspace_id`, `article_id`, `user_id`),
     KEY `idx_like_ws_article` (`workspace_id`, `article_id`)
 ) ENGINE = InnoDB COMMENT ='文章点赞（F-0203）';
+
+-- 读者纠错（F-1001）：匿名可提交；track_no 业务唯一（uk_feedback_track_no），KEY (workspace_id, article_id, status)
+CREATE TABLE IF NOT EXISTS `eng_feedback` (
+    `id`           BIGINT        NOT NULL COMMENT '主键（雪花 ID）',
+    `workspace_id` BIGINT        NOT NULL COMMENT '工作空间 ID',
+    `article_id`   BIGINT        NOT NULL COMMENT '文章 ID（逻辑外键 cnt_article.id）',
+    `user_id`      BIGINT        NULL COMMENT '提交用户 ID（逻辑外键 iam_user.id，可空=匿名）',
+    `position`     VARCHAR(200)  NULL COMMENT '纠错位置（可空）',
+    `problem`      VARCHAR(1000) NOT NULL COMMENT '问题描述',
+    `evidence`     VARCHAR(2000) NULL COMMENT '证据/建议（可空）',
+    `track_no`     VARCHAR(12)   NOT NULL COMMENT '追踪号（雪花 ID 后 12 位大写字母数字）',
+    `status`       TINYINT       NOT NULL DEFAULT 1 COMMENT '状态：1 待处理 0 已处理',
+    `created_at`   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_feedback_track_no` (`track_no`),
+    KEY `idx_feedback_ws_article_status` (`workspace_id`, `article_id`, `status`)
+) ENGINE = InnoDB COMMENT ='读者纠错（F-1001）';

@@ -36,7 +36,7 @@ public interface ArticleMapper extends BaseMapper<ArticleEntity> {
      * @return 分类统计列表（name/count 与 record 构造器映射）
      */
     @Select("SELECT category AS name, COUNT(*) AS count FROM cnt_article "
-            + "WHERE workspace_id = #{workspaceId} AND status = 2 AND visibility = 1 AND category <> '' "
+            + "WHERE workspace_id = #{workspaceId} AND status = 6 AND visibility = 1 AND category <> '' "
             + "GROUP BY category ORDER BY count DESC, category")
     List<CategoryCountDTO> selectCategoryCounts(@Param("workspaceId") Long workspaceId);
 
@@ -48,7 +48,7 @@ public interface ArticleMapper extends BaseMapper<ArticleEntity> {
      */
     @Select("SELECT t.tag AS name, COUNT(*) AS count FROM cnt_article, "
             + "JSON_TABLE(tags, '$[*]' COLUMNS (tag VARCHAR(64) PATH '$')) AS t "
-            + "WHERE workspace_id = #{workspaceId} AND status = 2 AND visibility = 1 "
+            + "WHERE workspace_id = #{workspaceId} AND status = 6 AND visibility = 1 "
             + "GROUP BY t.tag ORDER BY count DESC, t.tag")
     List<CategoryCountDTO> selectTagCounts(@Param("workspaceId") Long workspaceId);
 }

@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.calwen.xlumen.content.api.ContentApi;
 import com.calwen.xlumen.content.api.dto.ArticleDetailDTO;
+import com.calwen.xlumen.content.api.dto.ArticlePublishDTO;
 import com.calwen.xlumen.content.api.dto.ArticleQueryDTO;
 import com.calwen.xlumen.content.api.dto.CategoryCountDTO;
 import com.calwen.xlumen.content.api.dto.ContentPageResult;
+import com.calwen.xlumen.content.api.dto.EditorArticleDTO;
 import com.calwen.xlumen.content.api.dto.PublishedArticleDTO;
 import com.calwen.xlumen.content.entity.ArticleEntity;
 import com.calwen.xlumen.content.mapper.ArticleMapper;
@@ -26,8 +28,8 @@ import java.util.List;
 @Service
 public class ContentApiImpl implements ContentApi {
 
-    /** 状态：已发布（完整 8 状态机随 M10 细化）。 */
-    private static final int STATUS_PUBLISHED = 2;
+    /** 状态：已发布（ArticleStatus.PUBLISHED，F-0901 八状态机）。 */
+    private static final int STATUS_PUBLISHED = 6;
     /** 可见性：公开（F-0307）。 */
     private static final int VISIBILITY_PUBLIC = 1;
 
@@ -94,6 +96,42 @@ public class ContentApiImpl implements ContentApi {
     @Override
     public boolean incrementViewCount(Long workspaceId, Long articleId) {
         return articleMapper.incrementViewCount(articleId, workspaceId) > 0;
+    }
+
+    @Override
+    public EditorArticleDTO getEditorArticle(Long workspaceId, Long articleId) {
+        ArticleEntity article = articleMapper.selectOne(new LambdaQueryWrapper<ArticleEntity>()
+                .eq(ArticleEntity::getId, articleId)
+                .eq(ArticleEntity::getWorkspaceId, workspaceId));
+        if (article == null) {
+            return null;
+        }
+        return EditorArticleDTO.builder()
+                .id(article.getId()).workspaceId(article.getWorkspaceId()).authorId(article.getAuthorId())
+                .title(article.getTitle()).content(article.getContent()).category(article.getCategory())
+                .tags(article.getTags()).visibility(article.getVisibility()).status(article.getStatus())
+                .version(article.getVersion()).publishedAt(article.getPublishedAt())
+                .updatedAt(article.getUpdatedAt()).build();
+    }
+
+    @Override
+    public boolean publishArticle(Long workspaceId, ArticlePublishDTO dto) {
+        ArticleEntity article = articleMapper.selectOne(new LambdaQueryWrapper<ArticleEntity>()
+                .eq(ArticleEntity::getId, dto.getArticleId())
+                .eq(ArticleEntity::getWorkspaceId, workspaceId));
+        if (article == null) {
+            return false;
+        }
+        // 乐观锁：仅当版本一致才迁移（PRODUCT §6 禁止静默覆盖，冲突由调用方抛 409）
+        article.setStatus(dto.getTargetStatus());
+        if (dto.getVisibility() != null) {
+            article.setVisibility(dto.getVisibility());
+        }
+        if (dto.getPublishedAt() != null) {
+            article.setPublishedAt(dto.getPublishedAt());
+        }
+        article.setVersion(dto.getExpectedVersion());
+        return articleMapper.updateById(article) > 0;
     }
 
     /** 阅读时间估算（分钟）：按 400 字/分钟，最少 1 分钟（B01/B02 卡片展示）。 */

@@ -15,4 +15,12 @@ public interface WorkspaceApi {
      * @return 工作空间 ID；无可用空间返回 null
      */
     Long getDefaultWorkspaceId();
+
+    /**
+     * 查询工作空间强制审核开关（F-1201，决策 D9）：用于审核流程判断是否跳过 AI 审校直接通过。
+     *
+     * @param workspaceId 工作空间 ID
+     * @return true 强制审核开启；false 关闭；空间不存在或未配置时默认 true（保守开启）
+     */
+    Boolean forceReviewEnabled(Long workspaceId);
 }
