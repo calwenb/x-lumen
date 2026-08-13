@@ -1,6 +1,7 @@
 package com.calwen.xlumen.publishing.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
 import com.calwen.xlumen.content.api.ContentApi;
@@ -11,8 +12,10 @@ import com.calwen.xlumen.content.api.dto.PublishedArticleDTO;
 import com.calwen.xlumen.identity.api.WorkspaceApi;
 import com.calwen.xlumen.publishing.dto.ArticleCardVO;
 import com.calwen.xlumen.publishing.dto.ArticleDetailVO;
+import com.calwen.xlumen.publishing.dto.ArticleQueryDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
-import com.calwen.xlumen.publishing.engagement.service.EngagementService;
+import com.calwen.xlumen.publishing.service.CommentService;
+import com.calwen.xlumen.publishing.service.LikeService;
 import com.calwen.xlumen.publishing.service.PublicArticleService;
 import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -21,7 +24,6 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 博客前台公开读服务实现（F-0201/F-0202）：公开读编排 + 阅读量 Redis 防刷（F-0203）。
@@ -44,43 +46,59 @@ public class PublicArticleServiceImpl implements PublicArticleService {
     private ContentApi contentApi;
 
     @Resource
-    private EngagementService engagementService;
+    private CommentService commentService;
+
+    @Resource
+    private LikeService likeService;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     @Override
-    public PageResult<ArticleCardVO> listArticles(String keyword, String category, String tag, long pageNo, long pageSize) {
+    public PageResult<ArticleCardVO> listArticles(ArticleQueryDTO query) {
         Long workspaceId = defaultWorkspace();
-        ContentPageResult<PublishedArticleDTO> page =
-                contentApi.listPublished(workspaceId, keyword, category, tag, pageNo, pageSize);
-        List<Long> ids = page.records().stream().map(PublishedArticleDTO::id).toList();
+        // 入参封装为跨模块稳定类型（BACKEND.md §5.2）
+        com.calwen.xlumen.content.api.dto.ArticleQueryDTO queryDto =
+                com.calwen.xlumen.content.api.dto.ArticleQueryDTO.builder()
+                        .keyword(query.getKeyword()).category(query.getCategory()).tag(query.getTag())
+                        .pageNo(query.getPageNo()).pageSize(query.getPageSize()).build();
+        ContentPageResult<PublishedArticleDTO> page = contentApi.listPublished(workspaceId, queryDto);
+        List<Long> ids = page.getRecords().stream().map(PublishedArticleDTO::getId).toList();
         // 批量统计一次取回（避免 N+1，BACKEND.md §18）
-        Map<Long, Long> commentCounts = engagementService.countComments(workspaceId, ids);
-        Map<Long, Long> likeCounts = engagementService.countLikes(workspaceId, ids);
-        List<ArticleCardVO> records = page.records().stream()
-                .map(a -> new ArticleCardVO(a.id(), a.title(), a.summary(), a.authorName(), a.category(), a.tags(),
-                        a.viewCount(), a.readMinutes(), commentCounts.getOrDefault(a.id(), 0L),
-                        likeCounts.getOrDefault(a.id(), 0L), a.publishedAt()))
+        Map<Long, Long> commentCounts = commentService.countComments(workspaceId, ids);
+        Map<Long, Long> likeCounts = likeService.countLikes(workspaceId, ids);
+        List<ArticleCardVO> records = page.getRecords().stream()
+                .map(a -> ArticleCardVO.builder()
+                        .id(a.getId()).title(a.getTitle()).summary(a.getSummary()).authorName(a.getAuthorName())
+                        .category(a.getCategory()).tags(a.getTags()).viewCount(a.getViewCount())
+                        .readMinutes(a.getReadMinutes())
+                        .commentCount(commentCounts.getOrDefault(a.getId(), 0L))
+                        .likeCount(likeCounts.getOrDefault(a.getId(), 0L))
+                        .publishedAt(a.getPublishedAt()).build())
                 .toList();
-        return new PageResult<>(page.total(), page.pageNo(), page.pageSize(), records);
+        return PageResult.<ArticleCardVO>builder()
+                .total(page.getTotal()).pageNo(page.getPageNo()).pageSize(page.getPageSize()).records(records).build();
     }
 
     @Override
-    public ArticleDetailVO getArticle(Long articleId, Long userId) {
+    public ArticleDetailVO getArticle(Long articleId) {
         Long workspaceId = defaultWorkspace();
         ArticleDetailDTO article = contentApi.getPublished(workspaceId, articleId);
         if (article == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "文章不存在或未公开");
         }
-        long commentCount = engagementService.countComments(workspaceId, List.of(articleId))
+        long commentCount = commentService.countComments(workspaceId, List.of(articleId))
                 .getOrDefault(articleId, 0L);
-        long likeCount = engagementService.countLikes(workspaceId, List.of(articleId))
+        long likeCount = likeService.countLikes(workspaceId, List.of(articleId))
                 .getOrDefault(articleId, 0L);
-        boolean liked = userId != null && engagementService.isLiked(workspaceId, articleId, userId);
-        return new ArticleDetailVO(article.id(), article.title(), article.summary(), article.content(),
-                article.authorName(), article.category(), article.tags(), article.viewCount(),
-                article.readMinutes(), commentCount, likeCount, liked, article.publishedAt(), article.updatedAt());
+        Long userId = WorkspaceContext.userId();
+        boolean liked = userId != null && likeService.isLiked(workspaceId, articleId, userId);
+        return ArticleDetailVO.builder()
+                .id(article.getId()).title(article.getTitle()).summary(article.getSummary()).content(article.getContent())
+                .authorName(article.getAuthorName()).category(article.getCategory()).tags(article.getTags())
+                .viewCount(article.getViewCount()).readMinutes(article.getReadMinutes())
+                .commentCount(commentCount).likeCount(likeCount).liked(liked)
+                .publishedAt(article.getPublishedAt()).updatedAt(article.getUpdatedAt()).build();
     }
 
     @Override

@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/12 21:40
+> 更新日期：2026/8/13 01:20
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -92,6 +92,7 @@
 
 > 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/13 01:20 · Qoder 代理：后端代码风格统一重构——**去“业务域”概念（传统 MVC 扁平包结构）**：publishing 的 engagement 域拆为 Comment/Like 资源（CommentController/LikeController + CommentService/LikeService，URL 不变）；identity 去 iam 域（扁平化 + WorkspaceApiImpl 移位 + TokenVO/UserProfileVO/WorkspaceVO 改 class+Lombok）；content 去 editor 域且 DTO 改 class+Lombok、ContentApi.listPublished 参数封装（ArticleQueryDTO）；修复历史遗留：identity 单行乱码损坏文件从 git 恢复重建、(wenhailong) 垃圾目录清理、PublicArticleServiceImpl 未适配新签名；BACKEND §3/§4/§5/§7/§8 同步去域措辞 + §5.1 新增编码风格规范（参数封装/DTO·VO class+Lombok/命名规则）；mvn verify BUILD SUCCESS + 3 单测通过。
 - 2026/8/12 21:40 · Qoder 代理：M03 博客前台公开页交付——F-0201 列表/详情（Markdown 渲染 + XSS 清洗 + 目录导航）、F-0202 分类/标签/搜索（组合筛选 + 命中高亮 + 分页）、F-0203 评论/点赞/阅读量（Redis 24h 防刷）；cnt_article/eng_comment/eng_like 入库；B01~B04 四页 + 顶栏导航搜索；修复雪花 ID 精度（Long→String 全局序列化）；后端接口全链路/E2E 8 个/门禁/浏览器实测全部通过（详见第 3 节与 CHANGELOG）。
 - 2026/8/12 19:50 · Qoder 代理：M02 身份与多租户交付——F-0101 注册/登录/登出/刷新（JWT + 刷新令牌 GETDEL 轮换防重放、防枚举统一延迟）、F-0102 注册即建空间、F-0103 五角色体系、F-0104 双层校验（接口权限 + Service 资源归属）；10_identity.sql 四张表入库；blog 前端 B08 登录注册页 + 401 单飞刷新 + 路由守卫；后端单测/接口全链路/E2E/浏览器实测全部通过（详见第 3 节与 CHANGELOG）。
 - 2026/8/12 19:05 · Qoder 代理：M01 代码骨架交付——后端 7 模块骨架与 common 基座类型、.env 配置体系、SQL 初始化链路（init-db.ps1 + sql/init 编号脚本，开发库 xlumen_dev 已在 159.75.6.183 初始化）、前端 blog/admin 双应用脚手架与根工程配置；后端编译/启动验证与前端质量门禁全部通过（详见第 3 节与 CHANGELOG）。
@@ -118,7 +119,7 @@
 | D12 | **仓库目录**：后端 backend/xlumen-server，前端 frontend/xlumen-frontend-blog 与 frontend/xlumen-frontend-admin，scripts 与根工程配置留仓库根（GLOBAL §4） |
 | D13 | **发布即索引**：文章发布自动建 RAG 索引，取消外部资料导入与 URL 抓取；私有文章亦建索引，检索按身份过滤（访客仅公开已发布、博主全部含私有）（PRODUCT §6、BACKEND §13） |
 | D14 | **AI 命名**：产品内所有面向用户的 AI 能力（对话/问答/访客助手/写作与审校反馈等）统一称呼为**小光**，界面文案不得使用其他 AI 名称（PRODUCT §8） |
-| D15 | **Maven 模块压缩 12→7**：按未来微服务拆分边界合并——identity（+platform）、content（+analytics）、publishing（+engagement）、knowledge、ai（+chat+ai-enhance）+ common/boot；模块内按业务域分包，表前缀保持独立，分包边界即未来拆分边界（BACKEND §4/§5） |
+| D15 | **Maven 模块压缩 12→7**：按未来微服务拆分边界合并——identity（+platform）、content（+analytics）、publishing（+engagement）、knowledge、ai（+chat+ai-enhance）+ common/boot；**模块内统一传统 MVC 扁平结构（不引入业务域包，去 engagement/editor/iam 等域概念）**，表前缀保持独立，拆分边界以模块 + 表前缀为准（BACKEND §4/§5） |
 
 ## 9. 环境速查
 

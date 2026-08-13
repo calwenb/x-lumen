@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/12 21:40
+> 更新日期：2026/8/13 01:20
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 
@@ -10,6 +10,12 @@
 | --- | --- | --- | --- |
 
 说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D15，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
+
+## 2026/8/13 01:20 · Qoder 代理（后端代码风格统一重构：传统 MVC 扁平化）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/13 01:20 | 后端代码风格统一重构——**去除“业务域”概念，统一传统 MVC 扁平包结构**：publishing 的 engagement 域拆为资源命名（EngagementController → CommentController + LikeController，EngagementService → CommentService + LikeService，接口 URL 不变）；identity 去 iam 域（controller/dto/entity/enums/mapper/service/vo 扁平化、WorkspaceApiImpl 移入 service/impl、TokenVO/UserProfileVO/WorkspaceVO 改 class+Lombok、测试同步 getter）；content 去 editor 域、api/dto 改 class+Lombok、ContentApi.listPublished 参数封装（ArticleQueryDTO 跨模块稳定类型）、ArticleMapper/ContentApiImpl 移位；修复历史遗留：identity 单行乱码损坏文件从 git HEAD 恢复重建（(wenhailong) 垃圾目录清理）、PublicArticleServiceImpl 适配新签名与 getter、CommentQueryDTO/ArticleQueryDTO 补 @Builder.Default；BACKEND §3/§4/§5/§7/§8 同步去域措辞 + §5.1 新增编码风格规范（参数封装 3~4 个上限、DTO/VO 统一 class+Lombok 带字段注释、命名按资源词、@Builder.Default 默认值）；验证：mvn verify BUILD SUCCESS + identity 3 单测通过（环境注意：编译需 JAVA_HOME 指向 JDK 25） | STATUS/BACKEND | D2（传统 MVC）/D15（模块内扁平结构） |
 
 ## 2026/8/12 21:40 · Qoder 代理（M03 博客前台公开页）
 

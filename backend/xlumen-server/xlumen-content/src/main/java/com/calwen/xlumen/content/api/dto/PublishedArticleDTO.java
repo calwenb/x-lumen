@@ -1,5 +1,10 @@
 package com.calwen.xlumen.content.api.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -9,14 +14,36 @@ import java.util.List;
  * @author calwen
  * @date 2026/8/12
  */
-public record PublishedArticleDTO(
-        Long id,
-        String title,
-        String summary,
-        String authorName,
-        String category,
-        List<String> tags,
-        Long viewCount,
-        int readMinutes,
-        LocalDateTime publishedAt) {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PublishedArticleDTO {
+
+    /** 文章 ID（雪花 ID，字符串传输，BACKEND.md §5.3）。 */
+    private Long id;
+
+    /** 标题。 */
+    private String title;
+
+    /** 摘要。 */
+    private String summary;
+
+    /** 作者名（冗余展示字段）。 */
+    private String authorName;
+
+    /** 分类。 */
+    private String category;
+
+    /** 标签数组。 */
+    private List<String> tags;
+
+    /** 阅读量。 */
+    private Long viewCount;
+
+    /** 阅读时间（分钟估算）。 */
+    private int readMinutes;
+
+    /** 发布时间。 */
+    private LocalDateTime publishedAt;
 }

@@ -34,13 +34,13 @@
 
 ## 3. 总体结构
 
-> 总体架构图见 [GLOBAL.md 第 3 节](../global/GLOBAL.md#3-总体架构)（全仓唯一权威版本），本节不再重复画图。本模块的装配边界：xlumen-boot 为唯一启动装配入口，聚合 7 个模块（common 基座 + 5 个业务模块：identity/content/publishing/knowledge/ai + boot 装配）；模块间通过 XxxApi/XxxApiImpl 跨模块边界调用，不跨模块访问 Mapper/Entity（详见第 5 节包结构）。模块按未来微服务边界合并（决策 D15），模块内部按业务域分包，表前缀保持独立，未来拆分时按域整包迁出。
+> 总体架构图见 [GLOBAL.md 第 3 节](../global/GLOBAL.md#3-总体架构)（全仓唯一权威版本），本节不再重复画图。本模块的装配边界：xlumen-boot 为唯一启动装配入口，聚合 7 个模块（common 基座 + 5 个业务模块：identity/content/publishing/knowledge/ai + boot 装配）；模块间通过 XxxApi/XxxApiImpl 跨模块边界调用，不跨模块访问 Mapper/Entity（详见第 5 节包结构）。模块按未来微服务边界合并（决策 D15），模块内部统一传统 MVC 扁平结构（不引入业务域包，决策 D2），表前缀保持独立，未来拆分时按模块/表前缀边界整包迁出。
 
 系统以一个 Spring Boot 进程运行（决策 D1）。耗时任务由 RocketMQ 消费者和定时任务异步执行，但最终仍通过所属模块的 Service 完成业务处理。
 
 ## 4. Maven 模块
 
-共 7 个 Maven 模块（父 POM `xlumen` 负责聚合与依赖管理，决策 D15），对应 PRODUCT 功能总表 13 个产品模块；模块按未来微服务拆分边界合并，模块内按业务域分包，表前缀保持独立（模块十三"技术基础设施"为横切工程能力，由 common/boot 与本文工程规范承载）。
+共 7 个 Maven 模块（父 POM `xlumen` 负责聚合与依赖管理，决策 D15），对应 PRODUCT 功能总表 13 个产品模块；模块按未来微服务拆分边界合并，模块内统一传统 MVC 扁平结构，表前缀保持独立（模块十三"技术基础设施"为横切工程能力，由 common/boot 与本文工程规范承载）。
 
 ```text
 backend/xlumen-server/
@@ -56,14 +56,14 @@ backend/xlumen-server/
 └─ xlumen-boot/             # 装配层：唯一启动入口
 ```
 
-| 模块 | 主要职责（业务域） | 表前缀 | 阶段 |
+| 模块 | 主要职责 | 表前缀 | 阶段 |
 | --- | --- | --- | --- |
 | `xlumen-common` | 统一响应 `ApiResponse`、`BizException`、`WorkspaceContext`、`RequestId`、事件信封等真正通用的基础类型 | — | MVP 基座 |
-| `xlumen-identity` | 【iam 域】用户、登录、会话、工作空间、成员、角色与权限（F-0101~F-0105）；【platform 域】空间设置、审计（MVP），配额、通知（V2）（F-1201~F-1204） | `iam_`、`plt_` | MVP |
-| `xlumen-content` | 【editor 域】文章 CRUD、草稿自动保存、可见性、版本、AI 写作结果落库（F-0301~F-0307）；【analytics 域】访问统计、时效检测、缺口分析、更新建议、旧文更新闭环（F-1101~F-1105，V2/V3） | `cnt_`、`analytics_` | MVP（analytics 域 V2/V3） |
-| `xlumen-publishing` | 【review/release 域】审核状态机、双闸门审核、发布幂等、回滚下架、博客前台公开读（F-0901~F-0906、F-0201~F-0207）；【engagement 域】评论、点赞、读者纠错（F-1001~F-1004） | `pub_`、`eng_` | MVP（通知 V2） |
+| `xlumen-identity` | 用户、登录、会话、工作空间、成员、角色与权限（F-0101~F-0105）；空间设置、审计（MVP），配额、通知（V2）（F-1201~F-1204） | `iam_`、`plt_` | MVP |
+| `xlumen-content` | 文章 CRUD、草稿自动保存、可见性、版本、AI 写作结果落库（F-0301~F-0307）；访问统计、时效检测、缺口分析、更新建议、旧文更新闭环（F-1101~F-1105，V2/V3） | `cnt_`、`analytics_` | MVP（analytics V2/V3） |
+| `xlumen-publishing` | 审核状态机、双闸门审核、发布幂等、回滚下架、博客前台公开读（F-0901~F-0906、F-0201~F-0207）；评论、点赞、读者纠错（F-1001~F-1004） | `pub_`、`eng_` | MVP（通知 V2） |
 | `xlumen-knowledge` | 文章自动索引流水线（发布触发）、索引管理与检索、检索权限过滤、引用溯源（F-0402~F-0405、F-0407） | `kb_` | MVP |
-| `xlumen-ai` | 【gateway/writing 域】模型网关、场景模型配置、流式输出、AI 写作任务、审校（F-0501~F-0505、F-0601~F-0607）；【chat 域】AI 对话、文章级问答、访客助手（F-0701~F-0705）；【enhance 域】摘要、SEO、翻译、配图等增值（F-0801~F-0807） | `ai_`、`chat_`、`ai_enhance_` | MVP |
+| `xlumen-ai` | 模型网关、场景模型配置、流式输出、AI 写作任务、审校（F-0501~F-0505、F-0601~F-0607）；AI 对话、文章级问答、访客助手（F-0701~F-0705）；摘要、SEO、翻译、配图等增值（F-0801~F-0807） | `ai_`、`chat_`、`ai_enhance_` | MVP |
 | `xlumen-boot` | 应用启动、Security、中间件和配置装配 | — | 装配层 |
 
 依赖 DAG（同步 Maven 依赖，方向即"被依赖"）：
@@ -73,26 +73,28 @@ backend/xlumen-server/
 - `knowledge` 被 `ai` 依赖（检索与引用溯源）。
 - `ai` 被 content/publishing 依赖（写作/审校/增值能力）；`content` 被 publishing/ai 依赖（文章与版本是内容侧事实源）。
 - `boot` 依赖全部模块；业务模块不得依赖 boot；Maven 依赖不能形成循环，双向流程优先用业务事件解耦（决策 D3）。
-- 业务模块不能直接操作其他模块的 Mapper、Entity 和数据表；每张业务表只有一个所属业务域。
-- 未来拆分（GLOBAL §8 路线图）：AI 长任务消费拆出时迁 ai 域，公开读拆出时迁 publishing/review-release 域，RAG 独立时迁 knowledge；未达触发条件不得拆分。
+- 业务模块不能直接操作其他模块的 Mapper、Entity 和数据表；每张业务表只有一个所属模块（表前缀归属）。
+- 未来拆分（GLOBAL §8 路线图）：AI 长任务消费拆出时迁 ai 模块，公开读拆出时迁 publishing 模块公开读，RAG 独立时迁 knowledge；未达触发条件不得拆分。
 
 ## 5. 模块包结构与 MVC 调用规则
 
 每个业务模块统一采用以下结构，只创建实际需要的包：`api/`（对外接口）、`controller/`（REST/SSE 入口）、`service/` + `service/impl/`（业务接口与实现）、`mapper/`、`entity/`、`dto/`、`vo/`、`job/`（定时任务与消息消费入口）、`config/`、`enums/`、`constants/`（确有必要的常量）。
 
-**合并模块的业务域分包规则（决策 D15）**：含多个业务域的模块（identity/content/publishing/ai）在包级先分域，域内再按上述结构组织，例如：
+**模块内统一传统 MVC 扁平结构（决策 D2/D15）**：不引入“业务域”概念（如 engagement/editor 等包名），所有类直接按分层放模块根包下：
 
 ```text
-xlumen-ai/src/main/java/.../ai/
-├─ gateway/     # 模型网关与场景配置（ai_）
-├─ writing/     # 写作任务与审校（ai_）
-├─ chat/        # 对话与问答（chat_）
-├─ enhance/     # 摘要/SEO 等增值（ai_enhance_）
-└─ api/         # 模块对外统一 Api
+xlumen-publishing/src/main/java/.../publishing/
+├─ controller/   # CommentController / LikeController / PublicArticleController
+├─ service/      # CommentService / LikeService / PublicArticleService
+├─ service/impl/ # CommentServiceImpl / LikeServiceImpl / PublicArticleServiceImpl
+├─ mapper/       # CommentMapper / LikeMapper
+├─ entity/       # CommentEntity / LikeEntity
+├─ dto/          # 入参/查询参数/跨模块稳定类型
+└─ vo/           # 出参视图
 ```
 
-- 域之间不得直接访问对方的 Mapper/Entity，跨域调用走对方域的 Service 接口；表的归属以表前缀为准，一个域不得操作另一个前缀的表。
-- 分包边界即未来微服务拆分边界，禁止出现横跨多域的"公共业务包"。
+- 命名按资源/领域词（如 Comment/Like/Article），禁止使用域后缀（如 EngagementService）或域包名（如 engagement/）。
+- 未来拆分边界以**模块 + 表前缀**为准（如 publishing 的 eng_ 表随互动能力迁出），不依赖包内域边界。
 
 ### 5.1 MVC 调用规则
 
@@ -108,6 +110,13 @@ Other Module → Api → Service → Mapper
 - Entity 只对应数据库结构，不能作为接口入参或响应直接返回。
 - Job 包同时容纳定时任务和消息消费者，入口代码只做消息解析、幂等检查和 Service 调用。
 - 不为简单 CRUD 增加额外抽象层。
+
+**编码风格规范（强制）**：
+
+- **参数封装**：方法参数不超过 3~4 个；字段较多的入参/查询条件必须封装为 DTO/BO（如 `ArticleQueryDTO` 承载关键词/分类/标签/分页），Controller 方法同样遵守；Service 方法内只读需要的字段，避免“全量对象传参”。
+- **DTO/VO 用普通 class + Lombok**：统一 `@Data @Builder @NoArgsConstructor @AllArgsConstructor`，字段必须带简短注释；DTO/VO 不使用 record（跨模块稳定类型同样遵守，历史 record 已统一替换为 class）。
+- **默认值语义**：字段初始化表达式（如 `pageNo = 1`）同时使用 `@Builder.Default`，避免 @Builder 忽略默认值。
+- **命名按资源/领域词**：Service/Controller/Mapper/Entity 使用同一资源词前缀（如 Comment、Like、Article），不引入域后缀。
 
 ### 5.2 对外 Api 目录
 
@@ -175,7 +184,7 @@ public interface ContentApi {
 
 ## 7. 数据库与初始化 SQL
 
-MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业务主键、Api 校验和业务事件保持一致性）。表前缀与所属业务域：identity `iam_`、platform `plt_`（identity 模块）、content `cnt_`、analytics `analytics_`（content 模块）、publishing `pub_`、engagement `eng_`（publishing 模块）、knowledge `kb_`、ai `ai_`、chat `chat_`、ai-enhance `ai_enhance_`（ai 模块）。
+MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业务主键、Api 校验和业务事件保持一致性）。表前缀与所属模块：identity `iam_`、platform `plt_`（identity 模块）、content `cnt_`、analytics `analytics_`（content 模块）、publishing `pub_`、engagement `eng_`（publishing 模块）、knowledge `kb_`、ai `ai_`、chat `chat_`、ai-enhance `ai_enhance_`（ai 模块）。
 
 初始化脚本固定为（`backend/xlumen-server/sql/init/`）：
 
@@ -206,10 +215,10 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 | `ai_task` | ai | MVP | AI 任务（状态机见第 14 节） |
 | `cnt_article` / `cnt_article_version` | content | MVP / V2 | 文章主体 / 历史版本（F-0303） |
 | `pub_review` / `pub_release` | publishing | MVP | 审核记录（F-0902）/ 发布记录（F-0905） |
-| `eng_feedback` / `eng_comment` | publishing（engagement 域） | MVP / V2 | 读者纠错（F-1001）/ 评论（F-0203） |
-| `chat_message` | ai（chat 域） | MVP | 对话消息 |
-| `plt_quota` / `plt_notification` / `plt_activity_log` | identity（platform 域） | V2 | 配额用量（F-0504）/ 站内通知（F-1004）/ 审计日志（F-1202） |
-| `analytics_visit` | content（analytics 域） | V2 | 访问统计明细（F-1101） |
+| `eng_feedback` / `eng_comment` | publishing 模块 | MVP / V2 | 读者纠错（F-1001）/ 评论（F-0203） |
+| `chat_message` | ai 模块 | MVP | 对话消息 |
+| `plt_quota` / `plt_notification` / `plt_activity_log` | identity 模块 | V2 | 配额用量（F-0504）/ 站内通知（F-1004）/ 审计日志（F-1202） |
+| `analytics_visit` | content 模块 | V2 | 访问统计明细（F-1101） |
 
 ### 8.2 索引策略
 

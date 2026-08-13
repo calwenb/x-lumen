@@ -1,16 +1,33 @@
 package com.calwen.xlumen.content.api.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 
 /**
  * 分页结果（Api 稳定类型，BACKEND.md §5.2：不返回分页插件内部对象）。
  *
- * @param total    总记录数
- * @param pageNo   当前页码
- * @param pageSize 每页条数
- * @param records  当前页数据
  * @author calwen
  * @date 2026/8/12
  */
-public record ContentPageResult<T>(long total, long pageNo, long pageSize, List<T> records) {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ContentPageResult<T> {
+
+    /** 总记录数。 */
+    private long total;
+
+    /** 当前页码（从 1 开始）。 */
+    private long pageNo;
+
+    /** 每页条数。 */
+    private long pageSize;
+
+    /** 当前页数据。 */
+    private List<T> records;
 }

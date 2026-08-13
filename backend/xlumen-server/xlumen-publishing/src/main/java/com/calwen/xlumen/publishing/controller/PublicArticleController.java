@@ -1,10 +1,10 @@
 package com.calwen.xlumen.publishing.controller;
 
-import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.web.ApiResponse;
 import com.calwen.xlumen.content.api.dto.CategoryCountDTO;
 import com.calwen.xlumen.publishing.dto.ArticleCardVO;
 import com.calwen.xlumen.publishing.dto.ArticleDetailVO;
+import com.calwen.xlumen.publishing.dto.ArticleQueryDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.service.PublicArticleService;
 import jakarta.annotation.Resource;
@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -33,30 +32,20 @@ public class PublicArticleController {
     private PublicArticleService publicArticleService;
 
     /**
-     * 分页查询公开文章（F-0201/F-0202）：关键词/分类/标签组合筛选，服务端分页。
-     *
-     * @param keyword  关键词（可空）
-     * @param category 分类（可空）
-     * @param tag      标签（可空）
-     * @param pageNo   页码（默认 1）
-     * @param pageSize 每页条数（默认 10，上限 100）
+     * 分页查询公开文章（F-0201/F-0202）：关键词/分类/标签组合筛选，服务端分页；
+     * 查询参数由 ArticleQueryDTO 自动绑定（GET），字段默认值即接口默认值。
      */
     @GetMapping("/articles")
-    public ApiResponse<PageResult<ArticleCardVO>> listArticles(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String tag,
-            @RequestParam(defaultValue = "1") long pageNo,
-            @RequestParam(defaultValue = "10") long pageSize) {
-        return ApiResponse.success(publicArticleService.listArticles(keyword, category, tag, pageNo, pageSize));
+    public ApiResponse<PageResult<ArticleCardVO>> listArticles(ArticleQueryDTO query) {
+        return ApiResponse.success(publicArticleService.listArticles(query));
     }
 
     /**
-     * 文章详情（F-0201，B02）：登录用户附带点赞状态。
+     * 文章详情（F-0201，B02）：登录用户附带点赞状态（WorkspaceContext）。
      */
     @GetMapping("/articles/{id}")
     public ApiResponse<ArticleDetailVO> getArticle(@PathVariable("id") Long id) {
-        return ApiResponse.success(publicArticleService.getArticle(id, WorkspaceContext.userId()));
+        return ApiResponse.success(publicArticleService.getArticle(id));
     }
 
     /**

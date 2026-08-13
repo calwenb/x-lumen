@@ -1,4 +1,4 @@
--- 60_engagement.sql：xlumen-publishing 模块 engagement 域（eng_ 评论/点赞/读者纠错）
+-- 60_engagement.sql：xlumen-publishing 模块互动表（eng_ 前缀：评论/点赞/读者纠错）
 -- M03 落地 F-0203 评论与点赞；读者纠错 eng_feedback 随 M11（F-1001）落地。
 
 USE `xlumen_dev`;
