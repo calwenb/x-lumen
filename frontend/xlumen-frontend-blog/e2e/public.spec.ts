@@ -90,7 +90,8 @@ test.describe('博客前台公开页（M03）', () => {
     const textarea = page.getByPlaceholder('写下你的评论…')
     await textarea.fill('M03 E2E 自动评论：RAG 文章写得很清晰。')
     await page.getByRole('button', { name: '发表评论' }).click()
-    await expect(page.getByText('M03 E2E 自动评论：RAG 文章写得很清晰。')).toBeVisible()
+    // 重复运行会积累相同评论，用 .last() 断言最新一条避免 strict mode 冲突
+    await expect(page.getByText('M03 E2E 自动评论：RAG 文章写得很清晰。').last()).toBeVisible()
 
     // 登出恢复（避免影响其他测试）
     await page.getByRole('button', { name: '登出' }).click()
