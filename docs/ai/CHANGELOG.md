@@ -11,6 +11,12 @@
 
 说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D17，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
 
+## 2026/8/14 18:55 · ZCode（KB-5 迁移收尾 + KB-6 全量验收）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/14 18:55 | KB-5 存量迁移收尾：开发库 xlumen_dev 迁移数据校验全绿（知识总数 10、0 无归属、公开库 8 篇、category 平铺目录 5 个「后端/AI/前端/随笔/测试」、回收站 0、kb_chunk/kb_index_version kb_id 全部回填）；Redis 缓存清空（xlumen:* 旧键族全删，refresh token 自然重建）；种子数据（公开 3+草稿 1+私有 1）已随迁移归入默认公开库/默认私有库，不进 init 脚本（决策 D5）。KB-6 全量验收通过：PRODUCT §12 完成定义 8 条逐条核对（界面流程/后端权限/接口一致/边界处理/测试构建/文档同步/总表同步/行为变更）；后端 mvn -T 1C clean verify BUILD SUCCESS（10 测试全绿）；前端 typecheck/lint/stylelint/test/build 全绿；双前端 E2E 9/9（blog 8 + admin 1）；全仓「文章」措辞清零（仅 ai 模块「完整文章」写作素材语义与历史说明保留，合法）；文档一致性核验通过并补充 BACKEND §10 回收站聚合层说明（publishing 承载，kb 侧 KnowledgeApi + knowledge 侧 ContentApi，恢复冲突判定）；知识平台化重构 KB-1~KB-6 全部交付完成 | STATUS、BACKEND | D5、D16、D17 |
+
 ## 2026/8/14 18:50 · ZCode（KB-4 前端页面交付）
 
 | 时间 | 变更内容 | 影响文档 | 决策摘要 |

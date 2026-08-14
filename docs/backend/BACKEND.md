@@ -257,7 +257,8 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 ## 10. REST API 规范
 
 - 统一前缀 `/api/v1`，资源使用复数名词；查询用 GET，创建用 POST，全量更新用 PUT，局部动作用明确动作端点。
-- **知识资源统一路径 `/api/v1/knowledge`**（决策 D17：概念统一后不可数名词；旧 `/api/v1/articles` 直接废弃，不保留兼容期，前后端同仓同 PR 切换）。知识库资源 `/api/v1/knowledge-bases`，目录资源 `/api/v1/knowledge-bases/{kbId}/directories`。
+- **知识资源统一路径 `/api/v1/knowledge`**（决策 D17：概念统一后不可数名词；旧 `/api/v1/articles` 直接废弃，不保留兼容期，前后端同仓同 PR 切换）。知识库资源 `/api/v1/knowledge-bases`，目录资源 `/api/v1/knowledge-bases/{kbId}/directories`，回收站资源 `/api/v1/recycle-bin`（type=kb|knowledge，恢复 `/{type}/{id}/restore`、彻底删除 `/{type}/{id}?confirm=CONFIRM`）。
+- **回收站聚合层在 publishing**：knowledge 模块依赖方向受限（content→ai→knowledge 环）无法直连 cnt_knowledge，回收站统一编排收敛到 publishing（RecycleBinController + RecycleBinFacadeService，同时依赖 content+knowledge 无环）；kb 侧委托 KnowledgeApi（listRecycledKbs/restoreRecycledKb/purgeRecycledKb），knowledge 侧委托 ContentApi（listRecycledKnowledge/getRecycledKnowledge/restoreKnowledge/purgeKnowledge，恢复含冲突判定：原目录已删→挂库根、原库已彻底删除→409「原知识库不存在，无法恢复」）。
 - OpenAPI 是前端生成接口类型的唯一来源（决策 D4）；Controller、DTO 和 VO 提供准确的 Schema 与校验规则。
 - 分页参数统一为 `pageNo`、`pageSize`，并限制最大 `pageSize`（上限见第 18 节）。
 
