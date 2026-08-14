@@ -27,6 +27,9 @@ public class KbIndexVersionEntity {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
+    /** 所属知识库 ID（逻辑外键 kb_knowledge_base.id，按库切分，决策 D13）。 */
+    private Long kbId;
+
     /** 知识 ID（逻辑外键 cnt_knowledge.id）。 */
     private Long knowledgeId;
 

@@ -166,7 +166,7 @@
 | M12 | 技术基础设施（F-1301~F-1303） | PRODUCT §5 模块十三 | 已完成（F-1301 缓存；F-1302/F-1303 门禁/备份随工程实践落地） | Qoder 代理 |
 | M13 | 管理后台配置管理（空间/成员/角色 F-1201、审计 F-1202、模型配置 F-0501/F-0502 管理面） | PROTOTYPE A01~A04 | 已完成 | Qoder 代理 |
 | KB-1 | 知识平台化重构·阶段 1：概念改名「文章→知识」（全仓 grep 清单：文档/后端类名接口事件审计常量/前端路由文案组件/测试断言；物理表 cnt_article→cnt_knowledge、路径 /api/v1/articles→/api/v1/knowledge；纯改名零行为变更） | tmp/knowledge-redesign-proposal.md §3/§12 | 已完成（ZCode，2026-08-14 17:40） | ZCode |
-| KB-2 | 知识平台化重构·阶段 2：数据模型（kb_knowledge_base/kb_directory 新表 DDL、cnt_knowledge 改造 kb_id/directory_id 去 category/visibility、kb_chunk/kb_index_version 加 kb_id、迁移脚本幂等） | 方案 §5/§10、BACKEND §7/§8 | 待认领 | — |
+| KB-2 | 知识平台化重构·阶段 2：数据模型（kb_knowledge_base/kb_directory 新表 DDL、cnt_knowledge 改造 kb_id/directory_id 去 category/visibility、kb_chunk/kb_index_version 加 kb_id、迁移脚本幂等） | 方案 §5/§10、BACKEND §7/§8 | 已认领（ZCode） | ZCode |
 | KB-3 | 知识平台化重构·阶段 3：后端能力（库 CRUD/回收站/目录树/排序/可见性过滤/检索按库/发布选库，F-0305/F-0307/F-0308/F-0309/F-0407） | 方案 §7/§9、BACKEND §13 | 待认领 | — |
 | KB-4 | 知识平台化重构·阶段 4：前端页面（导航头/知识流 B01/库页 B20/发现页 B21/库管理 B22/回收站 B16/发布弹窗/AI 对话范围选择器，F-0208/F-0308） | PROTOTYPE §7 | 待认领 | — |
 | KB-5 | 知识平台化重构·阶段 5：存量迁移执行与数据校验（默认公开库/默认私有库、category 平铺目录） | 方案 §10 | 待认领 | — |
