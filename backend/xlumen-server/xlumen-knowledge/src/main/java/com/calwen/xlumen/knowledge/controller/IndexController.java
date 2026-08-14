@@ -4,6 +4,7 @@ import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ApiResponse;
 import com.calwen.xlumen.common.web.ErrorCode;
+import com.calwen.xlumen.knowledge.api.KnowledgeApi;
 import com.calwen.xlumen.knowledge.api.dto.SearchRequestDTO;
 import com.calwen.xlumen.knowledge.api.dto.SearchResultDTO;
 import com.calwen.xlumen.knowledge.dto.RetrievalTestRequestDTO;
@@ -23,7 +24,7 @@ import java.util.List;
 
 /**
  * 知识索引管理接口（F-0404 检索测试 / 索引状态）：均需登录（SecurityConfig 兜底），
- * 检索测试范围含私有（ALL），供博主校验发布即索引效果。
+ * 检索测试范围为当前用户全部可见库（resolveVisibleKbIds，决策 D13），供博主校验发布即索引效果。
  *
  * @author calwen
  * @date 2026/8/13
@@ -32,13 +33,12 @@ import java.util.List;
 @RequestMapping("/api/v1/knowledge")
 public class IndexController {
 
-    /** 检索测试可见性范围：博主含私有。 */
-    private static final String VISIBILITY_ALL = "ALL";
-
     @Resource
     private RetrievalService retrievalService;
     @Resource
     private IndexPipelineService indexPipelineService;
+    @Resource
+    private KnowledgeApi knowledgeApi;
 
     /**
      * 检索测试（F-0404）：Embedding(query) → 向量检索，返回含 score/段落/切片的结果列表。
@@ -49,10 +49,12 @@ public class IndexController {
     @PostMapping("/retrieval-test")
     public ApiResponse<List<SearchResultDTO>> retrievalTest(@Valid @RequestBody RetrievalTestRequestDTO request) {
         Long workspaceId = requireWorkspace();
+        Long userId = WorkspaceContext.userId();
         SearchRequestDTO searchRequest = SearchRequestDTO.builder()
                 .workspaceId(workspaceId)
                 .query(request.getQuery())
-                .visibilityScope(VISIBILITY_ALL)
+                // 检索范围：当前用户全部可见库（公开库 + 自己私有库，决策 D13）
+                .kbIds(knowledgeApi.resolveVisibleKbIds(userId))
                 .topK(request.getTopK())
                 .build();
         return ApiResponse.success(retrievalService.search(searchRequest));
@@ -64,7 +66,7 @@ public class IndexController {
      * @param knowledgeId 知识 ID
      * @return 索引状态或 null
      */
-    @GetMapping("/knowledge/{knowledgeId}/index-status")
+    @GetMapping("/{knowledgeId}/index-status")
     public ApiResponse<IndexStatusVO> indexStatus(@PathVariable Long knowledgeId) {
         Long workspaceId = requireWorkspace();
         return ApiResponse.success(indexPipelineService.getIndexStatus(workspaceId, knowledgeId));

@@ -41,7 +41,8 @@ public class LikeServiceImpl implements LikeService {
         }
         Long workspaceId = WorkspaceContext.workspaceId();
         LikeEntity like = likeMapper.selectOne(Wrappers.<LikeEntity>lambdaQuery()
-                .eq(LikeEntity::getWorkspaceId, workspaceId)
+                // workspaceId 可空=跨空间（详情页点赞态判定，D9 改写）
+                .eq(workspaceId != null, LikeEntity::getWorkspaceId, workspaceId)
                 .eq(LikeEntity::getKnowledgeId, knowledgeId)
                 .eq(LikeEntity::getUserId, userId));
         if (like == null) {
@@ -84,7 +85,8 @@ public class LikeServiceImpl implements LikeService {
         }
         List<LikeEntity> rows = likeMapper.selectList(Wrappers.<LikeEntity>lambdaQuery()
                 .select(LikeEntity::getKnowledgeId)
-                .eq(LikeEntity::getWorkspaceId, workspaceId)
+                // workspaceId 可空=跨空间聚合（多用户公开读，D9 改写）
+                .eq(workspaceId != null, LikeEntity::getWorkspaceId, workspaceId)
                 .in(LikeEntity::getKnowledgeId, knowledgeIds)
                 .eq(LikeEntity::getStatus, LIKE_ON));
         return rows.stream().collect(Collectors.groupingBy(

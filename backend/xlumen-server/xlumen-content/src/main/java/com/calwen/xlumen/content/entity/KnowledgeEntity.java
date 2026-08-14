@@ -13,8 +13,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 知识实体（cnt_knowledge，F-0201）：公开读字段 M03 落地，编辑相关字段随 M04 扩展。
- * tags 为 MySQL JSON 列，经 JacksonTypeHandler 映射 List&lt;String&gt;。
+ * 知识实体（cnt_knowledge，F-0201，决策 D16）：单库单目录归属（kb_id+directory_id），
+ * 可见性由所属知识库决定（无独立 visibility 列）；回收站用 recycle_status+deleted_at
+ * 独立软删标记（不扩 8 状态机）。tags 为 MySQL JSON 列，经 JacksonTypeHandler 映射 List&lt;String&gt;。
  *
  * @author calwen
  * @date 2026/8/12
@@ -37,6 +38,12 @@ public class KnowledgeEntity {
     /** 作者名（冗余展示字段）。 */
     private String authorName;
 
+    /** 所属知识库 ID（逻辑外键 kb_knowledge_base.id，单库单目录，决策 D16）。 */
+    private Long kbId;
+
+    /** 所属目录 ID（逻辑外键 kb_directory.id，0=库根目录）。 */
+    private Long directoryId;
+
     /** 标题。 */
     private String title;
 
@@ -46,9 +53,6 @@ public class KnowledgeEntity {
     /** 正文 Markdown（已发布版本正文快照）。 */
     private String content;
 
-    /** 分类（公开筛选维度，F-0202）。 */
-    private String category;
-
     /** 标签数组（公开筛选维度，F-0202）。 */
     @TableField(typeHandler = JacksonTypeHandler.class)
     private List<String> tags;
@@ -56,15 +60,18 @@ public class KnowledgeEntity {
     /** 状态：1 构思 2 草稿 3 待审核 4 已通过 5 定时发布 6 已发布 7 更新中 8 已下架（F-0901 八状态机，见 KnowledgeStatus）。 */
     private Integer status;
 
-    /** 可见性：1 公开 0 私有（F-0307，私有不进公开列表与搜索）。 */
-    private Integer visibility;
-
     /** 版本号（乐观锁，审核/发布/更新必须校验，冲突 HTTP 409）。 */
     @Version
     private Long version;
 
     /** 阅读量（F-0203，Redis 防刷后自增）。 */
     private Long viewCount;
+
+    /** 回收站状态：0 正常 1 回收站（F-0305，独立软删标记，不扩状态机）。 */
+    private Integer recycleStatus;
+
+    /** 进回收站时间（超期 30 天清理依据）。 */
+    private LocalDateTime deletedAt;
 
     /** 发布时间（已发布后非空）。 */
     private LocalDateTime publishedAt;

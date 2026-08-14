@@ -22,6 +22,9 @@ public class KnowledgePublishedEvent {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
+    /** 所属知识库 ID（决策 D13 索引按库切分，KB-3 起携带）。 */
+    private Long kbId;
+
     /** 知识 ID。 */
     private Long knowledgeId;
 
@@ -33,7 +36,4 @@ public class KnowledgePublishedEvent {
 
     /** 正文 Markdown 快照（索引流水线取数）。 */
     private String content;
-
-    /** 可见性：1 公开 0 私有（F-0407 检索权限过滤）。 */
-    private Integer visibility;
 }

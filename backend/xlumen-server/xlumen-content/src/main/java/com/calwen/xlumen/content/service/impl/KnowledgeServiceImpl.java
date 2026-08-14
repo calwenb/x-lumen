@@ -28,6 +28,9 @@ import java.util.Objects;
  * 知识服务实现（F-0301/F-0302/F-0307）：作者与空间来自 WorkspaceContext（JWT claims，F-0104 双层校验第二层）。
  * 版本乐观锁：MyBatis-Plus @Version 插件，updateById 影响行数 0 即冲突（HTTP 409，PRODUCT §6 禁止静默覆盖）。
  * 已发布版本正文不可修改（PRODUCT §4），修改需走旧文更新闭环（V2 F-1105）。
+ * KB-3（决策 D16）：知识单库单目录归属（kb_id+directory_id），无文章级可见性；删除改回收站软删（F-0305）。
+ * 归属校验说明：content 不依赖 knowledge 模块（DAG 方向），此处不做跨模块库/目录存在性校验，
+ * 由 knowledge 模块 checkOwnership 在发布/公开读时兜底 + 前端约束。
  *
  * @author calwen
  * @date 2026/8/13
@@ -35,8 +38,8 @@ import java.util.Objects;
 @Service
 public class KnowledgeServiceImpl implements KnowledgeService {
 
-    /** 可见性：公开（F-0307）。 */
-    private static final int VISIBILITY_PUBLIC = 1;
+    /** 回收站状态：回收中（F-0305 独立软删标记，不扩 8 状态机）。 */
+    private static final int RECYCLE_STATUS_DELETED = 1;
     /** 自动保存新建草稿的默认标题。 */
     private static final String UNTITLED = "未命名草稿";
 
@@ -51,12 +54,14 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         entity.setAuthorName(WorkspaceContext.username());
         entity.setTitle(dto.getTitle());
         entity.setContent(dto.getContent() == null ? "" : dto.getContent());
-        entity.setCategory(StrUtil.nullToEmpty(dto.getCategory()));
+        // 单库单目录归属（决策 D16）：directoryId 空默认挂库根（0）
+        entity.setKbId(dto.getKbId());
+        entity.setDirectoryId(dto.getDirectoryId() == null ? 0L : dto.getDirectoryId());
         entity.setTags(dto.getTags());
         entity.setStatus(KnowledgeStatus.DRAFT.getValue());
-        entity.setVisibility(dto.getVisibility() == null ? VISIBILITY_PUBLIC : dto.getVisibility());
         entity.setVersion(0L);
         entity.setViewCount(0L);
+        entity.setRecycleStatus(0);
         entity.setPublishedAt(null);
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
@@ -70,11 +75,11 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         checkEditable(entity);
         entity.setTitle(dto.getTitle());
         entity.setContent(dto.getContent() == null ? "" : dto.getContent());
-        entity.setCategory(StrUtil.nullToEmpty(dto.getCategory()));
-        entity.setTags(dto.getTags());
-        if (dto.getVisibility() != null) {
-            entity.setVisibility(dto.getVisibility());
+        if (dto.getDirectoryId() != null) {
+            // 同库内换目录（跨库移动不提供，决策 D16）
+            entity.setDirectoryId(dto.getDirectoryId());
         }
+        entity.setTags(dto.getTags());
         // 乐观锁：仅当携带版本号与当前一致才允许更新
         entity.setVersion(dto.getVersion());
         if (knowledgeMapper.updateById(entity) == 0) {
@@ -88,8 +93,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         if (dto.getKnowledgeId() == null) {
             CreateKnowledgeDTO create = CreateKnowledgeDTO.builder()
                     .title(StrUtil.blankToDefault(dto.getTitle(), UNTITLED))
-                    .content(dto.getContent()).category(dto.getCategory())
-                    .tags(dto.getTags()).visibility(dto.getVisibility()).build();
+                    .content(dto.getContent())
+                    .kbId(dto.getKbId())
+                    .directoryId(dto.getDirectoryId())
+                    .tags(dto.getTags()).build();
             return create(create);
         }
         KnowledgeEntity entity = getOwned(dto.getKnowledgeId());
@@ -102,14 +109,12 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
         entity.setTitle(StrUtil.blankToDefault(dto.getTitle(), entity.getTitle()));
         entity.setContent(newContent);
-        if (dto.getCategory() != null) {
-            entity.setCategory(dto.getCategory());
+        if (dto.getDirectoryId() != null) {
+            // 同库内换目录（决策 D16）
+            entity.setDirectoryId(dto.getDirectoryId());
         }
         if (dto.getTags() != null) {
             entity.setTags(dto.getTags());
-        }
-        if (dto.getVisibility() != null) {
-            entity.setVisibility(dto.getVisibility());
         }
         entity.setVersion(dto.getVersion() == null ? entity.getVersion() : dto.getVersion());
         if (knowledgeMapper.updateById(entity) == 0) {
@@ -132,7 +137,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                         .eq(KnowledgeEntity::getWorkspaceId, requireWorkspaceId())
                         .eq(KnowledgeEntity::getAuthorId, requireUserId())
                         .eq(query.getStatus() != null, KnowledgeEntity::getStatus, query.getStatus())
-                        .eq(query.getVisibility() != null, KnowledgeEntity::getVisibility, query.getVisibility())
+                        .eq(query.getKbId() != null, KnowledgeEntity::getKbId, query.getKbId())
+                        .eq(query.getDirectoryId() != null, KnowledgeEntity::getDirectoryId, query.getDirectoryId())
                         .like(StrUtil.isNotBlank(query.getKeyword()), KnowledgeEntity::getTitle, query.getKeyword())
                         .orderByDesc(KnowledgeEntity::getUpdatedAt));
         List<KnowledgeListItemVO> records = page.getRecords().stream().map(this::toListItem).toList();
@@ -147,7 +153,27 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         if (status != KnowledgeStatus.IDEA && status != KnowledgeStatus.DRAFT) {
             throw new BizException(ErrorCode.CONFLICT, "仅构思/草稿可删除，已发布知识请先下架");
         }
-        knowledgeMapper.deleteById(entity.getId());
+        if (entity.getRecycleStatus() != null && entity.getRecycleStatus() == RECYCLE_STATUS_DELETED) {
+            throw new BizException(ErrorCode.CONFLICT, "知识已在回收站");
+        }
+        // F-0305 回收站软删：标记 recycle_status + deleted_at，不物理删除（超期清理由回收站任务负责）
+        knowledgeMapper.update(null, Wrappers.<KnowledgeEntity>lambdaUpdate()
+                .eq(KnowledgeEntity::getId, entity.getId())
+                .eq(KnowledgeEntity::getWorkspaceId, requireWorkspaceId())
+                .set(KnowledgeEntity::getRecycleStatus, RECYCLE_STATUS_DELETED)
+                .set(KnowledgeEntity::getDeletedAt, LocalDateTime.now()));
+    }
+
+    @Override
+    public void restore(Long knowledgeId) {
+        KnowledgeEntity entity = getOwned(knowledgeId);
+        if (entity.getRecycleStatus() == null || entity.getRecycleStatus() != RECYCLE_STATUS_DELETED) {
+            throw new BizException(ErrorCode.CONFLICT, "知识不在回收站");
+        }
+        // 仅清除软删标记；原目录/知识库已被彻底删除等冲突校验由 knowledge 模块回收站服务统一处理
+        if (knowledgeMapper.restore(entity.getId(), requireWorkspaceId()) == 0) {
+            throw new BizException(ErrorCode.CONFLICT, "恢复失败，请刷新后重试");
+        }
     }
 
     /** 查询当前空间与作者名下的知识，不存在或越权 404。 */
@@ -189,16 +215,17 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private KnowledgeVO toVO(KnowledgeEntity entity) {
         return KnowledgeVO.builder()
                 .id(entity.getId()).title(entity.getTitle()).content(entity.getContent())
-                .category(entity.getCategory()).tags(entity.getTags())
-                .visibility(entity.getVisibility()).status(entity.getStatus())
+                .kbId(entity.getKbId()).directoryId(entity.getDirectoryId())
+                .tags(entity.getTags()).status(entity.getStatus())
                 .version(entity.getVersion()).viewCount(entity.getViewCount())
                 .createdAt(entity.getCreatedAt()).updatedAt(entity.getUpdatedAt()).build();
     }
 
     private KnowledgeListItemVO toListItem(KnowledgeEntity entity) {
         return KnowledgeListItemVO.builder()
-                .id(entity.getId()).title(entity.getTitle()).category(entity.getCategory())
-                .tags(entity.getTags()).visibility(entity.getVisibility()).status(entity.getStatus())
+                .id(entity.getId()).title(entity.getTitle())
+                .kbId(entity.getKbId()).directoryId(entity.getDirectoryId())
+                .tags(entity.getTags()).status(entity.getStatus())
                 .version(entity.getVersion()).viewCount(entity.getViewCount()).updatedAt(entity.getUpdatedAt()).build();
     }
 }

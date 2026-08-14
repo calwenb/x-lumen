@@ -55,11 +55,6 @@ public class ChatServiceImpl implements ChatService {
     /** 上下文历史消息条数。 */
     private static final int HISTORY_LIMIT = 10;
 
-    /** 可见性：访客仅公开。 */
-    private static final String SCOPE_PUBLIC_ONLY = "PUBLIC_ONLY";
-    /** 可见性：登录含私有。 */
-    private static final String SCOPE_ALL = "ALL";
-
     /** QA System 提示词：引用 [n] 标注、明确模型生成边界、无证据说明。 */
     private static final String SYSTEM_PROMPT = "你是小光，一名基于知识库的问答助手。"
             + "请基于以下检索证据回答，引用原文时用 [1][2] 标注对应证据编号；"
@@ -89,17 +84,17 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public SseEmitter streamChat(ChatRequestDTO dto) {
-        return doStream(dto.getQuery(), dto.getConversationId(), null);
+        return doStream(dto, null);
     }
 
     @Override
     public SseEmitter askKnowledge(Long knowledgeId, ChatRequestDTO dto) {
-        return doStream(dto.getQuery(), dto.getConversationId(), knowledgeId);
+        return doStream(dto, knowledgeId);
     }
 
     /** 创建 SSE 并异步执行：会话/检索/生成/持久化都在独立线程，控制器立即返回 emitter。 */
-    private SseEmitter doStream(String query, Long conversationId, Long knowledgeId) {
-        if (StrUtil.isBlank(query)) {
+    private SseEmitter doStream(ChatRequestDTO dto, Long knowledgeId) {
+        if (StrUtil.isBlank(dto.getQuery())) {
             throw new BizException(ErrorCode.INVALID_PARAM, "提问内容不能为空");
         }
         Long workspaceId = WorkspaceContext.workspaceId();
@@ -111,19 +106,19 @@ public class ChatServiceImpl implements ChatService {
         SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MILLIS);
         final Long ws = targetWs;
         final Long uid = userId;
-        chatStreamExecutor.execute(() -> runStream(ws, uid, query, conversationId, knowledgeId, emitter));
+        chatStreamExecutor.execute(() -> runStream(ws, uid, dto, knowledgeId, emitter));
         return emitter;
     }
 
     /** 流式主流程：会话解析 → 用户消息落库 → 检索 → QA 流式 → citations → 助手消息落库。 */
-    private void runStream(Long workspaceId, Long userId, String query,
-                           Long conversationId, Long knowledgeId, SseEmitter emitter) {
+    private void runStream(Long workspaceId, Long userId, ChatRequestDTO dto,
+                           Long knowledgeId, SseEmitter emitter) {
         try {
-            ChatConversationEntity conversation = resolveConversation(workspaceId, userId, query, conversationId);
+            ChatConversationEntity conversation = resolveConversation(workspaceId, userId, dto.getQuery(), dto.getConversationId());
             List<ChatMessageEntity> history = loadHistory(conversation.getId());
-            saveMessage(conversation.getId(), workspaceId, userId, "USER", query, null);
+            saveMessage(conversation.getId(), workspaceId, userId, "USER", dto.getQuery(), null);
 
-            List<SearchResultDTO> evidences = retrieve(workspaceId, userId, query, knowledgeId);
+            List<SearchResultDTO> evidences = retrieve(workspaceId, userId, dto, knowledgeId);
             List<ChatMessage> messages = new ArrayList<>();
             messages.add(ChatMessage.builder().role("system").content(buildSystemPrompt(evidences)).build());
             for (ChatMessageEntity m : history) {
@@ -132,7 +127,7 @@ public class ChatServiceImpl implements ChatService {
                         .content(m.getContent())
                         .build());
             }
-            messages.add(ChatMessage.builder().role("user").content(query).build());
+            messages.add(ChatMessage.builder().role("user").content(dto.getQuery()).build());
 
             StringBuilder sb = new StringBuilder();
             AtomicBoolean errored = new AtomicBoolean(false);
@@ -268,12 +263,23 @@ public class ChatServiceImpl implements ChatService {
         return list;
     }
 
-    /** RAG 检索：访客仅公开、登录含私有；检索异常降级为空证据。 */
-    private List<SearchResultDTO> retrieve(Long workspaceId, Long userId, String query, Long knowledgeId) {
+    /** RAG 检索（决策 D13）：检索范围=kbId 限定单库（知识级问答锁定当前库时前端传 kbId）>
+     * allVisible=false 不检索 > 默认全部可见库（resolveVisibleKbIds 按身份推导）；
+     * 检索异常降级为空证据。 */
+    private List<SearchResultDTO> retrieve(Long workspaceId, Long userId, ChatRequestDTO dto, Long knowledgeId) {
+        List<Long> kbIds;
+        if (dto.getKbId() != null) {
+            kbIds = List.of(dto.getKbId());
+        } else if (Boolean.FALSE.equals(dto.getAllVisible())) {
+            kbIds = List.of();
+        } else {
+            List<Long> visible = knowledgeApi.resolveVisibleKbIds(userId);
+            kbIds = visible == null ? List.of() : visible;
+        }
         SearchRequestDTO request = SearchRequestDTO.builder()
                 .workspaceId(workspaceId)
-                .query(query)
-                .visibilityScope(userId == null ? SCOPE_PUBLIC_ONLY : SCOPE_ALL)
+                .query(dto.getQuery())
+                .kbIds(kbIds)
                 .topK(RETRIEVAL_TOP_K)
                 .knowledgeId(knowledgeId)
                 .build();

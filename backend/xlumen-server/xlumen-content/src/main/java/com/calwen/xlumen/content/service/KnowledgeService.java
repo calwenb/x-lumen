@@ -9,9 +9,10 @@ import com.calwen.xlumen.content.vo.KnowledgeListItemVO;
 import com.calwen.xlumen.content.vo.KnowledgeVO;
 
 /**
- * 知识服务（F-0301/F-0302/F-0307）：CRUD + 草稿自动保存 + 可见性。
+ * 知识服务（F-0301/F-0302/F-0307）：CRUD + 草稿自动保存 + 回收站软删/恢复（F-0305，决策 D16）。
  * 作者与空间上下文从 WorkspaceContext 读取（双层校验第二层：所有操作校验资源归属当前空间与作者）。
  * 已发布版本正文不可修改（PRODUCT §4）；版本号乐观锁，冲突 HTTP 409。
+ * 知识归属单库单目录（kbId+directoryId），可见性由知识库决定（无文章级可见性，决策 D16）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -60,9 +61,18 @@ public interface KnowledgeService {
     ContentPageResult<KnowledgeListItemVO> list(KnowledgeListQueryDTO query);
 
     /**
-     * 删除知识（F-0301）：仅构思/草稿可删除，已发布需先下架（M10）。
+     * 删除知识（F-0301/F-0305）：仅构思/草稿可删除，已发布需先下架（M10）；
+     * 删除为回收站软删（recycle_status=1 + deleted_at），可经 {@link #restore} 恢复。
      *
      * @param knowledgeId 知识 ID
      */
     void delete(Long knowledgeId);
+
+    /**
+     * 恢复回收站知识（F-0305）：清除软删标记（recycle_status=0, deleted_at=null）；
+     * 非回收站状态抛 409。目录/知识库已被彻底删除等归属冲突校验由 knowledge 模块回收站服务统一处理。
+     *
+     * @param knowledgeId 知识 ID
+     */
+    void restore(Long knowledgeId);
 }

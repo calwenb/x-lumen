@@ -29,6 +29,19 @@ public class WorkspaceApiImpl implements WorkspaceApi {
     }
 
     @Override
+    public Long getWorkspaceIdByOwner(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        WorkspaceEntity workspace = workspaceMapper.selectOne(Wrappers.<WorkspaceEntity>lambdaQuery()
+                .eq(WorkspaceEntity::getOwnerUserId, userId)
+                .eq(WorkspaceEntity::getStatus, 1)
+                .orderByAsc(WorkspaceEntity::getId)
+                .last("LIMIT 1"));
+        return workspace == null ? null : workspace.getId();
+    }
+
+    @Override
     public Boolean forceReviewEnabled(Long workspaceId) {
         if (workspaceId == null) {
             return true;

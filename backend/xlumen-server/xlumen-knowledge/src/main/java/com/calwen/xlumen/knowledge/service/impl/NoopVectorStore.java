@@ -30,8 +30,9 @@ public class NoopVectorStore implements VectorStore {
     }
 
     @Override
-    public List<SearchResultDTO> search(List<Float> queryEmbedding, Long workspaceId, String visibilityScope,
+    public List<SearchResultDTO> search(List<Float> queryEmbedding, Long workspaceId, List<Long> kbIds,
                                         Long knowledgeId, int topK) {
+        // Noop 降级：忽略过滤参数，直接返回空列表（行为不变）
         return List.of();
     }
 }

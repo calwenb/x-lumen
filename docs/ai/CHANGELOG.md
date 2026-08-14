@@ -11,6 +11,12 @@
 
 说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D17，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
 
+## 2026/8/14 18:30 · ZCode（KB-3 后端能力交付）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/14 18:30 | KB-3 后端能力交付（F-0305/F-0307/F-0308/F-0309/F-0407）：①knowledge 模块新增——知识库 CRUD+可见性切换（KnowledgeBaseController，删库二次确认 CONFIRM 连带回收站）、目录树 CRUD（DirectoryController，按名称排序、删除时知识上挂父目录、子树收集）、回收站聚合（publishing RecycleBinController 统一编排：kb 侧委托 KnowledgeApi、knowledge 侧委托 ContentApi，知识恢复含冲突判定「原目录已删→挂库根/原库已删→409」）、可见库集合推导单一实现（VisibilityService.resolveVisibleKbIds：访客=全平台公开库、登录=+自己空间私有库，WorkspaceApi 新增 getWorkspaceIdByOwner 按 owner_user_id 查空间，修复原实现用默认空间导致登录用户越权看到博主私有库的严重漏洞）；②content 模块——知识 CRUD 增加 kbId/directoryId（单库单目录，决策 D16）、发布流程改库+目录（KnowledgePublishDTO 删 visibility）、软删/恢复（recycle_status+deleted_at 独立软删列）、公开读按可见库集合过滤（跨空间聚合，workspaceId 可空=全平台）、listCategories 删除（category 废弃）、标签聚合跨空间；③publishing——公开读按身份聚合跨空间（多用户 D9 改写：listPublished/getPublished/互动统计/标签聚合均支持 workspaceId=null）、排序规则（未选目录 updated_at DESC、选中目录 created_at ASC）、缓存分片 xlumen:knowledge:detail:{id}（跨空间共享，登录态直查回源防串读）、审计 KB_VISIBILITY_CHANGE、CreateReleaseDTO 删 visibility（发布记录可见性快照取知识库）；④RAG/AI——IndexRequestDTO/SearchRequestDTO 增加 kbId/kbIds（删 visibilityScope）、VectorStore.search 按 kb_id IN 过滤（Milvus filter 改 kb_id in [...]，Noop 降级不变）、IndexPipeline 落库 kb_id、AI 问答 ChatRequestDTO 增加 kbId/allVisible 检索范围参数；⑤跨模块事件联动——knowledge 发布 KbRecycleStatusEvent/KbDirectoryDeletedEvent/KbPurgedEvent（content KnowledgeBaseLinkEventListener 监听：连带软删/恢复/目录上挂/物理级联删）与 KbVisibilityChangedEvent（publishing 监听按库失效缓存）；⑥验证：mvn verify BUILD SUCCESS（10 测试全绿）、接口全链路实测（建库→建目录→写知识→审核→发布→访客/库主/他人三身份公开读矩阵→私有 404 越权 404→删库连带回收站→整体恢复→目录删除知识上挂→彻底删除二次确认→可见性切换即时生效→发布即索引 ACTIVE 且 kb_id 正确落库）、修复索引状态路径重复（/api/v1/knowledge/{id}/index-status）、confirm 参数缺省 409 语义 | STATUS | D9 改写、D13、D16 |
+
 ## 2026/8/14 17:40 · ZCode（KB-1 概念改名交付）
 
 | 时间 | 变更内容 | 影响文档 | 决策摘要 |

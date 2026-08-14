@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * 检索服务实现（F-0404/F-0407）：Embedding(query) → VectorStore.search。
- * 查询为空或向量化为空时返回空列表（Noop 降级亦返回空）。
+ * 查询为空、向量化为空或可见库集合为空（无可见库，决策 D13）时返回空列表（Noop 降级亦返回空）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -31,7 +31,9 @@ public class RetrievalServiceImpl implements RetrievalService {
 
     @Override
     public List<SearchResultDTO> search(SearchRequestDTO request) {
-        if (request == null || StrUtil.isBlank(request.getQuery())) {
+        if (request == null || StrUtil.isBlank(request.getQuery())
+                || request.getKbIds() == null || request.getKbIds().isEmpty()) {
+            // kbIds 为空 = 无可见库，直接返回空列表（F-0407 决策 D13）
             return List.of();
         }
         int topK = Math.max(1, Math.min(request.getTopK(), MAX_TOP_K));
@@ -40,6 +42,6 @@ public class RetrievalServiceImpl implements RetrievalService {
             return List.of();
         }
         return vectorStore.search(embeddings.get(0), request.getWorkspaceId(),
-                request.getVisibilityScope(), request.getKnowledgeId(), topK);
+                request.getKbIds(), request.getKnowledgeId(), topK);
     }
 }

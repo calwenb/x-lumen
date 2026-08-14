@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 知识编辑视图（F-0301）：作者本人可见的全部字段（含草稿/私有），编辑页与详情复用。
+ * 知识编辑视图（F-0301，决策 D16）：作者本人可见的全部字段（含草稿/私有），编辑页与详情复用。
  *
  * @author calwen
  * @date 2026/8/13
@@ -29,14 +29,14 @@ public class KnowledgeVO {
     /** 正文 Markdown。 */
     private String content;
 
-    /** 分类。 */
-    private String category;
+    /** 所属知识库 ID（决策 D16）。 */
+    private Long kbId;
+
+    /** 所属目录 ID（0=库根）。 */
+    private Long directoryId;
 
     /** 标签数组。 */
     private List<String> tags;
-
-    /** 可见性：1 公开 0 私有（F-0307）。 */
-    private Integer visibility;
 
     /** 状态（KnowledgeStatus 值）。 */
     private Integer status;

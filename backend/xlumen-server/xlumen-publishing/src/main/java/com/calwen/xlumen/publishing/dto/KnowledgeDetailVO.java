@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 知识详情（B02，F-0201）：正文 + 互动统计 + 当前用户点赞状态（登录时）。
+ * KB-3 起携带库信息（决策 D16，详情面包屑），category 废弃。
  *
  * @author calwen
  * @date 2026/8/12
@@ -35,8 +36,14 @@ public class KnowledgeDetailVO {
     /** 作者名（冗余展示字段）。 */
     private String authorName;
 
-    /** 分类。 */
-    private String category;
+    /** 所属知识库 ID（决策 D16）。 */
+    private Long kbId;
+
+    /** 所属知识库名称（冗余展示字段，详情面包屑，由公开读层填充）。 */
+    private String kbName;
+
+    /** 所属目录 ID（0=库根）。 */
+    private Long directoryId;
 
     /** 标签数组。 */
     private List<String> tags;

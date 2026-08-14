@@ -13,6 +13,8 @@ import com.calwen.xlumen.content.api.dto.KnowledgePublishDTO;
 import com.calwen.xlumen.content.api.dto.EditorKnowledgeDTO;
 import com.calwen.xlumen.content.enums.KnowledgeStatus;
 import com.calwen.xlumen.identity.service.ActivityLogService;
+import com.calwen.xlumen.knowledge.api.KnowledgeApi;
+import com.calwen.xlumen.knowledge.vo.KnowledgeBaseVO;
 import com.calwen.xlumen.publishing.dto.CreateReleaseDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.entity.ReleaseEntity;
@@ -61,6 +63,9 @@ public class ReleaseServiceImpl implements ReleaseService {
     @Resource
     private HotKnowledgeCacheService hotKnowledgeCacheService;
 
+    @Resource
+    private KnowledgeApi knowledgeApi;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ReleaseVO release(CreateReleaseDTO dto) {
@@ -87,7 +92,8 @@ public class ReleaseServiceImpl implements ReleaseService {
         release.setKnowledgeId(dto.getKnowledgeId());
         release.setKnowledgeTitle(knowledge.getTitle());
         release.setVersion(dto.getVersion());
-        release.setVisibility(dto.getVisibility());
+        // 发布记录可见性快照取自知识库（决策 D16 可见性由库决定；null=按 1 公开记录）
+        release.setVisibility(resolveKbVisibility(workspaceId, knowledge.getKbId()));
         release.setPublishAt(dto.getPublishAt());
         release.setStatus(STATUS_PENDING);
         release.setIdempotencyKey(IdUtil.getSnowflakeNextIdStr());
@@ -140,7 +146,9 @@ public class ReleaseServiceImpl implements ReleaseService {
                 .knowledgeId(release.getKnowledgeId())
                 .expectedVersion(knowledge.getVersion())
                 .targetStatus(KnowledgeStatus.PUBLISHED.getValue())
-                .visibility(release.getVisibility())
+                // KB-3 发布目标按库（决策 D16）：知识已在库内，kbId/directoryId 由知识本身携带，无需前端传
+                .kbId(knowledge.getKbId())
+                .directoryId(knowledge.getDirectoryId())
                 .publishedAt(LocalDateTime.now())
                 .build());
         if (!ok) {
@@ -154,7 +162,9 @@ public class ReleaseServiceImpl implements ReleaseService {
         try {
             eventPublisher.publishEvent(KnowledgePublishedEvent.builder()
                     .workspaceId(workspaceId).knowledgeId(release.getKnowledgeId()).version(knowledge.getVersion())
-                    .title(knowledge.getTitle()).content(knowledge.getContent()).visibility(release.getVisibility())
+                    .title(knowledge.getTitle()).content(knowledge.getContent())
+                    // KB-3 事件携带库 ID（决策 D13 索引按库切分）
+                    .kbId(knowledge.getKbId())
                     .build());
             activityLogService.record(workspaceId, WorkspaceContext.userId(), WorkspaceContext.username(),
                     "KNOWLEDGE_PUBLISH", "KNOWLEDGE", release.getKnowledgeId(), null);
@@ -162,6 +172,15 @@ public class ReleaseServiceImpl implements ReleaseService {
         } catch (Exception e) {
             log.warn("发布后置处理失败（事件/审计/缓存失效），releaseId={}", release.getId(), e);
         }
+    }
+
+    /** 发布记录可见性快照：取知识库可见性（决策 D16）；库不存在按 1（公开）记录。 */
+    private Integer resolveKbVisibility(Long workspaceId, Long kbId) {
+        if (kbId == null) {
+            return 1;
+        }
+        KnowledgeBaseVO kb = knowledgeApi.getKnowledgeBase(workspaceId, kbId);
+        return kb == null ? 1 : kb.getVisibility();
     }
 
     private ReleaseVO toVO(ReleaseEntity r) {

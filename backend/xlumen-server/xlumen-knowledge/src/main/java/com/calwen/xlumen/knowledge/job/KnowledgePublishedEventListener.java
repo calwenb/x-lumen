@@ -38,11 +38,11 @@ public class KnowledgePublishedEventListener {
             try {
                 IndexRequestDTO request = IndexRequestDTO.builder()
                         .workspaceId(event.getWorkspaceId())
+                        .kbId(event.getKbId())
                         .knowledgeId(event.getKnowledgeId())
                         .version(event.getVersion())
                         .title(event.getTitle())
                         .content(event.getContent())
-                        .visibility(event.getVisibility())
                         .build();
                 indexPipelineService.indexKnowledge(request);
             } catch (Exception e) {

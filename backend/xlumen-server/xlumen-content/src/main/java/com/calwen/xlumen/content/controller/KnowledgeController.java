@@ -70,7 +70,7 @@ public class KnowledgeController {
     }
 
     /**
-     * 作者知识列表（B10）：状态/可见性/关键词筛选，查询参数由 KnowledgeListQueryDTO 自动绑定。
+     * 作者知识列表（B10）：状态/库/目录/关键词筛选，查询参数由 KnowledgeListQueryDTO 自动绑定。
      */
     @GetMapping
     public ApiResponse<ContentPageResult<KnowledgeListItemVO>> list(KnowledgeListQueryDTO query) {
@@ -78,11 +78,20 @@ public class KnowledgeController {
     }
 
     /**
-     * 删除知识（F-0301）：仅构思/草稿可删除。
+     * 删除知识（F-0301/F-0305）：仅构思/草稿可删除；回收站软删，可经 restore 恢复。
      */
     @DeleteMapping("/{knowledgeId}")
     public ApiResponse<Void> delete(@PathVariable Long knowledgeId) {
         knowledgeService.delete(knowledgeId);
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 恢复回收站知识（F-0305）：清除软删标记（recycle_status=0, deleted_at=null）。
+     */
+    @PutMapping("/{knowledgeId}/restore")
+    public ApiResponse<Void> restore(@PathVariable Long knowledgeId) {
+        knowledgeService.restore(knowledgeId);
         return ApiResponse.success(null);
     }
 }

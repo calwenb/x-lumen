@@ -32,7 +32,7 @@ public class PublicKnowledgeController {
     private PublicKnowledgeService publicKnowledgeService;
 
     /**
-     * 分页查询公开知识（F-0201/F-0202）：关键词/分类/标签组合筛选，服务端分页；
+     * 分页查询公开知识（F-0201/F-0202）：关键词/库(kbId)/目录(directoryId)/标签组合筛选，服务端分页；
      * 查询参数由 KnowledgeQueryDTO 自动绑定（GET），字段默认值即接口默认值。
      */
     @GetMapping("/knowledge")
@@ -54,14 +54,6 @@ public class PublicKnowledgeController {
     @PostMapping("/knowledge/{id}/view")
     public ApiResponse<Boolean> recordView(@PathVariable Long id, HttpServletRequest request) {
         return ApiResponse.success(publicKnowledgeService.recordView(id, visitorKey(request)));
-    }
-
-    /**
-     * 分类聚合（F-0202，B01 侧栏/B03 筛选）。
-     */
-    @GetMapping("/categories")
-    public ApiResponse<List<CategoryCountDTO>> listCategories() {
-        return ApiResponse.success(publicKnowledgeService.listCategories());
     }
 
     /**

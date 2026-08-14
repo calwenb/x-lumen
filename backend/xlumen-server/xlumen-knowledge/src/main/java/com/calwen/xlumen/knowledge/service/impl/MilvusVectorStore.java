@@ -23,7 +23,9 @@ import java.util.Map;
 /**
  * Milvus 向量库实现（REST API v2，HTTP + JSON，不引 SDK，避免 JDK25/Boot4 兼容风险）。
  * 集合 kb_chunks 以 id(VarChar 主键)+vector(向量) 为核心，附带 workspace_id/article_id/version/
- * chunk_seq/heading_anchor/chunk_text/visibility/title 元数据，支持 F-0405 溯源与 F-0407 权限过滤。
+ * chunk_seq/heading_anchor/chunk_text/visibility/title/kb_id 元数据，支持 F-0405 溯源与
+ * F-0407 按库过滤（决策 D13）。注意：article_id 为 KB-1 遗留 schema 字段名（本任务不改名，
+ * Milvus 就绪后同步 schema 为 knowledge_id）；kb_id 依赖 enableDynamicField 动态字段写入。
  * 任一请求失败时记录 warn 并降级（index/delete 跳过、search 返回空），由装配层探测不可达时整体回退 Noop。
  *
  * @author calwen
@@ -67,11 +69,13 @@ public class MilvusVectorStore implements VectorStore {
             row.put(VECTOR_FIELD, chunk.getEmbedding() == null ? List.of() : chunk.getEmbedding());
             row.put("workspace_id", request.getWorkspaceId());
             row.put("article_id", request.getKnowledgeId());
+            // 决策 D13 检索按库过滤（kb_id in [...]）；legacy visibility 字段不再写入
+            //（KB-1 遗留 schema，Milvus 就绪后同步移除）
+            row.put("kb_id", request.getKbId());
             row.put("version", request.getVersion());
             row.put("chunk_seq", chunk.getSeq());
             row.put("heading_anchor", StrUtil.blankToDefault(chunk.getHeadingAnchor(), ""));
             row.put("chunk_text", chunk.getChunkText());
-            row.put("visibility", request.getVisibility());
             row.put("title", StrUtil.blankToDefault(request.getTitle(), ""));
             rows.add(row);
         }
@@ -92,9 +96,9 @@ public class MilvusVectorStore implements VectorStore {
     }
 
     @Override
-    public List<SearchResultDTO> search(List<Float> queryEmbedding, Long workspaceId, String visibilityScope,
+    public List<SearchResultDTO> search(List<Float> queryEmbedding, Long workspaceId, List<Long> kbIds,
                                         Long knowledgeId, int topK) {
-        if (queryEmbedding == null || queryEmbedding.isEmpty()) {
+        if (queryEmbedding == null || queryEmbedding.isEmpty() || kbIds == null || kbIds.isEmpty()) {
             return List.of();
         }
         Map<String, Object> body = new LinkedHashMap<>();
@@ -105,7 +109,7 @@ public class MilvusVectorStore implements VectorStore {
         body.put("limit", Math.max(1, topK));
         body.put("outputFields", List.of("article_id", "title", "chunk_seq", "heading_anchor", "chunk_text", "visibility"));
         body.put("searchParams", Map.of("metricType", METRIC_COSINE, "params", Map.of()));
-        body.put("filter", buildFilter(workspaceId, visibilityScope, knowledgeId));
+        body.put("filter", buildFilter(workspaceId, kbIds, knowledgeId));
         JsonNode response = postJson("/v2/vectordb/entities/search", body);
         if (response == null) {
             return List.of();
@@ -113,13 +117,12 @@ public class MilvusVectorStore implements VectorStore {
         return parseSearchResponse(response);
     }
 
-    /** 构建检索过滤表达式：空间隔离 + 可见性范围 + 可选知识级过滤（F-0407）。 */
-    private String buildFilter(Long workspaceId, String visibilityScope, Long knowledgeId) {
+    /** 构建检索过滤表达式：空间隔离 + 可见库集合（kb_id in [...]，决策 D13）+ 可选知识级过滤（F-0407）。 */
+    private String buildFilter(Long workspaceId, List<Long> kbIds, Long knowledgeId) {
         List<String> conditions = new ArrayList<>();
         conditions.add("workspace_id == " + workspaceId);
-        if ("PUBLIC_ONLY".equals(visibilityScope)) {
-            conditions.add("visibility == 1");
-        }
+        String kbIdsExpr = kbIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(", "));
+        conditions.add("kb_id in [" + kbIdsExpr + "]");
         if (knowledgeId != null) {
             conditions.add("article_id == " + knowledgeId);
         }

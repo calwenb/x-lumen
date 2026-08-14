@@ -45,7 +45,7 @@ public class CommentServiceImpl implements CommentService {
     public PageResult<CommentVO> listComments(Long knowledgeId, CommentQueryDTO query) {
         Page<CommentEntity> page = commentMapper.selectPage(new Page<>(query.getPageNo(), query.getPageSize()),
                 Wrappers.<CommentEntity>lambdaQuery()
-                        .eq(CommentEntity::getWorkspaceId, workspaceApi.getDefaultWorkspaceId())
+                        // 跨空间公开读（D9 改写）：评论按知识维度全局查询，不绑定默认空间
                         .eq(CommentEntity::getKnowledgeId, knowledgeId)
                         .eq(CommentEntity::getStatus, STATUS_NORMAL)
                         .orderByAsc(CommentEntity::getCreatedAt));
@@ -88,7 +88,8 @@ public class CommentServiceImpl implements CommentService {
         }
         List<CommentEntity> rows = commentMapper.selectList(Wrappers.<CommentEntity>lambdaQuery()
                 .select(CommentEntity::getKnowledgeId)
-                .eq(CommentEntity::getWorkspaceId, workspaceId)
+                // workspaceId 可空=跨空间聚合（多用户公开读，D9 改写）
+                .eq(workspaceId != null, CommentEntity::getWorkspaceId, workspaceId)
                 .in(CommentEntity::getKnowledgeId, knowledgeIds)
                 .eq(CommentEntity::getStatus, STATUS_NORMAL));
         return rows.stream().collect(Collectors.groupingBy(

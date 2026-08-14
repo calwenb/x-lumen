@@ -32,15 +32,16 @@ public interface VectorStore {
     void delete(Long workspaceId, Long knowledgeId);
 
     /**
-     * 向量检索（F-0404/F-0407）：按可见性范围过滤，返回按分数降序的结果。
+     * 向量检索（F-0404/F-0407）：按可见库集合过滤（决策 D13，替代 visibilityScope），
+     * 返回按分数降序的结果。
      *
      * @param queryEmbedding 查询向量
      * @param workspaceId    工作空间 ID
-     * @param visibilityScope 可见性范围：PUBLIC_ONLY 仅公开 / ALL 含私有
-     * @param knowledgeId      知识级过滤（可空）
+     * @param kbIds          可见库集合过滤（由调用方按身份推导；空=无可见库，返回空）
+     * @param knowledgeId    知识级过滤（可空）
      * @param topK           返回条数
      * @return 检索结果列表
      */
-    List<SearchResultDTO> search(List<Float> queryEmbedding, Long workspaceId, String visibilityScope,
+    List<SearchResultDTO> search(List<Float> queryEmbedding, Long workspaceId, List<Long> kbIds,
                                  Long knowledgeId, int topK);
 }

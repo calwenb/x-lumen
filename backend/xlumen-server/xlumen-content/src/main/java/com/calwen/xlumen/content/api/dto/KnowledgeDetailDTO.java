@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 公开知识详情（F-0201）：已发布公开知识正文快照（F-0307 过滤后）。
+ * 公开知识详情（F-0201）：已发布且库可见的知识正文快照（决策 D16 库级可见性过滤后）。
  *
  * @author calwen
  * @date 2026/8/12
@@ -35,8 +35,14 @@ public class KnowledgeDetailDTO {
     /** 作者名（冗余展示字段）。 */
     private String authorName;
 
-    /** 分类。 */
-    private String category;
+    /** 所属知识库 ID（决策 D16）。 */
+    private Long kbId;
+
+    /** 所属知识库名称（冗余展示字段，详情面包屑）。 */
+    private String kbName;
+
+    /** 所属目录 ID（0=库根）。 */
+    private Long directoryId;
 
     /** 标签数组。 */
     private List<String> tags;

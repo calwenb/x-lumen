@@ -171,11 +171,12 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
         return activeCount != null && activeCount > 0;
     }
 
-    /** 创建 ACTIVATING 版本记录。 */
+    /** 创建 ACTIVATING 版本记录（KB-3 起按库切分落库 kbId，决策 D13）。 */
     private KbIndexVersionEntity createActivatingVersion(IndexRequestDTO request) {
         KbIndexVersionEntity entity = new KbIndexVersionEntity();
         entity.setId(IdUtil.getSnowflakeNextId());
         entity.setWorkspaceId(request.getWorkspaceId());
+        entity.setKbId(request.getKbId());
         entity.setKnowledgeId(request.getKnowledgeId());
         entity.setVersion(request.getVersion());
         entity.setIndexName(INDEX_NAME);
@@ -194,6 +195,7 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
             KbChunkEntity entity = new KbChunkEntity();
             entity.setId(IdUtil.getSnowflakeNextId());
             entity.setWorkspaceId(request.getWorkspaceId());
+            entity.setKbId(request.getKbId());
             entity.setKnowledgeId(request.getKnowledgeId());
             entity.setVersion(request.getVersion());
             entity.setChunkSeq(chunk.getSeq());

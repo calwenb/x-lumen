@@ -30,25 +30,28 @@ public interface KnowledgeMapper extends BaseMapper<KnowledgeEntity> {
     int incrementViewCount(@Param("id") Long id, @Param("workspaceId") Long workspaceId);
 
     /**
-     * 分类聚合（F-0202）：仅统计已发布公开知识，按数量降序。
+     * 从回收站恢复（F-0305 软删）：仅清除回收站标记并留空删除时间，内容归属（kb_id/directory_id）不动；
+     * 目录/知识库已被彻底删除等冲突校验由 knowledge 模块回收站服务统一处理（content 不依赖 knowledge）。
      *
-     * @param workspaceId 工作空间 ID
-     * @return 分类统计列表（name/count 与 record 构造器映射）
+     * @param id          知识 ID
+     * @param workspaceId 工作空间 ID（防跨空间越权恢复）
+     * @return 影响行数（0=不存在或已非回收站状态）
      */
-    @Select("SELECT category AS name, COUNT(*) AS count FROM cnt_knowledge "
-            + "WHERE workspace_id = #{workspaceId} AND status = 6 AND visibility = 1 AND category <> '' "
-            + "GROUP BY category ORDER BY count DESC, category")
-    List<CategoryCountDTO> selectCategoryCounts(@Param("workspaceId") Long workspaceId);
+    @Update("UPDATE cnt_knowledge SET recycle_status = 0, deleted_at = NULL "
+            + "WHERE id = #{id} AND workspace_id = #{workspaceId}")
+    int restore(@Param("id") Long id, @Param("workspaceId") Long workspaceId);
 
     /**
-     * 标签聚合（F-0202）：JSON_TABLE 展开 tags 数组统计，按数量降序。
+     * 标签聚合（F-0202）：JSON_TABLE 展开 tags 数组统计，按数量降序；仅统计已发布且不在回收站的知识
+     * （KB-3 起跨空间全平台统计，workspaceId 可空=全平台，V2 按可见库细化）。
      *
-     * @param workspaceId 工作空间 ID
+     * @param workspaceId 工作空间 ID（可空=跨空间全平台）
      * @return 标签统计列表
      */
-    @Select("SELECT t.tag AS name, COUNT(*) AS count FROM cnt_knowledge, "
+    @Select("<script>SELECT t.tag AS name, COUNT(*) AS count FROM cnt_knowledge, "
             + "JSON_TABLE(tags, '$[*]' COLUMNS (tag VARCHAR(64) PATH '$')) AS t "
-            + "WHERE workspace_id = #{workspaceId} AND status = 6 AND visibility = 1 "
-            + "GROUP BY t.tag ORDER BY count DESC, t.tag")
+            + "WHERE status = 6 AND recycle_status = 0 "
+            + "<if test='workspaceId != null'>AND workspace_id = #{workspaceId} </if>"
+            + "GROUP BY t.tag ORDER BY count DESC, t.tag</script>")
     List<CategoryCountDTO> selectTagCounts(@Param("workspaceId") Long workspaceId);
 }
