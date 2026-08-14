@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @date 2026/8/13
  */
 @RestController
-@RequestMapping("/api/v1/public/articles/{articleId}/feedback")
+@RequestMapping("/api/v1/public/knowledge/{knowledgeId}/feedback")
 public class FeedbackController {
 
     @Resource
@@ -29,11 +29,11 @@ public class FeedbackController {
 
     /** 提交读者纠错（F-1001）：匿名可提交，返回追踪号。 */
     @PostMapping
-    public ApiResponse<FeedbackVO> createFeedback(@PathVariable Long articleId,
+    public ApiResponse<FeedbackVO> createFeedback(@PathVariable Long knowledgeId,
                                                   @Valid @RequestBody CreateFeedbackDTO dto,
                                                   HttpServletRequest request) {
         dto.setIp(clientIp(request));
-        return ApiResponse.success(feedbackService.createFeedback(articleId, dto));
+        return ApiResponse.success(feedbackService.createFeedback(knowledgeId, dto));
     }
 
     /** 客户端 IP：优先取反向代理传递的 X-Forwarded-For，否则取 RemoteAddr。 */

@@ -42,16 +42,16 @@ public class CommentServiceImpl implements CommentService {
     private WorkspaceApi workspaceApi;
 
     @Override
-    public PageResult<CommentVO> listComments(Long articleId, CommentQueryDTO query) {
+    public PageResult<CommentVO> listComments(Long knowledgeId, CommentQueryDTO query) {
         Page<CommentEntity> page = commentMapper.selectPage(new Page<>(query.getPageNo(), query.getPageSize()),
                 Wrappers.<CommentEntity>lambdaQuery()
                         .eq(CommentEntity::getWorkspaceId, workspaceApi.getDefaultWorkspaceId())
-                        .eq(CommentEntity::getArticleId, articleId)
+                        .eq(CommentEntity::getKnowledgeId, knowledgeId)
                         .eq(CommentEntity::getStatus, STATUS_NORMAL)
                         .orderByAsc(CommentEntity::getCreatedAt));
         List<CommentVO> records = page.getRecords().stream()
                 .map(c -> CommentVO.builder()
-                        .id(c.getId()).articleId(c.getArticleId()).parentId(c.getParentId())
+                        .id(c.getId()).knowledgeId(c.getKnowledgeId()).parentId(c.getParentId())
                         .userName(c.getUserName()).content(c.getContent()).createdAt(c.getCreatedAt()).build())
                 .toList();
         return PageResult.<CommentVO>builder()
@@ -60,7 +60,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public CommentVO createComment(Long articleId, CreateCommentDTO dto) {
+    public CommentVO createComment(Long knowledgeId, CreateCommentDTO dto) {
         Long userId = WorkspaceContext.userId();
         String userName = WorkspaceContext.username();
         if (userId == null || StrUtil.isBlank(userName)) {
@@ -69,7 +69,7 @@ public class CommentServiceImpl implements CommentService {
         CommentEntity comment = new CommentEntity();
         comment.setId(IdUtil.getSnowflakeNextId());
         comment.setWorkspaceId(WorkspaceContext.workspaceId());
-        comment.setArticleId(articleId);
+        comment.setKnowledgeId(knowledgeId);
         comment.setUserId(userId);
         comment.setUserName(userName);
         comment.setParentId(dto.getParentId());
@@ -77,21 +77,21 @@ public class CommentServiceImpl implements CommentService {
         comment.setStatus(STATUS_NORMAL);
         commentMapper.insert(comment);
         return CommentVO.builder()
-                .id(comment.getId()).articleId(comment.getArticleId()).parentId(comment.getParentId())
+                .id(comment.getId()).knowledgeId(comment.getKnowledgeId()).parentId(comment.getParentId())
                 .userName(comment.getUserName()).content(comment.getContent()).createdAt(comment.getCreatedAt()).build();
     }
 
     @Override
-    public Map<Long, Long> countComments(Long workspaceId, List<Long> articleIds) {
-        if (articleIds == null || articleIds.isEmpty()) {
+    public Map<Long, Long> countComments(Long workspaceId, List<Long> knowledgeIds) {
+        if (knowledgeIds == null || knowledgeIds.isEmpty()) {
             return Map.of();
         }
         List<CommentEntity> rows = commentMapper.selectList(Wrappers.<CommentEntity>lambdaQuery()
-                .select(CommentEntity::getArticleId)
+                .select(CommentEntity::getKnowledgeId)
                 .eq(CommentEntity::getWorkspaceId, workspaceId)
-                .in(CommentEntity::getArticleId, articleIds)
+                .in(CommentEntity::getKnowledgeId, knowledgeIds)
                 .eq(CommentEntity::getStatus, STATUS_NORMAL));
         return rows.stream().collect(Collectors.groupingBy(
-                CommentEntity::getArticleId, Collectors.counting()));
+                CommentEntity::getKnowledgeId, Collectors.counting()));
     }
 }

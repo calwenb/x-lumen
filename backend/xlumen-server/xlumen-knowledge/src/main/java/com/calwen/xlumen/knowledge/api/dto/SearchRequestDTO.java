@@ -30,6 +30,6 @@ public class SearchRequestDTO {
     /** 返回条数（≤50）。 */
     private int topK;
 
-    /** 文章级过滤（F-0702 文章级问答：限定单篇，可空）。 */
-    private Long articleId;
+    /** 知识级过滤（F-0702 知识级问答：限定单篇，可空）。 */
+    private Long knowledgeId;
 }

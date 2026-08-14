@@ -22,11 +22,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class CreateReleaseDTO {
 
-    /** 文章 ID。 */
-    @NotNull(message = "文章 ID 不能为空")
-    private Long articleId;
+    /** 知识 ID。 */
+    @NotNull(message = "知识 ID 不能为空")
+    private Long knowledgeId;
 
-    /** 文章版本号（乐观锁校验）。 */
+    /** 知识版本号（乐观锁校验）。 */
     @NotNull(message = "版本号不能为空")
     private Long version;
 

@@ -192,7 +192,7 @@ onMounted(() => {
         <div v-if="messages.length === 0" class="chat__empty">
           <div class="chat__empty-avatar" aria-hidden="true">小光</div>
           <p class="chat__empty-title">你好，我是「小光」</p>
-          <p class="chat__empty-text">基于本站文章回答你的问题，回答会附带可溯源的引用。</p>
+          <p class="chat__empty-text">基于本站知识回答你的问题，回答会附带可溯源的引用。</p>
         </div>
         <div
           v-for="message in messages"
@@ -214,7 +214,7 @@ onMounted(() => {
             <div v-if="message.citations.length > 0" class="chat-message__citations">
               <CitationCard
                 v-for="(citation, index) in message.citations"
-                :key="`${citation.articleId}-${citation.chunkSeq}-${index}`"
+                :key="`${citation.knowledgeId}-${citation.chunkSeq}-${index}`"
                 :citation="citation"
                 :index="index + 1"
               />

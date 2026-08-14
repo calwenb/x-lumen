@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // RAG 索引状态页（M05，F-0402~F-0405，登录可见）：检索测试（结果列表：分数/篇名/段落/切片文本 + 跳原文）
-// + 文章索引状态查询。
+// + 知识索引状态查询。
 import { ref } from 'vue'
 
 import { fetchIndexStatus, retrievalTest } from '@/modules/knowledge/api/knowledge'
@@ -28,7 +28,7 @@ const searchError = ref('')
 const searched = ref(false)
 
 // 索引状态
-const statusArticleId = ref('')
+const statusKnowledgeId = ref('')
 const statusResult = ref<IndexStatus | null>(null)
 const statusQueried = ref(false)
 const statusLoading = ref(false)
@@ -43,10 +43,10 @@ function formatTime(iso: string): string {
   return iso.slice(0, 16).replace('T', ' ')
 }
 
-function articleHref(item: RetrievalItem): string {
+function knowledgeHref(item: RetrievalItem): string {
   return item.headingAnchor
-    ? `/articles/${item.articleId}#${item.headingAnchor}`
-    : `/articles/${item.articleId}`
+    ? `/knowledge/${item.knowledgeId}#${item.headingAnchor}`
+    : `/knowledge/${item.knowledgeId}`
 }
 
 async function search(): Promise<void> {
@@ -66,7 +66,7 @@ async function search(): Promise<void> {
 }
 
 async function queryStatus(): Promise<void> {
-  const id = statusArticleId.value.trim()
+  const id = statusKnowledgeId.value.trim()
   if (!id || statusLoading.value) return
   statusLoading.value = true
   statusError.value = ''
@@ -89,7 +89,7 @@ async function queryStatus(): Promise<void> {
   <main class="index-status">
     <header class="index-status__header">
       <h1 class="index-status__title">RAG 索引状态</h1>
-      <p class="index-status__intro">测试「小光」的检索命中效果，或按文章 ID 查询索引建立状态。</p>
+      <p class="index-status__intro">测试「小光」的检索命中效果，或按知识 ID 查询索引建立状态。</p>
     </header>
 
     <section class="index-status__section">
@@ -123,13 +123,13 @@ async function queryStatus(): Promise<void> {
         <ul v-else class="index-status__results">
           <li
             v-for="item in results"
-            :key="`${item.articleId}-${item.chunkSeq}`"
+            :key="`${item.knowledgeId}-${item.chunkSeq}`"
             class="retrieval-item"
           >
             <div class="retrieval-item__head">
               <span class="retrieval-item__score">{{ formatScore(item.score) }}</span>
-              <RouterLink class="retrieval-item__title" :to="articleHref(item)">
-                {{ item.title || '未命名文章' }}
+              <RouterLink class="retrieval-item__title" :to="knowledgeHref(item)">
+                {{ item.title || '未命名知识' }}
               </RouterLink>
               <span class="retrieval-item__meta">
                 <span v-if="item.headingAnchor">段落：{{ item.headingAnchor }}</span>
@@ -143,12 +143,12 @@ async function queryStatus(): Promise<void> {
     </section>
 
     <section class="index-status__section">
-      <h2 class="index-status__section-title">文章索引状态查询</h2>
+      <h2 class="index-status__section-title">知识索引状态查询</h2>
       <form class="index-status__form" @submit.prevent="queryStatus">
         <el-input
-          v-model="statusArticleId"
+          v-model="statusKnowledgeId"
           class="index-status__input"
-          placeholder="输入文章 ID"
+          placeholder="输入知识 ID"
           clearable
         />
         <el-button type="primary" native-type="submit" :loading="statusLoading">
@@ -159,7 +159,7 @@ async function queryStatus(): Promise<void> {
       <p v-if="statusError" class="index-status__error" role="alert">{{ statusError }}</p>
 
       <template v-if="statusQueried">
-        <p v-if="statusEmpty" class="index-status__empty">该文章尚未建立索引。</p>
+        <p v-if="statusEmpty" class="index-status__empty">该知识尚未建立索引。</p>
         <div v-else-if="statusResult" class="index-status__card">
           <p>
             <strong>状态：</strong

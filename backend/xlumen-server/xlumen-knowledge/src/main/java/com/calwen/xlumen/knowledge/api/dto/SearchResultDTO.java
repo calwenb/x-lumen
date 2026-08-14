@@ -17,10 +17,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SearchResultDTO {
 
-    /** 文章 ID。 */
-    private Long articleId;
+    /** 知识 ID。 */
+    private Long knowledgeId;
 
-    /** 文章标题。 */
+    /** 知识标题。 */
     private String title;
 
     /** 切片序号。 */

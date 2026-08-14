@@ -1,4 +1,4 @@
-// chat 模块 API：AI 助理对话（F-0701，B00/D01）+ 文章级问答（F-0702，D02）。
+// chat 模块 API：AI 助理对话（F-0701，B00/D01）+ 知识级问答（F-0702，D02）。
 // 流式对话复用 ai/utils/sse.ts 的 fetch 解析（需 Authorization 头）；REST 走统一 http 客户端。
 // ID 为 string（雪花 ID 后端 Long 序列化为 String，BACKEND.md §5.3）。
 import { http, unwrap } from '@/api/http'
@@ -24,7 +24,7 @@ export interface ChatMessage {
 
 /** 引用溯源。 */
 export interface Citation {
-  articleId: string
+  knowledgeId: string
   title: string
   chunkSeq: number
   headingAnchor: string
@@ -94,14 +94,14 @@ export function streamChat(
   )
 }
 
-/** 文章级流式问答（F-0702，D02）。 */
-export function streamArticleAsk(
-  articleId: string,
+/** 知识级流式问答（F-0702，D02）。 */
+export function streamKnowledgeAsk(
+  knowledgeId: string,
   query: string,
   callbacks: ChatStreamCallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
-  return runChatStream(`/chat/articles/${articleId}/ask`, { query }, callbacks, signal)
+  return runChatStream(`/chat/knowledge/${knowledgeId}/ask`, { query }, callbacks, signal)
 }
 
 /** 解析引用 JSON 字符串（容错：非法 JSON 返回空数组）。 */
@@ -113,7 +113,7 @@ export function parseCitations(json: string): Citation[] {
     for (const raw of parsed) {
       const item = raw as Record<string, unknown>
       citations.push({
-        articleId: typeof item.articleId === 'string' ? item.articleId : '',
+        knowledgeId: typeof item.knowledgeId === 'string' ? item.knowledgeId : '',
         title: typeof item.title === 'string' ? item.title : '',
         chunkSeq: Number(item.chunkSeq ?? 0),
         headingAnchor: typeof item.headingAnchor === 'string' ? item.headingAnchor : '',

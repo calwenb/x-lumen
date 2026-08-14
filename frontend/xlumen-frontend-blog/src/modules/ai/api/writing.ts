@@ -5,7 +5,7 @@ import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
 
-/** 写作输入：按输入模式仅携带对应字段（主题/草稿/完整文章）。 */
+/** 写作输入：按输入模式仅携带对应字段（主题/草稿/完整知识）。 */
 export interface WritingRequest {
   topic?: string
   draft?: string

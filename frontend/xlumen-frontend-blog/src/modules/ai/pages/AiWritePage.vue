@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// AI 写作页（B11，F-0601/F-0604）：主题/草稿/完整文章三种输入，流式打字展示生成过程，
-// 完成后展示标题 + Markdown 预览，可保存为新文章（走 content createArticle）。
+// AI 写作页（B11，F-0601/F-0604）：主题/草稿/完整知识三种输入，流式打字展示生成过程，
+// 完成后展示标题 + Markdown 预览，可保存为新知识（走 content createKnowledge）。
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { createArticle } from '@/modules/content/api/article'
+import { createKnowledge } from '@/modules/content/api/knowledge'
 import { fetchWritingTask, retryWritingTask, submitWriting } from '@/modules/ai/api/writing'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import { streamSse } from '@/modules/ai/utils/sse'
@@ -19,7 +19,7 @@ type WritePhase = 'idle' | 'submitting' | 'streaming' | 'done' | 'error'
 const MODES: ReadonlyArray<{ value: WriteMode; label: string }> = [
   { value: 'topic', label: '按主题' },
   { value: 'draft', label: '按草稿' },
-  { value: 'content', label: '完整文章' },
+  { value: 'content', label: '完整知识' },
 ]
 
 const router = useRouter()
@@ -169,7 +169,7 @@ function reset(): void {
   saveMessage.value = ''
 }
 
-async function saveAsArticle(): Promise<void> {
+async function saveAsKnowledge(): Promise<void> {
   const title = resultTitle.value.trim()
   const body = resultContent.value.trim()
   if (!title || !body) {
@@ -179,14 +179,14 @@ async function saveAsArticle(): Promise<void> {
   saving.value = true
   saveMessage.value = ''
   try {
-    const created = await createArticle({
+    const created = await createKnowledge({
       title,
       content: body,
       category: '',
       tags: [],
       visibility: 1,
     })
-    await router.push({ name: 'article-edit', params: { id: created.id } })
+    await router.push({ name: 'knowledge-edit', params: { id: created.id } })
   } catch (error) {
     saveMessage.value = error instanceof Error ? error.message : '保存失败'
   } finally {
@@ -204,7 +204,7 @@ onBeforeUnmount(() => {
     <header class="ai-write__header">
       <h1 class="ai-write__title">AI 写作</h1>
       <p class="ai-write__intro">
-        「小光」根据主题、草稿或完整文章，流式生成一篇可直接发布的 Markdown 文章。
+        「小光」根据主题、草稿或完整知识，流式生成一篇可直接发布的 Markdown 知识。
       </p>
     </header>
 
@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
       </label>
       <template v-else>
         <label class="ai-write__field">
-          <span class="ai-write__field-label">文章标题（可选）</span>
+          <span class="ai-write__field-label">知识标题（可选）</span>
           <input
             v-model="contentTitle"
             class="ai-write__input"
@@ -253,12 +253,12 @@ onBeforeUnmount(() => {
           />
         </label>
         <label class="ai-write__field">
-          <span class="ai-write__field-label">完整文章</span>
+          <span class="ai-write__field-label">完整知识</span>
           <textarea
             v-model="contentBody"
             class="ai-write__textarea"
             rows="12"
-            placeholder="粘贴完整文章，小光会帮你润色改写、优化结构…"
+            placeholder="粘贴完整知识，小光会帮你润色改写、优化结构…"
           />
         </label>
       </template>
@@ -288,8 +288,8 @@ onBeforeUnmount(() => {
       <h2 class="ai-write__result-title">{{ resultTitle }}</h2>
       <div class="ai-write__preview markdown-body" v-html="renderedResult" />
       <div class="ai-write__result-actions">
-        <el-button type="primary" :loading="saving" @click="saveAsArticle">
-          {{ saving ? '保存中' : '保存为新文章' }}
+        <el-button type="primary" :loading="saving" @click="saveAsKnowledge">
+          {{ saving ? '保存中' : '保存为新知识' }}
         </el-button>
         <el-button @click="reset">重新写作</el-button>
       </div>

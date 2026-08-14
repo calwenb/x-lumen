@@ -49,8 +49,8 @@ public class MilvusVectorStore implements VectorStore {
     }
 
     /** 生成向量条目主键（与 kb_chunk.vector_id 保持一致）。 */
-    public static String vectorId(Long articleId, Long version, int seq) {
-        return articleId + "_" + version + "_" + seq;
+    public static String vectorId(Long knowledgeId, Long version, int seq) {
+        return knowledgeId + "_" + version + "_" + seq;
     }
 
     @Override
@@ -63,10 +63,10 @@ public class MilvusVectorStore implements VectorStore {
         List<Map<String, Object>> rows = new ArrayList<>(chunks.size());
         for (Chunk chunk : chunks) {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put(PRIMARY_FIELD, vectorId(request.getArticleId(), request.getVersion(), chunk.getSeq()));
+            row.put(PRIMARY_FIELD, vectorId(request.getKnowledgeId(), request.getVersion(), chunk.getSeq()));
             row.put(VECTOR_FIELD, chunk.getEmbedding() == null ? List.of() : chunk.getEmbedding());
             row.put("workspace_id", request.getWorkspaceId());
-            row.put("article_id", request.getArticleId());
+            row.put("article_id", request.getKnowledgeId());
             row.put("version", request.getVersion());
             row.put("chunk_seq", chunk.getSeq());
             row.put("heading_anchor", StrUtil.blankToDefault(chunk.getHeadingAnchor(), ""));
@@ -83,17 +83,17 @@ public class MilvusVectorStore implements VectorStore {
     }
 
     @Override
-    public void delete(Long workspaceId, Long articleId) {
+    public void delete(Long workspaceId, Long knowledgeId) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("collectionName", COLLECTION_NAME);
         body.put("dbName", properties.getMilvusDatabase());
-        body.put("filter", "workspace_id == " + workspaceId + " && article_id == " + articleId);
+        body.put("filter", "workspace_id == " + workspaceId + " && article_id == " + knowledgeId);
         postJson("/v2/vectordb/entities/delete", body);
     }
 
     @Override
     public List<SearchResultDTO> search(List<Float> queryEmbedding, Long workspaceId, String visibilityScope,
-                                        Long articleId, int topK) {
+                                        Long knowledgeId, int topK) {
         if (queryEmbedding == null || queryEmbedding.isEmpty()) {
             return List.of();
         }
@@ -105,7 +105,7 @@ public class MilvusVectorStore implements VectorStore {
         body.put("limit", Math.max(1, topK));
         body.put("outputFields", List.of("article_id", "title", "chunk_seq", "heading_anchor", "chunk_text", "visibility"));
         body.put("searchParams", Map.of("metricType", METRIC_COSINE, "params", Map.of()));
-        body.put("filter", buildFilter(workspaceId, visibilityScope, articleId));
+        body.put("filter", buildFilter(workspaceId, visibilityScope, knowledgeId));
         JsonNode response = postJson("/v2/vectordb/entities/search", body);
         if (response == null) {
             return List.of();
@@ -113,15 +113,15 @@ public class MilvusVectorStore implements VectorStore {
         return parseSearchResponse(response);
     }
 
-    /** 构建检索过滤表达式：空间隔离 + 可见性范围 + 可选文章级过滤（F-0407）。 */
-    private String buildFilter(Long workspaceId, String visibilityScope, Long articleId) {
+    /** 构建检索过滤表达式：空间隔离 + 可见性范围 + 可选知识级过滤（F-0407）。 */
+    private String buildFilter(Long workspaceId, String visibilityScope, Long knowledgeId) {
         List<String> conditions = new ArrayList<>();
         conditions.add("workspace_id == " + workspaceId);
         if ("PUBLIC_ONLY".equals(visibilityScope)) {
             conditions.add("visibility == 1");
         }
-        if (articleId != null) {
-            conditions.add("article_id == " + articleId);
+        if (knowledgeId != null) {
+            conditions.add("article_id == " + knowledgeId);
         }
         return String.join(" && ", conditions);
     }
@@ -144,7 +144,7 @@ public class MilvusVectorStore implements VectorStore {
             }
             double distance = hit.has("distance") ? hit.get("distance").asDouble() : 0.0;
             results.add(SearchResultDTO.builder()
-                    .articleId(entity.has("article_id") ? entity.get("article_id").asLong() : null)
+                    .knowledgeId(entity.has("article_id") ? entity.get("article_id").asLong() : null)
                     .title(entity.has("title") ? entity.get("title").asText() : "")
                     .chunkSeq(entity.has("chunk_seq") ? entity.get("chunk_seq").asInt() : 0)
                     .headingAnchor(entity.has("heading_anchor") ? entity.get("heading_anchor").asText() : "")

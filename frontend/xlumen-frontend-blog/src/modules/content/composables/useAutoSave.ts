@@ -1,5 +1,5 @@
 // 草稿自动保存组合式函数（F-0302）：10s 节流 + 失焦触发 + 内容未变化不发请求。
-// 与服务端幂等去重（ArticleServiceImpl.autosave）配合，避免无效版本增长。
+// 与服务端幂等去重（KnowledgeServiceImpl.autosave）配合，避免无效版本增长。
 import { onBeforeUnmount, ref } from 'vue'
 
 /** 自动保存状态。 */
@@ -9,7 +9,7 @@ export interface AutoSaveState {
   conflict: boolean
 }
 
-/** 保存回调：返回保存后的文章 ID 与版本（供页面回填）。 */
+/** 保存回调：返回保存后的知识 ID 与版本（供页面回填）。 */
 export type SaveHandler = () => Promise<{ id: string; version: string } | null>
 
 /** 节流间隔（毫秒）。 */

@@ -12,9 +12,9 @@ import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
 import com.calwen.xlumen.content.api.ContentApi;
-import com.calwen.xlumen.content.api.dto.ArticlePublishDTO;
-import com.calwen.xlumen.content.api.dto.EditorArticleDTO;
-import com.calwen.xlumen.content.enums.ArticleStatus;
+import com.calwen.xlumen.content.api.dto.KnowledgePublishDTO;
+import com.calwen.xlumen.content.api.dto.EditorKnowledgeDTO;
+import com.calwen.xlumen.content.enums.KnowledgeStatus;
 import com.calwen.xlumen.identity.api.WorkspaceApi;
 import com.calwen.xlumen.identity.service.ActivityLogService;
 import com.calwen.xlumen.publishing.dto.ApproveDTO;
@@ -37,7 +37,7 @@ import java.util.Map;
 
 /**
  * 审核服务实现（F-0902/F-0903）：状态流转规则集中本服务（禁 Controller 判断状态）。
- * 文章状态经 ContentApi.publishArticle 乐观锁迁移；AI 审校任务经 AiApi 异步提交。
+ * 知识状态经 ContentApi.publishKnowledge 乐观锁迁移；AI 审校任务经 AiApi 异步提交。
  *
  * @author calwen
  * @date 2026/8/13
@@ -68,22 +68,22 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ReviewVO submitReview(Long articleId) {
+    public ReviewVO submitReview(Long knowledgeId) {
         Long workspaceId = WorkspaceContext.workspaceId();
         Long userId = WorkspaceContext.userId();
-        EditorArticleDTO article = contentApi.getEditorArticle(workspaceId, articleId);
-        if (article == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "文章不存在");
+        EditorKnowledgeDTO knowledge = contentApi.getEditorKnowledge(workspaceId, knowledgeId);
+        if (knowledge == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
         }
-        ArticleStatus status = ArticleStatus.of(article.getStatus());
-        if (status != ArticleStatus.DRAFT && status != ArticleStatus.APPROVED) {
+        KnowledgeStatus status = KnowledgeStatus.of(knowledge.getStatus());
+        if (status != KnowledgeStatus.DRAFT && status != KnowledgeStatus.APPROVED) {
             throw new BizException(ErrorCode.CONFLICT, "当前状态不可提交审核");
         }
         ReviewEntity review = new ReviewEntity();
         review.setWorkspaceId(workspaceId);
-        review.setArticleId(articleId);
-        review.setArticleTitle(article.getTitle());
-        review.setVersion(article.getVersion());
+        review.setKnowledgeId(knowledgeId);
+        review.setKnowledgeTitle(knowledge.getTitle());
+        review.setVersion(knowledge.getVersion());
         review.setReviewerId(userId);
         review.setStatus(STATUS_PENDING);
         review.setCreatedAt(LocalDateTime.now());
@@ -96,7 +96,7 @@ public class ReviewServiceImpl implements ReviewService {
         } else {
             SubmitTaskDTO task = SubmitTaskDTO.builder()
                     .workspaceId(workspaceId).userId(userId).scene(AiScene.REVIEWER.name())
-                    .inputJson(buildReviewInput(articleId, article.getTitle(), article.getContent()))
+                    .inputJson(buildReviewInput(knowledgeId, knowledge.getTitle(), knowledge.getContent()))
                     .idempotencyKey("review-" + review.getId())
                     .build();
             review.setAiTaskId(aiApi.submitTask(task));
@@ -105,11 +105,11 @@ public class ReviewServiceImpl implements ReviewService {
         reviewMapper.updateById(review);
 
         int target = STATUS_APPROVED.equals(review.getStatus())
-                ? ArticleStatus.APPROVED.getValue() : ArticleStatus.PENDING_REVIEW.getValue();
-        boolean ok = contentApi.publishArticle(workspaceId, ArticlePublishDTO.builder()
-                .articleId(articleId).expectedVersion(article.getVersion()).targetStatus(target).build());
+                ? KnowledgeStatus.APPROVED.getValue() : KnowledgeStatus.PENDING_REVIEW.getValue();
+        boolean ok = contentApi.publishKnowledge(workspaceId, KnowledgePublishDTO.builder()
+                .knowledgeId(knowledgeId).expectedVersion(knowledge.getVersion()).targetStatus(target).build());
         if (!ok) {
-            throw new BizException(ErrorCode.CONFLICT, "文章状态迁移失败，版本冲突");
+            throw new BizException(ErrorCode.CONFLICT, "知识状态迁移失败，版本冲突");
         }
         return toVO(review);
     }
@@ -149,7 +149,7 @@ public class ReviewServiceImpl implements ReviewService {
         review.setStatus(STATUS_APPROVED);
         review.setUpdatedAt(LocalDateTime.now());
         reviewMapper.updateById(review);
-        migrateArticle(review.getArticleId(), ArticleStatus.APPROVED.getValue());
+        migrateKnowledge(review.getKnowledgeId(), KnowledgeStatus.APPROVED.getValue());
         return toVO(review);
     }
 
@@ -166,7 +166,7 @@ public class ReviewServiceImpl implements ReviewService {
         review.setRejectExpectation(dto.getExpectation().trim());
         review.setUpdatedAt(LocalDateTime.now());
         reviewMapper.updateById(review);
-        migrateArticle(review.getArticleId(), ArticleStatus.DRAFT.getValue());
+        migrateKnowledge(review.getKnowledgeId(), KnowledgeStatus.DRAFT.getValue());
         activityLogService.record(WorkspaceContext.workspaceId(), WorkspaceContext.userId(),
                 WorkspaceContext.username(), "REVIEW_REJECT", "REVIEW", reviewId, null);
     }
@@ -182,24 +182,24 @@ public class ReviewServiceImpl implements ReviewService {
         return review;
     }
 
-    /** 文章状态迁移：重读当前版本做乐观锁，失败抛 409。 */
-    private void migrateArticle(Long articleId, int targetStatus) {
+    /** 知识状态迁移：重读当前版本做乐观锁，失败抛 409。 */
+    private void migrateKnowledge(Long knowledgeId, int targetStatus) {
         Long workspaceId = WorkspaceContext.workspaceId();
-        EditorArticleDTO article = contentApi.getEditorArticle(workspaceId, articleId);
-        if (article == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "文章不存在");
+        EditorKnowledgeDTO knowledge = contentApi.getEditorKnowledge(workspaceId, knowledgeId);
+        if (knowledge == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
         }
-        boolean ok = contentApi.publishArticle(workspaceId, ArticlePublishDTO.builder()
-                .articleId(articleId).expectedVersion(article.getVersion()).targetStatus(targetStatus).build());
+        boolean ok = contentApi.publishKnowledge(workspaceId, KnowledgePublishDTO.builder()
+                .knowledgeId(knowledgeId).expectedVersion(knowledge.getVersion()).targetStatus(targetStatus).build());
         if (!ok) {
-            throw new BizException(ErrorCode.CONFLICT, "文章状态迁移失败，版本冲突");
+            throw new BizException(ErrorCode.CONFLICT, "知识状态迁移失败，版本冲突");
         }
     }
 
-    /** AI 审校任务入参：{"articleId","title","content"}。 */
-    private String buildReviewInput(Long articleId, String title, String content) {
+    /** AI 审校任务入参：{"knowledgeId","title","content"}。 */
+    private String buildReviewInput(Long knowledgeId, String title, String content) {
         Map<String, Object> input = new LinkedHashMap<>();
-        input.put("articleId", articleId);
+        input.put("knowledgeId", knowledgeId);
         input.put("title", title);
         input.put("content", content);
         return JSON.writeValueAsString(input);
@@ -207,7 +207,7 @@ public class ReviewServiceImpl implements ReviewService {
 
     private ReviewVO toVO(ReviewEntity r) {
         return ReviewVO.builder()
-                .id(r.getId()).articleId(r.getArticleId()).articleTitle(r.getArticleTitle())
+                .id(r.getId()).knowledgeId(r.getKnowledgeId()).knowledgeTitle(r.getKnowledgeTitle())
                 .version(r.getVersion()).status(r.getStatus()).aiTaskId(r.getAiTaskId())
                 .aiResultJson(r.getAiResultJson()).rejectReason(r.getRejectReason())
                 .rejectPosition(r.getRejectPosition()).rejectExpectation(r.getRejectExpectation())

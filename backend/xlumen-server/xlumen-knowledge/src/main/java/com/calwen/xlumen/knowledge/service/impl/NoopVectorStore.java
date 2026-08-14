@@ -20,18 +20,18 @@ public class NoopVectorStore implements VectorStore {
 
     @Override
     public void index(IndexRequestDTO request, List<Chunk> chunks) {
-        log.debug("NoopVectorStore：跳过向量写入，articleId={}, version={}, 切片数={}",
-                request.getArticleId(), request.getVersion(), chunks == null ? 0 : chunks.size());
+        log.debug("NoopVectorStore：跳过向量写入，knowledgeId={}, version={}, 切片数={}",
+                request.getKnowledgeId(), request.getVersion(), chunks == null ? 0 : chunks.size());
     }
 
     @Override
-    public void delete(Long workspaceId, Long articleId) {
-        log.debug("NoopVectorStore：跳过向量删除，workspaceId={}, articleId={}", workspaceId, articleId);
+    public void delete(Long workspaceId, Long knowledgeId) {
+        log.debug("NoopVectorStore：跳过向量删除，workspaceId={}, knowledgeId={}", workspaceId, knowledgeId);
     }
 
     @Override
     public List<SearchResultDTO> search(List<Float> queryEmbedding, Long workspaceId, String visibilityScope,
-                                        Long articleId, int topK) {
+                                        Long knowledgeId, int topK) {
         return List.of();
     }
 }

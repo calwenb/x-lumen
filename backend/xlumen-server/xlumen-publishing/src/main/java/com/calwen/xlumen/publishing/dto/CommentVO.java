@@ -22,8 +22,8 @@ public class CommentVO {
     /** 评论 ID（雪花 ID，字符串传输，BACKEND.md §5.3）。 */
     private Long id;
 
-    /** 文章 ID。 */
-    private Long articleId;
+    /** 知识 ID。 */
+    private Long knowledgeId;
 
     /** 回复的评论 ID（NULL 为顶级评论）。 */
     private Long parentId;

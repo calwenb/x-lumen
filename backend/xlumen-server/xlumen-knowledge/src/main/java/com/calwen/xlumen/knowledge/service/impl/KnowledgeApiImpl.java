@@ -27,13 +27,13 @@ public class KnowledgeApiImpl implements KnowledgeApi {
     private RetrievalService retrievalService;
 
     @Override
-    public void indexArticle(IndexRequestDTO request) {
-        indexPipelineService.indexArticle(request);
+    public void indexKnowledge(IndexRequestDTO request) {
+        indexPipelineService.indexKnowledge(request);
     }
 
     @Override
-    public void removeArticle(Long workspaceId, Long articleId) {
-        indexPipelineService.removeArticle(workspaceId, articleId);
+    public void removeKnowledge(Long workspaceId, Long knowledgeId) {
+        indexPipelineService.removeKnowledge(workspaceId, knowledgeId);
     }
 
     @Override

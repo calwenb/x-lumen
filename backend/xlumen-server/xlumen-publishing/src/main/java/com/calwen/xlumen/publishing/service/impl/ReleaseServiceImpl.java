@@ -5,19 +5,19 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.dto.PageQueryDTO;
-import com.calwen.xlumen.common.event.ArticlePublishedEvent;
+import com.calwen.xlumen.common.event.KnowledgePublishedEvent;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
 import com.calwen.xlumen.content.api.ContentApi;
-import com.calwen.xlumen.content.api.dto.ArticlePublishDTO;
-import com.calwen.xlumen.content.api.dto.EditorArticleDTO;
-import com.calwen.xlumen.content.enums.ArticleStatus;
+import com.calwen.xlumen.content.api.dto.KnowledgePublishDTO;
+import com.calwen.xlumen.content.api.dto.EditorKnowledgeDTO;
+import com.calwen.xlumen.content.enums.KnowledgeStatus;
 import com.calwen.xlumen.identity.service.ActivityLogService;
 import com.calwen.xlumen.publishing.dto.CreateReleaseDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.entity.ReleaseEntity;
 import com.calwen.xlumen.publishing.mapper.ReleaseMapper;
-import com.calwen.xlumen.publishing.service.HotArticleCacheService;
+import com.calwen.xlumen.publishing.service.HotKnowledgeCacheService;
 import com.calwen.xlumen.publishing.service.ReleaseService;
 import com.calwen.xlumen.publishing.vo.ReleaseVO;
 import jakarta.annotation.Resource;
@@ -31,8 +31,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 发布服务实现（F-0904/F-0905）：立即/定时发布，发布成功发布 ArticlePublishedEvent 进程内事件、
- * 写审计 ARTICLE_PUBLISH 并失效热点缓存；定时发布幂等（状态 + 乐观锁双保险）。
+ * 发布服务实现（F-0904/F-0905）：立即/定时发布，发布成功发布 KnowledgePublishedEvent 进程内事件、
+ * 写审计 KNOWLEDGE_PUBLISH 并失效热点缓存；定时发布幂等（状态 + 乐观锁双保险）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -59,33 +59,33 @@ public class ReleaseServiceImpl implements ReleaseService {
     private ActivityLogService activityLogService;
 
     @Resource
-    private HotArticleCacheService hotArticleCacheService;
+    private HotKnowledgeCacheService hotKnowledgeCacheService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ReleaseVO release(CreateReleaseDTO dto) {
         Long workspaceId = WorkspaceContext.workspaceId();
-        EditorArticleDTO article = contentApi.getEditorArticle(workspaceId, dto.getArticleId());
-        if (article == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "文章不存在");
+        EditorKnowledgeDTO knowledge = contentApi.getEditorKnowledge(workspaceId, dto.getKnowledgeId());
+        if (knowledge == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
         }
-        if (ArticleStatus.of(article.getStatus()) != ArticleStatus.APPROVED) {
-            throw new BizException(ErrorCode.CONFLICT, "仅审核通过的文章可发布");
+        if (KnowledgeStatus.of(knowledge.getStatus()) != KnowledgeStatus.APPROVED) {
+            throw new BizException(ErrorCode.CONFLICT, "仅审核通过的知识可发布");
         }
-        if (!dto.getVersion().equals(article.getVersion())) {
+        if (!dto.getVersion().equals(knowledge.getVersion())) {
             throw new BizException(ErrorCode.CONFLICT, "版本冲突");
         }
         Long exists = releaseMapper.selectCount(Wrappers.<ReleaseEntity>lambdaQuery()
                 .eq(ReleaseEntity::getWorkspaceId, workspaceId)
-                .eq(ReleaseEntity::getArticleId, dto.getArticleId())
+                .eq(ReleaseEntity::getKnowledgeId, dto.getKnowledgeId())
                 .eq(ReleaseEntity::getVersion, dto.getVersion()));
         if (exists != null && exists > 0) {
             throw new BizException(ErrorCode.CONFLICT, "该版本已提交发布");
         }
         ReleaseEntity release = new ReleaseEntity();
         release.setWorkspaceId(workspaceId);
-        release.setArticleId(dto.getArticleId());
-        release.setArticleTitle(article.getTitle());
+        release.setKnowledgeId(dto.getKnowledgeId());
+        release.setKnowledgeTitle(knowledge.getTitle());
         release.setVersion(dto.getVersion());
         release.setVisibility(dto.getVisibility());
         release.setPublishAt(dto.getPublishAt());
@@ -129,17 +129,17 @@ public class ReleaseServiceImpl implements ReleaseService {
         }
     }
 
-    /** 幂等发布：文章迁移 PUBLISHED(6) + 发布记录 DONE + 事件/审计/缓存失效；版本冲突抛 409。 */
+    /** 幂等发布：知识迁移 PUBLISHED(6) + 发布记录 DONE + 事件/审计/缓存失效；版本冲突抛 409。 */
     private void doRelease(ReleaseEntity release) {
         Long workspaceId = release.getWorkspaceId();
-        EditorArticleDTO article = contentApi.getEditorArticle(workspaceId, release.getArticleId());
-        if (article == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "文章不存在");
+        EditorKnowledgeDTO knowledge = contentApi.getEditorKnowledge(workspaceId, release.getKnowledgeId());
+        if (knowledge == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
         }
-        boolean ok = contentApi.publishArticle(workspaceId, ArticlePublishDTO.builder()
-                .articleId(release.getArticleId())
-                .expectedVersion(article.getVersion())
-                .targetStatus(ArticleStatus.PUBLISHED.getValue())
+        boolean ok = contentApi.publishKnowledge(workspaceId, KnowledgePublishDTO.builder()
+                .knowledgeId(release.getKnowledgeId())
+                .expectedVersion(knowledge.getVersion())
+                .targetStatus(KnowledgeStatus.PUBLISHED.getValue())
                 .visibility(release.getVisibility())
                 .publishedAt(LocalDateTime.now())
                 .build());
@@ -152,13 +152,13 @@ public class ReleaseServiceImpl implements ReleaseService {
 
         // 后置处理失败不影响发布主流程（事件/审计/缓存失效单独降级）
         try {
-            eventPublisher.publishEvent(ArticlePublishedEvent.builder()
-                    .workspaceId(workspaceId).articleId(release.getArticleId()).version(article.getVersion())
-                    .title(article.getTitle()).content(article.getContent()).visibility(release.getVisibility())
+            eventPublisher.publishEvent(KnowledgePublishedEvent.builder()
+                    .workspaceId(workspaceId).knowledgeId(release.getKnowledgeId()).version(knowledge.getVersion())
+                    .title(knowledge.getTitle()).content(knowledge.getContent()).visibility(release.getVisibility())
                     .build());
             activityLogService.record(workspaceId, WorkspaceContext.userId(), WorkspaceContext.username(),
-                    "ARTICLE_PUBLISH", "ARTICLE", release.getArticleId(), null);
-            hotArticleCacheService.evictAll();
+                    "KNOWLEDGE_PUBLISH", "KNOWLEDGE", release.getKnowledgeId(), null);
+            hotKnowledgeCacheService.evictAll();
         } catch (Exception e) {
             log.warn("发布后置处理失败（事件/审计/缓存失效），releaseId={}", release.getId(), e);
         }
@@ -166,7 +166,7 @@ public class ReleaseServiceImpl implements ReleaseService {
 
     private ReleaseVO toVO(ReleaseEntity r) {
         return ReleaseVO.builder()
-                .id(r.getId()).articleId(r.getArticleId()).articleTitle(r.getArticleTitle())
+                .id(r.getId()).knowledgeId(r.getKnowledgeId()).knowledgeTitle(r.getKnowledgeTitle())
                 .version(r.getVersion()).visibility(r.getVisibility()).publishAt(r.getPublishAt())
                 .releasedAt(r.getReleasedAt()).status(r.getStatus()).createdAt(r.getCreatedAt()).build();
     }

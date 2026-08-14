@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 文章发布记录实体（pub_release，F-0904/F-0905）：唯一键 uk_release_ws_article_version 幂等；
+ * 知识发布记录实体（pub_release，F-0904/F-0905）：唯一键 uk_release_ws_knowledge_version 幂等；
  * publish_at 为空表示立即发布，非空留待定时任务执行（幂等）。
  *
  * @author calwen
@@ -27,13 +27,13 @@ public class ReleaseEntity {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
-    /** 文章 ID（逻辑外键 cnt_article.id）。 */
-    private Long articleId;
+    /** 知识 ID（逻辑外键 cnt_knowledge.id）。 */
+    private Long knowledgeId;
 
-    /** 文章标题（冗余展示字段）。 */
-    private String articleTitle;
+    /** 知识标题（冗余展示字段）。 */
+    private String knowledgeTitle;
 
-    /** 文章版本号（发布时快照）。 */
+    /** 知识版本号（发布时快照）。 */
     private Long version;
 
     /** 可见性：1 公开 0 私有。 */

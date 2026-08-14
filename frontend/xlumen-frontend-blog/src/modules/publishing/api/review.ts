@@ -20,8 +20,8 @@ export interface ReviewIssue {
 /** 审核视图。 */
 export interface ReviewVO {
   id: string
-  articleId: string
-  articleTitle: string
+  knowledgeId: string
+  knowledgeTitle: string
   version: string
   status: string
   aiTaskId: string
@@ -51,8 +51,8 @@ export interface RejectPayload {
 /** 后端原始形态（可空字段归一化为空串）。 */
 interface RawReview {
   id: string
-  articleId: string
-  articleTitle: string
+  knowledgeId: string
+  knowledgeTitle: string
   version: string
   status: string
   aiTaskId: string | null
@@ -67,8 +67,8 @@ interface RawReview {
 function normalizeReview(raw: RawReview): ReviewVO {
   return {
     id: String(raw.id),
-    articleId: String(raw.articleId),
-    articleTitle: raw.articleTitle ?? '',
+    knowledgeId: String(raw.knowledgeId),
+    knowledgeTitle: raw.knowledgeTitle ?? '',
     version: String(raw.version ?? ''),
     status: raw.status ?? 'PENDING',
     aiTaskId: raw.aiTaskId ?? '',
@@ -82,8 +82,8 @@ function normalizeReview(raw: RawReview): ReviewVO {
 }
 
 /** 提交审核（F-0902）。 */
-export async function createReview(articleId: string): Promise<ReviewVO> {
-  const { data } = await http.post<ApiResponse<RawReview>>('/reviews', { articleId })
+export async function createReview(knowledgeId: string): Promise<ReviewVO> {
+  const { data } = await http.post<ApiResponse<RawReview>>('/reviews', { knowledgeId })
   return normalizeReview(unwrap(data))
 }
 

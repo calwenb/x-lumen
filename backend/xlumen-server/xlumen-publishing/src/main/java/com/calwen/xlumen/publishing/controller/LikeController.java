@@ -10,14 +10,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 文章点赞接口（F-0203，B02 点赞区）：点赞切换与状态查询均需登录。
+ * 知识点赞接口（F-0203，B02 点赞区）：点赞切换与状态查询均需登录。
  * 用户/空间上下文由 Service 从 WorkspaceContext 读取（JWT claims），资源归属校验在服务层（双层校验第二层）。
  *
  * @author calwen
  * @date 2026/8/12
  */
 @RestController
-@RequestMapping("/api/v1/public/articles/{articleId}/like")
+@RequestMapping("/api/v1/public/knowledge/{knowledgeId}/like")
 public class LikeController {
 
     @Resource
@@ -29,15 +29,15 @@ public class LikeController {
      * @return 切换后的状态（true 已赞 / false 取消）
      */
     @PostMapping
-    public ApiResponse<Boolean> toggleLike(@PathVariable Long articleId) {
-        return ApiResponse.success(likeService.toggleLike(articleId));
+    public ApiResponse<Boolean> toggleLike(@PathVariable Long knowledgeId) {
+        return ApiResponse.success(likeService.toggleLike(knowledgeId));
     }
 
     /**
      * 当前用户点赞状态（F-0203）：需登录，详情页初始化用（用户从 WorkspaceContext 读取）。
      */
     @GetMapping("/status")
-    public ApiResponse<Boolean> likeStatus(@PathVariable Long articleId) {
-        return ApiResponse.success(likeService.isLiked(articleId));
+    public ApiResponse<Boolean> likeStatus(@PathVariable Long knowledgeId) {
+        return ApiResponse.success(likeService.isLiked(knowledgeId));
     }
 }

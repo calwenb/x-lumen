@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 文章评论实体（eng_comment，F-0203）：parent_id 支持回复。
+ * 知识评论实体（eng_comment，F-0203）：parent_id 支持回复。
  *
  * @author calwen
  * @date 2026/8/12
@@ -26,8 +26,8 @@ public class CommentEntity {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
-    /** 文章 ID（逻辑外键 cnt_article.id）。 */
-    private Long articleId;
+    /** 知识 ID（逻辑外键 cnt_knowledge.id）。 */
+    private Long knowledgeId;
 
     /** 评论用户 ID（逻辑外键 iam_user.id）。 */
     private Long userId;

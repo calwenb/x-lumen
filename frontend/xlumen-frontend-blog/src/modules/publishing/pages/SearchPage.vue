@@ -1,13 +1,13 @@
 <script setup lang="ts">
 // 搜索/分类/标签页（B03，F-0202）：关键词 + 分类 + 标签组合筛选，服务端分页，命中高亮。
-// 关键状态：搜索中骨架、无结果空态（清空筛选建议）、失败可重试；搜索结果仅含公开文章（F-0307 由后端保证）。
+// 关键状态：搜索中骨架、无结果空态（清空筛选建议）、失败可重试；搜索结果仅含公开知识（F-0307 由后端保证）。
 import { onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import { fetchArticles, fetchCategories, fetchTags } from '@/modules/publishing/api/public'
+import { fetchKnowledges, fetchCategories, fetchTags } from '@/modules/publishing/api/public'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
 
-import type { ArticleCard, CategoryCount } from '@/modules/publishing/api/public'
+import type { KnowledgeCard, CategoryCount } from '@/modules/publishing/api/public'
 
 const PAGE_SIZE = 10
 
@@ -20,7 +20,7 @@ const tag = ref((route.query.tag as string | undefined) ?? '')
 const categories = ref<CategoryCount[]>([])
 const tags = ref<CategoryCount[]>([])
 
-const results = ref<ArticleCard[]>([])
+const results = ref<KnowledgeCard[]>([])
 const pageNo = ref(1)
 const total = ref(0)
 const loading = ref(true)
@@ -65,7 +65,7 @@ async function load(targetPage: number): Promise<void> {
   loading.value = true
   loadError.value = false
   try {
-    const page = await fetchArticles({
+    const page = await fetchKnowledges({
       ...(keyword.value ? { keyword: keyword.value } : {}),
       ...(category.value ? { category: category.value } : {}),
       ...(tag.value ? { tag: tag.value } : {}),
@@ -108,7 +108,7 @@ onMounted(async () => {
       <el-input
         v-model="keyword"
         class="search__input"
-        placeholder="搜索文章标题或摘要…"
+        placeholder="搜索知识标题或摘要…"
         aria-label="搜索关键词"
         clearable
       />
@@ -141,20 +141,20 @@ onMounted(async () => {
       <el-button type="primary" plain @click="load(pageNo)">重试</el-button>
     </div>
     <div v-else-if="results.length === 0" class="search__state">
-      <p class="search__state-text">没有找到相关文章，试试清空筛选或更换关键词。</p>
+      <p class="search__state-text">没有找到相关知识，试试清空筛选或更换关键词。</p>
       <RouterLink class="search__reset" to="/search">清空筛选</RouterLink>
     </div>
     <template v-else>
-      <p class="search__summary">共 {{ total }} 篇相关文章</p>
-      <article v-for="article in results" :key="article.id" class="search-card">
-        <RouterLink class="search-card__title" :to="`/articles/${article.id}`">
-          <span v-html="highlight(article.title, keyword)" />
+      <p class="search__summary">共 {{ total }} 篇相关知识</p>
+      <article v-for="knowledge in results" :key="knowledge.id" class="search-card">
+        <RouterLink class="search-card__title" :to="`/knowledge/${knowledge.id}`">
+          <span v-html="highlight(knowledge.title, keyword)" />
         </RouterLink>
-        <p class="search-card__summary" v-html="highlight(article.summary, keyword)" />
+        <p class="search-card__summary" v-html="highlight(knowledge.summary, keyword)" />
         <div class="search-card__meta">
-          <span v-if="article.category">{{ article.category }}</span>
-          <span>{{ formatDate(article.publishedAt) }}</span>
-          <span>{{ article.readMinutes }} 分钟阅读</span>
+          <span v-if="knowledge.category">{{ knowledge.category }}</span>
+          <span>{{ formatDate(knowledge.publishedAt) }}</span>
+          <span>{{ knowledge.readMinutes }} 分钟阅读</span>
         </div>
       </article>
       <Pagination :page-no="pageNo" :page-size="PAGE_SIZE" :total="total" @change="load" />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 引用卡片（D01/D02）：[序号] 可展开篇名/段落，跳转原文 /articles/{articleId}#{headingAnchor}。
+// 引用卡片（D01/D02）：[序号] 可展开篇名/段落，跳转原文 /knowledge/{knowledgeId}#{headingAnchor}。
 import { computed, ref } from 'vue'
 
 import type { Citation } from '@/modules/chat/api/chat'
@@ -12,7 +12,7 @@ const props = defineProps<{
 const expanded = ref(false)
 
 const href = computed(() => {
-  const base = `/articles/${props.citation.articleId}`
+  const base = `/knowledge/${props.citation.knowledgeId}`
   return props.citation.headingAnchor ? `${base}#${props.citation.headingAnchor}` : base
 })
 </script>
@@ -26,7 +26,7 @@ const href = computed(() => {
       @click="expanded = !expanded"
     >
       <span class="citation-card__badge">[{{ index }}]</span>
-      <span class="citation-card__title">{{ citation.title || '未命名文章' }}</span>
+      <span class="citation-card__title">{{ citation.title || '未命名知识' }}</span>
     </button>
     <div v-if="expanded" class="citation-card__body">
       <p class="citation-card__text">{{ citation.chunkText }}</p>

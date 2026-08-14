@@ -20,8 +20,8 @@ public class IndexRequestDTO {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
-    /** 文章 ID。 */
-    private Long articleId;
+    /** 知识 ID。 */
+    private Long knowledgeId;
 
     /** 发布版本号。 */
     private Long version;

@@ -22,8 +22,8 @@ public class EnhanceResultVO {
     /** 结果 ID。 */
     private Long id;
 
-    /** 文章 ID（可空）。 */
-    private Long articleId;
+    /** 知识 ID（可空）。 */
+    private Long knowledgeId;
 
     /** 场景：SUMMARY|SEO。 */
     private String scene;

@@ -12,7 +12,7 @@
 
 开始实现前依次阅读：
 
-1. [产品设计文档](../product/PRODUCT.md)——产品行为、验收要求与 13 模块 77 项功能总表（唯一功能事实源，MVP 41 / V2 24 / V3 12）。
+1. [产品设计文档](../product/PRODUCT.md)——产品行为、验收要求与 13 模块 82 项功能总表（唯一功能事实源，MVP 39 / V2 31 / V3 12）。
 2. 本文档——后端实现方式。
 3. [全局文档](../global/GLOBAL.md)——本地初始化、启动命令与质量门禁命令。
 
@@ -194,10 +194,11 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 ```text
 00_database.sql       10_identity.sql     20_knowledge.sql    30_ai.sql
 40_content.sql        50_publishing.sql   60_engagement.sql   70_chat.sql
-80_ai_enhance.sql     90_platform.sql     95_analytics.sql
+80_ai_enhance.sql     85_platform.sql     95_analytics.sql
 ```
 
-- **新模块 SQL 按编号插入，禁止跳号**：新增模块脚本按编号顺序插入现有序列（如 80 与 90 之间新增取 85_xxx.sql），不得复用、跳号或重排已有编号；V2/V3 模块脚本（90/95）在对应阶段创建，不提前建空表。
+- **新模块 SQL 按编号插入，禁止跳号**：新增模块脚本按编号顺序插入现有序列（如 80 与 85 之间新增取 81~84_xxx.sql），不得复用、跳号或重排已有编号；V2/V3 模块脚本（90/95）在对应阶段创建，不提前建空表。
+- **存量迁移脚本**（`backend/xlumen-server/sql/migration/`，如 `85_kb_migration.sql`）：用于已初始化的开发库/测试库结构演进，独立于 init 链（`init-db.ps1` 只执行 `sql/init/`），编号沿用 init 编号段；迁移脚本必须幂等可重跑（变更前查 information_schema）。
 - `00_database.sql` 默认创建开发数据库、字符集和通用设置；服务器已预建数据库或账号无建库权限时允许跳过。
 - 每个模块脚本只创建本模块拥有的表、索引和必要系统数据（内置角色、权限、基础配置；不含演示用户和演示内容）。
 - 建表使用 `IF NOT EXISTS`；必要系统数据使用唯一键配合 `INSERT ... ON DUPLICATE KEY UPDATE`，按文件名前缀顺序执行。
@@ -214,11 +215,12 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 | 表 | 所属模块 | 阶段 | 说明 |
 | --- | --- | --- | --- |
 | `iam_user` / `iam_workspace` / `iam_workspace_member` / `iam_role` | identity | MVP | 用户（密码 BCrypt 哈希）/ 工作空间（全局隔离维度）/ 成员角色绑定 / 角色定义（OWNER/ADMIN/EDITOR/AUTHOR/VISITOR） |
-| `kb_knowledge_base` / `kb_directory` | knowledge | MVP | 知识库（公开/私有/回收站状态，F-0308）/ 多级目录树（parent_id，首字母排序，F-0309） |
+| `kb_knowledge_base` / `kb_directory` | knowledge | MVP | 知识库（公开/私有/回收站状态，F-0308；V2 增加 slug 列）/ 多级目录树（parent_id，按名称排序，F-0309） |
+| `kb_kb_follow` | knowledge | V2 | 知识库关注关系（F-0211） |
 | `kb_kb_grant` | knowledge | V2 | 私有库授权名单（F-0106） |
 | `kb_chunk` / `kb_index_version` | knowledge | MVP | 知识切片元数据（向量在 Milvus，关联知识已发布版本，含 `kb_id` 按库过滤）/ 索引版本与活动指针（F-0403） |
 | `ai_task` | ai | MVP | AI 任务（状态机见第 14 节） |
-| `cnt_knowledge` / `cnt_knowledge_version` | content | MVP / V2 | 知识主体（含 `kb_id`/`directory_id` 归属）/ 历史版本（F-0303） |
+| `cnt_knowledge` / `cnt_knowledge_version` | content | MVP / V2 | 知识主体（含 `kb_id`/`directory_id` 归属；V2 增加 pinned 置顶/slug 列）/ 历史版本（F-0303） |
 | `pub_review` / `pub_release` | publishing | MVP | 审核记录（F-0902）/ 发布记录（F-0905） |
 | `eng_feedback` / `eng_comment` | publishing 模块 | MVP / V2 | 读者纠错（F-1001）/ 评论（F-0203） |
 | `chat_message` | ai 模块 | MVP | 对话消息 |
@@ -238,6 +240,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - 审计日志 `plt_activity_log`：只增不改，按季度归档，访问走归档查询。
 - 访问统计 `analytics_visit`：明细按日汇总到趋势表后滚动清理，保留最近 N 天明细。
 - 知识版本 `cnt_knowledge_version`：已发布版本正文快照只增不删（更新闭环依赖），回收站软删除内容按策略定期物理清理（默认 30 天，F-0305）。
+- 回收站软删列（已确认）：知识/知识库回收用独立 `recycle_status` + `deleted_at` 列，**不扩展 8 状态机**（状态机是发布审核闭环概念）；超期清理任务按 `deleted_at` 扫描执行。
 
 ## 9. 多租户与权限（双层校验）
 
@@ -248,6 +251,8 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - 平台级跨工作空间操作使用独立接口、独立权限和审计日志。
 - 职责分离：作者默认不能直接发布；编辑不能审核自己提交的知识（F-0903）；个人空间可关闭强制审核（决策 D9）。
 - **知识库可见性（F-0307/F-0308）**：知识可见性由所属知识库决定，公开库知识对所有人可见、私有库仅库主可见；公开读与检索必须同时校验知识状态（已发布）与库可见性，私有库知识对外不可见（404 语义，不暴露存在性）；库越权访问必须由 Service 层强制执行并专项测试。
+- **多用户公开读（D9 改写）**：首页知识流、公开库发现页与公开搜索**跨空间聚合全平台公开库**（不再绑定默认空间）；私有库知识仍按「空间归属 + 库可见性 + 授权名单」过滤；跨空间公开读接口必须显式标注并测试越权场景。
+- **可见库集合推导收敛**：身份→可见知识库集合的推导（公开库全集 + 自己私有库 + 授权库 V2）统一收敛为单一服务能力，公开读、搜索、RAG 检索与知识列表共用同一推导结果，禁止各模块散落重复过滤条件（F-0407 单一实现）。
 
 ## 10. REST API 规范
 
@@ -302,7 +307,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 ```
 
 - 由发布成功事件触发，无需人工导入；删除/下架同步移出索引；旧知识更新的新版本发布后自动重建（不提供外部资料导入与 URL 抓取，F-0401/F-0406 已随产品变更移除）。
-- 知识库与目录管理（F-0308/F-0309）：`kb_knowledge_base`（公开/私有/回收站状态）与 `kb_directory`（parent_id 多级树，目录按名称首字母排序）由 knowledge 模块承载；content 模块的知识 CRUD 通过 `KnowledgeApi` 校验库/目录归属（单库单目录），跨库移动不提供（仅复制或重新发布）。
+- 知识库与目录管理（F-0308/F-0309）：`kb_knowledge_base`（公开/私有/回收站状态）与 `kb_directory`（parent_id 多级树，目录按名称排序，走数据库排序规则）由 knowledge 模块承载；content 模块的知识 CRUD 通过 `KnowledgeApi` 校验库/目录归属（单库单目录），跨库移动不提供（仅复制或重新发布）。
 - MySQL 保存切片元数据、知识库/目录与活动索引指针；Milvus 保存向量和检索过滤字段（workspace_id、知识库 kb_id、知识 ID、版本）。
 - **索引版本管理（F-0403）**：切换 Embedding 模型只允许创建新索引版本，不覆盖活动索引；新版本经检索校验通过后才激活，激活后清理旧索引。
 - 检索按可见库集合过滤（F-0407）：访客仅命中公开库已发布知识，库主命中全部含自己私有库；引用必须定位到篇名与段落并可跳转原文（F-0405）。检索请求携带身份推导出的可见库集合，`KnowledgeApi.search` 入参含 `kbIds` 过滤维度。
@@ -324,6 +329,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 
 - 用于：会话、权限短缓存、热点只读数据（热点知识，F-1301）、限流、锁、短期任务状态（如 SSE 断点与进度）。
 - 缓存键包含应用、环境、工作空间和业务主键；缓存不可用时按业务风险选择降级或拒绝。
+- 热点知识缓存按**库/目录维度分片**（如 `xlumen:knowledge:{kbId}:{directoryId}`，已确认）：跨空间公开流聚合场景禁止单键缓存全站列表；公开库转私有、知识发布/下架时按维度失效。
 - 审核、发布、配额和任务事实不能只存在 Redis，业务事实以 MySQL 为准（决策 D6）。
 
 ### 15.2 日志与可观测性

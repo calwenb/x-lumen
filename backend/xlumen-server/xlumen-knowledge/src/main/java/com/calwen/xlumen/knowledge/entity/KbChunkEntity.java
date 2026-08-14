@@ -27,8 +27,8 @@ public class KbChunkEntity {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
-    /** 文章 ID（逻辑外键 cnt_article.id）。 */
-    private Long articleId;
+    /** 知识 ID（逻辑外键 cnt_knowledge.id）。 */
+    private Long knowledgeId;
 
     /** 发布版本号（关联 kb_index_version.version）。 */
     private Long version;

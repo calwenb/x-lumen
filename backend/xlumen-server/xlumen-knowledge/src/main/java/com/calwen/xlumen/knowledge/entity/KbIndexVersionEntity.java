@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 索引版本与活动指针实体（kb_index_version，F-0403）：同一文章多版本并存，
+ * 索引版本与活动指针实体（kb_index_version，F-0403）：同一知识多版本并存，
  * 仅一条 status=ACTIVE 为当前生效索引，旧版本置 STALE 后清理向量。
  *
  * @author calwen
@@ -27,10 +27,10 @@ public class KbIndexVersionEntity {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
-    /** 文章 ID（逻辑外键 cnt_article.id）。 */
-    private Long articleId;
+    /** 知识 ID（逻辑外键 cnt_knowledge.id）。 */
+    private Long knowledgeId;
 
-    /** 发布版本号（关联 cnt_article.version）。 */
+    /** 发布版本号（关联 cnt_knowledge.version）。 */
     private Long version;
 
     /** 向量索引名（Milvus 集合名）。 */

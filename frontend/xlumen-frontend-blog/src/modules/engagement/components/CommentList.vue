@@ -11,7 +11,7 @@ import { createComment, fetchComments } from '@/modules/engagement/api/engagemen
 import type { CommentItem } from '@/modules/engagement/api/engagement'
 
 const props = defineProps<{
-  articleId: string
+  knowledgeId: string
 }>()
 
 const emit = defineEmits<{
@@ -42,7 +42,7 @@ async function load(): Promise<void> {
   loading.value = true
   loadError.value = false
   try {
-    const page = await fetchComments(props.articleId)
+    const page = await fetchComments(props.knowledgeId)
     comments.value = page.records
   } catch {
     loadError.value = true
@@ -60,7 +60,7 @@ async function submit(): Promise<void> {
   }
   submitting.value = true
   try {
-    const created = await createComment(props.articleId, content)
+    const created = await createComment(props.knowledgeId, content)
     comments.value.push(created)
     draft.value = ''
     emit('update:count', comments.value.length)

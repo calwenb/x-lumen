@@ -65,6 +65,6 @@ INSERT INTO `iam_role` (`id`, `role_code`, `role_name`, `description`) VALUES
     (1, 'OWNER',   '空间所有者', '管理工作空间、成员、模型配置、配额与高风险操作；注册即建空间默认角色（决策 D9）'),
     (2, 'ADMIN',   '管理员',     '管理知识库、内容规则、发布设置与平台治理（V2 团队模式启用）'),
     (3, 'EDITOR',  '编辑',       '审核、驳回、定时发布、回滚、下架（V2 团队模式启用）'),
-    (4, 'AUTHOR',  '作者',       '导入资料、发起创作、修订文章并提交审核（V2 团队模式启用）'),
+    (4, 'AUTHOR',  '作者',       '导入资料、发起创作、修订知识并提交审核（V2 团队模式启用）'),
     (5, 'VISITOR', '访客',       '阅读、搜索、评论、点赞、提交纠错（公开博客访问者）')
 ON DUPLICATE KEY UPDATE `role_name` = VALUES(`role_name`), `description` = VALUES(`description`);

@@ -33,10 +33,10 @@ public class ActivityLogEntity {
     /** 操作人名称（冗余展示字段）。 */
     private String operatorName;
 
-    /** 操作类型（如 REVIEW_REJECT/ARTICLE_PUBLISH/WORKSPACE_SETTINGS_UPDATE）。 */
+    /** 操作类型（如 REVIEW_REJECT/KNOWLEDGE_PUBLISH/WORKSPACE_SETTINGS_UPDATE）。 */
     private String action;
 
-    /** 目标类型（如 REVIEW/ARTICLE/WORKSPACE）。 */
+    /** 目标类型（如 REVIEW/KNOWLEDGE/WORKSPACE）。 */
     private String targetType;
 
     /** 目标 ID。 */

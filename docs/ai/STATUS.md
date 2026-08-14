@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/14 16:04
+> 更新日期：2026/8/14 16:59
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -30,6 +30,14 @@
 - BACKEND.md：模块职责（knowledge 扩库/目录管理、content→knowledge 依赖方向）、核心表清单（cnt_knowledge/kb_knowledge_base/kb_directory/kb_kb_grant）、§13 重写按库切分检索、REST 路径规范（/api/v1/knowledge，决策 D17）。
 - FRONTEND.md：模块映射与知识措辞；GLOBAL.md/README.md：定位、模块概览、统计同步；tmp/knowledge-redesign-proposal.md 评审稿存档（状态已确认）。
 - 验证：docs 全仓「文章」措辞清零核验（仅保留历史 CHANGELOG 条目与兼容说明）；**代码未动**（阶段 1 起实施）。
+
+### 知识平台化重构 · 方案自检修正与 V2 规划扩充（2026-08-14 16:59）
+
+- 统计数修正：功能总表实际阶段分布 MVP 39 / V2 26 / V3 12（原标注 41/24 为沿用旧文档错误基数，脚本核验后修正 PRODUCT/GLOBAL/README/BACKEND/CHANGELOG 共 6 处）。
+- 用户确认三项实现决策：回收站用独立软删列（`recycle_status`+`deleted_at`，不扩 8 状态机）；目录按名称排序走数据库排序规则（废弃拼音首字母与 `sort_key` 列）；热点知识缓存按库/目录维度分片（`xlumen:knowledge:{kbId}:{directoryId}`）。
+- 补实现约束：删库/删知识连带取消定时发布任务并作废审核；可见库集合推导收敛为单一服务能力（公开读/搜索/RAG 检索/列表共用，F-0407 单一实现）；多用户跨空间公开读写入 BACKEND §9。
+- B01 定稿：左栏导航 + 右栏主内容（用户要求内容放右边）；未选目录按更新时间倒序、选中目录后按创建时间正序。
+- V2 规划扩充（用户确认）：F-0209 作者主页、F-0210 URL slug、F-0211 知识库关注、F-0310 知识置顶、F-0311 回收站批量、F-1101 统计按库维度；发现页（B21）默认最近更新倒序；PROTOTYPE 新增 B24 作者主页；总表 77→82 项（MVP 39 / V2 31 / V3 12）。
 
 ### 后端代码风格优化（2026-08-14）
 
@@ -157,7 +165,7 @@
 | M11 | 互动与反馈闭环（F-1001） | PRODUCT §5 模块十 | 已完成 | Qoder 代理 |
 | M12 | 技术基础设施（F-1301~F-1303） | PRODUCT §5 模块十三 | 已完成（F-1301 缓存；F-1302/F-1303 门禁/备份随工程实践落地） | Qoder 代理 |
 | M13 | 管理后台配置管理（空间/成员/角色 F-1201、审计 F-1202、模型配置 F-0501/F-0502 管理面） | PROTOTYPE A01~A04 | 已完成 | Qoder 代理 |
-| KB-1 | 知识平台化重构·阶段 1：概念改名「文章→知识」（全仓 grep 清单：文档/后端类名接口事件审计常量/前端路由文案组件/测试断言；物理表 cnt_article→cnt_knowledge、路径 /api/v1/articles→/api/v1/knowledge；纯改名零行为变更） | tmp/knowledge-redesign-proposal.md §3/§12 | 待认领 | — |
+| KB-1 | 知识平台化重构·阶段 1：概念改名「文章→知识」（全仓 grep 清单：文档/后端类名接口事件审计常量/前端路由文案组件/测试断言；物理表 cnt_article→cnt_knowledge、路径 /api/v1/articles→/api/v1/knowledge；纯改名零行为变更） | tmp/knowledge-redesign-proposal.md §3/§12 | 已完成（ZCode，2026-08-14 17:40） | ZCode |
 | KB-2 | 知识平台化重构·阶段 2：数据模型（kb_knowledge_base/kb_directory 新表 DDL、cnt_knowledge 改造 kb_id/directory_id 去 category/visibility、kb_chunk/kb_index_version 加 kb_id、迁移脚本幂等） | 方案 §5/§10、BACKEND §7/§8 | 待认领 | — |
 | KB-3 | 知识平台化重构·阶段 3：后端能力（库 CRUD/回收站/目录树/排序/可见性过滤/检索按库/发布选库，F-0305/F-0307/F-0308/F-0309/F-0407） | 方案 §7/§9、BACKEND §13 | 待认领 | — |
 | KB-4 | 知识平台化重构·阶段 4：前端页面（导航头/知识流 B01/库页 B20/发现页 B21/库管理 B22/回收站 B16/发布弹窗/AI 对话范围选择器，F-0208/F-0308） | PROTOTYPE §7 | 待认领 | — |
@@ -165,6 +173,7 @@
 | KB-6 | 知识平台化重构·阶段 6：全量验收（完成定义 PRODUCT §12 + 双前端 E2E + 文档一致性核验） | PRODUCT §12 | 待认领 | — |
 
 > 说明：数据分析与知识保鲜（模块十一）为 V2/V3 功能，平台治理（模块十二）MVP 部分（空间设置/审计）随 M13 落地、其余 V2/V3 随依赖模块迭代实现；阶段调整须经 CHANGELOG 记录（决策 D10）。
+> **KB-1~KB-6 实施细则以 `tmp/code-implementation-plan.md` 为准**（含 KB-1 改名 file-level 清单、KB-2 DDL、KB-3 组件清单、各阶段验收门槛与提交边界）。
 
 ## 6. 文档一致性核验
 
@@ -176,6 +185,10 @@
 ## 7. 最近变更
 
 > 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
+
+- 2026/8/14 17:40 · ZCode：**KB-1 概念改名交付**（文章→知识，纯改名零行为变更）——后端 81 个 Java 文件（27 个文件重命名：ArticleController→KnowledgeController、ArticlePublishedEvent→KnowledgePublishedEvent、PublicArticleController→PublicKnowledgeController、HotArticleCacheService→HotKnowledgeCacheService 等；审计常量 ARTICLE_PUBLISH→KNOWLEDGE_PUBLISH、缓存键 xlumen:article:*→xlumen:knowledge:*、接口路径 /api/v1/articles→/api/v1/knowledge 全量切换不保留旧路径）+ 前端 blog 38 个文件（路由 /articles/:id→/knowledge/:id、/studio/articles→/studio/knowledge、组件 ArticleListPage/ArticleEditorPage/ArticleDetailPage/ArticleQaDialog 改名、API URL 与 26 处界面文案「文章」→「知识」、E2E 断言同步）+ SQL 双轨（init 6 脚本物理改名 cnt_knowledge/knowledge_id/uk_release_ws_knowledge_version 等 + 新建幂等迁移脚本 sql/migration/85_kb_migration.sql，开发库 xlumen_dev 已执行迁移）；验证：mvn verify BUILD SUCCESS（8/8 模块，KnowledgeQueryDTOTest 4 测试）、前端 typecheck/lint/stylelint/test/build 全绿、E2E 9/9（blog 8 + admin 1）、grep 清零（后端 Article*/articles/cnt_article/ARTICLE_PUBLISH/xlumen:article 全 0 命中，前端「文章」/articles 路径全 0，仅保留 HTML5 <article> 语义标签）、运行时抽查 4 链路（公开列表/详情、登录 CRUD、知识问答 SSE、索引状态）；发现并处理：本地 Redis 需无密码启动（与 .env 一致）、开发库表注释历史乱码（8/14 事故遗留，非本次引入，已记录待修）；KB-2 待认领
+
+- 2026/8/14 16:59 · ZCode：知识平台化重构方案自检修正 + V2 规划扩充——统计数修正（MVP 39/V2 26/V3 12）、三实现决策落实（回收站独立软删列/目录按名称 DB 排序/缓存按库分片）、B01 左导航右内容定稿、V2 增项 5 个（作者主页/URL slug/知识库关注/知识置顶/回收站批量）+ 统计按库维度；总表 77→82 项（MVP 39/V2 31/V3 12）；代码仍未动。
 
 - 2026/8/14 16:04 · ZCode：知识平台化重构设计定稿 + 阶段 0 文档先行——多用户知识平台定位（D9 改写）、知识库→目录→知识三层体系（D16）、文章概念统一改名知识（D17）、RAG 按库切分（D13 改写）；PRODUCT 功能总表 73→77 项、PROTOTYPE 8 屏原型、BACKEND/FRONTEND/GLOBAL/README 同步；4 个开放问题全部确认（cnt_knowledge 物理改名、/api/v1/knowledge 不保留兼容、授权 V2、回收站 30 天）；阶段 1~6 已列入待办待认领。
 

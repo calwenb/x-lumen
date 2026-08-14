@@ -69,7 +69,7 @@ function submitSearch(): void {
           class="app-header__search-input"
           type="search"
           placeholder="搜索…"
-          aria-label="搜索文章"
+          aria-label="搜索知识"
           :prefix-icon="Search"
         />
       </form>

@@ -9,8 +9,8 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 文章审核记录实体（pub_review，F-0902/F-0903）：AI 审校结果快照 ai_result_json，
- * article_title 冗余展示字段（列表免 N+1）；状态 PENDING/APPROVED/REJECTED。
+ * 知识审核记录实体（pub_review，F-0902/F-0903）：AI 审校结果快照 ai_result_json，
+ * knowledge_title 冗余展示字段（列表免 N+1）；状态 PENDING/APPROVED/REJECTED。
  *
  * @author calwen
  * @date 2026/8/13
@@ -27,13 +27,13 @@ public class ReviewEntity {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
-    /** 文章 ID（逻辑外键 cnt_article.id）。 */
-    private Long articleId;
+    /** 知识 ID（逻辑外键 cnt_knowledge.id）。 */
+    private Long knowledgeId;
 
-    /** 文章标题（冗余展示字段）。 */
-    private String articleTitle;
+    /** 知识标题（冗余展示字段）。 */
+    private String knowledgeTitle;
 
-    /** 文章版本号（提交审核时快照）。 */
+    /** 知识版本号（提交审核时快照）。 */
     private Long version;
 
     /** 审核人用户 ID（逻辑外键 iam_user.id）。 */

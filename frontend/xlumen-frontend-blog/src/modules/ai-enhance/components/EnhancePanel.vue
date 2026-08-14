@@ -3,12 +3,12 @@
 // 通过 emit('apply', field, value) 交由编辑器页决定字段落点（如 title/keywords/description/summary）。
 import { computed, ref } from 'vue'
 
-import { enhanceArticle, parseEnhanceResult } from '@/modules/ai-enhance/api/enhance'
+import { enhanceKnowledge, parseEnhanceResult } from '@/modules/ai-enhance/api/enhance'
 
 import type { EnhanceScene } from '@/modules/ai-enhance/api/enhance'
 
 const props = defineProps<{
-  articleId?: string
+  knowledgeId?: string
   content: string
 }>()
 
@@ -44,8 +44,8 @@ async function generate(): Promise<void> {
   error.value = ''
   result.value = null
   try {
-    const res = await enhanceArticle({
-      ...(props.articleId ? { articleId: props.articleId } : {}),
+    const res = await enhanceKnowledge({
+      ...(props.knowledgeId ? { knowledgeId: props.knowledgeId } : {}),
       scene: scene.value,
       content: props.content,
     })

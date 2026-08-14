@@ -17,20 +17,20 @@ import java.util.List;
 public interface KnowledgeApi {
 
     /**
-     * 索引文章（F-0402）：切片→Embedding→写新索引→检索校验→激活→清理旧版本。
+     * 索引知识（F-0402）：切片→Embedding→写新索引→检索校验→激活→清理旧版本。
      * 异步流水线失败不影响发布（索引状态可查询重试）。
      *
      * @param request 索引请求（含正文快照）
      */
-    void indexArticle(IndexRequestDTO request);
+    void indexKnowledge(IndexRequestDTO request);
 
     /**
-     * 移除文章索引（删除/下架同步出索引，F-0402）。
+     * 移除知识索引（删除/下架同步出索引，F-0402）。
      *
      * @param workspaceId 工作空间 ID
-     * @param articleId   文章 ID
+     * @param knowledgeId   知识 ID
      */
-    void removeArticle(Long workspaceId, Long articleId);
+    void removeKnowledge(Long workspaceId, Long knowledgeId);
 
     /**
      * 向量检索（F-0407 按身份过滤由 visibilityScope 入参决定）。

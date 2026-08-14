@@ -64,7 +64,7 @@ public class ChatServiceImpl implements ChatService {
     private static final String SYSTEM_PROMPT = "你是小光，一名基于知识库的问答助手。"
             + "请基于以下检索证据回答，引用原文时用 [1][2] 标注对应证据编号；"
             + "无法溯源的内容请明确说明是模型生成而非事实；"
-            + "若没有任何检索证据，请明确说明没有相关文章依据。";
+            + "若没有任何检索证据，请明确说明没有相关知识依据。";
 
     private final KnowledgeApi knowledgeApi;
     private final WorkspaceApi workspaceApi;
@@ -93,12 +93,12 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public SseEmitter askArticle(Long articleId, ChatRequestDTO dto) {
-        return doStream(dto.getQuery(), dto.getConversationId(), articleId);
+    public SseEmitter askKnowledge(Long knowledgeId, ChatRequestDTO dto) {
+        return doStream(dto.getQuery(), dto.getConversationId(), knowledgeId);
     }
 
     /** 创建 SSE 并异步执行：会话/检索/生成/持久化都在独立线程，控制器立即返回 emitter。 */
-    private SseEmitter doStream(String query, Long conversationId, Long articleId) {
+    private SseEmitter doStream(String query, Long conversationId, Long knowledgeId) {
         if (StrUtil.isBlank(query)) {
             throw new BizException(ErrorCode.INVALID_PARAM, "提问内容不能为空");
         }
@@ -111,19 +111,19 @@ public class ChatServiceImpl implements ChatService {
         SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MILLIS);
         final Long ws = targetWs;
         final Long uid = userId;
-        chatStreamExecutor.execute(() -> runStream(ws, uid, query, conversationId, articleId, emitter));
+        chatStreamExecutor.execute(() -> runStream(ws, uid, query, conversationId, knowledgeId, emitter));
         return emitter;
     }
 
     /** 流式主流程：会话解析 → 用户消息落库 → 检索 → QA 流式 → citations → 助手消息落库。 */
     private void runStream(Long workspaceId, Long userId, String query,
-                           Long conversationId, Long articleId, SseEmitter emitter) {
+                           Long conversationId, Long knowledgeId, SseEmitter emitter) {
         try {
             ChatConversationEntity conversation = resolveConversation(workspaceId, userId, query, conversationId);
             List<ChatMessageEntity> history = loadHistory(conversation.getId());
             saveMessage(conversation.getId(), workspaceId, userId, "USER", query, null);
 
-            List<SearchResultDTO> evidences = retrieve(workspaceId, userId, query, articleId);
+            List<SearchResultDTO> evidences = retrieve(workspaceId, userId, query, knowledgeId);
             List<ChatMessage> messages = new ArrayList<>();
             messages.add(ChatMessage.builder().role("system").content(buildSystemPrompt(evidences)).build());
             for (ChatMessageEntity m : history) {
@@ -269,13 +269,13 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /** RAG 检索：访客仅公开、登录含私有；检索异常降级为空证据。 */
-    private List<SearchResultDTO> retrieve(Long workspaceId, Long userId, String query, Long articleId) {
+    private List<SearchResultDTO> retrieve(Long workspaceId, Long userId, String query, Long knowledgeId) {
         SearchRequestDTO request = SearchRequestDTO.builder()
                 .workspaceId(workspaceId)
                 .query(query)
                 .visibilityScope(userId == null ? SCOPE_PUBLIC_ONLY : SCOPE_ALL)
                 .topK(RETRIEVAL_TOP_K)
-                .articleId(articleId)
+                .knowledgeId(knowledgeId)
                 .build();
         try {
             return knowledgeApi.search(request);
@@ -288,7 +288,7 @@ public class ChatServiceImpl implements ChatService {
     /** 组装 System prompt：证据编号 + 原文片段，无证据显式说明。 */
     private String buildSystemPrompt(List<SearchResultDTO> evidences) {
         if (evidences == null || evidences.isEmpty()) {
-            return SYSTEM_PROMPT + "（本次未检索到任何相关文章证据。）";
+            return SYSTEM_PROMPT + "（本次未检索到任何相关知识证据。）";
         }
         StringBuilder sb = new StringBuilder(SYSTEM_PROMPT).append("\n\n检索证据：\n");
         for (int i = 0; i < evidences.size(); i++) {
@@ -302,13 +302,13 @@ public class ChatServiceImpl implements ChatService {
         return sb.toString();
     }
 
-    /** 组装引用证据 JSON 数组（articleId 转 String 保 Long 精度）。 */
+    /** 组装引用证据 JSON 数组（knowledgeId 转 String 保 Long 精度）。 */
     private String toCitationsJson(List<SearchResultDTO> evidences) {
         JSONArray arr = new JSONArray();
         if (evidences != null) {
             for (SearchResultDTO e : evidences) {
                 arr.add(JSONUtil.createObj()
-                        .set("articleId", String.valueOf(e.getArticleId()))
+                        .set("knowledgeId", String.valueOf(e.getKnowledgeId()))
                         .set("title", e.getTitle())
                         .set("chunkSeq", e.getChunkSeq())
                         .set("headingAnchor", e.getHeadingAnchor())

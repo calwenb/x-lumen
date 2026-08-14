@@ -31,10 +31,10 @@ public class ReviewController {
     @Resource
     private ReviewService reviewService;
 
-    /** 提交审核（F-0902）：文章进入 PENDING_REVIEW 或直接 APPROVED（强制审核关闭）。 */
+    /** 提交审核（F-0902）：知识进入 PENDING_REVIEW 或直接 APPROVED（强制审核关闭）。 */
     @PostMapping
     public ApiResponse<ReviewVO> submitReview(@Valid @RequestBody CreateReviewDTO dto) {
-        return ApiResponse.success(reviewService.submitReview(dto.getArticleId()));
+        return ApiResponse.success(reviewService.submitReview(dto.getKnowledgeId()));
     }
 
     /** 审核列表（F-0902）：按状态筛选 + 分页（查询参数由 ReviewQueryDTO 自动绑定）。 */
@@ -49,13 +49,13 @@ public class ReviewController {
         return ApiResponse.success(reviewService.getReview(id));
     }
 
-    /** 审核通过（F-0903）：文章迁移 APPROVED(4)。 */
+    /** 审核通过（F-0903）：知识迁移 APPROVED(4)。 */
     @PostMapping("/{id}/approve")
     public ApiResponse<ReviewVO> approve(@PathVariable Long id, @Valid @RequestBody ApproveDTO dto) {
         return ApiResponse.success(reviewService.approve(id, dto));
     }
 
-    /** 审核驳回（F-0903）：文章回 DRAFT(2)，写审计 REVIEW_REJECT。 */
+    /** 审核驳回（F-0903）：知识回 DRAFT(2)，写审计 REVIEW_REJECT。 */
     @PostMapping("/{id}/reject")
     public ApiResponse<Void> reject(@PathVariable Long id, @Valid @RequestBody RejectDTO dto) {
         reviewService.reject(id, dto);

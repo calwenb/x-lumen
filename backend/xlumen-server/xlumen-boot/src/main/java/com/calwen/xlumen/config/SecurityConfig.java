@@ -54,8 +54,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // 博客前台公开读（F-0201~F-0203，B01~B04）：GET 全部匿名；阅读量上报匿名；读者纠错匿名（F-1001）；评论/点赞需登录
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/public/articles/*/view").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/public/articles/*/feedback").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/public/knowledge/*/view").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/public/knowledge/*/feedback").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))

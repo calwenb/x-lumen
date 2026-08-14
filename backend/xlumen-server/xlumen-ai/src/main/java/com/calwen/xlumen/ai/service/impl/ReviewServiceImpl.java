@@ -50,10 +50,10 @@ public class ReviewServiceImpl implements ReviewService {
         checkHeterogeneous(workspaceId);
         String title = dto.getTitle() == null ? "" : dto.getTitle().trim();
         String inputJson = JSONUtil.toJsonStr(JSONUtil.createObj()
-                .set("articleId", dto.getArticleId())
+                .set("knowledgeId", dto.getKnowledgeId())
                 .set("content", content)
                 .set("title", title));
-        String idempotencyKey = "review:" + hash(dto.getArticleId() + "|" + content);
+        String idempotencyKey = "review:" + hash(dto.getKnowledgeId() + "|" + content);
         return aiTaskService.submit(workspaceId, userId, AiScene.REVIEWER, inputJson, idempotencyKey);
     }
 

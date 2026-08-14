@@ -1,4 +1,4 @@
--- 70_chat.sql：xlumen-ai 模块 chat 域（chat_ AI 对话/文章级问答/访客助手）
+-- 70_chat.sql：xlumen-ai 模块 chat 域（chat_ AI 对话/知识级问答/访客助手）
 -- M08（F-0701~F-0702）落地：chat_conversation（会话）+ chat_message（消息）。
 -- 消息 citations_json 为检索证据快照（SearchResultDTO 数组），支持引用溯源跳转原文。
 

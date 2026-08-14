@@ -60,13 +60,13 @@ public class EnhanceServiceImpl implements EnhanceService {
 
         AiEnhanceResultEntity entity = new AiEnhanceResultEntity();
         entity.setWorkspaceId(workspaceId);
-        entity.setArticleId(dto.getArticleId());
+        entity.setKnowledgeId(dto.getKnowledgeId());
         entity.setScene(scene.name());
         entity.setResultJson(resultJson);
         enhanceResultMapper.insert(entity);
         return EnhanceResultVO.builder()
                 .id(entity.getId())
-                .articleId(entity.getArticleId())
+                .knowledgeId(entity.getKnowledgeId())
                 .scene(entity.getScene())
                 .resultJson(entity.getResultJson())
                 .createdAt(entity.getCreatedAt())

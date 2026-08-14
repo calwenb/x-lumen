@@ -1,18 +1,18 @@
 <script setup lang="ts">
-// 博客首页（B01，F-0201/F-0202）：最新公开文章列表 + 分类/标签侧栏。
-// 关键状态：加载骨架、无文章空态、失败可重试；私有/草稿文章由后端过滤（F-0307）。
+// 博客首页（B01，F-0201/F-0202）：最新公开知识列表 + 分类/标签侧栏。
+// 关键状态：加载骨架、无知识空态、失败可重试；私有/草稿知识由后端过滤（F-0307）。
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Document } from '@element-plus/icons-vue'
 
-import { fetchArticles, fetchCategories, fetchTags } from '@/modules/publishing/api/public'
+import { fetchKnowledges, fetchCategories, fetchTags } from '@/modules/publishing/api/public'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
 
-import type { ArticleCard, CategoryCount } from '@/modules/publishing/api/public'
+import type { KnowledgeCard, CategoryCount } from '@/modules/publishing/api/public'
 
 const PAGE_SIZE = 10
 
-const articles = ref<ArticleCard[]>([])
+const knowledges = ref<KnowledgeCard[]>([])
 const categories = ref<CategoryCount[]>([])
 const tags = ref<CategoryCount[]>([])
 const pageNo = ref(1)
@@ -29,8 +29,8 @@ async function load(targetPage: number): Promise<void> {
   loading.value = true
   loadError.value = false
   try {
-    const page = await fetchArticles({ pageNo: targetPage, pageSize: PAGE_SIZE })
-    articles.value = page.records
+    const page = await fetchKnowledges({ pageNo: targetPage, pageSize: PAGE_SIZE })
+    knowledges.value = page.records
     total.value = page.total
     pageNo.value = page.pageNo
   } catch {
@@ -53,45 +53,45 @@ onMounted(async () => {
   <main class="home">
     <div class="home__layout">
       <section class="home__main">
-        <h1 class="home__title">最新文章</h1>
+        <h1 class="home__title">最新知识</h1>
 
         <div v-if="loading" class="home__state">
           <div v-for="i in 3" :key="i" class="home__skeleton" aria-hidden="true" />
         </div>
         <div v-else-if="loadError" class="home__state">
-          <p class="home__state-text">文章加载失败</p>
+          <p class="home__state-text">知识加载失败</p>
           <button type="button" class="home__retry" @click="load(pageNo)">重试</button>
         </div>
         <template v-else>
-          <div v-if="articles.length === 0" class="home__empty">
+          <div v-if="knowledges.length === 0" class="home__empty">
             <el-icon class="home__empty-icon"><Document /></el-icon>
-            <p>还没有文章，敬请期待。</p>
+            <p>还没有知识，敬请期待。</p>
           </div>
-          <article v-for="article in articles" v-else :key="article.id" class="article-card">
-            <RouterLink class="article-card__title" :to="`/articles/${article.id}`">
-              {{ article.title }}
+          <article v-for="knowledge in knowledges" v-else :key="knowledge.id" class="knowledge-card">
+            <RouterLink class="knowledge-card__title" :to="`/knowledge/${knowledge.id}`">
+              {{ knowledge.title }}
             </RouterLink>
-            <p class="article-card__summary">{{ article.summary }}</p>
-            <div class="article-card__meta">
-              <span>{{ article.authorName }}</span>
-              <span>{{ formatDate(article.publishedAt) }}</span>
-              <span>{{ article.readMinutes }} 分钟阅读</span>
-              <span>{{ article.viewCount }} 阅读</span>
-              <span>{{ article.commentCount }} 评论</span>
-              <span>{{ article.likeCount }} 点赞</span>
+            <p class="knowledge-card__summary">{{ knowledge.summary }}</p>
+            <div class="knowledge-card__meta">
+              <span>{{ knowledge.authorName }}</span>
+              <span>{{ formatDate(knowledge.publishedAt) }}</span>
+              <span>{{ knowledge.readMinutes }} 分钟阅读</span>
+              <span>{{ knowledge.viewCount }} 阅读</span>
+              <span>{{ knowledge.commentCount }} 评论</span>
+              <span>{{ knowledge.likeCount }} 点赞</span>
             </div>
-            <div class="article-card__tags">
+            <div class="knowledge-card__tags">
               <RouterLink
-                v-if="article.category"
-                class="article-card__tag"
-                :to="`/search?category=${encodeURIComponent(article.category)}`"
+                v-if="knowledge.category"
+                class="knowledge-card__tag"
+                :to="`/search?category=${encodeURIComponent(knowledge.category)}`"
               >
-                {{ article.category }}
+                {{ knowledge.category }}
               </RouterLink>
               <RouterLink
-                v-for="tag in article.tags"
+                v-for="tag in knowledge.tags"
                 :key="tag"
-                class="article-card__tag"
+                class="knowledge-card__tag"
                 :to="`/search?tag=${encodeURIComponent(tag)}`"
               >
                 # {{ tag }}
@@ -204,7 +204,7 @@ onMounted(async () => {
   margin: 0;
 }
 
-.article-card {
+.knowledge-card {
   padding: var(--xl-space-4) var(--xl-space-6);
   margin-bottom: var(--xl-space-4);
   border: 1px solid var(--xl-border);
@@ -216,30 +216,30 @@ onMounted(async () => {
     transform var(--xl-transition);
 }
 
-.article-card:hover {
+.knowledge-card:hover {
   box-shadow: var(--xl-shadow-md);
   transform: translateY(-2px);
 }
 
-.article-card__title {
+.knowledge-card__title {
   color: var(--xl-text-primary);
   font-size: 18px;
   font-weight: 600;
   text-decoration: none;
 }
 
-.article-card__title:hover {
+.knowledge-card__title:hover {
   color: var(--xl-color-primary);
 }
 
-.article-card__summary {
+.knowledge-card__summary {
   margin: var(--xl-space-2) 0;
   color: var(--xl-text-secondary);
   font-size: 14px;
   line-height: 1.7;
 }
 
-.article-card__meta {
+.knowledge-card__meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--xl-space-3);
@@ -247,14 +247,14 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-.article-card__tags {
+.knowledge-card__tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--xl-space-2);
   margin-top: var(--xl-space-3);
 }
 
-.article-card__tag {
+.knowledge-card__tag {
   padding: 2px 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
@@ -263,7 +263,7 @@ onMounted(async () => {
   text-decoration: none;
 }
 
-.article-card__tag:hover {
+.knowledge-card__tag:hover {
   background: color-mix(in srgb, var(--xl-color-primary) 16%, transparent);
 }
 

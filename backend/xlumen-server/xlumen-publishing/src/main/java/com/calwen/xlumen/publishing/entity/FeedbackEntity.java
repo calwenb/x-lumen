@@ -27,8 +27,8 @@ public class FeedbackEntity {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
-    /** 文章 ID（逻辑外键 cnt_article.id）。 */
-    private Long articleId;
+    /** 知识 ID（逻辑外键 cnt_knowledge.id）。 */
+    private Long knowledgeId;
 
     /** 提交用户 ID（逻辑外键 iam_user.id，可空=匿名）。 */
     private Long userId;

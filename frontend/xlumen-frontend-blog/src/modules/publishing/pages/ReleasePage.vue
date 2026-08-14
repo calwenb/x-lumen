@@ -1,22 +1,22 @@
 <script setup lang="ts">
-// 发布管理（B13，F-0905/F-0906）：已通过文章列表（调 content fetchArticles status=4）→
+// 发布管理（B13，F-0905/F-0906）：已通过知识列表（调 content fetchKnowledges status=4）→
 // 每篇选可见性 + 立即/定时发布（二次确认）+ 下方发布记录列表。
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-import { fetchArticles, VISIBILITY_LABELS } from '@/modules/content/api/article'
+import { fetchKnowledges, VISIBILITY_LABELS } from '@/modules/content/api/knowledge'
 import { createRelease, fetchReleases } from '@/modules/publishing/api/release'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
 
-import type { ArticleListItem } from '@/modules/content/api/article'
+import type { KnowledgeListItem } from '@/modules/content/api/knowledge'
 import type { ReleaseVO } from '@/modules/publishing/api/release'
 
 const PAGE_SIZE = 10
 const APPROVED_STATUS = 4
 
-/** 已通过文章行（含本地发布控制态）。 */
+/** 已通过知识行（含本地发布控制态）。 */
 interface ReleaseRow {
-  article: ArticleListItem
+  knowledge: KnowledgeListItem
   visibility: number
   publishAt: string
   releasing: boolean
@@ -52,10 +52,10 @@ async function loadApproved(): Promise<void> {
   approvedLoading.value = true
   approvedError.value = false
   try {
-    const page = await fetchArticles({ status: APPROVED_STATUS, pageNo: 1, pageSize: 50 })
-    approved.value = page.records.map((article) => ({
-      article,
-      visibility: article.visibility,
+    const page = await fetchKnowledges({ status: APPROVED_STATUS, pageNo: 1, pageSize: 50 })
+    approved.value = page.records.map((knowledge) => ({
+      knowledge,
+      visibility: knowledge.visibility,
       publishAt: '',
       releasing: false,
     }))
@@ -84,7 +84,7 @@ async function loadReleases(targetPage: number): Promise<void> {
 async function releaseNow(row: ReleaseRow): Promise<void> {
   if (row.releasing) return
   try {
-    await ElMessageBox.confirm(`确认立即发布「${row.article.title}」吗？`, '立即发布', {
+    await ElMessageBox.confirm(`确认立即发布「${row.knowledge.title}」吗？`, '立即发布', {
       confirmButtonText: '立即发布',
       cancelButtonText: '取消',
       type: 'warning',
@@ -104,7 +104,7 @@ async function releaseScheduled(row: ReleaseRow): Promise<void> {
   }
   try {
     await ElMessageBox.confirm(
-      `确认于 ${row.publishAt.replace('T', ' ')} 定时发布「${row.article.title}」吗？`,
+      `确认于 ${row.publishAt.replace('T', ' ')} 定时发布「${row.knowledge.title}」吗？`,
       '定时发布',
       {
         confirmButtonText: '定时发布',
@@ -123,8 +123,8 @@ async function doRelease(row: ReleaseRow, publishAt?: string): Promise<void> {
   row.releasing = true
   try {
     await createRelease({
-      articleId: row.article.id,
-      version: row.article.version,
+      knowledgeId: row.knowledge.id,
+      version: row.knowledge.version,
       visibility: row.visibility,
       ...(publishAt ? { publishAt } : {}),
     })
@@ -150,26 +150,26 @@ onMounted(() => {
     <header class="release-page__header">
       <h1 class="release-page__title">发布管理</h1>
       <p class="release-page__intro">
-        对已通过审核的文章执行立即/定时发布，发布成功自动建立 RAG 索引。
+        对已通过审核的知识执行立即/定时发布，发布成功自动建立 RAG 索引。
       </p>
     </header>
 
     <section class="release-page__section">
-      <h2 class="release-page__section-title">待发布文章（已通过审核）</h2>
+      <h2 class="release-page__section-title">待发布知识（已通过审核）</h2>
       <div v-if="approvedLoading" class="release-page__state">
         <el-skeleton :rows="4" animated />
       </div>
       <div v-else-if="approvedError" class="release-page__state">
-        <p>待发布文章加载失败</p>
+        <p>待发布知识加载失败</p>
         <el-button type="primary" plain size="small" @click="loadApproved">重试</el-button>
       </div>
-      <div v-else-if="approved.length === 0" class="release-page__state">暂无待发布文章。</div>
+      <div v-else-if="approved.length === 0" class="release-page__state">暂无待发布知识。</div>
       <ul v-else class="release-page__list">
-        <li v-for="row in approved" :key="row.article.id" class="release-row">
+        <li v-for="row in approved" :key="row.knowledge.id" class="release-row">
           <div class="release-row__main">
-            <span class="release-row__title">{{ row.article.title }}</span>
+            <span class="release-row__title">{{ row.knowledge.title }}</span>
             <span class="release-row__meta">
-              v{{ row.article.version }} · {{ row.article.category || '未分类' }}
+              v{{ row.knowledge.version }} · {{ row.knowledge.category || '未分类' }}
             </span>
           </div>
           <div class="release-row__actions">
@@ -220,7 +220,7 @@ onMounted(() => {
       <template v-else>
         <ul class="release-page__records">
           <li v-for="record in releases" :key="record.id" class="release-record">
-            <span class="release-record__title">{{ record.articleTitle }}</span>
+            <span class="release-record__title">{{ record.knowledgeTitle }}</span>
             <span class="release-record__meta">
               {{ VISIBILITY_LABELS[record.visibility] ?? record.visibility }} ·
               {{ RELEASE_STATUS_LABELS[record.status] ?? record.status }}

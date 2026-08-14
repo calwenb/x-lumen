@@ -8,7 +8,7 @@ import type { PageResult } from '@/modules/publishing/api/public'
 
 /** 发布入参（立即发布不带 publishAt，定时发布带 publishAt）。 */
 export interface ReleaseRequest {
-  articleId: string
+  knowledgeId: string
   version: string
   visibility: number
   publishAt?: string
@@ -24,8 +24,8 @@ export interface ReleaseSubmitted {
 /** 发布记录。 */
 export interface ReleaseVO {
   id: string
-  articleId: string
-  articleTitle: string
+  knowledgeId: string
+  knowledgeTitle: string
   version: string
   visibility: number
   publishAt: string | null
@@ -42,8 +42,8 @@ interface RawReleaseSubmitted {
 
 interface RawRelease {
   id: string
-  articleId: string
-  articleTitle: string
+  knowledgeId: string
+  knowledgeTitle: string
   version: string
   visibility: string
   publishAt: string | null
@@ -62,8 +62,8 @@ interface RawReleasePage {
 function normalizeRelease(raw: RawRelease): ReleaseVO {
   return {
     id: String(raw.id),
-    articleId: String(raw.articleId),
-    articleTitle: raw.articleTitle ?? '',
+    knowledgeId: String(raw.knowledgeId),
+    knowledgeTitle: raw.knowledgeTitle ?? '',
     version: String(raw.version ?? ''),
     visibility: Number(raw.visibility ?? 0),
     publishAt: raw.publishAt ?? null,

@@ -34,7 +34,7 @@ public class LikeServiceImpl implements LikeService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean toggleLike(Long articleId) {
+    public boolean toggleLike(Long knowledgeId) {
         Long userId = WorkspaceContext.userId();
         if (userId == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "请先登录");
@@ -42,13 +42,13 @@ public class LikeServiceImpl implements LikeService {
         Long workspaceId = WorkspaceContext.workspaceId();
         LikeEntity like = likeMapper.selectOne(Wrappers.<LikeEntity>lambdaQuery()
                 .eq(LikeEntity::getWorkspaceId, workspaceId)
-                .eq(LikeEntity::getArticleId, articleId)
+                .eq(LikeEntity::getKnowledgeId, knowledgeId)
                 .eq(LikeEntity::getUserId, userId));
         if (like == null) {
             like = new LikeEntity();
             like.setId(IdUtil.getSnowflakeNextId());
             like.setWorkspaceId(workspaceId);
-            like.setArticleId(articleId);
+            like.setKnowledgeId(knowledgeId);
             like.setUserId(userId);
             like.setStatus(LIKE_ON);
             likeMapper.insert(like);
@@ -61,33 +61,33 @@ public class LikeServiceImpl implements LikeService {
     }
 
     @Override
-    public boolean isLiked(Long articleId) {
-        return isLiked(WorkspaceContext.workspaceId(), articleId, WorkspaceContext.userId());
+    public boolean isLiked(Long knowledgeId) {
+        return isLiked(WorkspaceContext.workspaceId(), knowledgeId, WorkspaceContext.userId());
     }
 
     @Override
-    public boolean isLiked(Long workspaceId, Long articleId, Long userId) {
+    public boolean isLiked(Long workspaceId, Long knowledgeId, Long userId) {
         if (userId == null) {
             return false;
         }
         LikeEntity like = likeMapper.selectOne(Wrappers.<LikeEntity>lambdaQuery()
                 .eq(LikeEntity::getWorkspaceId, workspaceId)
-                .eq(LikeEntity::getArticleId, articleId)
+                .eq(LikeEntity::getKnowledgeId, knowledgeId)
                 .eq(LikeEntity::getUserId, userId));
         return like != null && like.getStatus() != null && like.getStatus() == LIKE_ON;
     }
 
     @Override
-    public Map<Long, Long> countLikes(Long workspaceId, List<Long> articleIds) {
-        if (articleIds == null || articleIds.isEmpty()) {
+    public Map<Long, Long> countLikes(Long workspaceId, List<Long> knowledgeIds) {
+        if (knowledgeIds == null || knowledgeIds.isEmpty()) {
             return Map.of();
         }
         List<LikeEntity> rows = likeMapper.selectList(Wrappers.<LikeEntity>lambdaQuery()
-                .select(LikeEntity::getArticleId)
+                .select(LikeEntity::getKnowledgeId)
                 .eq(LikeEntity::getWorkspaceId, workspaceId)
-                .in(LikeEntity::getArticleId, articleIds)
+                .in(LikeEntity::getKnowledgeId, knowledgeIds)
                 .eq(LikeEntity::getStatus, LIKE_ON));
         return rows.stream().collect(Collectors.groupingBy(
-                LikeEntity::getArticleId, Collectors.counting()));
+                LikeEntity::getKnowledgeId, Collectors.counting()));
     }
 }

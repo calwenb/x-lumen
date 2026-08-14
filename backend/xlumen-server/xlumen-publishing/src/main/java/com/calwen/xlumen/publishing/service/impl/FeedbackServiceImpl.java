@@ -52,19 +52,19 @@ public class FeedbackServiceImpl implements FeedbackService {
     private StringRedisTemplate stringRedisTemplate;
 
     @Override
-    public FeedbackVO createFeedback(Long articleId, CreateFeedbackDTO dto) {
+    public FeedbackVO createFeedback(Long knowledgeId, CreateFeedbackDTO dto) {
         Long workspaceId = workspaceApi.getDefaultWorkspaceId();
         if (workspaceId == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "博客空间未初始化");
         }
         checkRateLimit(dto.getIp());
-        if (contentApi.getEditorArticle(workspaceId, articleId) == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "文章不存在");
+        if (contentApi.getEditorKnowledge(workspaceId, knowledgeId) == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
         }
 
         FeedbackEntity entity = new FeedbackEntity();
         entity.setWorkspaceId(workspaceId);
-        entity.setArticleId(articleId);
+        entity.setKnowledgeId(knowledgeId);
         entity.setUserId(WorkspaceContext.userId());
         entity.setPosition(dto.getPosition());
         entity.setProblem(dto.getProblem().trim());

@@ -6,7 +6,7 @@ import { ref } from 'vue'
 import { submitFeedback } from '@/modules/engagement/api/feedback'
 
 const props = defineProps<{
-  articleId: string
+  knowledgeId: string
 }>()
 
 const emit = defineEmits<{
@@ -29,7 +29,7 @@ async function submit(): Promise<void> {
   submitting.value = true
   error.value = ''
   try {
-    const result = await submitFeedback(props.articleId, {
+    const result = await submitFeedback(props.knowledgeId, {
       problem: value,
       ...(position.value.trim() ? { position: position.value.trim() } : {}),
       ...(evidence.value.trim() ? { evidence: evidence.value.trim() } : {}),

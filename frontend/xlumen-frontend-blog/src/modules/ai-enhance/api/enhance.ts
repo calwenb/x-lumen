@@ -7,7 +7,7 @@ import type { ApiResponse } from '@/api/types'
 export type EnhanceScene = 'SUMMARY' | 'SEO'
 
 export interface EnhanceRequest {
-  articleId?: string
+  knowledgeId?: string
   scene: EnhanceScene
   content: string
 }
@@ -18,7 +18,7 @@ export interface EnhanceResult {
 }
 
 /** 生成摘要/SEO（F-0801/F-0802）。 */
-export async function enhanceArticle(payload: EnhanceRequest): Promise<EnhanceResult> {
+export async function enhanceKnowledge(payload: EnhanceRequest): Promise<EnhanceResult> {
   const { data } = await http.post<ApiResponse<EnhanceResult>>('/ai/enhance', payload)
   const result = unwrap(data)
   return {

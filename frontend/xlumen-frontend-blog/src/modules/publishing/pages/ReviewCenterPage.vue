@@ -127,7 +127,7 @@ function closeDetail(): void {
 async function approve(): Promise<void> {
   if (!selected.value || acting.value) return
   try {
-    await ElMessageBox.confirm(`确认通过「${selected.value.articleTitle}」的审核？`, '通过审核', {
+    await ElMessageBox.confirm(`确认通过「${selected.value.knowledgeTitle}」的审核？`, '通过审核', {
       confirmButtonText: '通过',
       cancelButtonText: '取消',
       type: 'warning',
@@ -245,7 +245,7 @@ onMounted(() => {
             :class="{ 'review-item__main--active': selectedId === review.id }"
             @click="select(review.id)"
           >
-            <span class="review-item__title">{{ review.articleTitle }}</span>
+            <span class="review-item__title">{{ review.knowledgeTitle }}</span>
             <span class="review-item__meta">
               <el-tag
                 :type="
@@ -277,7 +277,7 @@ onMounted(() => {
       </div>
       <template v-else-if="selected">
         <header class="review-detail__header">
-          <h2 class="review-detail__title">{{ selected.articleTitle }}</h2>
+          <h2 class="review-detail__title">{{ selected.knowledgeTitle }}</h2>
           <button type="button" class="review-detail__close" @click="closeDetail">收起</button>
         </header>
 

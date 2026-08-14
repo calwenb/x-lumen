@@ -40,6 +40,6 @@ public class RetrievalServiceImpl implements RetrievalService {
             return List.of();
         }
         return vectorStore.search(embeddings.get(0), request.getWorkspaceId(),
-                request.getVisibilityScope(), request.getArticleId(), topK);
+                request.getVisibilityScope(), request.getKnowledgeId(), topK);
     }
 }

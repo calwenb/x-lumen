@@ -14,8 +14,8 @@ test('注册后登录进入博客首页并显示用户名', async ({ page }) => 
   await page.getByLabel('密码').fill('Test123456')
   await page.getByRole('button', { name: '注册', exact: true }).click()
 
-  // 注册成功即登录：回到首页（M03 起为 B01 最新文章）并显示用户名
-  await expect(page.getByRole('heading', { name: '最新文章' })).toBeVisible()
+  // 注册成功即登录：回到首页（M03 起为 B01 最新知识）并显示用户名
+  await expect(page.getByRole('heading', { name: '最新知识' })).toBeVisible()
   await expect(page.getByText(username, { exact: true })).toBeVisible()
 
   // 登出后回到登录入口

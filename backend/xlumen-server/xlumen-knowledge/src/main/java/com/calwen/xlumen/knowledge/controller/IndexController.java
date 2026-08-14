@@ -61,13 +61,13 @@ public class IndexController {
     /**
      * 索引状态查询（F-0403/F-0404）：未索引返回 data=null。
      *
-     * @param articleId 文章 ID
+     * @param knowledgeId 知识 ID
      * @return 索引状态或 null
      */
-    @GetMapping("/articles/{articleId}/index-status")
-    public ApiResponse<IndexStatusVO> indexStatus(@PathVariable Long articleId) {
+    @GetMapping("/knowledge/{knowledgeId}/index-status")
+    public ApiResponse<IndexStatusVO> indexStatus(@PathVariable Long knowledgeId) {
         Long workspaceId = requireWorkspace();
-        return ApiResponse.success(indexPipelineService.getIndexStatus(workspaceId, articleId));
+        return ApiResponse.success(indexPipelineService.getIndexStatus(workspaceId, knowledgeId));
     }
 
     /** 从会话上下文取工作空间 ID，未登录抛 401。 */

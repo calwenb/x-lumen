@@ -1,4 +1,4 @@
-// publishing 模块 API：博客前台公开读（F-0201/F-0202）——文章/分类/标签（后端 xlumen-publishing review/release 域）。
+// publishing 模块 API：博客前台公开读（F-0201/F-0202）——知识/分类/标签（后端 xlumen-publishing review/release 域）。
 // 公开读为匿名接口；评论/点赞（F-0203）由 engagement 模块 API 提供。
 // ID 类字段为 string（雪花 ID 超出 JS 安全整数，后端 Long 序列化为 String，BACKEND.md §5.3）；
 // 统计/分页数值在 API 层 Number() 还原，页面代码不感知。
@@ -6,8 +6,8 @@ import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
 
-/** 文章卡片（B01 列表）。 */
-export interface ArticleCard {
+/** 知识卡片（B01 列表）。 */
+export interface KnowledgeCard {
   id: string
   title: string
   summary: string
@@ -21,8 +21,8 @@ export interface ArticleCard {
   publishedAt: string
 }
 
-/** 文章详情（B02）。 */
-export interface ArticleDetail extends ArticleCard {
+/** 知识详情（B02）。 */
+export interface KnowledgeDetail extends KnowledgeCard {
   content: string
   liked: boolean
   updatedAt: string
@@ -42,7 +42,7 @@ export interface PageResult<T> {
   records: T[]
 }
 
-export interface ArticleQuery {
+export interface KnowledgeQuery {
   keyword?: string
   category?: string
   tag?: string
@@ -55,9 +55,9 @@ function toNumber(value: unknown): number {
   return Number(value ?? 0)
 }
 
-/** 分页查询公开文章（关键词/分类/标签组合筛选，F-0201/F-0202）。 */
-export async function fetchArticles(query: ArticleQuery): Promise<PageResult<ArticleCard>> {
-  const { data } = await http.get<ApiResponse<RawPage<RawCard>>>('/public/articles', { params: query })
+/** 分页查询公开知识（关键词/分类/标签组合筛选，F-0201/F-0202）。 */
+export async function fetchKnowledges(query: KnowledgeQuery): Promise<PageResult<KnowledgeCard>> {
+  const { data } = await http.get<ApiResponse<RawPage<RawCard>>>('/public/knowledge', { params: query })
   const body = unwrap(data)
   return {
     total: toNumber(body.total),
@@ -73,22 +73,22 @@ export async function fetchArticles(query: ArticleQuery): Promise<PageResult<Art
   }
 }
 
-/** 文章详情（F-0201，B02）。 */
-export async function fetchArticle(id: string): Promise<ArticleDetail> {
-  const { data } = await http.get<ApiResponse<RawArticleDetail>>(`/public/articles/${id}`)
-  const article = unwrap(data)
+/** 知识详情（F-0201，B02）。 */
+export async function fetchKnowledge(id: string): Promise<KnowledgeDetail> {
+  const { data } = await http.get<ApiResponse<RawKnowledgeDetail>>(`/public/knowledge/${id}`)
+  const knowledge = unwrap(data)
   return {
-    ...article,
-    viewCount: toNumber(article.viewCount),
-    commentCount: toNumber(article.commentCount),
-    likeCount: toNumber(article.likeCount),
-    readMinutes: toNumber(article.readMinutes),
+    ...knowledge,
+    viewCount: toNumber(knowledge.viewCount),
+    commentCount: toNumber(knowledge.commentCount),
+    likeCount: toNumber(knowledge.likeCount),
+    readMinutes: toNumber(knowledge.readMinutes),
   }
 }
 
 /** 阅读量上报（F-0203，匿名；同访客 24 小时窗口只计一次）。 */
 export async function reportView(id: string): Promise<void> {
-  const { data } = await http.post<ApiResponse<boolean>>(`/public/articles/${id}/view`)
+  const { data } = await http.post<ApiResponse<boolean>>(`/public/knowledge/${id}/view`)
   unwrap(data)
 }
 
@@ -119,7 +119,7 @@ interface RawCard {
   publishedAt: string
 }
 
-interface RawArticleDetail extends RawCard {
+interface RawKnowledgeDetail extends RawCard {
   content: string
   liked: boolean
   updatedAt: string

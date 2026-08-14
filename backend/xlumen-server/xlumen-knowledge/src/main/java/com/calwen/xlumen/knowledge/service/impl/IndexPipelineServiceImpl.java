@@ -63,23 +63,23 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
     private KnowledgeAiProperties aiProperties;
 
     @Override
-    public void indexArticle(IndexRequestDTO request) {
+    public void indexKnowledge(IndexRequestDTO request) {
         // 1. 清洗
         String content = clean(request.getContent());
         if (StrUtil.isBlank(content)) {
-            log.warn("正文为空，跳过索引：articleId={}, version={}", request.getArticleId(), request.getVersion());
+            log.warn("正文为空，跳过索引：knowledgeId={}, version={}", request.getKnowledgeId(), request.getVersion());
             return;
         }
         // 2. 切片
         List<Chunk> chunks = chunkingService.chunk(content);
         if (chunks.isEmpty()) {
-            log.warn("切片为空，跳过索引：articleId={}, version={}", request.getArticleId(), request.getVersion());
+            log.warn("切片为空，跳过索引：knowledgeId={}, version={}", request.getKnowledgeId(), request.getVersion());
             return;
         }
         // 3. 幂等检查：正文 hash 相同且已有 ACTIVATING/ACTIVE 版本则跳过
         String contentHash = sha256(content);
         if (alreadyIndexed(request, contentHash)) {
-            log.info("正文未变化，跳过重复索引：articleId={}, version={}", request.getArticleId(), request.getVersion());
+            log.info("正文未变化，跳过重复索引：knowledgeId={}, version={}", request.getKnowledgeId(), request.getVersion());
             return;
         }
         // 4. 写 ACTIVATING 版本记录（占位，失败可追溯）
@@ -91,8 +91,8 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
             for (int i = 0; i < chunks.size(); i++) {
                 chunks.get(i).setEmbedding(embeddings.get(i));
             }
-            // 6. 清旧版本向量 → 写新版本向量（delete 按文章全量删除，等价于删除旧版本向量）
-            vectorStore.delete(request.getWorkspaceId(), request.getArticleId());
+            // 6. 清旧版本向量 → 写新版本向量（delete 按知识全量删除，等价于删除旧版本向量）
+            vectorStore.delete(request.getWorkspaceId(), request.getKnowledgeId());
             vectorStore.index(request, chunks);
             // 7. 写切片元数据
             persistChunks(request, chunks, contentHash);
@@ -107,25 +107,25 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
     }
 
     @Override
-    public void removeArticle(Long workspaceId, Long articleId) {
-        vectorStore.delete(workspaceId, articleId);
+    public void removeKnowledge(Long workspaceId, Long knowledgeId) {
+        vectorStore.delete(workspaceId, knowledgeId);
         kbChunkMapper.update(null, Wrappers.<KbChunkEntity>lambdaUpdate()
                 .eq(KbChunkEntity::getWorkspaceId, workspaceId)
-                .eq(KbChunkEntity::getArticleId, articleId)
+                .eq(KbChunkEntity::getKnowledgeId, knowledgeId)
                 .set(KbChunkEntity::getStatus, 0));
         kbIndexVersionMapper.update(null, Wrappers.<KbIndexVersionEntity>lambdaUpdate()
                 .eq(KbIndexVersionEntity::getWorkspaceId, workspaceId)
-                .eq(KbIndexVersionEntity::getArticleId, articleId)
+                .eq(KbIndexVersionEntity::getKnowledgeId, knowledgeId)
                 .ne(KbIndexVersionEntity::getStatus, STATUS_STALE)
                 .set(KbIndexVersionEntity::getStatus, STATUS_STALE)
                 .set(KbIndexVersionEntity::getUpdatedAt, LocalDateTime.now()));
     }
 
     @Override
-    public IndexStatusVO getIndexStatus(Long workspaceId, Long articleId) {
+    public IndexStatusVO getIndexStatus(Long workspaceId, Long knowledgeId) {
         KbIndexVersionEntity latest = kbIndexVersionMapper.selectOne(Wrappers.<KbIndexVersionEntity>lambdaQuery()
                 .eq(KbIndexVersionEntity::getWorkspaceId, workspaceId)
-                .eq(KbIndexVersionEntity::getArticleId, articleId)
+                .eq(KbIndexVersionEntity::getKnowledgeId, knowledgeId)
                 .orderByDesc(KbIndexVersionEntity::getUpdatedAt)
                 .last("LIMIT 1"));
         if (latest == null) {
@@ -133,11 +133,11 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
         }
         Long chunkCount = kbChunkMapper.selectCount(Wrappers.<KbChunkEntity>lambdaQuery()
                 .eq(KbChunkEntity::getWorkspaceId, workspaceId)
-                .eq(KbChunkEntity::getArticleId, articleId)
+                .eq(KbChunkEntity::getKnowledgeId, knowledgeId)
                 .eq(KbChunkEntity::getVersion, latest.getVersion())
                 .eq(KbChunkEntity::getStatus, 1));
         return IndexStatusVO.builder()
-                .articleId(articleId)
+                .knowledgeId(knowledgeId)
                 .version(latest.getVersion())
                 .status(latest.getStatus())
                 .chunkCount(chunkCount == null ? 0 : chunkCount.intValue())
@@ -157,7 +157,7 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
     private boolean alreadyIndexed(IndexRequestDTO request, String contentHash) {
         KbChunkEntity existing = kbChunkMapper.selectOne(Wrappers.<KbChunkEntity>lambdaQuery()
                 .eq(KbChunkEntity::getWorkspaceId, request.getWorkspaceId())
-                .eq(KbChunkEntity::getArticleId, request.getArticleId())
+                .eq(KbChunkEntity::getKnowledgeId, request.getKnowledgeId())
                 .eq(KbChunkEntity::getContentHash, contentHash)
                 .last("LIMIT 1"));
         if (existing == null) {
@@ -165,7 +165,7 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
         }
         Long activeCount = kbIndexVersionMapper.selectCount(Wrappers.<KbIndexVersionEntity>lambdaQuery()
                 .eq(KbIndexVersionEntity::getWorkspaceId, request.getWorkspaceId())
-                .eq(KbIndexVersionEntity::getArticleId, request.getArticleId())
+                .eq(KbIndexVersionEntity::getKnowledgeId, request.getKnowledgeId())
                 .eq(KbIndexVersionEntity::getVersion, existing.getVersion())
                 .in(KbIndexVersionEntity::getStatus, STATUS_ACTIVATING, STATUS_ACTIVE));
         return activeCount != null && activeCount > 0;
@@ -176,7 +176,7 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
         KbIndexVersionEntity entity = new KbIndexVersionEntity();
         entity.setId(IdUtil.getSnowflakeNextId());
         entity.setWorkspaceId(request.getWorkspaceId());
-        entity.setArticleId(request.getArticleId());
+        entity.setKnowledgeId(request.getKnowledgeId());
         entity.setVersion(request.getVersion());
         entity.setIndexName(INDEX_NAME);
         entity.setEmbeddingModel(aiProperties.getBailianModelEmbedding());
@@ -194,13 +194,13 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
             KbChunkEntity entity = new KbChunkEntity();
             entity.setId(IdUtil.getSnowflakeNextId());
             entity.setWorkspaceId(request.getWorkspaceId());
-            entity.setArticleId(request.getArticleId());
+            entity.setKnowledgeId(request.getKnowledgeId());
             entity.setVersion(request.getVersion());
             entity.setChunkSeq(chunk.getSeq());
             entity.setHeadingAnchor(StrUtil.blankToDefault(chunk.getHeadingAnchor(), ""));
             entity.setContentHash(contentHash);
             entity.setVectorId(milvusActive
-                    ? MilvusVectorStore.vectorId(request.getArticleId(), request.getVersion(), chunk.getSeq()) : null);
+                    ? MilvusVectorStore.vectorId(request.getKnowledgeId(), request.getVersion(), chunk.getSeq()) : null);
             entity.setChunkText(chunk.getChunkText());
             entity.setStatus(1);
             entity.setCreatedAt(LocalDateTime.now());
@@ -220,7 +220,7 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
         List<KbIndexVersionEntity> oldVersions = kbIndexVersionMapper.selectList(
                 Wrappers.<KbIndexVersionEntity>lambdaQuery()
                         .eq(KbIndexVersionEntity::getWorkspaceId, request.getWorkspaceId())
-                        .eq(KbIndexVersionEntity::getArticleId, request.getArticleId())
+                        .eq(KbIndexVersionEntity::getKnowledgeId, request.getKnowledgeId())
                         .ne(KbIndexVersionEntity::getId, currentId)
                         .ne(KbIndexVersionEntity::getStatus, STATUS_STALE));
         for (KbIndexVersionEntity old : oldVersions) {
@@ -232,7 +232,7 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
 
     /** 索引失败：ACTIVATING 记录置 STALE，供管理面查询重试。 */
     private void markFailed(KbIndexVersionEntity entity, Exception e) {
-        log.error("索引任务失败：articleId={}, version={}", entity.getArticleId(), entity.getVersion(), e);
+        log.error("索引任务失败：knowledgeId={}, version={}", entity.getKnowledgeId(), entity.getVersion(), e);
         try {
             entity.setStatus(STATUS_STALE);
             entity.setUpdatedAt(LocalDateTime.now());

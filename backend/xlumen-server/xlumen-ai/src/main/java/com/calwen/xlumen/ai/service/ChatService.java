@@ -25,13 +25,13 @@ public interface ChatService {
     SseEmitter streamChat(ChatRequestDTO dto);
 
     /**
-     * 文章级问答（F-0702）：限定单篇文章检索，SSE 事件同上。
+     * 知识级问答（F-0702）：限定单篇知识检索，SSE 事件同上。
      *
-     * @param articleId 文章 ID
+     * @param knowledgeId 知识 ID
      * @param dto       提问
      * @return SSE 事件流
      */
-    SseEmitter askArticle(Long articleId, ChatRequestDTO dto);
+    SseEmitter askKnowledge(Long knowledgeId, ChatRequestDTO dto);
 
     /**
      * 当前用户会话列表（按更新时间倒序）。

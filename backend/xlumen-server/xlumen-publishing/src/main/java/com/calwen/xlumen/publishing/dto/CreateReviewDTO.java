@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 提交审核入参（F-0902）：文章从草稿/已通过状态提交审核。
+ * 提交审核入参（F-0902）：知识从草稿/已通过状态提交审核。
  *
  * @author calwen
  * @date 2026/8/13
@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateReviewDTO {
 
-    /** 文章 ID。 */
-    @NotNull(message = "文章 ID 不能为空")
-    private Long articleId;
+    /** 知识 ID。 */
+    @NotNull(message = "知识 ID 不能为空")
+    private Long knowledgeId;
 }

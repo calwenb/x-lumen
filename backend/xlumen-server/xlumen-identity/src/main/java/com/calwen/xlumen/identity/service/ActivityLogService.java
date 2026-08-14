@@ -18,8 +18,8 @@ public interface ActivityLogService {
      * @param workspaceId  工作空间 ID
      * @param operatorId   操作人用户 ID（可空）
      * @param operatorName 操作人名称（可空）
-     * @param action       操作类型（如 REVIEW_REJECT/ARTICLE_PUBLISH）
-     * @param targetType   目标类型（如 REVIEW/ARTICLE/WORKSPACE）
+     * @param action       操作类型（如 REVIEW_REJECT/KNOWLEDGE_PUBLISH）
+     * @param targetType   目标类型（如 REVIEW/KNOWLEDGE/WORKSPACE）
      * @param targetId     目标 ID（可空）
      * @param detailJson   操作详情 JSON（可空）
      */

@@ -29,8 +29,8 @@ public class AiEnhanceResultEntity {
     /** 工作空间 ID。 */
     private Long workspaceId;
 
-    /** 文章 ID（可空，供独立增强）。 */
-    private Long articleId;
+    /** 知识 ID（可空，供独立增强）。 */
+    private Long knowledgeId;
 
     /** 场景：SUMMARY|SEO。 */
     private String scene;

@@ -10,7 +10,7 @@ import { useSessionStore } from '@/stores/session'
 import { toggleLike } from '@/modules/engagement/api/engagement'
 
 const props = defineProps<{
-  articleId: string
+  knowledgeId: string
   initial: boolean
   count: number
 }>()
@@ -50,7 +50,7 @@ async function handleClick(): Promise<void> {
   liked.value = next
   count.value = nextCount
   try {
-    const confirmed = await toggleLike(props.articleId)
+    const confirmed = await toggleLike(props.knowledgeId)
     if (confirmed !== next) {
       liked.value = confirmed
       count.value = count.value + (confirmed ? 1 : -1)

@@ -22,13 +22,13 @@ public class ReviewVO {
     /** 审核记录 ID。 */
     private Long id;
 
-    /** 文章 ID。 */
-    private Long articleId;
+    /** 知识 ID。 */
+    private Long knowledgeId;
 
-    /** 文章标题。 */
-    private String articleTitle;
+    /** 知识标题。 */
+    private String knowledgeTitle;
 
-    /** 文章版本号。 */
+    /** 知识版本号。 */
     private Long version;
 
     /** 状态：PENDING/APPROVED/REJECTED。 */
