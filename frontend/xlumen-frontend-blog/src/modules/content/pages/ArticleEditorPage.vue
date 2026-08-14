@@ -4,7 +4,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import { autosaveDraft, createArticle, fetchArticle, updateArticle } from '@/modules/content/api/article'
+import {
+  autosaveDraft,
+  createArticle,
+  fetchArticle,
+  updateArticle,
+} from '@/modules/content/api/article'
 import MarkdownEditor from '@/modules/content/components/MarkdownEditor.vue'
 import { useAutoSave } from '@/modules/content/composables/useAutoSave'
 
@@ -158,9 +163,17 @@ onMounted(async () => {
       <h1 class="editor-page__title">{{ isNew ? '新建文章' : '编辑文章' }}</h1>
       <div class="editor-page__actions">
         <span class="editor-page__status" :class="{ 'editor-page__status--conflict': conflict }">
-          {{ conflict ? '版本冲突' : autoSave.saving.value || saving ? '保存中…' : autoSave.savedAt.value ? '已自动保存' : '' }}
+          {{
+            conflict
+              ? '版本冲突'
+              : autoSave.saving.value || saving
+                ? '保存中…'
+                : autoSave.savedAt.value
+                  ? '已自动保存'
+                  : ''
+          }}
         </span>
-        <button type="button" class="editor-page__save" :disabled="saving" @click="handleSave">保存</button>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
         <RouterLink class="editor-page__back" :to="{ name: 'article-list' }">返回列表</RouterLink>
       </div>
     </div>
@@ -173,15 +186,39 @@ onMounted(async () => {
     <template v-else>
       <div v-if="conflict" class="editor-page__conflict" role="alert">
         <p>文章在其他地方已被修改，为避免覆盖，请选择：</p>
-        <button type="button" class="editor-page__conflict-action" @click="handleConflict">加载服务端最新版本</button>
+        <el-button type="warning" plain size="small" @click="handleConflict"
+          >加载服务端最新版本</el-button
+        >
       </div>
       <div v-if="saveMessage" class="editor-page__message" role="status">{{ saveMessage }}</div>
 
       <section class="editor-page__fields">
-        <input v-model="title" class="editor-page__title-input" type="text" placeholder="文章标题" aria-label="文章标题" @input="autoSave.touch()" />
+        <el-input
+          v-model="title"
+          class="editor-page__title-input"
+          type="text"
+          placeholder="文章标题"
+          aria-label="文章标题"
+          size="large"
+          @input="autoSave.touch()"
+        />
         <div class="editor-page__row">
-          <input v-model="category" class="editor-page__category" type="text" placeholder="分类（如：后端）" aria-label="分类" @input="autoSave.touch()" />
-          <input v-model="tagsInput" class="editor-page__tags" type="text" placeholder="标签（逗号分隔，如：Spring, Vue）" aria-label="标签" @input="autoSave.touch()" />
+          <el-input
+            v-model="category"
+            class="editor-page__category"
+            type="text"
+            placeholder="分类（如：后端）"
+            aria-label="分类"
+            @input="autoSave.touch()"
+          />
+          <el-input
+            v-model="tagsInput"
+            class="editor-page__tags"
+            type="text"
+            placeholder="标签（逗号分隔，如：Spring, Vue）"
+            aria-label="标签"
+            @input="autoSave.touch()"
+          />
         </div>
         <div class="editor-page__row" role="radiogroup" aria-label="可见性">
           <span class="editor-page__label">可见性：</span>
@@ -195,7 +232,11 @@ onMounted(async () => {
         </div>
       </section>
 
-      <MarkdownEditor v-model="content" class="editor-page__editor" @update:model-value="autoSave.touch()" />
+      <MarkdownEditor
+        v-model="content"
+        class="editor-page__editor"
+        @update:model-value="autoSave.touch()"
+      />
     </template>
   </main>
 </template>
@@ -231,26 +272,7 @@ onMounted(async () => {
 }
 
 .editor-page__status--conflict {
-  color: var(--xl-color-danger, #d03050);
-}
-
-.editor-page__save {
-  padding: 7px 20px;
-  border: none;
-  border-radius: var(--xl-radius-sm, 6px);
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.editor-page__save:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.editor-page__save:hover:not(:disabled) {
-  background: var(--xl-color-primary-hover);
+  color: var(--xl-color-danger);
 }
 
 .editor-page__back {
@@ -273,25 +295,15 @@ onMounted(async () => {
 .editor-page__conflict {
   margin-bottom: 16px;
   padding: 12px 16px;
-  border: 1px solid var(--xl-color-danger, #d03050);
-  border-radius: var(--xl-radius-sm, 6px);
-  background: color-mix(in srgb, var(--xl-color-danger, #d03050) 6%, transparent);
-  color: var(--xl-color-danger, #d03050);
+  border: 1px solid var(--xl-color-danger);
+  border-radius: var(--xl-radius-sm);
+  background: color-mix(in srgb, var(--xl-color-danger) 6%, transparent);
+  color: var(--xl-color-danger);
   font-size: 13px;
 }
 
 .editor-page__conflict p {
   margin: 0 0 8px;
-}
-
-.editor-page__conflict-action {
-  padding: 5px 14px;
-  border: 1px solid var(--xl-color-danger, #d03050);
-  border-radius: var(--xl-radius-sm, 6px);
-  background: transparent;
-  color: var(--xl-color-danger, #d03050);
-  font-size: 13px;
-  cursor: pointer;
 }
 
 .editor-page__message {
@@ -307,18 +319,9 @@ onMounted(async () => {
   margin-bottom: 16px;
 }
 
-.editor-page__title-input {
-  padding: 12px 14px;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm, 6px);
-  background: var(--xl-bg-secondary);
-  color: var(--xl-text-primary);
+.editor-page__title-input :deep(.el-input__inner) {
   font-size: 18px;
-  outline: none;
-}
-
-.editor-page__title-input:focus {
-  border-color: var(--xl-color-primary);
+  font-weight: 600;
 }
 
 .editor-page__row {
@@ -332,13 +335,6 @@ onMounted(async () => {
 .editor-page__tags {
   flex: 1;
   min-width: 200px;
-  padding: 8px 12px;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm, 6px);
-  background: var(--xl-bg-secondary);
-  color: var(--xl-text-primary);
-  font-size: 13px;
-  outline: none;
 }
 
 .editor-page__label {

@@ -46,7 +46,10 @@ const mode = ref<'edit' | 'preview' | 'split'>('edit')
         </button>
       </div>
     </div>
-    <div class="markdown-editor__body" :class="{ 'markdown-editor__body--split': mode === 'split' }">
+    <div
+      class="markdown-editor__body"
+      :class="{ 'markdown-editor__body--split': mode === 'split' }"
+    >
       <textarea
         v-show="mode !== 'preview'"
         v-model="model"
@@ -54,7 +57,11 @@ const mode = ref<'edit' | 'preview' | 'split'>('edit')
         placeholder="支持 Markdown 语法：标题、列表、代码块、链接……"
         aria-label="正文编辑区"
       />
-      <div v-show="mode !== 'edit'" class="markdown-editor__preview markdown-body" v-html="renderMarkdown(model)" />
+      <div
+        v-show="mode !== 'edit'"
+        class="markdown-editor__preview markdown-body"
+        v-html="renderMarkdown(model)"
+      />
     </div>
   </div>
 </template>
@@ -62,7 +69,9 @@ const mode = ref<'edit' | 'preview' | 'split'>('edit')
 <style scoped>
 .markdown-editor {
   border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
   overflow: hidden;
 }
 

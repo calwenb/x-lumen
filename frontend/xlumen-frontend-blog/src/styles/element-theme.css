@@ -1,0 +1,68 @@
+/* Element Plus 主题映射（FRONTEND.md §10.1）：EP 组件通过 CSS 变量继承 --xl-* 设计体系，
+   保证双端（博客/管理后台）同一视觉语言。仅 light 主题；dark 变体 V2（F-1306）启用。 */
+:root {
+  /* 主色：品牌蓝紫 #5367e8 及其派生色 */
+  --el-color-primary: var(--xl-color-primary);
+  --el-color-primary-light-3: color-mix(in srgb, var(--xl-color-primary) 70%, white);
+  --el-color-primary-light-5: color-mix(in srgb, var(--xl-color-primary) 50%, white);
+  --el-color-primary-light-7: color-mix(in srgb, var(--xl-color-primary) 30%, white);
+  --el-color-primary-light-8: color-mix(in srgb, var(--xl-color-primary) 20%, white);
+  --el-color-primary-light-9: color-mix(in srgb, var(--xl-color-primary) 10%, white);
+  --el-color-primary-dark-2: color-mix(in srgb, var(--xl-color-primary) 80%, black);
+
+  /* 成功/警示/危险语义色与 --xl-* 对齐 */
+  --el-color-success: var(--xl-color-success);
+  --el-color-warning: var(--xl-color-warning);
+  --el-color-danger: var(--xl-color-danger);
+  --el-color-error: var(--xl-color-danger);
+
+  /* 中性色：文本与边框继承设计体系 */
+  --el-text-color-primary: var(--xl-text-primary);
+  --el-text-color-regular: var(--xl-text-secondary);
+  --el-text-color-secondary: var(--xl-text-muted);
+  --el-text-color-placeholder: var(--xl-text-muted);
+  --el-border-color: var(--xl-border);
+  --el-border-color-light: var(--xl-border);
+  --el-border-color-lighter: color-mix(in srgb, var(--xl-border) 60%, white);
+  --el-border-color-extra-light: color-mix(in srgb, var(--xl-border) 40%, white);
+  --el-fill-color-light: var(--xl-bg-secondary);
+  --el-fill-color-lighter: color-mix(in srgb, var(--xl-bg-secondary) 60%, white);
+  --el-fill-color-blank: var(--xl-bg-surface);
+
+  /* 背景与字体 */
+  --el-bg-color-page: var(--xl-bg-page);
+  --el-bg-color: var(--xl-bg-surface);
+  --el-bg-color-overlay: var(--xl-bg-surface);
+  --el-font-family: var(--xl-font-sans);
+  --el-border-radius-base: var(--xl-radius);
+  --el-border-radius-small: var(--xl-radius-sm);
+  --el-border-radius-round: 999px;
+
+  /* 阴影与过渡 */
+  --el-box-shadow-light: var(--xl-shadow-md);
+  --el-box-shadow: var(--xl-shadow-lg);
+  --el-transition-duration: 0.2s;
+}
+
+/* EP 弹窗/消息浮层圆角与阴影统一 */
+.el-dialog,
+.el-message-box,
+.el-message,
+.el-popper {
+  --el-border-radius-base: var(--xl-radius-card);
+
+  border-radius: var(--xl-radius-card);
+}
+
+.el-dialog {
+  box-shadow: var(--xl-shadow-lg);
+}
+
+.el-card {
+  border-radius: var(--xl-radius-card);
+}
+
+/* 标签统一胶囊形（与全站标签风格一致） */
+.el-tag {
+  border-radius: 999px;
+}

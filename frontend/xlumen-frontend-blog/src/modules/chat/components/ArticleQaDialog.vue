@@ -39,7 +39,13 @@ async function send(): Promise<void> {
   const query = draft.value.trim()
   if (!query || asking.value) return
   draft.value = ''
-  messages.value.push({ id: `qa-${Date.now()}`, role: 'user', content: query, citations: [], streaming: false })
+  messages.value.push({
+    id: `qa-${Date.now()}`,
+    role: 'user',
+    content: query,
+    citations: [],
+    streaming: false,
+  })
   const assistant: QaMessage = {
     id: `qa-${Date.now()}-assistant`,
     role: 'assistant',
@@ -82,23 +88,38 @@ async function send(): Promise<void> {
 
 <template>
   <div class="qa-dialog__overlay" @click.self="emit('close')">
-    <div class="qa-dialog" role="dialog" aria-modal="true" :aria-label="`就「${articleTitle}」向小光提问`">
+    <div
+      class="qa-dialog"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="`就「${articleTitle}」向小光提问`"
+    >
       <header class="qa-dialog__header">
         <div class="qa-dialog__heading">
           <h2 class="qa-dialog__title">问「小光」</h2>
           <span class="qa-dialog__subtitle">{{ articleTitle }}</span>
         </div>
-        <button type="button" class="qa-dialog__close" aria-label="关闭" @click="emit('close')">×</button>
+        <button type="button" class="qa-dialog__close" aria-label="关闭" @click="emit('close')">
+          ×
+        </button>
       </header>
 
       <div ref="listEl" class="qa-dialog__messages">
         <p v-if="messages.length === 0" class="qa-dialog__empty">
           就本文内容向「小光」提问，回答可溯源到原文段落。
         </p>
-        <div v-for="message in messages" :key="message.id" class="qa-message" :class="`qa-message--${message.role}`">
+        <div
+          v-for="message in messages"
+          :key="message.id"
+          class="qa-message"
+          :class="`qa-message--${message.role}`"
+        >
           <div class="qa-message__bubble">
             <p class="qa-message__text">
-              {{ message.content }}<span v-if="message.streaming" class="qa-message__cursor" aria-hidden="true">▍</span>
+              {{ message.content
+              }}<span v-if="message.streaming" class="qa-message__cursor" aria-hidden="true"
+                >▍</span
+              >
             </p>
             <div v-if="message.citations.length > 0" class="qa-message__citations">
               <CitationCard
@@ -114,9 +135,14 @@ async function send(): Promise<void> {
 
       <form class="qa-dialog__composer" @submit.prevent="send">
         <input v-model="draft" class="qa-dialog__input" type="text" placeholder="就本文提问…" />
-        <button type="submit" class="qa-dialog__send" :disabled="asking || !draft.trim()">
-          {{ asking ? '回复中…' : '提问' }}
-        </button>
+        <el-button
+          type="primary"
+          class="qa-dialog__send"
+          native-type="submit"
+          :disabled="asking || !draft.trim()"
+        >
+          {{ asking ? '回复中' : '提问' }}
+        </el-button>
       </form>
     </div>
   </div>
@@ -142,6 +168,7 @@ async function send(): Promise<void> {
   max-height: 80vh;
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-lg);
   overflow: hidden;
 }
 

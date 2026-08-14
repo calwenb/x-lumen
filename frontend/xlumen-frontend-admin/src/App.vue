@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // 应用根组件：左侧边栏（品牌 + 菜单：空间设置/模型配置/审计日志 + 用户名 + 登出）+ 路由出口。
-// 登录页（guest）不渲染侧边栏，仅路由出口。
+// 登录页（guest）不渲染侧边栏，仅路由出口。侧栏基于 Element Plus el-menu（EP 接入后统一视觉）。
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Operation, Setting, User, View } from '@element-plus/icons-vue'
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import { useSessionStore } from '@/stores/session'
@@ -25,14 +26,29 @@ async function handleLogout(): Promise<void> {
 <template>
   <div v-if="showShell" class="app-shell">
     <aside class="app-sidebar">
-      <div class="app-sidebar__brand">xLumen 管理后台</div>
-      <nav class="app-sidebar__nav">
-        <RouterLink class="app-sidebar__link" :to="{ name: 'settings' }">空间设置</RouterLink>
-        <RouterLink class="app-sidebar__link" :to="{ name: 'models' }">模型配置</RouterLink>
-        <RouterLink class="app-sidebar__link" :to="{ name: 'audit-logs' }">审计日志</RouterLink>
-      </nav>
+      <div class="app-sidebar__brand">
+        <span class="app-sidebar__logo" aria-hidden="true" />
+        xLumen 管理后台
+      </div>
+      <el-menu class="app-sidebar__menu" :default-active="route.path" router>
+        <el-menu-item index="/settings">
+          <el-icon><Setting /></el-icon>
+          <span>空间设置</span>
+        </el-menu-item>
+        <el-menu-item index="/models">
+          <el-icon><Operation /></el-icon>
+          <span>模型配置</span>
+        </el-menu-item>
+        <el-menu-item index="/audit-logs">
+          <el-icon><View /></el-icon>
+          <span>审计日志</span>
+        </el-menu-item>
+      </el-menu>
       <div class="app-sidebar__footer">
-        <span class="app-sidebar__user">{{ session.snapshot?.username }}</span>
+        <span class="app-sidebar__user">
+          <el-icon><User /></el-icon>
+          {{ session.snapshot?.username }}
+        </span>
         <button type="button" class="app-sidebar__logout" @click="handleLogout">登出</button>
       </div>
     </aside>
@@ -61,31 +77,39 @@ async function handleLogout(): Promise<void> {
 }
 
 .app-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
   color: var(--xl-color-primary);
   font-size: 17px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.app-sidebar__nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--xl-space-1);
+.app-sidebar__logo {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
 }
 
-.app-sidebar__link {
-  padding: var(--xl-space-2) var(--xl-space-3);
+.app-sidebar__menu {
+  border-right: none;
+}
+
+.app-sidebar__menu :deep(.el-menu-item) {
+  height: 40px;
   border-radius: var(--xl-radius);
   color: var(--xl-text-secondary);
-  font-size: 14px;
-  text-decoration: none;
 }
 
-.app-sidebar__link:hover {
+.app-sidebar__menu :deep(.el-menu-item:hover) {
   background: var(--xl-bg-secondary);
   color: var(--xl-color-primary);
 }
 
-.app-sidebar__link.router-link-active {
+.app-sidebar__menu :deep(.el-menu-item.is-active) {
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
 }
@@ -98,6 +122,9 @@ async function handleLogout(): Promise<void> {
 }
 
 .app-sidebar__user {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
   color: var(--xl-text-primary);
   font-size: 14px;
   overflow-wrap: anywhere;

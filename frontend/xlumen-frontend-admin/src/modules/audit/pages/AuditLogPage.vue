@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// A04 审计日志：时间/操作人/动作/目标/详情表格 + 分页 + action 筛选；detailJson 格式化展示。
+// A04 审计日志：时间/操作人/动作/目标/详情表格 + 分页 + action 筛选；detailJson 弹窗格式化展示。
 // 关键状态：加载骨架、失败重试、空态。
 import { onMounted, ref } from 'vue'
+import { Document } from '@element-plus/icons-vue'
 
 import { fetchAuditLogs } from '../api/audit'
 import type { AuditLogRecord } from '../api/audit'
@@ -15,6 +16,10 @@ const loading = ref(true)
 const loadError = ref(false)
 
 const actionFilter = ref('')
+
+// 详情弹窗：当前查看的日志记录
+const detailVisible = ref(false)
+const detailRecord = ref<AuditLogRecord | null>(null)
 
 /** 日期显示：yyyy-MM-dd HH:mm。 */
 function formatTime(iso: string): string {
@@ -39,6 +44,11 @@ function formatTarget(record: AuditLogRecord): string {
   return parts.join(' ') || '—'
 }
 
+function openDetail(record: AuditLogRecord): void {
+  detailRecord.value = record
+  detailVisible.value = true
+}
+
 async function load(targetPage = pageNo.value): Promise<void> {
   loading.value = true
   loadError.value = false
@@ -58,10 +68,6 @@ async function load(targetPage = pageNo.value): Promise<void> {
   }
 }
 
-function totalPages(): number {
-  return Math.max(1, Math.ceil(total.value / PAGE_SIZE))
-}
-
 function applyFilter(): void {
   void load(1)
 }
@@ -76,73 +82,79 @@ onMounted(() => {
     <h1 class="audit__title">审计日志</h1>
 
     <div class="audit__filters">
-      <input
+      <el-input
         v-model="actionFilter"
         class="audit__filter-input"
-        type="search"
         placeholder="动作筛选，如 LOGIN"
         aria-label="动作筛选"
+        clearable
         @keyup.enter="applyFilter"
       />
-      <button type="button" class="audit__filter-button" @click="applyFilter">筛选</button>
+      <el-button type="primary" plain @click="applyFilter">筛选</el-button>
     </div>
 
-    <div v-if="loading" class="audit__skeleton" role="status">加载中…</div>
-    <div v-else-if="loadError" class="audit__error">
-      <p>加载失败，请稍后重试。</p>
-      <button type="button" class="audit__retry" @click="load()">重试</button>
+    <div v-if="loading" class="audit__state" role="status">
+      <el-skeleton :rows="8" animated />
     </div>
-    <div v-else-if="records.length === 0" class="audit__empty">暂无审计日志</div>
+    <div v-else-if="loadError" class="audit__state">
+      <p>加载失败，请稍后重试。</p>
+      <el-button type="primary" plain @click="load()">重试</el-button>
+    </div>
+    <div v-else-if="records.length === 0" class="audit__state">
+      <el-icon class="audit__state-icon"><Document /></el-icon>
+      <p>暂无审计日志</p>
+    </div>
     <template v-else>
-      <div class="audit__table-wrap">
-        <table class="audit__table">
-          <thead>
-            <tr>
-              <th>时间</th>
-              <th>操作人</th>
-              <th>动作</th>
-              <th>目标</th>
-              <th>详情</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="record in records" :key="record.id">
-              <td class="audit__cell-time">{{ formatTime(record.createdAt) }}</td>
-              <td>{{ record.operatorName }}</td>
-              <td>{{ record.action }}</td>
-              <td>{{ formatTarget(record) }}</td>
-              <td>
-                <details v-if="formatDetail(record.detailJson)" class="audit__detail">
-                  <summary>查看</summary>
-                  <pre class="audit__detail-body">{{ formatDetail(record.detailJson) }}</pre>
-                </details>
-                <span v-else class="audit__detail-empty">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <el-table
+        :data="records"
+        class="audit__table"
+        :header-cell-style="{ background: 'var(--xl-bg-secondary)' }"
+      >
+        <el-table-column label="时间" min-width="130">
+          <template #default="{ row }">
+            <span class="audit__cell-time">{{ formatTime(row.createdAt) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="operatorName" label="操作人" min-width="110" />
+        <el-table-column prop="action" label="动作" min-width="170" />
+        <el-table-column label="目标" min-width="180">
+          <template #default="{ row }">{{ formatTarget(row) }}</template>
+        </el-table-column>
+        <el-table-column label="详情" width="90">
+          <template #default="{ row }">
+            <el-button
+              v-if="formatDetail(row.detailJson)"
+              type="primary"
+              link
+              @click="openDetail(row)"
+              >查看</el-button
+            >
+            <span v-else class="audit__detail-empty">—</span>
+          </template>
+        </el-table-column>
+      </el-table>
 
       <nav class="audit__pagination" aria-label="分页">
-        <button
-          type="button"
-          class="audit__page-button"
-          :disabled="pageNo <= 1"
-          @click="load(pageNo - 1)"
-        >
-          上一页
-        </button>
-        <span class="audit__page-info">{{ pageNo }} / {{ totalPages() }}（共 {{ total }} 条）</span>
-        <button
-          type="button"
-          class="audit__page-button"
-          :disabled="pageNo >= totalPages()"
-          @click="load(pageNo + 1)"
-        >
-          下一页
-        </button>
+        <el-pagination
+          :current-page="pageNo"
+          :page-size="PAGE_SIZE"
+          :total="total"
+          layout="prev, pager, next, total"
+          @current-change="(page: number) => load(page)"
+        />
       </nav>
     </template>
+
+    <el-dialog v-model="detailVisible" title="审计详情" width="560px">
+      <div v-if="detailRecord" class="audit__detail-meta">
+        <span>{{ formatTime(detailRecord.createdAt) }}</span>
+        <span>{{ detailRecord.operatorName || '系统' }}</span>
+        <span>{{ detailRecord.action }}</span>
+      </div>
+      <pre class="audit__detail-body">{{
+        detailRecord ? formatDetail(detailRecord.detailJson) : ''
+      }}</pre>
+    </el-dialog>
   </main>
 </template>
 
@@ -168,99 +180,46 @@ onMounted(() => {
 .audit__filter-input {
   width: 100%;
   max-width: 280px;
-  padding: 7px 10px;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm);
-  background: var(--xl-bg-surface);
-  color: var(--xl-text-primary);
-  font-size: 13px;
 }
 
-.audit__filter-input:focus {
-  outline: none;
-  border-color: var(--xl-color-primary);
-}
-
-.audit__filter-button {
-  padding: 7px 16px;
-  border: 1px solid var(--xl-color-primary);
-  border-radius: var(--xl-radius-sm);
-  background: transparent;
-  color: var(--xl-color-primary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.audit__skeleton,
-.audit__error,
-.audit__empty {
+.audit__state {
   padding: 48px 0;
   text-align: center;
   color: var(--xl-text-secondary);
   font-size: 14px;
 }
 
-.audit__retry {
-  margin-top: var(--xl-space-3);
-  padding: 6px 18px;
-  border: 1px solid var(--xl-color-primary);
-  border-radius: var(--xl-radius-sm);
-  background: transparent;
-  color: var(--xl-color-primary);
-  cursor: pointer;
+.audit__state-icon {
+  display: block;
+  margin-bottom: var(--xl-space-3);
+  font-size: 40px;
+  color: var(--xl-text-muted);
 }
 
-.audit__table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
+.audit__state p {
+  margin: 0;
+}
+
+.audit__state :deep(.el-skeleton) {
+  text-align: left;
 }
 
 .audit__table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+  overflow: hidden;
 }
 
-.audit__table th,
-.audit__table td {
-  padding: var(--xl-space-3) var(--xl-space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--xl-border);
-  overflow-wrap: anywhere;
-}
-
-.audit__table th {
+.audit__table :deep(th.el-table__cell) {
   color: var(--xl-text-secondary);
-  font-size: 13px;
   font-weight: 600;
-}
-
-.audit__table tbody tr:last-child td {
-  border-bottom: none;
 }
 
 .audit__cell-time {
   white-space: nowrap;
-}
-
-.audit__detail summary {
-  color: var(--xl-color-primary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.audit__detail-body {
-  margin: var(--xl-space-2) 0 0;
-  padding: var(--xl-space-3);
-  border-radius: var(--xl-radius-sm);
-  background: var(--xl-bg-secondary);
-  color: var(--xl-text-primary);
-  font-family: var(--xl-font-mono);
-  font-size: 12px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
 
 .audit__detail-empty {
@@ -271,32 +230,26 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--xl-space-4);
   margin-top: var(--xl-space-6);
 }
 
-.audit__page-button {
-  padding: 6px 14px;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm);
-  background: var(--xl-bg-surface);
+.audit__detail-meta {
+  display: flex;
+  gap: var(--xl-space-4);
+  margin-bottom: var(--xl-space-3);
   color: var(--xl-text-secondary);
   font-size: 13px;
-  cursor: pointer;
 }
 
-.audit__page-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.audit__page-button:hover:not(:disabled) {
-  border-color: var(--xl-color-primary);
-  color: var(--xl-color-primary);
-}
-
-.audit__page-info {
-  color: var(--xl-text-muted);
-  font-size: 13px;
+.audit__detail-body {
+  margin: 0;
+  padding: var(--xl-space-3);
+  border-radius: var(--xl-radius-sm);
+  background: var(--xl-bg-secondary);
+  color: var(--xl-text-primary);
+  font-family: var(--xl-font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 </style>

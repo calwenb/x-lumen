@@ -2,6 +2,7 @@
 // 评论区（F-0203，B02）：评论列表 + 发表评论；发表需登录，未登录引导登录页。
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 import { useSessionStore } from '@/stores/session'
 
@@ -65,7 +66,7 @@ async function submit(): Promise<void> {
     emit('update:count', comments.value.length)
   } catch {
     // 失败提示：保持草稿，用户可重试
-    window.alert('评论失败，请稍后重试')
+    ElMessage.error('评论失败，请稍后重试')
   } finally {
     submitting.value = false
   }
@@ -106,9 +107,9 @@ onMounted(load)
       />
       <div class="comment-form__actions">
         <span v-if="!session.loggedIn" class="comment-form__tip">登录后即可评论</span>
-        <button type="submit" class="comment-form__submit" :disabled="submitting || !draft.trim()">
-          {{ submitting ? '发表中…' : '发表评论' }}
-        </button>
+        <el-button type="primary" native-type="submit" :disabled="submitting || !draft.trim()">
+          {{ submitting ? '发表中' : '发表评论' }}
+        </el-button>
       </div>
     </form>
   </section>
@@ -210,24 +211,5 @@ onMounted(load)
 .comment-form__tip {
   color: var(--xl-text-muted);
   font-size: 13px;
-}
-
-.comment-form__submit {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 8px;
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.comment-form__submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.comment-form__submit:hover:not(:disabled) {
-  background: var(--xl-color-primary-hover);
 }
 </style>

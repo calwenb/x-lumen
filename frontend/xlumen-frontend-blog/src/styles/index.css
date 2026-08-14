@@ -15,3 +15,27 @@ body {
 #app {
   min-height: 100vh;
 }
+
+/* 键盘焦点可见环：主色 outline，统一全站交互反馈 */
+:focus-visible {
+  outline: 2px solid var(--xl-color-primary);
+  outline-offset: 2px;
+}
+
+/* 文本选择色：品牌淡紫 */
+::selection {
+  background: color-mix(in srgb, var(--xl-color-primary) 20%, transparent);
+}
+
+/* 链接/按钮 hover 过渡基准（业务组件如需差异可覆盖） */
+a,
+button,
+input,
+textarea,
+select {
+  transition:
+    color var(--xl-transition),
+    background-color var(--xl-transition),
+    border-color var(--xl-transition),
+    box-shadow var(--xl-transition);
+}

@@ -2,6 +2,7 @@
 // 审核中心（B12，F-0902/F-0904）：审核列表（状态筛选）+ 详情（AI 审校问题 + 通过/驳回）。
 // 关键状态：加载骨架、空态、失败重试、409 冲突恢复、429 提示（PROTOTYPE §11）。
 import { computed, onMounted, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import {
   approveReview,
@@ -54,16 +55,16 @@ const actionError = ref('')
 const actionMessage = ref('')
 const acting = ref(false)
 
-const issues = computed(() => (selected.value ? parseReviewIssues(selected.value.aiResultJson) : []))
+const issues = computed(() =>
+  selected.value ? parseReviewIssues(selected.value.aiResultJson) : [],
+)
 
 function formatTime(iso: string): string {
   return iso.slice(0, 16).replace('T', ' ')
 }
 
 function isConflict(error: unknown): boolean {
-  return (
-    error instanceof Error && (error.message.includes('冲突') || error.message.includes('409'))
-  )
+  return error instanceof Error && (error.message.includes('冲突') || error.message.includes('409'))
 }
 
 function isRateLimited(error: unknown): boolean {
@@ -75,7 +76,9 @@ async function load(targetPage: number): Promise<void> {
   loadError.value = false
   try {
     const page = await fetchReviews({
-      ...(filterStatus.value ? { status: filterStatus.value as 'PENDING' | 'APPROVED' | 'REJECTED' } : {}),
+      ...(filterStatus.value
+        ? { status: filterStatus.value as 'PENDING' | 'APPROVED' | 'REJECTED' }
+        : {}),
       pageNo: targetPage,
       pageSize: PAGE_SIZE,
     })
@@ -123,13 +126,23 @@ function closeDetail(): void {
 
 async function approve(): Promise<void> {
   if (!selected.value || acting.value) return
-  if (!window.confirm(`确认通过「${selected.value.articleTitle}」的审核？`)) return
+  try {
+    await ElMessageBox.confirm(`确认通过「${selected.value.articleTitle}」的审核？`, '通过审核', {
+      confirmButtonText: '通过',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    // 用户取消
+    return
+  }
   acting.value = true
   actionError.value = ''
   actionMessage.value = ''
   try {
     await approveReview(selected.value.id, selected.value.version)
     actionMessage.value = '已通过'
+    ElMessage.success('已通过审核')
     await load(pageNo.value)
     closeDetail()
   } catch (error) {
@@ -154,13 +167,28 @@ async function reject(): Promise<void> {
     actionError.value = '驳回需填写原因、位置、期望修改三项内容'
     return
   }
-  if (!window.confirm('确认驳回该审核？')) return
+  try {
+    await ElMessageBox.confirm('确认驳回该审核？', '驳回审核', {
+      confirmButtonText: '驳回',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    // 用户取消
+    return
+  }
   acting.value = true
   actionError.value = ''
   actionMessage.value = ''
   try {
-    await rejectReview(selected.value.id, { version: selected.value.version, reason, position, expectation })
+    await rejectReview(selected.value.id, {
+      version: selected.value.version,
+      reason,
+      position,
+      expectation,
+    })
     actionMessage.value = '已驳回'
+    ElMessage.success('已驳回审核')
     await load(pageNo.value)
     closeDetail()
   } catch (error) {
@@ -189,18 +217,23 @@ onMounted(() => {
     </header>
 
     <div class="review-center__filters">
-      <select v-model="filterStatus" class="review-center__select" aria-label="状态筛选">
-        <option v-for="option in STATUS_OPTIONS" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
-      <button type="button" class="review-center__filter-button" @click="applyFilters">筛选</button>
+      <el-select v-model="filterStatus" class="review-center__select" aria-label="状态筛选">
+        <el-option
+          v-for="option in STATUS_OPTIONS"
+          :key="option.value"
+          :value="option.value"
+          :label="option.label"
+        />
+      </el-select>
+      <el-button type="primary" plain @click="applyFilters">筛选</el-button>
     </div>
 
-    <div v-if="loading" class="review-center__state">加载中…</div>
+    <div v-if="loading" class="review-center__state">
+      <el-skeleton :rows="4" animated />
+    </div>
     <div v-else-if="loadError" class="review-center__state">
-      加载失败，请稍后重试
-      <button type="button" class="review-center__retry" @click="load(pageNo)">重试</button>
+      <p>加载失败，请稍后重试</p>
+      <el-button type="primary" plain size="small" @click="load(pageNo)">重试</el-button>
     </div>
     <div v-else-if="reviews.length === 0" class="review-center__state">暂无审核记录。</div>
     <template v-else>
@@ -214,7 +247,19 @@ onMounted(() => {
           >
             <span class="review-item__title">{{ review.articleTitle }}</span>
             <span class="review-item__meta">
-              <span class="review-item__badge">{{ STATUS_LABELS[review.status] ?? review.status }}</span>
+              <el-tag
+                :type="
+                  review.status === 'PENDING'
+                    ? 'warning'
+                    : review.status === 'APPROVED'
+                      ? 'success'
+                      : 'danger'
+                "
+                size="small"
+                effect="light"
+              >
+                {{ STATUS_LABELS[review.status] ?? review.status }}
+              </el-tag>
               <span>v{{ review.version }}</span>
               <span>{{ formatTime(review.updatedAt) }}</span>
             </span>
@@ -239,13 +284,22 @@ onMounted(() => {
         <h3 class="review-detail__subtitle">AI 审校问题（{{ issues.length }}）</h3>
         <p v-if="issues.length === 0" class="review-detail__hint">暂无 AI 审校问题。</p>
         <ul v-else class="review-detail__issues">
-          <li v-for="(issue, index) in issues" :key="index" class="review-issue" :class="`review-issue--${issue.severity}`">
+          <li
+            v-for="(issue, index) in issues"
+            :key="index"
+            class="review-issue"
+            :class="`review-issue--${issue.severity}`"
+          >
             <div class="review-issue__head">
-              <span class="review-issue__severity">{{ SEVERITY_LABELS[issue.severity] ?? issue.severity }}</span>
+              <span class="review-issue__severity">{{
+                SEVERITY_LABELS[issue.severity] ?? issue.severity
+              }}</span>
               <span v-if="issue.position" class="review-issue__position">{{ issue.position }}</span>
             </div>
             <p v-if="issue.evidence" class="review-issue__evidence">原文：{{ issue.evidence }}</p>
-            <p v-if="issue.suggestion" class="review-issue__suggestion">建议：{{ issue.suggestion }}</p>
+            <p v-if="issue.suggestion" class="review-issue__suggestion">
+              建议：{{ issue.suggestion }}
+            </p>
           </li>
         </ul>
 
@@ -256,24 +310,39 @@ onMounted(() => {
         </div>
 
         <div v-if="selected.status === 'PENDING'" class="review-detail__actions">
-          <button type="button" class="review-detail__approve" :disabled="acting" @click="approve">
-            {{ acting ? '处理中…' : '通过' }}
-          </button>
+          <el-button type="primary" :loading="acting" @click="approve">
+            {{ acting ? '处理中' : '通过' }}
+          </el-button>
 
           <form class="review-detail__reject-form" @submit.prevent="reject">
             <label class="review-detail__field">
               <span class="review-detail__label">驳回原因 *</span>
-              <textarea v-model="rejectReason" class="review-detail__textarea" rows="2" placeholder="例如：结论与正文矛盾" />
+              <textarea
+                v-model="rejectReason"
+                class="review-detail__textarea"
+                rows="2"
+                placeholder="例如：结论与正文矛盾"
+              />
             </label>
             <label class="review-detail__field">
               <span class="review-detail__label">位置 *</span>
-              <input v-model="rejectPosition" class="review-detail__input" type="text" placeholder="例如：第二节「小结」段落" />
+              <input
+                v-model="rejectPosition"
+                class="review-detail__input"
+                type="text"
+                placeholder="例如：第二节「小结」段落"
+              />
             </label>
             <label class="review-detail__field">
               <span class="review-detail__label">期望修改 *</span>
-              <textarea v-model="rejectExpectation" class="review-detail__textarea" rows="2" placeholder="例如：补充数据来源并修正结论" />
+              <textarea
+                v-model="rejectExpectation"
+                class="review-detail__textarea"
+                rows="2"
+                placeholder="例如：补充数据来源并修正结论"
+              />
             </label>
-            <button type="submit" class="review-detail__reject" :disabled="acting">驳回</button>
+            <el-button type="danger" plain :loading="acting" native-type="submit">驳回</el-button>
           </form>
         </div>
 
@@ -313,22 +382,7 @@ onMounted(() => {
 }
 
 .review-center__select {
-  padding: 7px 10px;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm, 6px);
-  background: var(--xl-bg-secondary);
-  color: var(--xl-text-primary);
-  font-size: 13px;
-}
-
-.review-center__filter-button {
-  padding: 7px 16px;
-  border: 1px solid var(--xl-color-primary);
-  border-radius: var(--xl-radius-sm, 6px);
-  background: transparent;
-  color: var(--xl-color-primary);
-  font-size: 13px;
-  cursor: pointer;
+  width: 140px;
 }
 
 .review-center__state {
@@ -338,12 +392,8 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.review-center__retry {
-  margin-left: 8px;
-  border: none;
-  background: none;
-  color: var(--xl-color-primary);
-  cursor: pointer;
+.review-center__state :deep(.el-skeleton) {
+  text-align: left;
 }
 
 .review-center__list {
@@ -362,11 +412,21 @@ onMounted(() => {
   width: 100%;
   padding: 14px 18px;
   border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius);
+  border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
   color: var(--xl-text-primary);
   text-align: left;
   cursor: pointer;
+  transition:
+    box-shadow var(--xl-transition),
+    transform var(--xl-transition),
+    border-color var(--xl-transition);
+}
+
+.review-item__main:hover {
+  box-shadow: var(--xl-shadow-md);
+  transform: translateY(-1px);
 }
 
 .review-item__main--active {
@@ -381,23 +441,19 @@ onMounted(() => {
 .review-item__meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   color: var(--xl-text-secondary);
   font-size: 12px;
-}
-
-.review-item__badge {
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
-  color: var(--xl-color-primary);
 }
 
 .review-detail {
   margin-top: 24px;
   padding: 20px;
   border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .review-detail__state {
@@ -530,26 +586,6 @@ onMounted(() => {
   gap: 16px;
 }
 
-.review-detail__approve {
-  align-self: flex-start;
-  padding: 8px 22px;
-  border: none;
-  border-radius: 8px;
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.review-detail__approve:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.review-detail__approve:hover:not(:disabled) {
-  background: var(--xl-color-primary-hover);
-}
-
 .review-detail__reject-form {
   display: flex;
   flex-direction: column;
@@ -590,22 +626,6 @@ onMounted(() => {
 .review-detail__input:focus,
 .review-detail__textarea:focus {
   border-color: var(--xl-color-primary);
-}
-
-.review-detail__reject {
-  align-self: flex-start;
-  padding: 8px 22px;
-  border: 1px solid var(--xl-color-danger, #d03050);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--xl-color-danger, #d03050);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.review-detail__reject:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .review-detail__message {

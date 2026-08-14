@@ -48,28 +48,50 @@ async function submit(): Promise<void> {
     <div class="feedback-dialog" role="dialog" aria-modal="true" aria-label="读者纠错">
       <header class="feedback-dialog__header">
         <h2 class="feedback-dialog__title">读者纠错</h2>
-        <button type="button" class="feedback-dialog__close" aria-label="关闭" @click="emit('close')">×</button>
+        <button
+          type="button"
+          class="feedback-dialog__close"
+          aria-label="关闭"
+          @click="emit('close')"
+        >
+          ×
+        </button>
       </header>
 
       <form v-if="!trackNo" class="feedback-dialog__form" @submit.prevent="submit">
         <label class="feedback-dialog__field">
           <span class="feedback-dialog__label">问题描述 *</span>
-          <textarea v-model="problem" class="feedback-dialog__textarea" rows="3" placeholder="请描述你发现的问题，如错别字、事实错误、链接失效…" />
+          <textarea
+            v-model="problem"
+            class="feedback-dialog__textarea"
+            rows="3"
+            placeholder="请描述你发现的问题，如错别字、事实错误、链接失效…"
+          />
         </label>
         <label class="feedback-dialog__field">
           <span class="feedback-dialog__label">位置（可选）</span>
-          <input v-model="position" class="feedback-dialog__input" type="text" placeholder="例如：第二节第 3 段" />
+          <input
+            v-model="position"
+            class="feedback-dialog__input"
+            type="text"
+            placeholder="例如：第二节第 3 段"
+          />
         </label>
         <label class="feedback-dialog__field">
           <span class="feedback-dialog__label">证据（可选）</span>
-          <textarea v-model="evidence" class="feedback-dialog__textarea" rows="2" placeholder="补充佐证链接或原文摘录…" />
+          <textarea
+            v-model="evidence"
+            class="feedback-dialog__textarea"
+            rows="2"
+            placeholder="补充佐证链接或原文摘录…"
+          />
         </label>
         <p v-if="error" class="feedback-dialog__error" role="alert">{{ error }}</p>
         <div class="feedback-dialog__actions">
-          <button type="button" class="feedback-dialog__cancel" @click="emit('close')">取消</button>
-          <button type="submit" class="feedback-dialog__submit" :disabled="submitting || !problem.trim()">
-            {{ submitting ? '提交中…' : '提交' }}
-          </button>
+          <el-button @click="emit('close')">取消</el-button>
+          <el-button type="primary" native-type="submit" :disabled="submitting || !problem.trim()">
+            {{ submitting ? '提交中' : '提交' }}
+          </el-button>
         </div>
       </form>
 
@@ -77,7 +99,7 @@ async function submit(): Promise<void> {
         <p class="feedback-dialog__done-title">感谢你的反馈</p>
         <p class="feedback-dialog__done-text">问题已受理，追踪编号：</p>
         <p class="feedback-dialog__track-no">{{ trackNo }}</p>
-        <button type="button" class="feedback-dialog__submit" @click="emit('close')">关闭</button>
+        <el-button type="primary" @click="emit('close')">关闭</el-button>
       </div>
     </div>
   </div>
@@ -100,6 +122,7 @@ async function submit(): Promise<void> {
   max-width: 480px;
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-lg);
   overflow: hidden;
 }
 
@@ -176,35 +199,6 @@ async function submit(): Promise<void> {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.feedback-dialog__cancel {
-  padding: 7px 16px;
-  border: 1px solid var(--xl-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--xl-text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.feedback-dialog__submit {
-  padding: 7px 16px;
-  border: none;
-  border-radius: 8px;
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.feedback-dialog__submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.feedback-dialog__submit:hover:not(:disabled) {
-  background: var(--xl-color-primary-hover);
 }
 
 .feedback-dialog__done {

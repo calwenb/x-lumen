@@ -105,26 +105,32 @@ onMounted(async () => {
 <template>
   <main class="search">
     <form class="search__form" @submit.prevent="applyFilters">
-      <input
+      <el-input
         v-model="keyword"
         class="search__input"
-        type="search"
         placeholder="搜索文章标题或摘要…"
         aria-label="搜索关键词"
+        clearable
       />
-      <select v-model="category" class="search__select" aria-label="按分类筛选">
-        <option value="">全部分类</option>
-        <option v-for="item in categories" :key="item.name" :value="item.name">
-          {{ item.name }}（{{ item.count }}）
-        </option>
-      </select>
-      <select v-model="tag" class="search__select" aria-label="按标签筛选">
-        <option value="">全部标签</option>
-        <option v-for="item in tags" :key="item.name" :value="item.name">
-          {{ item.name }}（{{ item.count }}）
-        </option>
-      </select>
-      <button type="submit" class="search__submit">搜索</button>
+      <el-select v-model="category" class="search__select" aria-label="按分类筛选">
+        <el-option value="" label="全部分类" />
+        <el-option
+          v-for="item in categories"
+          :key="item.name"
+          :value="item.name"
+          :label="`${item.name}（${item.count}）`"
+        />
+      </el-select>
+      <el-select v-model="tag" class="search__select" aria-label="按标签筛选">
+        <el-option value="" label="全部标签" />
+        <el-option
+          v-for="item in tags"
+          :key="item.name"
+          :value="item.name"
+          :label="`${item.name}（${item.count}）`"
+        />
+      </el-select>
+      <el-button type="primary" native-type="submit" class="search__submit">搜索</el-button>
     </form>
 
     <div v-if="loading" class="search__state">
@@ -132,11 +138,11 @@ onMounted(async () => {
     </div>
     <div v-else-if="loadError" class="search__state">
       <p class="search__state-text">搜索失败</p>
-      <button type="button" class="search__retry" @click="load(pageNo)">重试</button>
+      <el-button type="primary" plain @click="load(pageNo)">重试</el-button>
     </div>
     <div v-else-if="results.length === 0" class="search__state">
       <p class="search__state-text">没有找到相关文章，试试清空筛选或更换关键词。</p>
-      <RouterLink class="search__retry" to="/search">清空筛选</RouterLink>
+      <RouterLink class="search__reset" to="/search">清空筛选</RouterLink>
     </div>
     <template v-else>
       <p class="search__summary">共 {{ total }} 篇相关文章</p>
@@ -165,47 +171,22 @@ onMounted(async () => {
 
 .search__form {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--xl-space-2);
   margin-bottom: var(--xl-space-4);
 }
 
 .search__input {
   flex: 1;
-  min-width: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--xl-border);
-  border-radius: 8px;
-  background: var(--xl-bg-surface);
-  color: var(--xl-text-primary);
-  font-size: 14px;
-}
-
-.search__input:focus {
-  outline: none;
-  border-color: var(--xl-color-primary);
+  min-width: 180px;
 }
 
 .search__select {
-  padding: 8px 10px;
-  border: 1px solid var(--xl-border);
-  border-radius: 8px;
-  background: var(--xl-bg-surface);
-  color: var(--xl-text-secondary);
-  font-size: 13px;
+  width: 150px;
 }
 
 .search__submit {
-  padding: 8px 18px;
-  border: none;
-  border-radius: 8px;
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.search__submit:hover {
-  background: var(--xl-color-primary-hover);
+  flex-shrink: 0;
 }
 
 .search__state {
@@ -228,15 +209,18 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-.search__retry {
+.search__reset {
   padding: 6px 16px;
-  border: none;
+  border: 1px solid var(--xl-color-primary);
   border-radius: 8px;
-  background: var(--xl-color-primary);
-  color: #fff;
+  background: transparent;
+  color: var(--xl-color-primary);
   font-size: 13px;
   text-decoration: none;
-  cursor: pointer;
+}
+
+.search__reset:hover {
+  background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
 }
 
 .search__summary {
@@ -245,8 +229,20 @@ onMounted(async () => {
 }
 
 .search-card {
-  padding: var(--xl-space-4) 0;
-  border-bottom: 1px solid var(--xl-border);
+  padding: var(--xl-space-4) var(--xl-space-6);
+  margin-bottom: var(--xl-space-4);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+  transition:
+    box-shadow var(--xl-transition),
+    transform var(--xl-transition);
+}
+
+.search-card:hover {
+  box-shadow: var(--xl-shadow-md);
+  transform: translateY(-2px);
 }
 
 .search-card__title {

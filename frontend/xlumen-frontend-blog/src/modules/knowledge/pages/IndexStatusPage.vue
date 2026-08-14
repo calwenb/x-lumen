@@ -44,7 +44,9 @@ function formatTime(iso: string): string {
 }
 
 function articleHref(item: RetrievalItem): string {
-  return item.headingAnchor ? `/articles/${item.articleId}#${item.headingAnchor}` : `/articles/${item.articleId}`
+  return item.headingAnchor
+    ? `/articles/${item.articleId}#${item.headingAnchor}`
+    : `/articles/${item.articleId}`
 }
 
 async function search(): Promise<void> {
@@ -93,14 +95,25 @@ async function queryStatus(): Promise<void> {
     <section class="index-status__section">
       <h2 class="index-status__section-title">检索测试</h2>
       <form class="index-status__form" @submit.prevent="search">
-        <input v-model="query" class="index-status__input" type="search" placeholder="输入检索词，如：Spring Boot" />
+        <el-input
+          v-model="query"
+          class="index-status__input"
+          placeholder="输入检索词，如：Spring Boot"
+          clearable
+        />
         <label class="index-status__topk">
           返回条数
-          <input v-model.number="topK" class="index-status__topk-input" type="number" min="1" max="20" />
+          <el-input-number
+            v-model="topK"
+            :min="1"
+            :max="20"
+            size="small"
+            class="index-status__topk-input"
+          />
         </label>
-        <button type="submit" class="index-status__submit" :disabled="searching">
-          {{ searching ? '检索中…' : '检索' }}
-        </button>
+        <el-button type="primary" native-type="submit" :loading="searching">
+          {{ searching ? '检索中' : '检索' }}
+        </el-button>
       </form>
 
       <p v-if="searchError" class="index-status__error" role="alert">{{ searchError }}</p>
@@ -108,7 +121,11 @@ async function queryStatus(): Promise<void> {
       <template v-if="searched">
         <p v-if="results.length === 0" class="index-status__empty">没有命中任何片段。</p>
         <ul v-else class="index-status__results">
-          <li v-for="item in results" :key="`${item.articleId}-${item.chunkSeq}`" class="retrieval-item">
+          <li
+            v-for="item in results"
+            :key="`${item.articleId}-${item.chunkSeq}`"
+            class="retrieval-item"
+          >
             <div class="retrieval-item__head">
               <span class="retrieval-item__score">{{ formatScore(item.score) }}</span>
               <RouterLink class="retrieval-item__title" :to="articleHref(item)">
@@ -128,10 +145,15 @@ async function queryStatus(): Promise<void> {
     <section class="index-status__section">
       <h2 class="index-status__section-title">文章索引状态查询</h2>
       <form class="index-status__form" @submit.prevent="queryStatus">
-        <input v-model="statusArticleId" class="index-status__input" type="search" placeholder="输入文章 ID" />
-        <button type="submit" class="index-status__submit" :disabled="statusLoading">
-          {{ statusLoading ? '查询中…' : '查询' }}
-        </button>
+        <el-input
+          v-model="statusArticleId"
+          class="index-status__input"
+          placeholder="输入文章 ID"
+          clearable
+        />
+        <el-button type="primary" native-type="submit" :loading="statusLoading">
+          {{ statusLoading ? '查询中' : '查询' }}
+        </el-button>
       </form>
 
       <p v-if="statusError" class="index-status__error" role="alert">{{ statusError }}</p>
@@ -139,10 +161,16 @@ async function queryStatus(): Promise<void> {
       <template v-if="statusQueried">
         <p v-if="statusEmpty" class="index-status__empty">该文章尚未建立索引。</p>
         <div v-else-if="statusResult" class="index-status__card">
-          <p><strong>状态：</strong>{{ INDEX_STATUS_LABELS[statusResult.status] ?? statusResult.status }}</p>
+          <p>
+            <strong>状态：</strong
+            >{{ INDEX_STATUS_LABELS[statusResult.status] ?? statusResult.status }}
+          </p>
           <p><strong>版本：</strong>v{{ statusResult.version }}</p>
           <p><strong>切片数：</strong>{{ statusResult.chunkCount }}</p>
-          <p><strong>索引时间：</strong>{{ statusResult.indexedAt ? formatTime(statusResult.indexedAt) : '—' }}</p>
+          <p>
+            <strong>索引时间：</strong
+            >{{ statusResult.indexedAt ? formatTime(statusResult.indexedAt) : '—' }}
+          </p>
         </div>
       </template>
     </section>
@@ -191,17 +219,6 @@ async function queryStatus(): Promise<void> {
 .index-status__input {
   flex: 1;
   min-width: 220px;
-  padding: 8px 12px;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm, 6px);
-  background: var(--xl-bg-secondary);
-  color: var(--xl-text-primary);
-  font-size: 13px;
-  outline: none;
-}
-
-.index-status__input:focus {
-  border-color: var(--xl-color-primary);
 }
 
 .index-status__topk {
@@ -213,37 +230,12 @@ async function queryStatus(): Promise<void> {
 }
 
 .index-status__topk-input {
-  width: 56px;
-  padding: 7px 8px;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm, 6px);
-  background: var(--xl-bg-secondary);
-  color: var(--xl-text-primary);
-  font-size: 13px;
-}
-
-.index-status__submit {
-  padding: 8px 18px;
-  border: none;
-  border-radius: 8px;
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.index-status__submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.index-status__submit:hover:not(:disabled) {
-  background: var(--xl-color-primary-hover);
+  width: 120px;
 }
 
 .index-status__error {
   margin: 0 0 12px;
-  color: var(--xl-color-danger, #d03050);
+  color: var(--xl-color-danger);
   font-size: 13px;
 }
 
@@ -265,7 +257,9 @@ async function queryStatus(): Promise<void> {
 .retrieval-item {
   padding: 12px 14px;
   border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm, 6px);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .retrieval-item__head {

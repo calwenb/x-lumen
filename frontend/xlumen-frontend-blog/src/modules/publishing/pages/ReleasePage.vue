@@ -2,6 +2,7 @@
 // 发布管理（B13，F-0905/F-0906）：已通过文章列表（调 content fetchArticles status=4）→
 // 每篇选可见性 + 立即/定时发布（二次确认）+ 下方发布记录列表。
 import { onMounted, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { fetchArticles, VISIBILITY_LABELS } from '@/modules/content/api/article'
 import { createRelease, fetchReleases } from '@/modules/publishing/api/release'
@@ -82,17 +83,39 @@ async function loadReleases(targetPage: number): Promise<void> {
 
 async function releaseNow(row: ReleaseRow): Promise<void> {
   if (row.releasing) return
-  if (!window.confirm(`确认立即发布「${row.article.title}」吗？`)) return
+  try {
+    await ElMessageBox.confirm(`确认立即发布「${row.article.title}」吗？`, '立即发布', {
+      confirmButtonText: '立即发布',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    // 用户取消
+    return
+  }
   await doRelease(row, undefined)
 }
 
 async function releaseScheduled(row: ReleaseRow): Promise<void> {
   if (row.releasing) return
   if (!row.publishAt) {
-    window.alert('请先选择定时发布时间')
+    ElMessage.warning('请先选择定时发布时间')
     return
   }
-  if (!window.confirm(`确认于 ${row.publishAt.replace('T', ' ')} 定时发布「${row.article.title}」吗？`)) return
+  try {
+    await ElMessageBox.confirm(
+      `确认于 ${row.publishAt.replace('T', ' ')} 定时发布「${row.article.title}」吗？`,
+      '定时发布',
+      {
+        confirmButtonText: '定时发布',
+        cancelButtonText: '取消',
+        type: 'warning',
+      },
+    )
+  } catch {
+    // 用户取消
+    return
+  }
   await doRelease(row, normalizePublishAt(row.publishAt))
 }
 
@@ -105,9 +128,12 @@ async function doRelease(row: ReleaseRow, publishAt?: string): Promise<void> {
       visibility: row.visibility,
       ...(publishAt ? { publishAt } : {}),
     })
+    ElMessage.success('发布成功，已建立 RAG 索引')
     await Promise.all([loadApproved(), loadReleases(1)])
   } catch (error) {
-    window.alert(error instanceof Error && error.message ? error.message : '发布失败，请稍后重试')
+    ElMessage.error(
+      error instanceof Error && error.message ? error.message : '发布失败，请稍后重试',
+    )
   } finally {
     row.releasing = false
   }
@@ -123,15 +149,19 @@ onMounted(() => {
   <main class="release-page">
     <header class="release-page__header">
       <h1 class="release-page__title">发布管理</h1>
-      <p class="release-page__intro">对已通过审核的文章执行立即/定时发布，发布成功自动建立 RAG 索引。</p>
+      <p class="release-page__intro">
+        对已通过审核的文章执行立即/定时发布，发布成功自动建立 RAG 索引。
+      </p>
     </header>
 
     <section class="release-page__section">
       <h2 class="release-page__section-title">待发布文章（已通过审核）</h2>
-      <div v-if="approvedLoading" class="release-page__state">加载中…</div>
+      <div v-if="approvedLoading" class="release-page__state">
+        <el-skeleton :rows="4" animated />
+      </div>
       <div v-else-if="approvedError" class="release-page__state">
-        待发布文章加载失败
-        <button type="button" class="release-page__retry" @click="loadApproved">重试</button>
+        <p>待发布文章加载失败</p>
+        <el-button type="primary" plain size="small" @click="loadApproved">重试</el-button>
       </div>
       <div v-else-if="approved.length === 0" class="release-page__state">暂无待发布文章。</div>
       <ul v-else class="release-page__list">
@@ -143,27 +173,33 @@ onMounted(() => {
             </span>
           </div>
           <div class="release-row__actions">
-            <select v-model="row.visibility" class="release-row__select" aria-label="可见性">
-              <option :value="1">公开</option>
-              <option :value="0">私有</option>
-            </select>
+            <el-select v-model="row.visibility" class="release-row__select" aria-label="可见性">
+              <el-option :value="1" label="公开" />
+              <el-option :value="0" label="私有" />
+            </el-select>
             <input
               v-model="row.publishAt"
               class="release-row__datetime"
               type="datetime-local"
               aria-label="定时发布时间"
             />
-            <button type="button" class="release-row__button" :disabled="row.releasing" @click="releaseNow(row)">
+            <el-button
+              type="primary"
+              size="small"
+              :loading="row.releasing"
+              @click="releaseNow(row)"
+            >
               立即发布
-            </button>
-            <button
-              type="button"
-              class="release-row__button release-row__button--secondary"
-              :disabled="row.releasing"
+            </el-button>
+            <el-button
+              type="primary"
+              plain
+              size="small"
+              :loading="row.releasing"
               @click="releaseScheduled(row)"
             >
               定时发布
-            </button>
+            </el-button>
           </div>
         </li>
       </ul>
@@ -171,10 +207,14 @@ onMounted(() => {
 
     <section class="release-page__section">
       <h2 class="release-page__section-title">发布记录</h2>
-      <div v-if="releasesLoading" class="release-page__state">加载中…</div>
+      <div v-if="releasesLoading" class="release-page__state">
+        <el-skeleton :rows="4" animated />
+      </div>
       <div v-else-if="releasesError" class="release-page__state">
-        发布记录加载失败
-        <button type="button" class="release-page__retry" @click="loadReleases(releasesPageNo)">重试</button>
+        <p>发布记录加载失败</p>
+        <el-button type="primary" plain size="small" @click="loadReleases(releasesPageNo)"
+          >重试</el-button
+        >
       </div>
       <div v-else-if="releases.length === 0" class="release-page__state">暂无发布记录。</div>
       <template v-else>
@@ -196,7 +236,12 @@ onMounted(() => {
             </span>
           </li>
         </ul>
-        <Pagination :page-no="releasesPageNo" :page-size="PAGE_SIZE" :total="releasesTotal" @change="loadReleases" />
+        <Pagination
+          :page-no="releasesPageNo"
+          :page-size="PAGE_SIZE"
+          :total="releasesTotal"
+          @change="loadReleases"
+        />
       </template>
     </section>
   </main>
@@ -240,12 +285,8 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.release-page__retry {
-  margin-left: 8px;
-  border: none;
-  background: none;
-  color: var(--xl-color-primary);
-  cursor: pointer;
+.release-page__state :deep(.el-skeleton) {
+  text-align: left;
 }
 
 .release-page__list {
@@ -265,7 +306,9 @@ onMounted(() => {
   gap: 12px;
   padding: 14px 18px;
   border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .release-row__main {
@@ -293,43 +336,22 @@ onMounted(() => {
   gap: 8px;
 }
 
-.release-row__select,
+.release-row__select {
+  width: 110px;
+}
+
 .release-row__datetime {
   padding: 6px 10px;
   border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm, 6px);
-  background: var(--xl-bg-secondary);
+  border-radius: var(--xl-radius-sm);
+  background: var(--xl-bg-surface);
   color: var(--xl-text-primary);
   font-size: 13px;
+  outline: none;
 }
 
-.release-row__button {
-  padding: 7px 16px;
-  border: none;
-  border-radius: 8px;
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.release-row__button--secondary {
-  border: 1px solid var(--xl-color-primary);
-  background: transparent;
-  color: var(--xl-color-primary);
-}
-
-.release-row__button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.release-row__button:hover:not(:disabled) {
-  background: var(--xl-color-primary-hover);
-}
-
-.release-row__button--secondary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
+.release-row__datetime:focus {
+  border-color: var(--xl-color-primary);
 }
 
 .release-page__records {
@@ -347,7 +369,10 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--xl-border);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .release-record__title {

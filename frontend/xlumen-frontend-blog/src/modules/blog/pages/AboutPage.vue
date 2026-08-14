@@ -8,17 +8,15 @@
     <section class="about__card">
       <h1 class="about__title">关于 xLumen 博客</h1>
       <p class="about__text">
-        这里是 xLumen——面向个人博主的 AI 内容创作与知识对话平台。博主以文字沉淀思考，
-        以 AI 放大创作效率；读者在干净、专注的阅读环境里与内容互动。
+        这里是 xLumen——面向个人博主的 AI 内容创作与知识对话平台。博主以文字沉淀思考， 以 AI
+        放大创作效率；读者在干净、专注的阅读环境里与内容互动。
       </p>
       <p class="about__text">
         内容创作遵循公开透明的流程：文章发布前经过审校，发布后读者可评论、点赞、纠错，
         确保每篇内容都经得起推敲。
       </p>
       <h2 class="about__subtitle">联系方式</h2>
-      <p class="about__text">
-        欢迎通过评论区与博主交流，或关注后续更新的 RSS 订阅（V2 上线）。
-      </p>
+      <p class="about__text">欢迎通过评论区与博主交流，或关注后续更新的 RSS 订阅（V2 上线）。</p>
     </section>
   </main>
 </template>
@@ -35,6 +33,7 @@
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-md);
 }
 
 .about__title {

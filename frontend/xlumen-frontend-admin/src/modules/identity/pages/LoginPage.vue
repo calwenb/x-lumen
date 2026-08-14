@@ -3,6 +3,7 @@
 // 非管理员登录后校验 roles 并登出（撤销令牌），提示无权限。
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Lock, User } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 import type { SessionSnapshot } from '@/stores/session'
@@ -57,37 +58,45 @@ async function submit(): Promise<void> {
 <template>
   <main class="login">
     <div class="login__card">
-      <h1 class="login__title">xLumen 管理后台</h1>
+      <div class="login__brand">
+        <span class="login__logo" aria-hidden="true" />
+        <h1 class="login__title">xLumen 管理后台</h1>
+      </div>
       <p class="login__subtitle">仅限空间所有者与管理员登录</p>
-      <form class="login__form" @submit.prevent="submit">
-        <label class="login__field">
-          <span>用户名</span>
-          <input
+      <el-form class="login__form" label-position="top" size="large" @submit.prevent="submit">
+        <el-form-item label="用户名">
+          <el-input
             v-model="username"
             name="username"
-            required
-            minlength="3"
-            maxlength="32"
+            placeholder="请输入用户名"
+            :prefix-icon="User"
             autocomplete="username"
           />
-        </label>
-        <label class="login__field">
-          <span>密码</span>
-          <input
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input
             v-model="password"
             name="password"
             type="password"
-            required
-            minlength="8"
-            maxlength="64"
+            show-password
+            placeholder="请输入密码"
+            :prefix-icon="Lock"
             autocomplete="current-password"
+            @keyup.enter="submit"
           />
-        </label>
-        <p v-if="errorMessage" class="login__error" role="alert">{{ errorMessage }}</p>
-        <button type="submit" class="login__submit" :disabled="loading">
-          {{ loading ? '登录中…' : '登录' }}
-        </button>
-      </form>
+        </el-form-item>
+        <el-alert
+          v-if="errorMessage"
+          :title="errorMessage"
+          type="error"
+          :closable="false"
+          show-icon
+          class="login__error"
+        />
+        <el-button type="primary" native-type="submit" class="login__submit" :loading="loading">
+          {{ loading ? '登录中…' : '登 录' }}
+        </el-button>
+      </el-form>
     </div>
   </main>
 </template>
@@ -99,6 +108,18 @@ async function submit(): Promise<void> {
   justify-content: center;
   min-height: 100vh;
   padding: var(--xl-space-4);
+  background:
+    radial-gradient(
+      1200px 600px at 15% -10%,
+      color-mix(in srgb, var(--xl-color-primary) 12%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      1000px 500px at 110% 110%,
+      color-mix(in srgb, var(--xl-color-ai) 10%, transparent),
+      transparent 55%
+    ),
+    var(--xl-bg-page);
 }
 
 .login__card {
@@ -108,6 +129,21 @@ async function submit(): Promise<void> {
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-lg);
+}
+
+.login__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--xl-space-2);
+}
+
+.login__logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
 }
 
 .login__title {
@@ -123,55 +159,12 @@ async function submit(): Promise<void> {
   text-align: center;
 }
 
-.login__form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--xl-space-4);
-}
-
-.login__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--xl-space-1);
-  color: var(--xl-text-secondary);
-  font-size: 13px;
-}
-
-.login__field input {
-  padding: var(--xl-space-2) var(--xl-space-3);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius);
-  color: var(--xl-text-primary);
-  font-size: 14px;
-}
-
-.login__field input:focus {
-  outline: none;
-  border-color: var(--xl-color-primary);
-}
-
 .login__error {
-  margin: 0;
-  color: var(--xl-color-danger);
-  font-size: 13px;
+  margin-bottom: var(--xl-space-4);
 }
 
 .login__submit {
-  padding: var(--xl-space-3);
-  border: none;
-  border-radius: var(--xl-radius);
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.login__submit:hover {
-  background: var(--xl-color-primary-hover);
-}
-
-.login__submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  width: 100%;
+  margin-top: var(--xl-space-2);
 }
 </style>

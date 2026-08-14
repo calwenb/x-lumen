@@ -199,17 +199,30 @@ WebSocket 只用于站内通知（F-1004）与协作状态。业务最终状态�
 | --- | --- | --- |
 | `--xl-bg-page` | `#F6F8FC` | 页面背景 |
 | `--xl-bg-surface` | `#FFFFFF` | 卡片、表格和编辑器 |
+| `--xl-bg-secondary` | `#EEF1F7` | 辅助背景（hover、气泡、浅底） |
 | `--xl-text-primary` | `#1F2937` | 主要文字 |
 | `--xl-text-secondary` | `#667085` | 次要文字 |
 | `--xl-text-muted` | `#98A2B3` | 弱化文字 |
 | `--xl-color-primary` | `#5367E8` | 主操作和品牌 |
 | `--xl-color-primary-hover` | `#4558D6` | 主操作悬停 |
 | `--xl-color-ai` | `#12A594` | AI 状态和关键数据 |
+| `--xl-color-success` | `#12A594` | 成功语义色 |
+| `--xl-color-danger` | `#D92D20` | 危险/错误语义色 |
+| `--xl-color-warning` | `#DC6803` | 警示语义色 |
 | `--xl-border` | `#E7EAF0` | 边框和分割线 |
 | `--xl-font-sans` | `system-ui, "PingFang SC", "Microsoft YaHei", sans-serif` | UI 与正文 |
 | `--xl-font-mono` | `"JetBrains Mono", Consolas, monospace` | 代码、证据卡与序号 |
+| `--xl-radius-card` | `12px` | 卡片/弹窗圆角 |
+| `--xl-radius` | `8px` | 控件圆角 |
+| `--xl-radius-sm` | `6px` | 小控件圆角 |
+| `--xl-shadow-sm` | `0 1px 2px rgb(16 24 40 / 5%)` | 卡片常规阴影 |
+| `--xl-shadow-md` | `0 4px 16px rgb(16 24 40 / 8%)` | hover 抬升/下拉浮层 |
+| `--xl-shadow-lg` | `0 12px 32px rgb(16 24 40 / 14%)` | 弹窗/消息浮层 |
+| `--xl-transition` | `0.2s ease` | 统一过渡时长 |
 
-采用 4px 基础间距，常用间距为 8、12、16、24、32px；卡片圆角以 10 至 12px 为主。核心页面只保留一个视觉主按钮。
+采用 4px 基础间距，常用间距为 8、12、16、24、32px；卡片圆角 12px、控件 8px、标签胶囊 999px。核心页面只保留一个视觉主按钮。
+
+**Element Plus 主题映射**：两个前端 `main.ts` 全量注册 Element Plus，`src/styles/element-theme.css` 将 EP 的 `--el-*` CSS 变量映射到上表 `--xl-*` Token（主色、语义色、中性色、圆角、阴影、过渡），业务组件直接使用 EP 组件（`el-button`、`el-table`、`el-form`、`el-message` 等），图标统一使用 `@element-plus/icons-vue`。
 
 ### 10.2 组件规则
 

@@ -3,6 +3,7 @@
 // 注册成功即建空间；登录后进入博客首页（PROTOTYPE §7.7）。
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Lock, User } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 import type { SessionSnapshot } from '@/stores/session'
@@ -22,8 +23,8 @@ const errorMessage = ref('')
 
 const isLogin = computed(() => mode.value === 'login')
 
-function switchMode(next: 'login' | 'register'): void {
-  mode.value = next
+/** tab 切换（v-model 已同步模式）：仅清除错误提示。 */
+function onTabChange(): void {
   errorMessage.value = ''
 }
 
@@ -57,50 +58,59 @@ async function submit(): Promise<void> {
 
 <template>
   <main class="auth">
-    <h1 class="auth__title">欢迎使用 xLumen</h1>
+    <div class="auth__brand">
+      <span class="auth__logo" aria-hidden="true" />
+      <h1 class="auth__title">欢迎使用 xLumen</h1>
+    </div>
     <p class="auth__subtitle">注册即创建个人工作空间</p>
     <div class="auth__card">
-      <div class="auth__tabs" role="tablist">
-        <button type="button" role="tab" :aria-selected="isLogin" :class="{ active: isLogin }" @click="switchMode('login')">
-          登录
-        </button>
-        <button type="button" role="tab" :aria-selected="!isLogin" :class="{ active: !isLogin }" @click="switchMode('register')">
-          注册
-        </button>
-      </div>
-      <form class="auth__form" @submit.prevent="submit">
-        <label class="auth__field">
-          <span>用户名</span>
-          <input
+      <el-tabs v-model="mode" class="auth__tabs" @tab-change="onTabChange">
+        <el-tab-pane label="登录" name="login" />
+        <el-tab-pane label="注册" name="register" />
+      </el-tabs>
+      <el-form class="auth__form" label-position="top" size="large" @submit.prevent="submit">
+        <el-form-item label="用户名">
+          <el-input
             v-model="username"
             name="username"
-            required
-            minlength="3"
-            maxlength="32"
+            placeholder="请输入用户名"
+            :prefix-icon="User"
             autocomplete="username"
           />
-        </label>
-        <label v-if="!isLogin" class="auth__field">
-          <span>邮箱（可选）</span>
-          <input v-model="email" name="email" type="email" autocomplete="email" />
-        </label>
-        <label class="auth__field">
-          <span>密码</span>
-          <input
+        </el-form-item>
+        <el-form-item v-if="!isLogin" label="邮箱（可选）">
+          <el-input
+            v-model="email"
+            name="email"
+            type="email"
+            placeholder="name@example.com"
+            autocomplete="email"
+          />
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input
             v-model="password"
             name="password"
             type="password"
-            required
-            minlength="8"
-            maxlength="64"
+            show-password
+            placeholder="至少 8 位"
+            :prefix-icon="Lock"
             autocomplete="current-password"
+            @keyup.enter="submit"
           />
-        </label>
-        <p v-if="errorMessage" class="auth__error" role="alert">{{ errorMessage }}</p>
-        <button type="submit" class="auth__submit" :disabled="loading">
+        </el-form-item>
+        <el-alert
+          v-if="errorMessage"
+          :title="errorMessage"
+          type="error"
+          :closable="false"
+          class="auth__error"
+          show-icon
+        />
+        <el-button type="primary" native-type="submit" class="auth__submit" :loading="loading">
           {{ loading ? '处理中…' : isLogin ? '登录' : '注册' }}
-        </button>
-      </form>
+        </el-button>
+      </el-form>
     </div>
   </main>
 </template>
@@ -110,90 +120,71 @@ async function submit(): Promise<void> {
   max-width: 420px;
   margin: 0 auto;
   padding: var(--xl-space-8) var(--xl-space-4);
+  min-height: calc(100vh - 56px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(
+      800px 400px at 50% -10%,
+      color-mix(in srgb, var(--xl-color-primary) 8%, transparent),
+      transparent 60%
+    ),
+    var(--xl-bg-page);
+}
+
+.auth__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--xl-space-2);
+}
+
+.auth__logo {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
 }
 
 .auth__title {
+  margin: 0;
   color: var(--xl-text-primary);
   font-size: 24px;
   text-align: center;
 }
 
 .auth__subtitle {
+  margin: var(--xl-space-2) 0 0;
   color: var(--xl-text-secondary);
   text-align: center;
 }
 
 .auth__card {
+  width: 100%;
   margin-top: var(--xl-space-6);
   padding: var(--xl-space-6);
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-md);
 }
 
-.auth__tabs {
-  display: flex;
-  gap: var(--xl-space-4);
+.auth__tabs :deep(.el-tabs__header) {
   margin-bottom: var(--xl-space-6);
 }
 
-.auth__tabs button {
-  padding: var(--xl-space-2) 0;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--xl-text-secondary);
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.auth__tabs button.active {
-  border-bottom-color: var(--xl-color-primary);
-  color: var(--xl-color-primary);
-}
-
-.auth__form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--xl-space-4);
-}
-
-.auth__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--xl-space-1);
-  color: var(--xl-text-secondary);
-}
-
-.auth__field input {
-  padding: var(--xl-space-2) var(--xl-space-3);
-  border: 1px solid var(--xl-border);
-  border-radius: 8px;
-  color: var(--xl-text-primary);
-  font-size: 14px;
+.auth__tabs :deep(.el-tabs__item) {
+  font-size: 15px;
 }
 
 .auth__error {
-  color: #d92d20;
-  font-size: 13px;
+  margin-bottom: var(--xl-space-4);
 }
 
 .auth__submit {
-  padding: var(--xl-space-3);
-  border: none;
-  border-radius: 8px;
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.auth__submit:hover {
-  background: var(--xl-color-primary-hover);
-}
-
-.auth__submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  width: 100%;
 }
 </style>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // 文章详情（B02，F-0201/F-0203）：标题/作者/时间/阅读时间/标签 + 目录导航 + Markdown 正文 + 点赞/评论。
 // 关键状态：加载骨架、404 不可访问解释、失败可重试；进入页面上报一次阅读量（防刷由后端保证）。
-import { computed, onMounted, ref } from 'vue'
+// 目录（TOC）滚动高亮：监听滚动，当前章节主色 + 左侧竖线。
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import CommentList from '@/modules/engagement/components/CommentList.vue'
@@ -31,8 +32,24 @@ const updatedAt = computed(() => (article.value ? formatDate(article.value.updat
 const showQa = ref(false)
 const showFeedback = ref(false)
 
+// 目录滚动高亮：当前阅读章节 anchor
+const activeAnchor = ref('')
+
 function formatDate(iso: string): string {
   return iso.slice(0, 10)
+}
+
+/** 滚动监听：取视口内最靠上的标题作为当前章节。 */
+function onScroll(): void {
+  const anchors = toc.value.map((item) => item.anchor)
+  let current = ''
+  for (const anchor of anchors) {
+    const el = document.getElementById(anchor)
+    if (el && el.getBoundingClientRect().top <= 96) {
+      current = anchor
+    }
+  }
+  activeAnchor.value = current
 }
 
 async function load(): Promise<void> {
@@ -64,7 +81,14 @@ onMounted(async () => {
   if (!notFound.value && !loadError.value) {
     // 阅读量上报：失败不影响阅读（F-0203）
     reportView(articleId.value).catch(() => undefined)
+    // 正文渲染完成后挂滚动监听（TOC 高亮）
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
 })
 </script>
 
@@ -80,7 +104,7 @@ onMounted(async () => {
     </div>
     <div v-else-if="loadError || !article" class="detail__state">
       <p class="detail__state-text">文章加载失败</p>
-      <button type="button" class="detail__retry" @click="load">重试</button>
+      <el-button type="primary" plain @click="load">重试</el-button>
     </div>
     <div v-else class="detail__layout">
       <aside v-if="toc.length > 0" class="detail__toc">
@@ -90,7 +114,10 @@ onMounted(async () => {
           :key="item.anchor"
           type="button"
           class="detail__toc-item"
-          :class="`detail__toc-item--${item.level}`"
+          :class="[
+            `detail__toc-item--${item.level}`,
+            { 'detail__toc-item--active': item.anchor === activeAnchor },
+          ]"
           @click="scrollToAnchor(item.anchor)"
         >
           {{ item.text }}
@@ -110,18 +137,16 @@ onMounted(async () => {
           <div class="detail__tags">
             <RouterLink
               v-if="article.category"
-              class="detail__tag"
               :to="`/search?category=${encodeURIComponent(article.category)}`"
             >
-              {{ article.category }}
+              <el-tag effect="plain" size="small">{{ article.category }}</el-tag>
             </RouterLink>
             <RouterLink
               v-for="tag in article.tags"
               :key="tag"
-              class="detail__tag"
               :to="`/search?tag=${encodeURIComponent(tag)}`"
             >
-              # {{ tag }}
+              <el-tag effect="plain" size="small"># {{ tag }}</el-tag>
             </RouterLink>
           </div>
         </header>
@@ -135,13 +160,15 @@ onMounted(async () => {
             :count="article.likeCount"
             @update:count="article.likeCount = $event"
           />
-          <button type="button" class="detail__action-button" @click="showQa = true">问「小光」</button>
-          <button type="button" class="detail__action-button" @click="showFeedback = true">纠错反馈</button>
+          <el-button plain @click="showQa = true">问「小光」</el-button>
+          <el-button plain @click="showFeedback = true">纠错反馈</el-button>
           <span class="detail__actions-hint">登录后可点赞与评论</span>
         </div>
-
-        <CommentList :article-id="article.id" @update:count="commentCount = $event" />
       </article>
+    </div>
+
+    <div v-if="article && !loading && !loadError && !notFound" class="detail__comments">
+      <CommentList :article-id="article.id" @update:count="commentCount = $event" />
     </div>
 
     <ArticleQaDialog
@@ -150,7 +177,11 @@ onMounted(async () => {
       :article-title="article.title"
       @close="showQa = false"
     />
-    <FeedbackDialog v-if="showFeedback && article" :article-id="article.id" @close="showFeedback = false" />
+    <FeedbackDialog
+      v-if="showFeedback && article"
+      :article-id="article.id"
+      @close="showFeedback = false"
+    />
   </main>
 </template>
 
@@ -183,8 +214,7 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-.detail__back,
-.detail__retry {
+.detail__back {
   display: inline-block;
   margin-top: var(--xl-space-4);
   padding: 6px 16px;
@@ -194,12 +224,15 @@ onMounted(async () => {
   color: #fff;
   font-size: 13px;
   text-decoration: none;
-  cursor: pointer;
+}
+
+.detail__back:hover {
+  background: var(--xl-color-primary-hover);
 }
 
 .detail__layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 720px);
+  grid-template-columns: 200px minmax(0, 760px);
   gap: var(--xl-space-6);
   justify-content: center;
   align-items: start;
@@ -210,19 +243,26 @@ onMounted(async () => {
   top: 72px;
   max-height: calc(100vh - 96px);
   overflow-y: auto;
+  padding: var(--xl-space-4);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .detail__toc-title {
   margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-primary);
   font-size: 14px;
+  font-weight: 600;
 }
 
 .detail__toc-item {
   display: block;
   width: 100%;
-  padding: 5px 0;
+  padding: 5px 8px;
   border: none;
+  border-radius: var(--xl-radius-sm);
   background: none;
   color: var(--xl-text-secondary);
   font-size: 13px;
@@ -232,11 +272,19 @@ onMounted(async () => {
 }
 
 .detail__toc-item:hover {
+  background: var(--xl-bg-secondary);
   color: var(--xl-color-primary);
 }
 
+.detail__toc-item--active {
+  background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
+  color: var(--xl-color-primary);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--xl-color-primary);
+}
+
 .detail__toc-item--3 {
-  padding-left: var(--xl-space-3);
+  padding-left: var(--xl-space-4);
 }
 
 .detail__toc-item--4 {
@@ -245,6 +293,11 @@ onMounted(async () => {
 
 .detail__article {
   min-width: 0;
+  padding: var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .detail__header {
@@ -274,9 +327,7 @@ onMounted(async () => {
   margin-top: var(--xl-space-3);
 }
 
-.detail__tag {
-  color: var(--xl-color-primary);
-  font-size: 12px;
+.detail__tags a {
   text-decoration: none;
 }
 
@@ -292,23 +343,14 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-.detail__action-button {
-  padding: 6px 14px;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: transparent;
-  color: var(--xl-text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.detail__action-button:hover {
-  border-color: var(--xl-color-primary);
-  color: var(--xl-color-primary);
+.detail__comments {
+  max-width: 760px;
+  margin: var(--xl-space-6) auto 0;
 }
 
 /* Markdown 正文样式（B02）：与设计 token 对齐，代码块等保持可读 */
 .markdown-body {
+  margin-top: var(--xl-space-4);
   color: var(--xl-text-primary);
   font-size: 15px;
   line-height: 1.8;
@@ -345,6 +387,7 @@ onMounted(async () => {
   border-radius: var(--xl-radius-card);
   background: #1f2937;
   color: #f9fafb;
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .markdown-body :deep(pre code) {
@@ -372,6 +415,10 @@ onMounted(async () => {
 
   .detail__toc {
     display: none;
+  }
+
+  .detail__comments {
+    margin-top: var(--xl-space-4);
   }
 }
 </style>

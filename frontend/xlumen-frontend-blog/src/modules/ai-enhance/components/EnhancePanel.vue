@@ -79,9 +79,9 @@ function copyValue(value: string): void {
           {{ item.label }}
         </button>
       </div>
-      <button type="button" class="enhance-panel__generate" :disabled="loading" @click="generate">
-        {{ loading ? '生成中…' : '生成' }}
-      </button>
+      <el-button type="primary" :loading="loading" @click="generate">
+        {{ loading ? '生成中' : '生成' }}
+      </el-button>
     </div>
 
     <p v-if="error" class="enhance-panel__error" role="alert">{{ error }}</p>
@@ -91,8 +91,10 @@ function copyValue(value: string): void {
         <div class="enhance-panel__card-head">
           <span class="enhance-panel__card-label">{{ FIELD_LABELS[field] ?? field }}</span>
           <div class="enhance-panel__card-actions">
-            <button type="button" class="enhance-panel__action" @click="emit('apply', field, value)">应用</button>
-            <button type="button" class="enhance-panel__action" @click="copyValue(value)">复制</button>
+            <el-button type="primary" link size="small" @click="emit('apply', field, value)"
+              >应用</el-button
+            >
+            <el-button type="primary" link size="small" @click="copyValue(value)">复制</el-button>
           </div>
         </div>
         <p class="enhance-panel__card-value">{{ value }}</p>
@@ -110,6 +112,7 @@ function copyValue(value: string): void {
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .enhance-panel__toolbar {
@@ -161,7 +164,7 @@ function copyValue(value: string): void {
 
 .enhance-panel__error {
   margin: 0;
-  color: var(--xl-color-danger, #d03050);
+  color: var(--xl-color-danger);
   font-size: 13px;
 }
 
@@ -174,7 +177,7 @@ function copyValue(value: string): void {
 .enhance-panel__card {
   padding: 12px 14px;
   border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm, 6px);
+  border-radius: var(--xl-radius-sm);
   background: var(--xl-bg-page);
 }
 
@@ -195,14 +198,6 @@ function copyValue(value: string): void {
 .enhance-panel__card-actions {
   display: flex;
   gap: 8px;
-}
-
-.enhance-panel__action {
-  border: none;
-  background: none;
-  color: var(--xl-color-primary);
-  font-size: 12px;
-  cursor: pointer;
 }
 
 .enhance-panel__card-value {

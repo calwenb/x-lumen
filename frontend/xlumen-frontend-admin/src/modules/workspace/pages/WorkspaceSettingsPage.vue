@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // A02 空间设置：空间名/slug 只读展示，intro 与 forceReview 可编辑保存。
 // 关键状态：加载骨架、失败重试、提交中、保存成功提示。
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 
 import { fetchWorkspaceSettings, updateWorkspaceSettings } from '../api/workspace'
 
@@ -43,8 +44,9 @@ async function save(): Promise<void> {
     intro.value = updated.intro
     forceReview.value = updated.forceReview
     saved.value = true
+    ElMessage.success('已保存')
   } catch {
-    window.alert('保存失败，请稍后重试')
+    ElMessage.error('保存失败，请稍后重试')
   } finally {
     saving.value = false
   }
@@ -53,55 +55,54 @@ async function save(): Promise<void> {
 onMounted(() => {
   void load()
 })
+
+// 保存成功后再次编辑任一字段，清除"已保存"提示
+watch([intro, forceReview], () => {
+  saved.value = false
+})
 </script>
 
 <template>
   <main class="settings">
     <h1 class="settings__title">空间设置</h1>
 
-    <div v-if="loading" class="settings__skeleton" role="status">加载中…</div>
-    <div v-else-if="loadError" class="settings__error">
-      <p>加载失败，请稍后重试。</p>
-      <button type="button" class="settings__retry" @click="load()">重试</button>
+    <div v-if="loading" class="settings__state" role="status">
+      <el-skeleton :rows="5" animated />
     </div>
-    <form v-else class="settings__card" @submit.prevent="save">
-      <div class="settings__field settings__field--readonly">
-        <span class="settings__label">空间名</span>
-        <span class="settings__value">{{ name }}</span>
-      </div>
-      <div class="settings__field settings__field--readonly">
-        <span class="settings__label">空间标识（slug）</span>
-        <span class="settings__value settings__value--mono">{{ slug }}</span>
-      </div>
-      <label class="settings__field">
-        <span class="settings__label">空间简介</span>
-        <textarea
+    <div v-else-if="loadError" class="settings__state">
+      <p>加载失败，请稍后重试。</p>
+      <el-button type="primary" plain @click="load()">重试</el-button>
+    </div>
+    <el-form v-else label-position="top" class="settings__card" @submit.prevent="save">
+      <el-form-item label="空间名">
+        <el-input :model-value="name" disabled />
+      </el-form-item>
+      <el-form-item label="空间标识（slug）">
+        <el-input :model-value="slug" disabled class="settings__slug" />
+      </el-form-item>
+      <el-form-item label="空间简介">
+        <el-input
           v-model="intro"
-          class="settings__textarea"
-          rows="4"
+          type="textarea"
+          :rows="4"
           maxlength="500"
+          show-word-limit
           placeholder="介绍你的空间…"
-        ></textarea>
-      </label>
-      <div class="settings__field settings__field--switch">
-        <span class="settings__label">发布审核</span>
-        <span class="settings__switch-row">
-          <input
-            v-model="forceReview"
-            type="checkbox"
-            class="settings__switch-input"
-            aria-label="开启发布审核"
-          />
+        />
+      </el-form-item>
+      <el-form-item label="发布审核">
+        <div class="settings__switch-row">
+          <el-switch v-model="forceReview" aria-label="开启发布审核" />
           <span class="settings__switch-hint">开启后，成员发布内容需管理员审核</span>
-        </span>
-      </div>
+        </div>
+      </el-form-item>
       <div class="settings__actions">
-        <button type="submit" class="settings__submit" :disabled="saving">
+        <el-button type="primary" native-type="submit" :loading="saving">
           {{ saving ? '保存中…' : '保存' }}
-        </button>
+        </el-button>
         <span v-if="saved" class="settings__saved" role="status">已保存</span>
       </div>
-    </form>
+    </el-form>
   </main>
 </template>
 
@@ -118,115 +119,36 @@ onMounted(() => {
   font-size: 22px;
 }
 
-.settings__skeleton,
-.settings__error {
+.settings__state {
   padding: 48px 0;
   text-align: center;
   color: var(--xl-text-secondary);
   font-size: 14px;
 }
 
-.settings__retry {
-  margin-top: var(--xl-space-3);
-  padding: 6px 18px;
-  border: 1px solid var(--xl-color-primary);
-  border-radius: var(--xl-radius-sm);
-  background: transparent;
-  color: var(--xl-color-primary);
-  cursor: pointer;
+.settings__state :deep(.el-skeleton) {
+  text-align: left;
 }
 
 .settings__card {
   display: flex;
   flex-direction: column;
-  gap: var(--xl-space-6);
+  gap: var(--xl-space-4);
   padding: var(--xl-space-6);
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
-.settings__field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--xl-space-2);
-}
-
-.settings__field--readonly {
-  gap: var(--xl-space-1);
-}
-
-.settings__field--switch {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--xl-space-4);
-}
-
-.settings__label {
-  color: var(--xl-text-secondary);
-  font-size: 13px;
-}
-
-.settings__value {
-  color: var(--xl-text-primary);
-  font-size: 15px;
-}
-
-.settings__value--mono {
+.settings__slug :deep(.el-input__inner) {
   font-family: var(--xl-font-mono);
-}
-
-.settings__textarea {
-  padding: var(--xl-space-2) var(--xl-space-3);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius);
-  color: var(--xl-text-primary);
-  font-size: 14px;
-  resize: vertical;
-}
-
-.settings__textarea:focus {
-  outline: none;
-  border-color: var(--xl-color-primary);
 }
 
 .settings__switch-row {
   display: flex;
   align-items: center;
-  gap: var(--xl-space-2);
-}
-
-.settings__switch-input {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  margin: 0;
-  appearance: none;
-  border-radius: 999px;
-  background: var(--xl-border);
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.settings__switch-input::after {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--xl-bg-surface);
-  content: '';
-  transition: transform 0.2s;
-}
-
-.settings__switch-input:checked {
-  background: var(--xl-color-primary);
-}
-
-.settings__switch-input:checked::after {
-  transform: translateX(16px);
+  gap: var(--xl-space-3);
 }
 
 .settings__switch-hint {
@@ -238,25 +160,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--xl-space-4);
-}
-
-.settings__submit {
-  padding: var(--xl-space-2) var(--xl-space-6);
-  border: none;
-  border-radius: var(--xl-radius);
-  background: var(--xl-color-primary);
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.settings__submit:hover {
-  background: var(--xl-color-primary-hover);
-}
-
-.settings__submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .settings__saved {

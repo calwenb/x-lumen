@@ -3,6 +3,7 @@
 // 关键状态：加载骨架、无文章空态、失败可重试；私有/草稿文章由后端过滤（F-0307）。
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { Document } from '@element-plus/icons-vue'
 
 import { fetchArticles, fetchCategories, fetchTags } from '@/modules/publishing/api/public'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
@@ -40,7 +41,11 @@ async function load(targetPage: number): Promise<void> {
 }
 
 onMounted(async () => {
-  await Promise.all([load(1), fetchCategories().then((list) => (categories.value = list)), fetchTags().then((list) => (tags.value = list))])
+  await Promise.all([
+    load(1),
+    fetchCategories().then((list) => (categories.value = list)),
+    fetchTags().then((list) => (tags.value = list)),
+  ])
 })
 </script>
 
@@ -58,7 +63,10 @@ onMounted(async () => {
           <button type="button" class="home__retry" @click="load(pageNo)">重试</button>
         </div>
         <template v-else>
-          <p v-if="articles.length === 0" class="home__state-text">还没有文章，敬请期待。</p>
+          <div v-if="articles.length === 0" class="home__empty">
+            <el-icon class="home__empty-icon"><Document /></el-icon>
+            <p>还没有文章，敬请期待。</p>
+          </div>
           <article v-for="article in articles" v-else :key="article.id" class="article-card">
             <RouterLink class="article-card__title" :to="`/articles/${article.id}`">
               {{ article.title }}
@@ -73,7 +81,11 @@ onMounted(async () => {
               <span>{{ article.likeCount }} 点赞</span>
             </div>
             <div class="article-card__tags">
-              <RouterLink v-if="article.category" class="article-card__tag" :to="`/search?category=${encodeURIComponent(article.category)}`">
+              <RouterLink
+                v-if="article.category"
+                class="article-card__tag"
+                :to="`/search?category=${encodeURIComponent(article.category)}`"
+              >
                 {{ article.category }}
               </RouterLink>
               <RouterLink
@@ -173,9 +185,40 @@ onMounted(async () => {
   cursor: pointer;
 }
 
+.home__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--xl-space-3);
+  padding: var(--xl-space-8) 0;
+  color: var(--xl-text-secondary);
+  font-size: 14px;
+}
+
+.home__empty-icon {
+  font-size: 40px;
+  color: var(--xl-text-muted);
+}
+
+.home__empty p {
+  margin: 0;
+}
+
 .article-card {
-  padding: var(--xl-space-4) 0;
-  border-bottom: 1px solid var(--xl-border);
+  padding: var(--xl-space-4) var(--xl-space-6);
+  margin-bottom: var(--xl-space-4);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+  transition:
+    box-shadow var(--xl-transition),
+    transform var(--xl-transition);
+}
+
+.article-card:hover {
+  box-shadow: var(--xl-shadow-md);
+  transform: translateY(-2px);
 }
 
 .article-card__title {
@@ -208,17 +251,20 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: var(--xl-space-2);
-  margin-top: var(--xl-space-2);
+  margin-top: var(--xl-space-3);
 }
 
 .article-card__tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
   color: var(--xl-color-primary);
   font-size: 12px;
   text-decoration: none;
 }
 
 .article-card__tag:hover {
-  text-decoration: underline;
+  background: color-mix(in srgb, var(--xl-color-primary) 16%, transparent);
 }
 
 .home__side {
@@ -232,25 +278,29 @@ onMounted(async () => {
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .side-card__title {
   margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-primary);
   font-size: 15px;
+  font-weight: 600;
 }
 
 .side-card__item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 0;
+  padding: 6px 8px;
+  border-radius: var(--xl-radius-sm);
   color: var(--xl-text-secondary);
   font-size: 13px;
   text-decoration: none;
 }
 
 .side-card__item:hover {
+  background: var(--xl-bg-secondary);
   color: var(--xl-color-primary);
 }
 
@@ -266,12 +316,16 @@ onMounted(async () => {
 }
 
 .side-card__tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--xl-bg-secondary);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   text-decoration: none;
 }
 
 .side-card__tag:hover {
+  background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
 }
 

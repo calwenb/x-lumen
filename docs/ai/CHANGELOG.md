@@ -11,6 +11,18 @@
 
 说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D15，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
 
+## 2026/8/13 19:10 · Qoder 代理（修复测试数据乱码）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/13 19:10 | 修复开发库测试数据乱码：cnt_article 中 id=2087770970748989441 的文章标题「M04 ??????」与分类「??」（验证脚本插入的坏数据，非字符集问题），按确认方案改为「M04 发布验证文章」/「测试」；同步 pub_review（2 行）与 pub_release（1 行）的 article_title；验证：全库乱码残留 0、前端首页正常显示 | CHANGELOG | 无 |
+
+## 2026/8/13 18:45 · Qoder 代理（前端 UI 升级：接入 Element Plus 统一双端风格）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/13 18:45 | 双前端 UI 精细打磨：①修复博客端 tokens.css 缺失 5 个 token（--xl-radius/--xl-radius-sm/--xl-bg-secondary/--xl-color-danger/success/warning）导致的 8 处样式失效（工作台直角、AI 气泡透明、徽标消失等）；②tokens.css 扩展阴影体系（--xl-shadow-sm/md/lg）与过渡 token（--xl-transition）；③Element Plus 全量接入（main.ts 注册）+ element-theme.css 将 --el-* 映射到 --xl-* 体系 + @element-plus/icons-vue 图标库（两前端同步）；④管理后台全面 EP 化（el-container/el-menu 侧栏、el-form 登录/设置、el-table 模型/审计 + el-dialog 详情 + el-pagination + el-skeleton）；⑤博客前台交互组件 EP 化（顶栏胶囊激活态+图标+Logo、登录 el-tabs/el-form、el-pagination、文章管理 el-select/el-tag/el-skeleton、聊天气泡修复+双头像、详情页正文卡片+TOC 滚动高亮、搜索/首页卡片化+标签胶囊+空态图标）；⑥原生 confirm/alert 全部替换为 ElMessageBox/ElMessage（5 文件 10 处）；⑦全局 :focus-visible 焦点环与 ::selection；验证：双前端 lint/stylelint/typecheck/build 全绿、单测 6 通过、E2E 9 通过（含登录/注册/评论/点赞流程）；修复 CRLF 行尾警告（本次改动文件）；构建产物主 chunk 因 EP 全量引入增至 ~1MB（MVP 可接受） | FRONTEND | 无 |
+
 ## 2026/8/13 14:00 · Qoder 代理（MVP 全量交付：M04~M13 + F-1301）
 
 | 时间 | 变更内容 | 影响文档 | 决策摘要 |
