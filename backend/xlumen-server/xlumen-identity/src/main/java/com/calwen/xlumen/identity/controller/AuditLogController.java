@@ -1,13 +1,13 @@
 package com.calwen.xlumen.identity.controller;
 
 import com.calwen.xlumen.common.web.ApiResponse;
+import com.calwen.xlumen.identity.dto.AuditLogQueryDTO;
 import com.calwen.xlumen.identity.service.ActivityLogService;
 import com.calwen.xlumen.identity.vo.AuditLogVO;
 import com.calwen.xlumen.identity.vo.PageVO;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -23,11 +23,9 @@ public class AuditLogController {
     @Resource
     private ActivityLogService activityLogService;
 
-    /** 审计日志分页查询（F-1202）：action 可空（为空查全部）。 */
+    /** 审计日志分页查询（F-1202）：action 可空（为空查全部），查询参数由 AuditLogQueryDTO 自动绑定。 */
     @GetMapping
-    public ApiResponse<PageVO<AuditLogVO>> listAuditLogs(@RequestParam(value = "action", required = false) String action,
-                                                         @RequestParam(value = "pageNo", defaultValue = "1") long pageNo,
-                                                         @RequestParam(value = "pageSize", defaultValue = "10") long pageSize) {
-        return ApiResponse.success(activityLogService.listAuditLogs(action, pageNo, pageSize));
+    public ApiResponse<PageVO<AuditLogVO>> listAuditLogs(AuditLogQueryDTO query) {
+        return ApiResponse.success(activityLogService.listAuditLogs(query));
     }
 }

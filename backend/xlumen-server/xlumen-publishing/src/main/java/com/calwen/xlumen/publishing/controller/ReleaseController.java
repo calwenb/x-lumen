@@ -1,5 +1,6 @@
 package com.calwen.xlumen.publishing.controller;
 
+import com.calwen.xlumen.common.dto.PageQueryDTO;
 import com.calwen.xlumen.common.web.ApiResponse;
 import com.calwen.xlumen.publishing.dto.CreateReleaseDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
@@ -11,7 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -34,10 +34,9 @@ public class ReleaseController {
         return ApiResponse.success(releaseService.release(dto));
     }
 
-    /** 发布记录列表（F-0904）。 */
+    /** 发布记录列表（F-0904）：查询参数由 PageQueryDTO 自动绑定。 */
     @GetMapping
-    public ApiResponse<PageResult<ReleaseVO>> listReleases(@RequestParam(value = "pageNo", defaultValue = "1") long pageNo,
-                                                           @RequestParam(value = "pageSize", defaultValue = "10") long pageSize) {
-        return ApiResponse.success(releaseService.listReleases(pageNo, pageSize));
+    public ApiResponse<PageResult<ReleaseVO>> listReleases(PageQueryDTO query) {
+        return ApiResponse.success(releaseService.listReleases(query));
     }
 }

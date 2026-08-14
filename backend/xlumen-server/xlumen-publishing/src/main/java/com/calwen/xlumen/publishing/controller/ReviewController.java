@@ -5,6 +5,7 @@ import com.calwen.xlumen.publishing.dto.ApproveDTO;
 import com.calwen.xlumen.publishing.dto.CreateReviewDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.dto.RejectDTO;
+import com.calwen.xlumen.publishing.dto.ReviewQueryDTO;
 import com.calwen.xlumen.publishing.service.ReviewService;
 import com.calwen.xlumen.publishing.vo.ReviewVO;
 import jakarta.annotation.Resource;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -37,12 +37,10 @@ public class ReviewController {
         return ApiResponse.success(reviewService.submitReview(dto.getArticleId()));
     }
 
-    /** 审核列表（F-0902）：按状态筛选 + 分页。 */
+    /** 审核列表（F-0902）：按状态筛选 + 分页（查询参数由 ReviewQueryDTO 自动绑定）。 */
     @GetMapping
-    public ApiResponse<PageResult<ReviewVO>> listReviews(@RequestParam(value = "status", required = false) String status,
-                                                         @RequestParam(value = "pageNo", defaultValue = "1") long pageNo,
-                                                         @RequestParam(value = "pageSize", defaultValue = "10") long pageSize) {
-        return ApiResponse.success(reviewService.listReviews(status, pageNo, pageSize));
+    public ApiResponse<PageResult<ReviewVO>> listReviews(ReviewQueryDTO query) {
+        return ApiResponse.success(reviewService.listReviews(query));
     }
 
     /** 审核详情（F-0902）：越权统一 404。 */

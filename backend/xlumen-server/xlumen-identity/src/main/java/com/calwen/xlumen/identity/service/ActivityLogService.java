@@ -1,5 +1,6 @@
 package com.calwen.xlumen.identity.service;
 
+import com.calwen.xlumen.identity.dto.AuditLogQueryDTO;
 import com.calwen.xlumen.identity.vo.AuditLogVO;
 import com.calwen.xlumen.identity.vo.PageVO;
 
@@ -28,10 +29,8 @@ public interface ActivityLogService {
     /**
      * 分页查询当前空间的审计日志（只读）。
      *
-     * @param action   操作类型（可空，为空查全部）
-     * @param pageNo   页码（从 1 开始）
-     * @param pageSize 每页条数
+     * @param query action 筛选 + 分页参数（action 可空 = 全部）
      * @return 审计日志分页
      */
-    PageVO<AuditLogVO> listAuditLogs(String action, long pageNo, long pageSize);
+    PageVO<AuditLogVO> listAuditLogs(AuditLogQueryDTO query);
 }

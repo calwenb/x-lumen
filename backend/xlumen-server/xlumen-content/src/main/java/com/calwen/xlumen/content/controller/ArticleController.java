@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -71,18 +70,10 @@ public class ArticleController {
     }
 
     /**
-     * 作者文章列表（B10）：状态/可见性/关键词筛选。
+     * 作者文章列表（B10）：状态/可见性/关键词筛选，查询参数由 ArticleListQueryDTO 自动绑定。
      */
     @GetMapping
-    public ApiResponse<ContentPageResult<ArticleListItemVO>> list(
-            @RequestParam(required = false) Integer status,
-            @RequestParam(required = false) Integer visibility,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "1") long pageNo,
-            @RequestParam(defaultValue = "10") long pageSize) {
-        ArticleListQueryDTO query = ArticleListQueryDTO.builder()
-                .status(status).visibility(visibility).keyword(keyword)
-                .pageNo(pageNo).pageSize(pageSize).build();
+    public ApiResponse<ContentPageResult<ArticleListItemVO>> list(ArticleListQueryDTO query) {
         return ApiResponse.success(articleService.list(query));
     }
 

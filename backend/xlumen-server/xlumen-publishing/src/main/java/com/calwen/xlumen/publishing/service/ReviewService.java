@@ -3,6 +3,7 @@ package com.calwen.xlumen.publishing.service;
 import com.calwen.xlumen.publishing.dto.ApproveDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.dto.RejectDTO;
+import com.calwen.xlumen.publishing.dto.ReviewQueryDTO;
 import com.calwen.xlumen.publishing.vo.ReviewVO;
 
 /**
@@ -25,12 +26,10 @@ public interface ReviewService {
     /**
      * 分页查询当前空间的审核记录。
      *
-     * @param status   状态（可空）
-     * @param pageNo   页码（从 1 开始）
-     * @param pageSize 每页条数
+     * @param query 状态筛选 + 分页参数（status 可空 = 全部）
      * @return 审核记录分页
      */
-    PageResult<ReviewVO> listReviews(String status, long pageNo, long pageSize);
+    PageResult<ReviewVO> listReviews(ReviewQueryDTO query);
 
     /**
      * 审核详情（越权返回 404）。

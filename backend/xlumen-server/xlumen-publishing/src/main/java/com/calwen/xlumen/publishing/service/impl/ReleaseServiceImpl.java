@@ -4,6 +4,7 @@ import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.calwen.xlumen.common.context.WorkspaceContext;
+import com.calwen.xlumen.common.dto.PageQueryDTO;
 import com.calwen.xlumen.common.event.ArticlePublishedEvent;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
@@ -101,9 +102,9 @@ public class ReleaseServiceImpl implements ReleaseService {
     }
 
     @Override
-    public PageResult<ReleaseVO> listReleases(long pageNo, long pageSize) {
+    public PageResult<ReleaseVO> listReleases(PageQueryDTO query) {
         Long workspaceId = WorkspaceContext.workspaceId();
-        Page<ReleaseEntity> page = releaseMapper.selectPage(new Page<>(pageNo, pageSize),
+        Page<ReleaseEntity> page = releaseMapper.selectPage(new Page<>(query.getPageNo(), query.getPageSize()),
                 Wrappers.<ReleaseEntity>lambdaQuery()
                         .eq(ReleaseEntity::getWorkspaceId, workspaceId)
                         .orderByDesc(ReleaseEntity::getCreatedAt));

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
+import com.calwen.xlumen.identity.dto.AuditLogQueryDTO;
 import com.calwen.xlumen.identity.entity.ActivityLogEntity;
 import com.calwen.xlumen.identity.mapper.ActivityLogMapper;
 import com.calwen.xlumen.identity.service.ActivityLogService;
@@ -49,15 +50,15 @@ public class ActivityLogServiceImpl implements ActivityLogService {
     }
 
     @Override
-    public PageVO<AuditLogVO> listAuditLogs(String action, long pageNo, long pageSize) {
+    public PageVO<AuditLogVO> listAuditLogs(AuditLogQueryDTO query) {
         Long workspaceId = WorkspaceContext.workspaceId();
         if (workspaceId == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
-        Page<ActivityLogEntity> page = activityLogMapper.selectPage(new Page<>(pageNo, pageSize),
+        Page<ActivityLogEntity> page = activityLogMapper.selectPage(new Page<>(query.getPageNo(), query.getPageSize()),
                 Wrappers.<ActivityLogEntity>lambdaQuery()
                         .eq(ActivityLogEntity::getWorkspaceId, workspaceId)
-                        .eq(StrUtil.isNotBlank(action), ActivityLogEntity::getAction, action)
+                        .eq(StrUtil.isNotBlank(query.getAction()), ActivityLogEntity::getAction, query.getAction())
                         .orderByDesc(ActivityLogEntity::getCreatedAt));
         List<AuditLogVO> records = page.getRecords().stream()
                 .map(e -> AuditLogVO.builder()

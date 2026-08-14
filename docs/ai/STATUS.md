@@ -25,7 +25,7 @@
 ### 知识平台化重构 · 阶段 0 文档先行（2026-08-14）
 
 - 产品级变更设计定稿并经用户逐项确认（9 项决策 + 4 个开放问题全部拍板：cnt_article 物理改名 cnt_knowledge、/api/v1/articles 全改 /api/v1/knowledge 不保留兼容期、私有库授权 V2、回收站 30 天）。
-- PRODUCT.md 重写：定位/角色/三主线闭环/状态机可见性规则/功能总表 73→77 项（MVP 41/V2 24/V3 12；新增 F-0106/F-0208/F-0308/F-0309、F-0305 提 MVP、F-0307 重定义、模块四更名知识索引（RAG））/行为规则（库级可见性/单库单目录/删库回收站/排序规则）/安全（库级越权）。
+- PRODUCT.md 重写：定位/角色/三主线闭环/状态机可见性规则/功能总表 73→77 项（MVP 39/V2 26/V3 12；新增 F-0106/F-0208/F-0308/F-0309、F-0305 提 MVP、F-0307 重定义、模块四更名知识索引（RAG））/行为规则（库级可见性/单库单目录/删库回收站/排序规则）/安全（库级越权）。
 - PROTOTYPE.md 重写：导航头「知识/知识库/AI小光」+ 8 屏原型（B01 知识流身份聚合、B20 库页、B21 发现页、B22 库管理、B16 回收站提 MVP、B10/B13 发布选库目录）+ 页面清单调整。
 - BACKEND.md：模块职责（knowledge 扩库/目录管理、content→knowledge 依赖方向）、核心表清单（cnt_knowledge/kb_knowledge_base/kb_directory/kb_kb_grant）、§13 重写按库切分检索、REST 路径规范（/api/v1/knowledge，决策 D17）。
 - FRONTEND.md：模块映射与知识措辞；GLOBAL.md/README.md：定位、模块概览、统计同步；tmp/knowledge-redesign-proposal.md 评审稿存档（状态已确认）。
@@ -36,7 +36,8 @@
 - 移除 19 处冗余 `@PathVariable("xxx")` 显式名称（参数名与路径模板一致时省略，根 POM 显式开启 `-parameters` 保障隐式名称绑定；`ChatController` 会话消息接口路径模板 `{id}` 改名 `{conversationId}` 与参数名对齐）。
 - 新增分页基类 `common.dto.PageQueryDTO`（`pageNo=1`/`pageSize=20` 默认值，`@SuperBuilder` 继承）：`ArticleListQueryDTO`、publishing/content 两处 `ArticleQueryDTO`、`CommentQueryDTO` 全部继承（公开文章列表默认 pageSize 由 10 统一为 20，前端始终显式传参无实际影响）。
 - 业务类内部类清零：`WorkspaceContext.Scope`→`WorkspaceScope`、`RefreshTokenService.RefreshSession`→`RefreshSession`、`ModelGatewayImpl.CircuitState`、`ChunkingServiceImpl.Section` 全部提取为顶层类型。
-- 验证：`mvn verify` BUILD SUCCESS（新增 ArticleQueryDTOTest 4 个断言分页继承默认值）；运行时 API 全端点验证隐式绑定（详情/评论/阅读量/文章 CRUD/任务/审核/模型配置 `{scene}`）；双前端 E2E 9 通过（blog 8 + admin 1）。
+- 继续落实参数封装（2026-08-14 下午）：Controller 全部去除 `@RequestParam`——新增 `ReviewQueryDTO`（status 筛选）、`AuditLogQueryDTO`（action 筛选）继承 `PageQueryDTO`；`ReleaseController` 直接绑定基类 `PageQueryDTO`；`ArticleController.list` 复用 `ArticleListQueryDTO` 自动绑定（删除手动 builder）；对应 Service 接口与实现签名统一改 DTO 入参。
+- 验证：`mvn verify` BUILD SUCCESS（新增 ArticleQueryDTOTest 4 个断言分页继承默认值）；运行时 API 全端点验证隐式绑定（详情/评论/阅读量/文章 CRUD/任务/审核/模型配置 `{scene}`）+ DTO 查询参数绑定（审核列表/发布列表/审计日志/文章列表，非法参数类型 400）；双前端 E2E 9 通过（blog 8 + admin 1）。
 
 ### 内容管理与可见性（M04，2026-08-13）
 
@@ -178,7 +179,7 @@
 
 - 2026/8/14 16:04 · ZCode：知识平台化重构设计定稿 + 阶段 0 文档先行——多用户知识平台定位（D9 改写）、知识库→目录→知识三层体系（D16）、文章概念统一改名知识（D17）、RAG 按库切分（D13 改写）；PRODUCT 功能总表 73→77 项、PROTOTYPE 8 屏原型、BACKEND/FRONTEND/GLOBAL/README 同步；4 个开放问题全部确认（cnt_knowledge 物理改名、/api/v1/knowledge 不保留兼容、授权 V2、回收站 30 天）；阶段 1~6 已列入待办待认领。
 
-- 2026/8/14 14:00 · ZCode：后端代码风格优化——①移除 19 处冗余 `@PathVariable("xxx")` 显式名称（根 POM 显式开启 `-parameters`；ChatController 路径模板 `{id}`→`{conversationId}` 对齐参数名）；②新增分页基类 `common/dto/PageQueryDTO`（默认 1/20，`@SuperBuilder` 继承），4 个分页 QueryDTO 全部继承并去除重复字段；③业务类内部类清零（WorkspaceScope/RefreshSession/CircuitState/Section 提取为顶层类）；BACKEND §5.1 新增分页基类/隐式命名/禁内部类规范；验证：mvn verify 全绿（新增 ArticleQueryDTOTest 4 断言）、运行时 API 全端点隐式绑定验证通过（公开读/文章 CRUD/任务/审核/模型配置）、双前端 E2E 9 通过（blog 8 + admin 1）。
+- 2026/8/14 14:00 · ZCode：后端代码风格优化——①移除 19 处冗余 `@PathVariable("xxx")` 显式名称（根 POM 显式开启 `-parameters`；ChatController 路径模板 `{id}`→`{conversationId}` 对齐参数名）；②新增分页基类 `common/dto/PageQueryDTO`（默认 1/20，`@SuperBuilder` 继承），4 个分页 QueryDTO 全部继承并去除重复字段；③业务类内部类清零（WorkspaceScope/RefreshSession/CircuitState/Section 提取为顶层类）；④Controller 全部去除 `@RequestParam`：新增 ReviewQueryDTO/AuditLogQueryDTO，ReleaseController 直接绑定 PageQueryDTO，ArticleController 复用 ArticleListQueryDTO 自动绑定，对应 Service 签名改 DTO 入参；BACKEND §5.1 新增分页基类/隐式命名/禁内部类规范；验证：mvn verify 全绿（新增 ArticleQueryDTOTest 4 断言）、运行时 API 全端点隐式绑定验证通过（公开读/文章 CRUD/任务/审核/模型配置/审核列表/发布列表/审计日志，非法参数类型 400）、双前端 E2E 9 通过（blog 8 + admin 1）。
 
 - 2026/8/13 14:00 · Qoder 代理：MVP 全部里程碑交付（M04~M13 + F-1301）——内容管理（CRUD+自动保存+8 状态机）、AI 基座（网关+任务底座+SSE）、AI 创作（写作+审校异源校验）、RAG 索引（发布即索引+Noop 降级）、AI 对话（小光+引用溯源）、AI 增值（摘要+SEO）、审核发布（双闸门+定时发布 PublishJob）、读者纠错（匿名+限流）、热点缓存与管理后台；修复 Spring Boot 4 .env 大写属性 relaxed binding 失效（@Value 显式绑定）、GlobalExceptionHandler 404/JSON 解析异常处理、ai 与 publishing 同名 Bean 冲突、审校默认模型 qwen-max（异源）；运行时全链路验证通过（真实百炼调用：审校/写作/摘要/SEO/Embedding/连通性测试），Milvus 待环境（Noop 降级）。
 

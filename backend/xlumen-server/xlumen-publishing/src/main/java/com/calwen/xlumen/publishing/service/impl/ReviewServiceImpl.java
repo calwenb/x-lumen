@@ -20,6 +20,7 @@ import com.calwen.xlumen.identity.service.ActivityLogService;
 import com.calwen.xlumen.publishing.dto.ApproveDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.dto.RejectDTO;
+import com.calwen.xlumen.publishing.dto.ReviewQueryDTO;
 import com.calwen.xlumen.publishing.entity.ReviewEntity;
 import com.calwen.xlumen.publishing.mapper.ReviewMapper;
 import com.calwen.xlumen.publishing.service.ReviewService;
@@ -114,12 +115,12 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    public PageResult<ReviewVO> listReviews(String status, long pageNo, long pageSize) {
+    public PageResult<ReviewVO> listReviews(ReviewQueryDTO query) {
         Long workspaceId = WorkspaceContext.workspaceId();
-        Page<ReviewEntity> page = reviewMapper.selectPage(new Page<>(pageNo, pageSize),
+        Page<ReviewEntity> page = reviewMapper.selectPage(new Page<>(query.getPageNo(), query.getPageSize()),
                 Wrappers.<ReviewEntity>lambdaQuery()
                         .eq(ReviewEntity::getWorkspaceId, workspaceId)
-                        .eq(StrUtil.isNotBlank(status), ReviewEntity::getStatus, status)
+                        .eq(StrUtil.isNotBlank(query.getStatus()), ReviewEntity::getStatus, query.getStatus())
                         .orderByDesc(ReviewEntity::getCreatedAt));
         List<ReviewVO> records = page.getRecords().stream().map(this::toVO).toList();
         return PageResult.<ReviewVO>builder()

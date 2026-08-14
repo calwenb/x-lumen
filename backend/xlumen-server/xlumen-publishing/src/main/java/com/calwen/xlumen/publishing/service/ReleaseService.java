@@ -1,5 +1,6 @@
 package com.calwen.xlumen.publishing.service;
 
+import com.calwen.xlumen.common.dto.PageQueryDTO;
 import com.calwen.xlumen.publishing.dto.CreateReleaseDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.vo.ReleaseVO;
@@ -23,11 +24,10 @@ public interface ReleaseService {
     /**
      * 分页查询当前空间的发布记录。
      *
-     * @param pageNo   页码（从 1 开始）
-     * @param pageSize 每页条数
+     * @param query 分页参数（默认值即接口默认值）
      * @return 发布记录分页
      */
-    PageResult<ReleaseVO> listReleases(long pageNo, long pageSize);
+    PageResult<ReleaseVO> listReleases(PageQueryDTO query);
 
     /**
      * 定时发布扫描（F-0905）：扫描 PENDING 且 publish_at<=now 的记录并幂等执行，由 PublishJob 每分钟调用。
