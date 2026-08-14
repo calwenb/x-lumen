@@ -33,7 +33,7 @@ public class CommentController {
      * 评论列表（F-0203）：按时间正序分页；匿名可读，空间取默认空间。
      */
     @GetMapping
-    public ApiResponse<PageResult<CommentVO>> listComments(@PathVariable("articleId") Long articleId,
+    public ApiResponse<PageResult<CommentVO>> listComments(@PathVariable Long articleId,
                                                            CommentQueryDTO query) {
         return ApiResponse.success(commentService.listComments(articleId, query));
     }
@@ -42,7 +42,7 @@ public class CommentController {
      * 发表评论（F-0203）：需登录。
      */
     @PostMapping
-    public ApiResponse<CommentVO> createComment(@PathVariable("articleId") Long articleId,
+    public ApiResponse<CommentVO> createComment(@PathVariable Long articleId,
                                                 @Valid @RequestBody CreateCommentDTO dto) {
         return ApiResponse.success(commentService.createComment(articleId, dto));
     }

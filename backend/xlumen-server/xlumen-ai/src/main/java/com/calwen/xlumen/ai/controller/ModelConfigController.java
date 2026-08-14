@@ -54,7 +54,7 @@ public class ModelConfigController {
      * 新增或更新场景配置（provider/model/paramsJson）。
      */
     @PutMapping("/{scene}")
-    public ApiResponse<Void> update(@PathVariable("scene") String scene,
+    public ApiResponse<Void> update(@PathVariable String scene,
                                     @Valid @RequestBody ModelConfigUpdateDTO dto) {
         sceneConfigService.update(WorkspaceContext.workspaceId(), parseScene(scene),
                 dto.getProvider(), dto.getModel(), dto.getParamsJson());

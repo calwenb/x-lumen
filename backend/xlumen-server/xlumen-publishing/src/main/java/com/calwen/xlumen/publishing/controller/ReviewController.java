@@ -47,19 +47,19 @@ public class ReviewController {
 
     /** 审核详情（F-0902）：越权统一 404。 */
     @GetMapping("/{id}")
-    public ApiResponse<ReviewVO> getReview(@PathVariable("id") Long id) {
+    public ApiResponse<ReviewVO> getReview(@PathVariable Long id) {
         return ApiResponse.success(reviewService.getReview(id));
     }
 
     /** 审核通过（F-0903）：文章迁移 APPROVED(4)。 */
     @PostMapping("/{id}/approve")
-    public ApiResponse<ReviewVO> approve(@PathVariable("id") Long id, @Valid @RequestBody ApproveDTO dto) {
+    public ApiResponse<ReviewVO> approve(@PathVariable Long id, @Valid @RequestBody ApproveDTO dto) {
         return ApiResponse.success(reviewService.approve(id, dto));
     }
 
     /** 审核驳回（F-0903）：文章回 DRAFT(2)，写审计 REVIEW_REJECT。 */
     @PostMapping("/{id}/reject")
-    public ApiResponse<Void> reject(@PathVariable("id") Long id, @Valid @RequestBody RejectDTO dto) {
+    public ApiResponse<Void> reject(@PathVariable Long id, @Valid @RequestBody RejectDTO dto) {
         reviewService.reject(id, dto);
         return ApiResponse.success(null);
     }

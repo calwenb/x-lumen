@@ -190,10 +190,4 @@ public class ModelGatewayImpl implements ModelGateway {
         }
         return msg.length() > 200 ? msg.substring(0, 200) : msg;
     }
-
-    /** 熔断状态：连续失败计数与打开截止时间。 */
-    private static class CircuitState {
-        private int failures;
-        private long openUntil;
-    }
 }

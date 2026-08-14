@@ -1,6 +1,6 @@
 # xLumen 后端开发文档
 
-> 更新日期：2026/8/12
+> 更新日期：2026/8/14
 > **本仓库专属**。
 > 架构形态：多 Maven 模块的 Spring Boot 模块化单体；包结构：传统 MVC。
 > 适用范围：后端技术基线、模块划分、编码规范、数据规则、配置与性能约束。
@@ -12,7 +12,7 @@
 
 开始实现前依次阅读：
 
-1. [产品设计文档](../product/PRODUCT.md)——产品行为、验收要求与 13 模块 73 项功能总表（唯一功能事实源，MVP 37 / V2 24 / V3 12）。
+1. [产品设计文档](../product/PRODUCT.md)——产品行为、验收要求与 13 模块 77 项功能总表（唯一功能事实源，MVP 41 / V2 24 / V3 12）。
 2. 本文档——后端实现方式。
 3. [全局文档](../global/GLOBAL.md)——本地初始化、启动命令与质量门禁命令。
 
@@ -51,7 +51,7 @@ backend/xlumen-server/
 ├─ xlumen-identity/         # 身份与多租户 + 平台治理（iam_ + plt_）
 ├─ xlumen-content/          # 内容管理 + 数据分析与知识保鲜（cnt_ + analytics_）
 ├─ xlumen-publishing/       # 审核发布与公开读 + 互动反馈（pub_ + eng_）
-├─ xlumen-knowledge/        # 文章知识索引 RAG：发布即索引（kb_）
+├─ xlumen-knowledge/        # 知识库与目录管理 + 知识索引 RAG：发布即索引（kb_）
 ├─ xlumen-ai/               # AI 引擎 + 对话 + 增值（ai_ + chat_ + ai_enhance_）
 └─ xlumen-boot/             # 装配层：唯一启动入口
 ```
@@ -59,19 +59,19 @@ backend/xlumen-server/
 | 模块 | 主要职责 | 表前缀 | 阶段 |
 | --- | --- | --- | --- |
 | `xlumen-common` | 统一响应 `ApiResponse`、`BizException`、`WorkspaceContext`、`RequestId`、事件信封等真正通用的基础类型 | — | MVP 基座 |
-| `xlumen-identity` | 用户、登录、会话、工作空间、成员、角色与权限（F-0101~F-0105）；空间设置、审计（MVP），配额、通知（V2）（F-1201~F-1204） | `iam_`、`plt_` | MVP |
-| `xlumen-content` | 文章 CRUD、草稿自动保存、可见性、版本、AI 写作结果落库（F-0301~F-0307）；访问统计、时效检测、缺口分析、更新建议、旧文更新闭环（F-1101~F-1105，V2/V3） | `cnt_`、`analytics_` | MVP（analytics V2/V3） |
-| `xlumen-publishing` | 审核状态机、双闸门审核、发布幂等、回滚下架、博客前台公开读（F-0901~F-0906、F-0201~F-0207）；评论、点赞、读者纠错（F-1001~F-1004） | `pub_`、`eng_` | MVP（通知 V2） |
-| `xlumen-knowledge` | 文章自动索引流水线（发布触发）、索引管理与检索、检索权限过滤、引用溯源（F-0402~F-0405、F-0407） | `kb_` | MVP |
-| `xlumen-ai` | 模型网关、场景模型配置、流式输出、AI 写作任务、审校（F-0501~F-0505、F-0601~F-0607）；AI 对话、文章级问答、访客助手（F-0701~F-0705）；摘要、SEO、翻译、配图等增值（F-0801~F-0807） | `ai_`、`chat_`、`ai_enhance_` | MVP |
+| `xlumen-identity` | 用户、登录、会话、工作空间、成员、角色与权限（F-0101~F-0106）；空间设置、审计（MVP），配额、通知（V2）（F-1201~F-1204） | `iam_`、`plt_` | MVP |
+| `xlumen-content` | 知识 CRUD、草稿自动保存、版本、AI 写作结果落库（F-0301~F-0307）；访问统计、时效检测、缺口分析、更新建议、旧知识更新闭环（F-1101~F-1105，V2/V3） | `cnt_`、`analytics_` | MVP（analytics V2/V3） |
+| `xlumen-publishing` | 审核状态机、双闸门审核、发布幂等、回滚下架、博客前台公开读与知识库浏览（F-0901~F-0906、F-0201~F-0208）；评论、点赞、读者纠错（F-1001~F-1004） | `pub_`、`eng_` | MVP（通知 V2） |
+| `xlumen-knowledge` | 知识库与目录管理（F-0308/F-0309，库 CRUD/回收站/目录树）、知识自动索引流水线（发布触发）、索引管理与检索、检索权限过滤、引用溯源（F-0402~F-0405、F-0407） | `kb_` | MVP |
+| `xlumen-ai` | 模型网关、场景模型配置、流式输出、AI 写作任务、审校（F-0501~F-0505、F-0601~F-0607）；AI 对话、知识级问答、访客助手（F-0701~F-0705）；摘要、SEO、翻译、配图等增值（F-0801~F-0807） | `ai_`、`chat_`、`ai_enhance_` | MVP |
 | `xlumen-boot` | 应用启动、Security、中间件和配置装配 | — | 装配层 |
 
 依赖 DAG（同步 Maven 依赖，方向即"被依赖"）：
 
 - `common` 为基座：所有模块依赖 common；不放业务 Entity、业务 DTO、Mapper 或万能工具类。
 - `identity` 被所有业务模块依赖：工作空间与权限是全局横切能力。
-- `knowledge` 被 `ai` 依赖（检索与引用溯源）。
-- `ai` 被 content/publishing 依赖（写作/审校/增值能力）；`content` 被 publishing/ai 依赖（文章与版本是内容侧事实源）。
+- `knowledge` 被 `ai` 依赖（检索与引用溯源），并被 `content` 依赖（知识库/目录归属校验，内容侧通过 `KnowledgeApi` 校验 `kbId`/`directoryId` 归属与可见性）。
+- `ai` 被 content/publishing 依赖（写作/审校/增值能力）；`content` 被 publishing/ai 依赖（知识与版本是内容侧事实源）。
 - `boot` 依赖全部模块；业务模块不得依赖 boot；Maven 依赖不能形成循环，双向流程优先用业务事件解耦（决策 D3）。
 - 业务模块不能直接操作其他模块的 Mapper、Entity 和数据表；每张业务表只有一个所属模块（表前缀归属）。
 - 未来拆分（GLOBAL §8 路线图）：AI 长任务消费拆出时迁 ai 模块，公开读拆出时迁 publishing 模块公开读，RAG 独立时迁 knowledge；未达触发条件不得拆分。
@@ -84,16 +84,16 @@ backend/xlumen-server/
 
 ```text
 xlumen-publishing/src/main/java/.../publishing/
-├─ controller/   # CommentController / LikeController / PublicArticleController
-├─ service/      # CommentService / LikeService / PublicArticleService
-├─ service/impl/ # CommentServiceImpl / LikeServiceImpl / PublicArticleServiceImpl
+├─ controller/   # CommentController / LikeController / PublicKnowledgeController
+├─ service/      # CommentService / LikeService / PublicKnowledgeService
+├─ service/impl/ # CommentServiceImpl / LikeServiceImpl / PublicKnowledgeServiceImpl
 ├─ mapper/       # CommentMapper / LikeMapper
 ├─ entity/       # CommentEntity / LikeEntity
 ├─ dto/          # 入参/查询参数/跨模块稳定类型
 └─ vo/           # 出参视图
 ```
 
-- 命名按资源/领域词（如 Comment/Like/Article），禁止使用域后缀（如 EngagementService）或域包名（如 engagement/）。
+- 命名按资源/领域词（如 Comment/Like/Knowledge），禁止使用域后缀（如 EngagementService）或域包名（如 engagement/）。
 - 未来拆分边界以**模块 + 表前缀**为准（如 publishing 的 eng_ 表随互动能力迁出），不依赖包内域边界。
 
 ### 5.1 MVC 调用规则
@@ -113,10 +113,13 @@ Other Module → Api → Service → Mapper
 
 **编码风格规范（强制）**：
 
-- **参数封装**：方法参数不超过 3~4 个；字段较多的入参/查询条件必须封装为 DTO/BO（如 `ArticleQueryDTO` 承载关键词/分类/标签/分页），Controller 方法同样遵守；Service 方法内只读需要的字段，避免“全量对象传参”。
+- **参数封装**：方法参数不超过 3~4 个；字段较多的入参/查询条件必须封装为 DTO/BO（如 `KnowledgeQueryDTO` 承载关键词/目录/标签/分页），Controller 方法同样遵守；Service 方法内只读需要的字段，避免“全量对象传参”。
 - **DTO/VO 用普通 class + Lombok**：统一 `@Data @Builder @NoArgsConstructor @AllArgsConstructor`，字段必须带简短注释；DTO/VO 不使用 record（跨模块稳定类型同样遵守，历史 record 已统一替换为 class）。
+- **分页入参继承基类**：列表分页请求 DTO 统一继承 `common.dto.PageQueryDTO`（`pageNo`/`pageSize`，默认 1/20，`pageSize` 上限 100 由服务层截断）；继承链上的类统一用 `@SuperBuilder`（父类字段默认值加 `@Builder.Default`，子类无字段时省略 `@AllArgsConstructor` 避免构造器冲突）。
 - **默认值语义**：字段初始化表达式（如 `pageNo = 1`）同时使用 `@Builder.Default`，避免 @Builder 忽略默认值。
-- **命名按资源/领域词**：Service/Controller/Mapper/Entity 使用同一资源词前缀（如 Comment、Like、Article），不引入域后缀。
+- **路径/查询参数隐式命名**：`@PathVariable`/`@RequestParam` 不写与参数名相同的显式名称（依赖根 POM `maven-compiler-plugin` 的 `-parameters` 保留参数名元数据）；参数名与路径模板/客户端参数不一致时，优先改模板变量名保持一致，仍不一致才显式声明名称。
+- **业务类不写内部类**：Controller/Service 及业务模型中禁止嵌套类型，值对象/状态载体一律提取为顶层类（如 `WorkspaceScope`、`RefreshSession`）。
+- **命名按资源/领域词**：Service/Controller/Mapper/Entity 使用同一资源词前缀（如 Comment、Like、Knowledge），不引入域后缀。
 
 ### 5.2 对外 Api 目录
 
@@ -146,7 +149,7 @@ Other Module → Api → Service → Mapper
  */
 public interface ContentApi {
 
-    ArticleVersionDTO saveAiResult(SaveAiResultDTO dto);
+    KnowledgeVersionDTO saveAiResult(SaveAiResultDTO dto);
 }
 ```
 
@@ -154,15 +157,15 @@ public interface ContentApi {
 
 | 类型 | 示例 | 使用范围 |
 | --- | --- | --- |
-| Controller | `ArticleController` | HTTP 或流式入口 |
-| Service | `ArticleService` | 模块内部业务接口 |
-| Service 实现 | `ArticleServiceImpl` | 业务逻辑和事务 |
+| Controller | `KnowledgeController` | HTTP 或流式入口 |
+| Service | `KnowledgeService` | 模块内部业务接口 |
+| Service 实现 | `KnowledgeServiceImpl` | 业务逻辑和事务 |
 | 对外接口 | `ContentApi` | 其他 Maven 模块调用 |
 | 对外接口实现 | `ContentApiImpl` | 对外调用适配与 Service 编排 |
-| Mapper | `ArticleMapper` | 当前模块数据访问 |
-| Entity | `ArticleEntity` | 数据库表映射 |
-| DTO | `CreateArticleDTO` | Service 或 Api 参数和结果 |
-| VO | `ArticleDetailVO` | Controller 响应 |
+| Mapper | `KnowledgeMapper` | 当前模块数据访问 |
+| Entity | `KnowledgeEntity` | 数据库表映射 |
+| DTO | `CreateKnowledgeDTO` | Service 或 Api 参数和结果 |
+| VO | `KnowledgeDetailVO` | Controller 响应 |
 
 - Controller 入参使用 DTO，并通过 Bean Validation 校验；返回统一响应包装下的 VO。
 - Service 和 Api 不接收 `Map<String, Object>` 表达固定业务结构（禁止 Map 作请求参数）。
@@ -211,9 +214,11 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 | 表 | 所属模块 | 阶段 | 说明 |
 | --- | --- | --- | --- |
 | `iam_user` / `iam_workspace` / `iam_workspace_member` / `iam_role` | identity | MVP | 用户（密码 BCrypt 哈希）/ 工作空间（全局隔离维度）/ 成员角色绑定 / 角色定义（OWNER/ADMIN/EDITOR/AUTHOR/VISITOR） |
-| `kb_chunk` / `kb_index_version` | knowledge | MVP | 文章切片元数据（向量在 Milvus，关联文章已发布版本）/ 索引版本与活动指针（F-0403） |
+| `kb_knowledge_base` / `kb_directory` | knowledge | MVP | 知识库（公开/私有/回收站状态，F-0308）/ 多级目录树（parent_id，首字母排序，F-0309） |
+| `kb_kb_grant` | knowledge | V2 | 私有库授权名单（F-0106） |
+| `kb_chunk` / `kb_index_version` | knowledge | MVP | 知识切片元数据（向量在 Milvus，关联知识已发布版本，含 `kb_id` 按库过滤）/ 索引版本与活动指针（F-0403） |
 | `ai_task` | ai | MVP | AI 任务（状态机见第 14 节） |
-| `cnt_article` / `cnt_article_version` | content | MVP / V2 | 文章主体 / 历史版本（F-0303） |
+| `cnt_knowledge` / `cnt_knowledge_version` | content | MVP / V2 | 知识主体（含 `kb_id`/`directory_id` 归属）/ 历史版本（F-0303） |
 | `pub_review` / `pub_release` | publishing | MVP | 审核记录（F-0902）/ 发布记录（F-0905） |
 | `eng_feedback` / `eng_comment` | publishing 模块 | MVP / V2 | 读者纠错（F-1001）/ 评论（F-0203） |
 | `chat_message` | ai 模块 | MVP | 对话消息 |
@@ -232,7 +237,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - Outbox 事件表：按 `occurredAt` 定期归档清理（超过保留期移到归档表），避免无限增长。
 - 审计日志 `plt_activity_log`：只增不改，按季度归档，访问走归档查询。
 - 访问统计 `analytics_visit`：明细按日汇总到趋势表后滚动清理，保留最近 N 天明细。
-- 文章版本 `cnt_article_version`：已发布版本正文快照只增不删（更新闭环依赖），回收站软删除内容按策略定期物理清理。
+- 知识版本 `cnt_knowledge_version`：已发布版本正文快照只增不删（更新闭环依赖），回收站软删除内容按策略定期物理清理（默认 30 天，F-0305）。
 
 ## 9. 多租户与权限（双层校验）
 
@@ -241,11 +246,13 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - 所有工作空间业务查询必须包含 `workspace_id` 条件；新增 Mapper 方法时必须测试跨工作空间数据不可见。
 - 工作空间 ID 来自可信会话上下文，不直接信任 URL、Header 或 DTO 中的值；权限变化即时生效。
 - 平台级跨工作空间操作使用独立接口、独立权限和审计日志。
-- 职责分离：作者默认不能直接发布；编辑不能审核自己提交的文章（F-0903）；个人空间可关闭强制审核（决策 D9）。
+- 职责分离：作者默认不能直接发布；编辑不能审核自己提交的知识（F-0903）；个人空间可关闭强制审核（决策 D9）。
+- **知识库可见性（F-0307/F-0308）**：知识可见性由所属知识库决定，公开库知识对所有人可见、私有库仅库主可见；公开读与检索必须同时校验知识状态（已发布）与库可见性，私有库知识对外不可见（404 语义，不暴露存在性）；库越权访问必须由 Service 层强制执行并专项测试。
 
 ## 10. REST API 规范
 
 - 统一前缀 `/api/v1`，资源使用复数名词；查询用 GET，创建用 POST，全量更新用 PUT，局部动作用明确动作端点。
+- **知识资源统一路径 `/api/v1/knowledge`**（决策 D17：概念统一后不可数名词；旧 `/api/v1/articles` 直接废弃，不保留兼容期，前后端同仓同 PR 切换）。知识库资源 `/api/v1/knowledge-bases`，目录资源 `/api/v1/knowledge-bases/{kbId}/directories`。
 - OpenAPI 是前端生成接口类型的唯一来源（决策 D4）；Controller、DTO 和 VO 提供准确的 Schema 与校验规则。
 - 分页参数统一为 `pageNo`、`pageSize`，并限制最大 `pageSize`（上限见第 18 节）。
 
@@ -267,7 +274,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - 事务放在 Service Impl 的公共写方法，统一 `@Transactional(rollbackFor = Exception.class)`；Controller、Job 和消息消费者不展开业务事务。
 - 同一模块的相关数据在一个本地事务内完成；外部调用不能长时间占用数据库事务——先保存任务，再异步调用。
 - 审核、发布、配额结算和任务恢复使用业务幂等键；捕获重复请求时返回已有结果，不重复创建版本、发布内容或扣减配额（F-0905 发布幂等）。
-- 文章和发布计划使用乐观锁（版本号），审核、发布、回滚、下架必须校验版本，冲突返回 409，禁止静默覆盖。
+- 知识和发布计划使用乐观锁（版本号），审核、发布、回滚、下架必须校验版本，冲突返回 409，禁止静默覆盖。
 - 唯一索引可以解决的问题不使用分布式锁；分布式锁只用于短临界区，设置合理超时和安全释放逻辑。
 
 ## 12. RocketMQ 与 Outbox
@@ -275,7 +282,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 业务事件信封：
 
 ```json
-{ "eventId": "01J...", "eventType": "content.article.approved", "schemaVersion": 1,
+{ "eventId": "01J...", "eventType": "content.knowledge.approved", "schemaVersion": 1,
   "workspaceId": 10001, "bizId": "20001", "occurredAt": "2026-08-12T10:30:00+08:00",
   "traceId": "8f...", "payload": {} }
 ```
@@ -285,19 +292,20 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - 消费入口放在 `job/`，解析消息后调用 Service；普通消息用于解析、向量化、AI、统计和通知。
 - 延迟消息只用于短期重试和计划触发，长期计划仍保存在 MySQL；消费失败有限重试，超过阈值进入死信和人工处理（PRODUCT 第 9 节）。
 
-## 13. 文章知识索引与 RAG
+## 13. 知识库、目录与 RAG
 
-发布触发的自动索引流水线（F-0402）：
+发布触发的自动索引流水线（F-0402，决策 D13/D16）：
 
 ```text
 发布成功事件 → 取已发布版本正文 → 清洗 → 切片 → Embedding
-→ 写入新索引 → 检索校验 → 激活索引 → 清理旧版本索引
+→ 写入新索引（按知识库 kb_id 切分）→ 检索校验 → 激活索引 → 清理旧版本索引
 ```
 
-- 由发布成功事件触发，无需人工导入；删除/下架同步移出索引；旧文更新的新版本发布后自动重建（不提供外部资料导入与 URL 抓取，F-0401/F-0406 已随产品变更移除）。
-- MySQL 保存切片元数据与活动索引指针；Milvus 保存向量和检索过滤字段（workspace_id、可见性、文章 ID、版本）。
+- 由发布成功事件触发，无需人工导入；删除/下架同步移出索引；旧知识更新的新版本发布后自动重建（不提供外部资料导入与 URL 抓取，F-0401/F-0406 已随产品变更移除）。
+- 知识库与目录管理（F-0308/F-0309）：`kb_knowledge_base`（公开/私有/回收站状态）与 `kb_directory`（parent_id 多级树，目录按名称首字母排序）由 knowledge 模块承载；content 模块的知识 CRUD 通过 `KnowledgeApi` 校验库/目录归属（单库单目录），跨库移动不提供（仅复制或重新发布）。
+- MySQL 保存切片元数据、知识库/目录与活动索引指针；Milvus 保存向量和检索过滤字段（workspace_id、知识库 kb_id、知识 ID、版本）。
 - **索引版本管理（F-0403）**：切换 Embedding 模型只允许创建新索引版本，不覆盖活动索引；新版本经检索校验通过后才激活，激活后清理旧索引。
-- 检索按身份过滤（F-0407）：访客仅命中已发布公开文章，博主命中全部含私有；引用必须定位到篇名与段落并可跳转原文（F-0405）。
+- 检索按可见库集合过滤（F-0407）：访客仅命中公开库已发布知识，库主命中全部含自己私有库；引用必须定位到篇名与段落并可跳转原文（F-0405）。检索请求携带身份推导出的可见库集合，`KnowledgeApi.search` 入参含 `kbIds` 过滤维度。
 
 ## 14. AI 与外部服务
 
@@ -308,13 +316,13 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - **知识增强写作（F-0603，V2 可选）**：启用时写作阶段 RAG 检索结果必须携带证据（页码/标题/段落 + 不可变快照），AI 输出引用必须关联证据；无法溯源的内容必须明确标注为模型生成而非事实（F-0405、PRODUCT 第 8 节）。
 - **AI 审校（F-0604）**：Reviewer 与 Writing 使用不同供应商/模型，保证审校独立性（模型异源）；审校输出结构化（严重度/位置/证据/建议）并经 Schema 校验。
 - 结构化输出必须通过 Schema 校验和有限修复；权限、参数和内容安全错误不能通过切换模型绕过；降级与熔断按场景策略执行（如 Reviewer 切换备用模型），降级原因进入 AI Trace（F-0505，V3）。
-- Content 通过 `AiApi` 创建任务；AI 通过 `KnowledgeApi` 检索资料；AI 完成后发布结果业务事件，由 Content 消费、校验并保存文章版本。AI 不反向依赖 Content，也不能直接修改内容表。
+- Content 通过 `AiApi` 创建任务；AI 通过 `KnowledgeApi` 检索资料（携带可见库集合）；AI 完成后发布结果业务事件，由 Content 消费、校验并保存知识版本。AI 不反向依赖 Content，也不能直接修改内容表。
 
 ## 15. Redis、日志与安全
 
 ### 15.1 Redis 使用边界
 
-- 用于：会话、权限短缓存、热点只读数据（热点文章，F-1301）、限流、锁、短期任务状态（如 SSE 断点与进度）。
+- 用于：会话、权限短缓存、热点只读数据（热点知识，F-1301）、限流、锁、短期任务状态（如 SSE 断点与进度）。
 - 缓存键包含应用、环境、工作空间和业务主键；缓存不可用时按业务风险选择降级或拒绝。
 - 审核、发布、配额和任务事实不能只存在 Redis，业务事实以 MySQL 为准（决策 D6）。
 
@@ -354,7 +362,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 
 ### 16.3 注释
 
-每个 Java 文件中的顶级类、接口、枚举、注解和记录类型都必须提供类注释，说明类型作用，并包含作者和日期标签，如：`/** 文章审核服务。负责文章版本校验、审核状态流转和审核记录保存。 @author calwen @date 2026/8/12 */`（按标准 Javadoc 多行书写）。
+每个 Java 文件中的顶级类、接口、枚举、注解和记录类型都必须提供类注释，说明类型作用，并包含作者和日期标签，如：`/** 知识审核服务。负责知识版本校验、审核状态流转和审核记录保存。 @author calwen @date 2026/8/12 */`（按标准 Javadoc 多行书写）。
 
 - 作者统一为 `calwen`；日期使用代码首次创建日期，格式为不补零的 `yyyy/M/d`；修改已有文件时保留原创建日期。
 - 类注释说明职责和边界，不使用"用于处理相关业务"等空泛描述；对外 Api 和重要 Service 方法说明用途、关键限制和异常条件。
@@ -396,7 +404,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 | 压力测试 | k6 | REST、SSE、检索和任务提交 |
 
 - 普通质量门禁运行单元测试、静态检查、模块边界测试和不依赖外部中间件的测试；完整集成测试使用 `full-it` Profile 连接测试服务器的中间件和 `xlumen_test` 数据库，启动时拒绝数据库名不是 `xlumen_test` 的配置。命令见 GLOBAL.md，本文档不重复。
-- 最高优先级场景：多租户隔离、文章版本冲突、AI 任务恢复、消息重投、发布幂等、配额结算、模型降级、权限变化和会话撤销。
+- 最高优先级场景：多租户隔离、知识版本冲突、库级可见性越权、AI 任务恢复、消息重投、发布幂等、配额结算、模型降级、权限变化和会话撤销。
 - 普通测试使用 WireMock 或固定响应替代付费服务，不能产生真实费用。
 
 ## 20. AI 代码生成指南

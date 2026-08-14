@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/13 14:00
+> 更新日期：2026/8/14 16:04
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 
@@ -9,7 +9,19 @@
 | 时间 | 变更内容 | 影响文档 | 决策摘要 |
 | --- | --- | --- | --- |
 
-说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D15，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
+说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D17，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
+
+## 2026/8/14 16:04 · ZCode（知识平台化重构：设计定稿 + 阶段 0 文档先行）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/14 16:04 | 产品级变更「知识平台化重构」设计定稿并经用户逐项确认（完整方案见 `tmp/knowledge-redesign-proposal.md` 评审稿）：①产品定位由个人博客升级为**多用户知识平台**（任何注册用户可建库、访客可浏览所有公开库）；②全项目概念「文章」统一改名「知识」（物理表名 cnt_article→cnt_knowledge、接口路径 /api/v1/articles→/api/v1/knowledge 同步全改，不保留兼容期）；③新增三层组织：空间→知识库（公开/私有/授权 V2）→多级目录→知识，单库单目录；④可见性上移库级（文章级 visibility 废止）；⑤目录树替代 category、标签保留；⑥删库连带回收站（30 天）扩展 F-0305 至 MVP、不可跨库移动（仅复制/重新发布）；⑦排序定稿：列表按更新时间倒序、目录按首字母、目录内按创建时间正序；⑧首页知识流按身份聚合（登录含自己私有库 🔒）、导航「知识/知识库/AI小光」；⑨RAG 索引按库切分、检索按可见库集合过滤。阶段 0 文档先行已落地：PRODUCT 重写（定位/角色/三主线闭环/状态机/功能总表 73→77 项 MVP37→41 新增 F-0106/F-0208/F-0308/F-0309、F-0305 提 MVP、F-0307 重定义/行为规则/安全）、PROTOTYPE 重写（导航头+8 屏原型+新增 B16/B20~B22）、BACKEND（模块职责/表清单 cnt_knowledge+kb_knowledge_base/kb_directory/kb_kb_grant/§13 重写/知识路径规范）、FRONTEND（模块映射/知识措辞）、GLOBAL/README 同步；后续阶段 1 纯改名→阶段 2 数据模型→阶段 3~6 功能实现见 STATUS 待办 | PRODUCT/PROTOTYPE/BACKEND/FRONTEND/GLOBAL/README/STATUS | D9 改写、D13 改写、D16/D17 新增 |
+
+## 2026/8/14 14:00 · ZCode（后端代码风格优化）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/14 14:00 | 后端代码风格优化三件套：①移除 19 处冗余 `@PathVariable("xxx")` 显式名称（参数名与路径模板一致时省略；根 POM maven-compiler-plugin 显式开启 `<parameters>true</parameters>` 保障隐式名称绑定；ChatController `/conversations/{id}/messages` 路径模板改名 `{conversationId}` 与参数名对齐）；②新增分页基类 `common/dto/PageQueryDTO`（`pageNo=1`/`pageSize=20`，`@Builder.Default` + `@SuperBuilder` 继承，子类无字段时省略 `@AllArgsConstructor` 防构造器冲突），`ArticleListQueryDTO`/publishing·content 两处 `ArticleQueryDTO`/`CommentQueryDTO` 全部继承并删除重复分页字段；③业务类内部类清零：`WorkspaceContext.Scope`→`WorkspaceScope`、`RefreshTokenService.RefreshSession`→`RefreshSession`（identity service 包顶层 record）、`ModelGatewayImpl.CircuitState`、`ChunkingServiceImpl.Section`（record，字段访问改访问器）均提取为顶层类型；BACKEND §5.1 新增分页基类/隐式命名/禁内部类三条规范；验证：mvn verify BUILD SUCCESS + 7 单测（新增 ArticleQueryDTOTest 4 断言分页继承默认值与覆盖）、运行时 API 全端点验证 @PathVariable 隐式绑定（公开详情/评论/阅读量、文章 CRUD、任务 retry、审核、模型配置 {scene}，均返回业务码非绑定错误）、双前端 E2E 9 通过（blog 8 + admin 1，期间清理 5 个残留 vite dev server 实例） | STATUS/BACKEND | 无 |
 
 ## 2026/8/13 19:10 · Qoder 代理（修复测试数据乱码）
 

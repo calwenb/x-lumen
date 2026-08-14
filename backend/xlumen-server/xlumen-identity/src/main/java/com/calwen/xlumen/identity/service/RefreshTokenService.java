@@ -25,7 +25,7 @@ public interface RefreshTokenService {
      * 校验并轮换刷新令牌：GETDEL 原子取旧值，成功则签发新令牌（防重放）。
      *
      * @param refreshToken 旧刷新令牌明文
-     * @return 解析结果（userId/workspaceId）；令牌无效返回 null
+     * @return 解析结果（{@link RefreshSession}）；令牌无效返回 null
      */
     RefreshSession rotate(String refreshToken);
 
@@ -35,13 +35,4 @@ public interface RefreshTokenService {
      * @param refreshToken 刷新令牌明文
      */
     void revoke(String refreshToken);
-
-    /**
-     * 刷新会话快照。
-     *
-     * @param userId      用户 ID
-     * @param workspaceId 工作空间 ID
-     */
-    record RefreshSession(Long userId, Long workspaceId) {
-    }
 }

@@ -16,6 +16,7 @@ import com.calwen.xlumen.identity.mapper.UserMapper;
 import com.calwen.xlumen.identity.mapper.WorkspaceMapper;
 import com.calwen.xlumen.identity.mapper.WorkspaceMemberMapper;
 import com.calwen.xlumen.identity.service.AuthService;
+import com.calwen.xlumen.identity.service.RefreshSession;
 import com.calwen.xlumen.identity.service.RefreshTokenService;
 import com.calwen.xlumen.identity.vo.TokenVO;
 import com.calwen.xlumen.identity.vo.UserProfileVO;
@@ -127,7 +128,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public TokenVO refresh(RefreshTokenDTO dto) {
-        RefreshTokenService.RefreshSession session = refreshTokenService.rotate(dto.refreshToken());
+        RefreshSession session = refreshTokenService.rotate(dto.refreshToken());
         if (session == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "会话已失效，请重新登录");
         }

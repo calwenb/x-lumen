@@ -29,7 +29,7 @@ public class LikeController {
      * @return 切换后的状态（true 已赞 / false 取消）
      */
     @PostMapping
-    public ApiResponse<Boolean> toggleLike(@PathVariable("articleId") Long articleId) {
+    public ApiResponse<Boolean> toggleLike(@PathVariable Long articleId) {
         return ApiResponse.success(likeService.toggleLike(articleId));
     }
 
@@ -37,7 +37,7 @@ public class LikeController {
      * 当前用户点赞状态（F-0203）：需登录，详情页初始化用（用户从 WorkspaceContext 读取）。
      */
     @GetMapping("/status")
-    public ApiResponse<Boolean> likeStatus(@PathVariable("articleId") Long articleId) {
+    public ApiResponse<Boolean> likeStatus(@PathVariable Long articleId) {
         return ApiResponse.success(likeService.isLiked(articleId));
     }
 }

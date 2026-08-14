@@ -37,12 +37,12 @@ public class ChunkingServiceImpl implements ChunkingService {
         List<Chunk> chunks = new ArrayList<>();
         int seq = 1;
         for (Section section : splitSections(markdown)) {
-            String body = StrUtil.trim(section.body);
+            String body = StrUtil.trim(section.body());
             if (StrUtil.isBlank(body)) {
                 continue;
             }
             if (body.length() <= CHUNK_MAX) {
-                chunks.add(Chunk.builder().seq(seq++).headingAnchor(section.heading).chunkText(body).build());
+                chunks.add(Chunk.builder().seq(seq++).headingAnchor(section.heading()).chunkText(body).build());
                 continue;
             }
             // 滑动窗口细分：步长 = 目标长度 - 重叠长度，保证相邻切片 15% 重叠
@@ -50,7 +50,7 @@ public class ChunkingServiceImpl implements ChunkingService {
             int step = CHUNK_TARGET - overlap;
             for (int start = 0; start < body.length(); start += step) {
                 int end = Math.min(body.length(), start + CHUNK_TARGET);
-                chunks.add(Chunk.builder().seq(seq++).headingAnchor(section.heading)
+                chunks.add(Chunk.builder().seq(seq++).headingAnchor(section.heading())
                         .chunkText(body.substring(start, end)).build());
                 if (end >= body.length()) {
                     break;
@@ -73,16 +73,5 @@ public class ChunkingServiceImpl implements ChunkingService {
         }
         sections.add(new Section(heading, markdown.substring(cursor)));
         return sections;
-    }
-
-    /** 内部段落模型：标题锚点 + 段落正文。 */
-    private static final class Section {
-        private final String heading;
-        private final String body;
-
-        private Section(String heading, String body) {
-            this.heading = heading;
-            this.body = body;
-        }
     }
 }

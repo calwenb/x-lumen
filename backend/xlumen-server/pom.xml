@@ -116,6 +116,8 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <configuration>
                         <release>${java.version}</release>
+                        <!-- 保留参数名元数据：@PathVariable/@RequestParam 隐式名称绑定依赖 -parameters（BACKEND.md §5.1） -->
+                        <parameters>true</parameters>
                         <!-- JDK 23+ 必须显式声明 Lombok 注解处理器，否则注解不生效（BACKEND.md §2） -->
                         <annotationProcessorPaths>
                             <path>

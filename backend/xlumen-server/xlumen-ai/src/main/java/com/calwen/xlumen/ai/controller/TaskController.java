@@ -39,7 +39,7 @@ public class TaskController {
      * 任务状态与结果查询（按工作空间隔离）。
      */
     @GetMapping("/{taskId}")
-    public ApiResponse<TaskVO> get(@PathVariable("taskId") Long taskId) {
+    public ApiResponse<TaskVO> get(@PathVariable Long taskId) {
         AiTaskEntity task = aiTaskService.get(WorkspaceContext.workspaceId(), taskId);
         if (task == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "任务不存在");
@@ -57,7 +57,7 @@ public class TaskController {
      * 订阅任务事件（SSE）：已终止直接发 done/error，运行中订阅进度。
      */
     @GetMapping("/{taskId}/events")
-    public SseEmitter events(@PathVariable("taskId") Long taskId) {
+    public SseEmitter events(@PathVariable Long taskId) {
         AiTaskEntity task = aiTaskService.get(WorkspaceContext.workspaceId(), taskId);
         if (task == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "任务不存在");
@@ -73,7 +73,7 @@ public class TaskController {
      * 失败任务有限重试。
      */
     @PostMapping("/{taskId}/retry")
-    public ApiResponse<Boolean> retry(@PathVariable("taskId") Long taskId) {
+    public ApiResponse<Boolean> retry(@PathVariable Long taskId) {
         return ApiResponse.success(aiTaskService.retry(WorkspaceContext.workspaceId(), taskId));
     }
 

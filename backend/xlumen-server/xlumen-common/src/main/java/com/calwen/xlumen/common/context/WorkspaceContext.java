@@ -10,19 +10,9 @@ package com.calwen.xlumen.common.context;
  */
 public final class WorkspaceContext {
 
-    private static final ThreadLocal<Scope> HOLDER = new ThreadLocal<>();
+    private static final ThreadLocal<WorkspaceScope> HOLDER = new ThreadLocal<>();
 
     private WorkspaceContext() {
-    }
-
-    /**
-     * 当前会话作用域快照。
-     *
-     * @param workspaceId 当前工作空间 ID
-     * @param userId      当前用户 ID
-     * @param username    当前用户名（展示用，可空）
-     */
-    public record Scope(Long workspaceId, Long userId, String username) {
     }
 
     /**
@@ -32,7 +22,7 @@ public final class WorkspaceContext {
      * @param userId      用户 ID
      */
     public static void set(Long workspaceId, Long userId) {
-        HOLDER.set(new Scope(workspaceId, userId, null));
+        HOLDER.set(new WorkspaceScope(workspaceId, userId, null));
     }
 
     /**
@@ -43,7 +33,7 @@ public final class WorkspaceContext {
      * @param username    用户名
      */
     public static void set(Long workspaceId, Long userId, String username) {
-        HOLDER.set(new Scope(workspaceId, userId, username));
+        HOLDER.set(new WorkspaceScope(workspaceId, userId, username));
     }
 
     /**
@@ -52,7 +42,7 @@ public final class WorkspaceContext {
      * @return 工作空间 ID 或 null
      */
     public static Long workspaceId() {
-        Scope scope = HOLDER.get();
+        WorkspaceScope scope = HOLDER.get();
         return scope == null ? null : scope.workspaceId();
     }
 
@@ -62,7 +52,7 @@ public final class WorkspaceContext {
      * @return 用户 ID 或 null
      */
     public static Long userId() {
-        Scope scope = HOLDER.get();
+        WorkspaceScope scope = HOLDER.get();
         return scope == null ? null : scope.userId();
     }
 
@@ -72,7 +62,7 @@ public final class WorkspaceContext {
      * @return 用户名或 null
      */
     public static String username() {
-        Scope scope = HOLDER.get();
+        WorkspaceScope scope = HOLDER.get();
         return scope == null ? null : scope.username();
     }
 

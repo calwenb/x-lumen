@@ -29,7 +29,7 @@ public class FeedbackController {
 
     /** 提交读者纠错（F-1001）：匿名可提交，返回追踪号。 */
     @PostMapping
-    public ApiResponse<FeedbackVO> createFeedback(@PathVariable("articleId") Long articleId,
+    public ApiResponse<FeedbackVO> createFeedback(@PathVariable Long articleId,
                                                   @Valid @RequestBody CreateFeedbackDTO dto,
                                                   HttpServletRequest request) {
         dto.setIp(clientIp(request));

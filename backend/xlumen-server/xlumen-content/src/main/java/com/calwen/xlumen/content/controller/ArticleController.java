@@ -49,7 +49,7 @@ public class ArticleController {
      * 更新文章（F-0301）：版本乐观锁，冲突 409。
      */
     @PutMapping("/{articleId}")
-    public ApiResponse<ArticleVO> update(@PathVariable("articleId") Long articleId,
+    public ApiResponse<ArticleVO> update(@PathVariable Long articleId,
                                          @Valid @RequestBody UpdateArticleDTO dto) {
         return ApiResponse.success(articleService.update(articleId, dto));
     }
@@ -66,7 +66,7 @@ public class ArticleController {
      * 文章详情（作者本人，含草稿/私有）。
      */
     @GetMapping("/{articleId}")
-    public ApiResponse<ArticleVO> get(@PathVariable("articleId") Long articleId) {
+    public ApiResponse<ArticleVO> get(@PathVariable Long articleId) {
         return ApiResponse.success(articleService.get(articleId));
     }
 
@@ -90,7 +90,7 @@ public class ArticleController {
      * 删除文章（F-0301）：仅构思/草稿可删除。
      */
     @DeleteMapping("/{articleId}")
-    public ApiResponse<Void> delete(@PathVariable("articleId") Long articleId) {
+    public ApiResponse<Void> delete(@PathVariable Long articleId) {
         articleService.delete(articleId);
         return ApiResponse.success(null);
     }

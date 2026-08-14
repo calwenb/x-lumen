@@ -44,7 +44,7 @@ public class PublicArticleController {
      * 文章详情（F-0201，B02）：登录用户附带点赞状态（WorkspaceContext）。
      */
     @GetMapping("/articles/{id}")
-    public ApiResponse<ArticleDetailVO> getArticle(@PathVariable("id") Long id) {
+    public ApiResponse<ArticleDetailVO> getArticle(@PathVariable Long id) {
         return ApiResponse.success(publicArticleService.getArticle(id));
     }
 
@@ -52,7 +52,7 @@ public class PublicArticleController {
      * 阅读量记录（F-0203）：访客指纹（IP）24 小时窗口内只计一次，防刷。
      */
     @PostMapping("/articles/{id}/view")
-    public ApiResponse<Boolean> recordView(@PathVariable("id") Long id, HttpServletRequest request) {
+    public ApiResponse<Boolean> recordView(@PathVariable Long id, HttpServletRequest request) {
         return ApiResponse.success(publicArticleService.recordView(id, visitorKey(request)));
     }
 

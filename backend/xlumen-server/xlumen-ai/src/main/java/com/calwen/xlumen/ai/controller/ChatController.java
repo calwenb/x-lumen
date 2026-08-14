@@ -45,7 +45,7 @@ public class ChatController {
      * 文章级问答（F-0702，流式 SSE）：限定单篇文章检索。
      */
     @PostMapping("/articles/{articleId}/ask")
-    public SseEmitter ask(@PathVariable("articleId") Long articleId,
+    public SseEmitter ask(@PathVariable Long articleId,
                           @Valid @RequestBody ChatRequestDTO dto) {
         return chatService.askArticle(articleId, dto);
     }
@@ -61,8 +61,8 @@ public class ChatController {
     /**
      * 会话消息列表（按时间正序）。
      */
-    @GetMapping("/conversations/{id}/messages")
-    public ApiResponse<List<ChatMessageVO>> messages(@PathVariable("id") Long conversationId) {
+    @GetMapping("/conversations/{conversationId}/messages")
+    public ApiResponse<List<ChatMessageVO>> messages(@PathVariable Long conversationId) {
         return ApiResponse.success(chatService.listMessages(conversationId));
     }
 

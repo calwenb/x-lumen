@@ -2,6 +2,7 @@ package com.calwen.xlumen.identity.service.impl;
 
 import cn.hutool.core.util.HexUtil;
 import cn.hutool.core.util.StrUtil;
+import com.calwen.xlumen.identity.service.RefreshSession;
 import com.calwen.xlumen.identity.service.RefreshTokenService;
 import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;

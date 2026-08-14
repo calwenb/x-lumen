@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/13 14:00
+> 更新日期：2026/8/14 16:04
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -16,9 +16,27 @@
 
 **MVP 全部 13 个里程碑已完成**：M01~M03（骨架/身份/公开页）、M04（内容管理）、M05（RAG 索引）、M06+M12（AI 基座）、M07（AI 创作）、M08（AI 对话）、M09（AI 增值）、M10（审核发布）、M11（读者纠错）、M13（管理后台）与 F-1301 缓存均已交付并通过运行时验证。**待环境**：本机 Docker/Milvus 未安装，向量检索以 NoopVectorStore 降级运行（索引元数据正常，向量写入待 Milvus 就绪后自动生效）。
 
+**知识平台化重构（2026-08-14 定稿）**：产品定位升级为多用户知识平台（决策 D9 改写），知识库→目录→知识三层体系 + 库级可见性 + 文章概念统一改名知识，设计经用户逐项确认（完整方案 `tmp/knowledge-redesign-proposal.md`）；**阶段 0 文档先行已交付**（PRODUCT/PROTOTYPE/BACKEND/FRONTEND/GLOBAL/README 同步）；阶段 1（概念改名）~阶段 6（验收）见第 5 节待办，按认领机制逐项实施。
+
 > 里程碑完成标准：代码骨架以 M01 定义为准（目录结构与 docs 一致，决策 D7）；MVP 模块以功能总表对应功能验收（完成定义见 PRODUCT.md 第 12 节）。
 
 ## 3. 已完成
+
+### 知识平台化重构 · 阶段 0 文档先行（2026-08-14）
+
+- 产品级变更设计定稿并经用户逐项确认（9 项决策 + 4 个开放问题全部拍板：cnt_article 物理改名 cnt_knowledge、/api/v1/articles 全改 /api/v1/knowledge 不保留兼容期、私有库授权 V2、回收站 30 天）。
+- PRODUCT.md 重写：定位/角色/三主线闭环/状态机可见性规则/功能总表 73→77 项（MVP 41/V2 24/V3 12；新增 F-0106/F-0208/F-0308/F-0309、F-0305 提 MVP、F-0307 重定义、模块四更名知识索引（RAG））/行为规则（库级可见性/单库单目录/删库回收站/排序规则）/安全（库级越权）。
+- PROTOTYPE.md 重写：导航头「知识/知识库/AI小光」+ 8 屏原型（B01 知识流身份聚合、B20 库页、B21 发现页、B22 库管理、B16 回收站提 MVP、B10/B13 发布选库目录）+ 页面清单调整。
+- BACKEND.md：模块职责（knowledge 扩库/目录管理、content→knowledge 依赖方向）、核心表清单（cnt_knowledge/kb_knowledge_base/kb_directory/kb_kb_grant）、§13 重写按库切分检索、REST 路径规范（/api/v1/knowledge，决策 D17）。
+- FRONTEND.md：模块映射与知识措辞；GLOBAL.md/README.md：定位、模块概览、统计同步；tmp/knowledge-redesign-proposal.md 评审稿存档（状态已确认）。
+- 验证：docs 全仓「文章」措辞清零核验（仅保留历史 CHANGELOG 条目与兼容说明）；**代码未动**（阶段 1 起实施）。
+
+### 后端代码风格优化（2026-08-14）
+
+- 移除 19 处冗余 `@PathVariable("xxx")` 显式名称（参数名与路径模板一致时省略，根 POM 显式开启 `-parameters` 保障隐式名称绑定；`ChatController` 会话消息接口路径模板 `{id}` 改名 `{conversationId}` 与参数名对齐）。
+- 新增分页基类 `common.dto.PageQueryDTO`（`pageNo=1`/`pageSize=20` 默认值，`@SuperBuilder` 继承）：`ArticleListQueryDTO`、publishing/content 两处 `ArticleQueryDTO`、`CommentQueryDTO` 全部继承（公开文章列表默认 pageSize 由 10 统一为 20，前端始终显式传参无实际影响）。
+- 业务类内部类清零：`WorkspaceContext.Scope`→`WorkspaceScope`、`RefreshTokenService.RefreshSession`→`RefreshSession`、`ModelGatewayImpl.CircuitState`、`ChunkingServiceImpl.Section` 全部提取为顶层类型。
+- 验证：`mvn verify` BUILD SUCCESS（新增 ArticleQueryDTOTest 4 个断言分页继承默认值）；运行时 API 全端点验证隐式绑定（详情/评论/阅读量/文章 CRUD/任务/审核/模型配置 `{scene}`）；双前端 E2E 9 通过（blog 8 + admin 1）。
 
 ### 内容管理与可见性（M04，2026-08-13）
 
@@ -117,7 +135,7 @@
 
 ## 4. 进行中
 
-无（当前没有已认领任务）。
+知识平台化重构：阶段 0 已交付，阶段 1~6 待认领（见第 5 节待办表末尾）。
 
 ## 5. 待办
 
@@ -138,6 +156,12 @@
 | M11 | 互动与反馈闭环（F-1001） | PRODUCT §5 模块十 | 已完成 | Qoder 代理 |
 | M12 | 技术基础设施（F-1301~F-1303） | PRODUCT §5 模块十三 | 已完成（F-1301 缓存；F-1302/F-1303 门禁/备份随工程实践落地） | Qoder 代理 |
 | M13 | 管理后台配置管理（空间/成员/角色 F-1201、审计 F-1202、模型配置 F-0501/F-0502 管理面） | PROTOTYPE A01~A04 | 已完成 | Qoder 代理 |
+| KB-1 | 知识平台化重构·阶段 1：概念改名「文章→知识」（全仓 grep 清单：文档/后端类名接口事件审计常量/前端路由文案组件/测试断言；物理表 cnt_article→cnt_knowledge、路径 /api/v1/articles→/api/v1/knowledge；纯改名零行为变更） | tmp/knowledge-redesign-proposal.md §3/§12 | 待认领 | — |
+| KB-2 | 知识平台化重构·阶段 2：数据模型（kb_knowledge_base/kb_directory 新表 DDL、cnt_knowledge 改造 kb_id/directory_id 去 category/visibility、kb_chunk/kb_index_version 加 kb_id、迁移脚本幂等） | 方案 §5/§10、BACKEND §7/§8 | 待认领 | — |
+| KB-3 | 知识平台化重构·阶段 3：后端能力（库 CRUD/回收站/目录树/排序/可见性过滤/检索按库/发布选库，F-0305/F-0307/F-0308/F-0309/F-0407） | 方案 §7/§9、BACKEND §13 | 待认领 | — |
+| KB-4 | 知识平台化重构·阶段 4：前端页面（导航头/知识流 B01/库页 B20/发现页 B21/库管理 B22/回收站 B16/发布弹窗/AI 对话范围选择器，F-0208/F-0308） | PROTOTYPE §7 | 待认领 | — |
+| KB-5 | 知识平台化重构·阶段 5：存量迁移执行与数据校验（默认公开库/默认私有库、category 平铺目录） | 方案 §10 | 待认领 | — |
+| KB-6 | 知识平台化重构·阶段 6：全量验收（完成定义 PRODUCT §12 + 双前端 E2E + 文档一致性核验） | PRODUCT §12 | 待认领 | — |
 
 > 说明：数据分析与知识保鲜（模块十一）为 V2/V3 功能，平台治理（模块十二）MVP 部分（空间设置/审计）随 M13 落地、其余 V2/V3 随依赖模块迭代实现；阶段调整须经 CHANGELOG 记录（决策 D10）。
 
@@ -151,6 +175,10 @@
 ## 7. 最近变更
 
 > 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
+
+- 2026/8/14 16:04 · ZCode：知识平台化重构设计定稿 + 阶段 0 文档先行——多用户知识平台定位（D9 改写）、知识库→目录→知识三层体系（D16）、文章概念统一改名知识（D17）、RAG 按库切分（D13 改写）；PRODUCT 功能总表 73→77 项、PROTOTYPE 8 屏原型、BACKEND/FRONTEND/GLOBAL/README 同步；4 个开放问题全部确认（cnt_knowledge 物理改名、/api/v1/knowledge 不保留兼容、授权 V2、回收站 30 天）；阶段 1~6 已列入待办待认领。
+
+- 2026/8/14 14:00 · ZCode：后端代码风格优化——①移除 19 处冗余 `@PathVariable("xxx")` 显式名称（根 POM 显式开启 `-parameters`；ChatController 路径模板 `{id}`→`{conversationId}` 对齐参数名）；②新增分页基类 `common/dto/PageQueryDTO`（默认 1/20，`@SuperBuilder` 继承），4 个分页 QueryDTO 全部继承并去除重复字段；③业务类内部类清零（WorkspaceScope/RefreshSession/CircuitState/Section 提取为顶层类）；BACKEND §5.1 新增分页基类/隐式命名/禁内部类规范；验证：mvn verify 全绿（新增 ArticleQueryDTOTest 4 断言）、运行时 API 全端点隐式绑定验证通过（公开读/文章 CRUD/任务/审核/模型配置）、双前端 E2E 9 通过（blog 8 + admin 1）。
 
 - 2026/8/13 14:00 · Qoder 代理：MVP 全部里程碑交付（M04~M13 + F-1301）——内容管理（CRUD+自动保存+8 状态机）、AI 基座（网关+任务底座+SSE）、AI 创作（写作+审校异源校验）、RAG 索引（发布即索引+Noop 降级）、AI 对话（小光+引用溯源）、AI 增值（摘要+SEO）、审核发布（双闸门+定时发布 PublishJob）、读者纠错（匿名+限流）、热点缓存与管理后台；修复 Spring Boot 4 .env 大写属性 relaxed binding 失效（@Value 显式绑定）、GlobalExceptionHandler 404/JSON 解析异常处理、ai 与 publishing 同名 Bean 冲突、审校默认模型 qwen-max（异源）；运行时全链路验证通过（真实百炼调用：审校/写作/摘要/SEO/Embedding/连通性测试），Milvus 待环境（Noop 降级）。
 
@@ -175,13 +203,15 @@
 | D6 | Redis 只存短期状态，业务事实以 MySQL 为准（PRODUCT §9） |
 | D7 | **文档先行**：目录结构以 docs 为唯一事实源，代码骨架不得偏离（PRODUCT §5） |
 | D8 | **配置唯一载体 .env**：禁止第二种配置载体（GLOBAL） |
-| D9 | **个人博客保留多租户架构**：默认单空间使用，团队模式 V2 可选启用（PRODUCT §2） |
+| D9 | **多用户知识平台**：默认单空间使用；任何注册用户可创建知识库并公开分享，访客可浏览所有公开库；团队模式（成员/角色/空间切换）V2 可选启用（PRODUCT §2） |
 | D10 | **阶段标注（MVP/V2/V3）为规划非承诺**：调整须经 CHANGELOG 记录（PRODUCT §5） |
-| D11 | **应用职责划分**：blog（:5173）承载文章创建/编辑/发布/阅读/互动与 AI 对话全链路；admin（:5174）仅管理员配置管理（空间/成员/角色、模型、审计），不参与内容流转（PROTOTYPE §2） |
+| D11 | **应用职责划分**：blog（:5173）承载知识创建/编辑/发布/阅读/互动与 AI 对话全链路；admin（:5174）仅管理员配置管理（空间/成员/角色、模型、审计），不参与内容流转（PROTOTYPE §2） |
 | D12 | **仓库目录**：后端 backend/xlumen-server，前端 frontend/xlumen-frontend-blog 与 frontend/xlumen-frontend-admin，scripts 与根工程配置留仓库根（GLOBAL §4） |
-| D13 | **发布即索引**：文章发布自动建 RAG 索引，取消外部资料导入与 URL 抓取；私有文章亦建索引，检索按身份过滤（访客仅公开已发布、博主全部含私有）（PRODUCT §6、BACKEND §13） |
-| D14 | **AI 命名**：产品内所有面向用户的 AI 能力（对话/问答/访客助手/写作与审校反馈等）统一称呼为**小光**，界面文案不得使用其他 AI 名称（PRODUCT §8） |
+| D13 | **发布即索引（按知识库切分）**：知识发布自动建 RAG 索引（按 kb_id 切分），取消外部资料导入与 URL 抓取；私有库知识亦建索引，检索按可见库集合过滤（访客仅公开库已发布、库主全部含私有）（PRODUCT §6、BACKEND §13） |
+| D14 | **AI 命名**：产品内所有面向用户的 AI 能力（对话/问答/访客助手/写作与审校反馈等）统一称呼为**小光**，前台导航标签为「AI小光」，界面文案不得使用其他 AI 名称（PRODUCT §8） |
 | D15 | **Maven 模块压缩 12→7**：按未来微服务拆分边界合并——identity（+platform）、content（+analytics）、publishing（+engagement）、knowledge、ai（+chat+ai-enhance）+ common/boot；**模块内统一传统 MVC 扁平结构（不引入业务域包，去 engagement/editor/iam 等域概念）**，表前缀保持独立，拆分边界以模块 + 表前缀为准（BACKEND §4/§5） |
+| D16 | **知识库体系**：知识=文章（概念统一）；空间→知识库→多级目录→知识三层；单库单目录；可见性库级决定（公开/私有/授权名单 V2），删除文章级可见性；目录树替代分类（标签保留）；删库连带回收站（默认 30 天）；知识不可跨库移动（仅复制或重新发布）（PRODUCT §4/§5/§6，BACKEND §13） |
+| D17 | **概念统一（文章→知识）**：全项目「文章」统一改名「知识」——文档措辞、后端类名/接口/事件/审计常量、前端路由/文案/组件、测试断言全量替换；物理表名 `cnt_article`→`cnt_knowledge`、接口路径 `/api/v1/articles`→`/api/v1/knowledge` 同步全改，**不保留兼容期**（前后端同仓同 PR 切换）（BACKEND §10） |
 
 ## 9. 环境速查
 
