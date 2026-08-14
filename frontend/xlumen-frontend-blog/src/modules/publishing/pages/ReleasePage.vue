@@ -1,31 +1,36 @@
 <script setup lang="ts">
-// 发布管理（B13，F-0905/F-0906）：已通过知识列表（调 content fetchKnowledges status=4）→
-// 每篇选可见性 + 立即/定时发布（二次确认）+ 下方发布记录列表。
+// 发布管理（B13，F-0905/F-0906，决策 D16）：已通过知识列表（调 content fetchKnowledges status=4）→
+// 展示知识当前归属（库/目录，发布目标由知识归属决定）→ 立即/定时发布（二次确认）+ 下方发布记录列表。
+// 文章级可见性已废弃（KB-3 起 CreateReleaseDTO 删除 visibility，可见性由知识库决定）。
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { fetchKnowledges, VISIBILITY_LABELS } from '@/modules/content/api/knowledge'
+import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import { createRelease, fetchReleases } from '@/modules/publishing/api/release'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
 
 import type { KnowledgeListItem } from '@/modules/content/api/knowledge'
+import type { DirectoryNode } from '@/modules/knowledge/api/knowledgeBase'
 import type { ReleaseVO } from '@/modules/publishing/api/release'
 
 const PAGE_SIZE = 10
 const APPROVED_STATUS = 4
 
-/** 已通过知识行（含本地发布控制态）。 */
+/** 已通过知识行（含本地发布控制态 + 归属展示信息）。 */
 interface ReleaseRow {
   knowledge: KnowledgeListItem
-  visibility: number
+  /** 归属知识库名（kbId 为空则为空串）。 */
+  kbName: string
+  /** 归属目录名（库根=「库根」，kbId 为空则为空串）。 */
+  directoryName: string
   publishAt: string
   releasing: boolean
 }
 
 const RELEASE_STATUS_LABELS: Record<string, string> = {
   PENDING: '待发布',
-  SCHEDULED: '定时发布',
-  PUBLISHED: '已发布',
+  DONE: '已发布',
   FAILED: '发布失败',
 }
 
@@ -39,6 +44,12 @@ const releasesPageNo = ref(1)
 const releasesLoading = ref(true)
 const releasesError = ref(false)
 
+// 归属名称索引（名称解析失败降级为占位文案，不阻断列表）
+const kbNameById = new Map<string, string>()
+/** `${kbId}:${directoryId}` → 目录名。 */
+const dirNameByKbDir = new Map<string, string>()
+const loadedKbs = new Set<string>()
+
 function formatTime(iso: string): string {
   return iso.slice(0, 16).replace('T', ' ')
 }
@@ -48,17 +59,67 @@ function normalizePublishAt(value: string): string {
   return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) ? `${value}:00` : value
 }
 
+function flattenDirectories(nodes: DirectoryNode[], out: DirectoryNode[] = []): DirectoryNode[] {
+  for (const node of nodes) {
+    out.push(node)
+    flattenDirectories(node.children, out)
+  }
+  return out
+}
+
+async function loadKbIndex(): Promise<void> {
+  try {
+    const kbs = await fetchKnowledgeBases()
+    for (const kb of kbs) kbNameById.set(kb.id, kb.name)
+  } catch {
+    // 库名解析失败：归属展示降级为「未知知识库」
+  }
+}
+
+async function loadDirectoryIndex(kbId: string): Promise<void> {
+  if (loadedKbs.has(kbId)) return
+  loadedKbs.add(kbId)
+  try {
+    const nodes = await fetchDirectoryTree(kbId)
+    for (const node of flattenDirectories(nodes)) {
+      dirNameByKbDir.set(`${kbId}:${node.id}`, node.name)
+    }
+  } catch {
+    // 目录名解析失败：归属展示降级为「未知目录」
+  }
+}
+
+/** 知识归属 → 展示文案（无归属返回空串，由模板提示去编辑页选择）。 */
+function resolveTarget(knowledge: KnowledgeListItem): { kbName: string; directoryName: string } {
+  if (!knowledge.kbId) return { kbName: '', directoryName: '' }
+  const directoryId = knowledge.directoryId
+  const directoryName =
+    directoryId && directoryId !== '0'
+      ? (dirNameByKbDir.get(`${knowledge.kbId}:${directoryId}`) ?? '未知目录')
+      : '库根'
+  return { kbName: kbNameById.get(knowledge.kbId) ?? '未知知识库', directoryName }
+}
+
 async function loadApproved(): Promise<void> {
   approvedLoading.value = true
   approvedError.value = false
   try {
     const page = await fetchKnowledges({ status: APPROVED_STATUS, pageNo: 1, pageSize: 50 })
-    approved.value = page.records.map((knowledge) => ({
-      knowledge,
-      visibility: knowledge.visibility,
-      publishAt: '',
-      releasing: false,
-    }))
+    await loadKbIndex()
+    const kbIds = [
+      ...new Set(page.records.map((item) => item.kbId).filter((id): id is string => Boolean(id))),
+    ]
+    await Promise.all(kbIds.map(loadDirectoryIndex))
+    approved.value = page.records.map((knowledge) => {
+      const target = resolveTarget(knowledge)
+      return {
+        knowledge,
+        kbName: target.kbName,
+        directoryName: target.directoryName,
+        publishAt: '',
+        releasing: false,
+      }
+    })
   } catch {
     approvedError.value = true
   } finally {
@@ -122,10 +183,10 @@ async function releaseScheduled(row: ReleaseRow): Promise<void> {
 async function doRelease(row: ReleaseRow, publishAt?: string): Promise<void> {
   row.releasing = true
   try {
+    // 发布目标（库/目录）由知识本身归属决定（KB-3 起不再传 visibility，决策 D16）
     await createRelease({
       knowledgeId: row.knowledge.id,
       version: row.knowledge.version,
-      visibility: row.visibility,
       ...(publishAt ? { publishAt } : {}),
     })
     ElMessage.success('发布成功，已建立 RAG 索引')
@@ -150,7 +211,8 @@ onMounted(() => {
     <header class="release-page__header">
       <h1 class="release-page__title">发布管理</h1>
       <p class="release-page__intro">
-        对已通过审核的知识执行立即/定时发布，发布成功自动建立 RAG 索引。
+        对已通过审核的知识执行立即/定时发布，发布成功自动建立 RAG
+        索引；发布目标取自知识所属知识库/目录。
       </p>
     </header>
 
@@ -168,15 +230,16 @@ onMounted(() => {
         <li v-for="row in approved" :key="row.knowledge.id" class="release-row">
           <div class="release-row__main">
             <span class="release-row__title">{{ row.knowledge.title }}</span>
-            <span class="release-row__meta">
-              v{{ row.knowledge.version }} · {{ row.knowledge.category || '未分类' }}
+            <span v-if="row.knowledge.kbId" class="release-row__meta">
+              v{{ row.knowledge.version }} · 目标：知识库{{ row.kbName }} · 目录{{
+                row.directoryName
+              }}
+            </span>
+            <span v-else class="release-row__meta release-row__meta--warn">
+              未归属知识库，请先在编辑页选择知识库
             </span>
           </div>
           <div class="release-row__actions">
-            <el-select v-model="row.visibility" class="release-row__select" aria-label="可见性">
-              <el-option :value="1" label="公开" />
-              <el-option :value="0" label="私有" />
-            </el-select>
             <input
               v-model="row.publishAt"
               class="release-row__datetime"
@@ -187,6 +250,7 @@ onMounted(() => {
               type="primary"
               size="small"
               :loading="row.releasing"
+              :disabled="!row.knowledge.kbId"
               @click="releaseNow(row)"
             >
               立即发布
@@ -196,6 +260,7 @@ onMounted(() => {
               plain
               size="small"
               :loading="row.releasing"
+              :disabled="!row.knowledge.kbId"
               @click="releaseScheduled(row)"
             >
               定时发布
@@ -329,15 +394,15 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.release-row__meta--warn {
+  color: var(--xl-color-warning);
+}
+
 .release-row__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-}
-
-.release-row__select {
-  width: 110px;
 }
 
 .release-row__datetime {

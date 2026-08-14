@@ -3,33 +3,28 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('博客前台公开页（M03）', () => {
-  test('B01 首页：展示公开知识，草稿/私有不出现，分类/标签侧栏可用', async ({ page }) => {
+  test('B01 首页：展示公开知识，草稿/私有不出现，标签侧栏可用（KB-4 库切换器）', async ({ page }) => {
     await page.goto('/')
 
-    await expect(page.getByRole('heading', { name: '最新知识' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '全部知识库' })).toBeVisible()
     // 公开知识卡片可见
     await expect(page.getByRole('link', { name: 'Spring Boot 4 模块化单体实践' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'RAG 检索增强生成入门' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Vue 3 组合式 API 设计心得' })).toBeVisible()
-    // 草稿与私有知识不得出现（F-0307）
+    // 草稿与私有知识不得出现（F-0307，库级可见性）
     await expect(page.getByText('草稿：未发布的思考')).toHaveCount(0)
     await expect(page.getByText('私有：仅自己可见')).toHaveCount(0)
-    // 侧栏分类/标签聚合
-    await expect(page.getByRole('heading', { name: '分类' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: '标签' })).toBeVisible()
+    // 左栏：未登录显示公开读说明（库切换/标签云需登录，KB-4 决策）
+    await expect(page.getByText('登录后可浏览知识库、目录与标签筛选。')).toBeVisible()
   })
 
-  test('B03 搜索页：关键词命中 + 高亮，分类/标签组合筛选', async ({ page }) => {
+  test('B03 搜索页：关键词命中 + 高亮，标签组合筛选', async ({ page }) => {
     await page.goto('/search?keyword=RAG')
 
     await expect(page.getByText('共 1 篇相关知识')).toBeVisible()
     await expect(page.getByRole('link', { name: 'RAG 检索增强生成入门' })).toBeVisible()
     // 命中高亮
     await expect(page.locator('mark', { hasText: 'RAG' }).first()).toBeVisible()
-
-    // 分类筛选（无结果空态）
-    await page.goto('/search?category=随笔')
-    await expect(page.getByText('没有找到相关知识')).toBeVisible()
 
     // 标签筛选
     await page.goto('/search?tag=Vue')
@@ -76,7 +71,7 @@ test.describe('博客前台公开页（M03）', () => {
     await page.getByRole('textbox', { name: /用户名/ }).fill('qoder_test')
     await page.getByRole('textbox', { name: /密码/ }).fill('Test123456')
     await page.getByRole('button', { name: /登 录|登录/ }).click()
-    await expect(page.getByRole('button', { name: /登出/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /qoder_test 账号菜单/ })).toBeVisible()
 
     // 回跳后已在详情页（内存会话保留，F-0203 互动）：若残留已赞先取消（幂等），再点赞 + 评论
     const likeAfterLogin = page.getByRole('button', { name: /赞/ })
@@ -93,9 +88,10 @@ test.describe('博客前台公开页（M03）', () => {
     // 重复运行会积累相同评论，用 .last() 断言最新一条避免 strict mode 冲突
     await expect(page.getByText('M03 E2E 自动评论：RAG 知识写得很清晰。').last()).toBeVisible()
 
-    // 登出恢复（避免影响其他测试）
-    await page.getByRole('button', { name: '登出' }).click()
-    await expect(page.getByRole('link', { name: '登录' })).toBeVisible()
+    // 登出恢复（避免影响其他测试）：头像菜单 → 退出登录
+    await page.getByRole('button', { name: /qoder_test 账号菜单/ }).click()
+    await page.getByRole('menuitem', { name: '退出登录' }).click()
+    await expect(page.getByRole('link', { name: '登录 / 注册' }).first()).toBeVisible()
   })
 
   test('B04 关于页：导航可达', async ({ page }) => {

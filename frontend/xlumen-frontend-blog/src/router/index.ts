@@ -28,10 +28,22 @@ const router = createRouter({
       meta: { title: '知识详情' },
     },
     {
+      path: '/kb/:id',
+      name: 'kb-detail',
+      component: () => import('@/modules/knowledge/pages/KnowledgeBaseDetailPage.vue'),
+      meta: { title: '知识库' },
+    },
+    {
       path: '/search',
       name: 'search',
       component: () => import('@/modules/publishing/pages/SearchPage.vue'),
       meta: { title: '搜索' },
+    },
+    {
+      path: '/knowledge-bases',
+      name: 'kb-discovery',
+      component: () => import('@/modules/knowledge/pages/KnowledgeBasesPage.vue'),
+      meta: { title: '知识库发现' },
     },
     {
       path: '/about',
@@ -68,6 +80,18 @@ const router = createRouter({
       name: 'knowledge-edit',
       component: () => import('@/modules/content/pages/KnowledgeEditorPage.vue'),
       meta: { authenticated: true, title: '编辑知识' },
+    },
+    {
+      path: '/studio/knowledge-bases',
+      name: 'kb-manage',
+      component: () => import('@/modules/knowledge/pages/KnowledgeBasesManagePage.vue'),
+      meta: { authenticated: true, title: '知识库管理' },
+    },
+    {
+      path: '/studio/recycle-bin',
+      name: 'recycle-bin',
+      component: () => import('@/modules/knowledge/pages/RecycleBinPage.vue'),
+      meta: { authenticated: true, title: '回收站' },
     },
     {
       path: '/chat',

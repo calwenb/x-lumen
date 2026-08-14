@@ -1,4 +1,5 @@
-// publishing 模块 API：博客前台公开读（F-0201/F-0202）——知识/分类/标签（后端 xlumen-publishing review/release 域）。
+// publishing 模块 API：博客前台公开读（F-0201/F-0202）——知识/标签（后端 xlumen-publishing review/release 域）。
+// KB-3 起分类字段废弃（决策 D16 目录树接管），知识卡片改携 kbId/kbName/directoryId，查询改 kbId/directoryId 库级筛选。
 // 公开读为匿名接口；评论/点赞（F-0203）由 engagement 模块 API 提供。
 // ID 类字段为 string（雪花 ID 超出 JS 安全整数，后端 Long 序列化为 String，BACKEND.md §5.3）；
 // 统计/分页数值在 API 层 Number() 还原，页面代码不感知。
@@ -6,13 +7,15 @@ import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
 
-/** 知识卡片（B01 列表）。 */
+/** 知识卡片（B01 列表，KB-3 起携带库信息，决策 D16）。 */
 export interface KnowledgeCard {
   id: string
   title: string
   summary: string
   authorName: string
-  category: string
+  kbId: string
+  kbName: string
+  directoryId: string
   tags: string[]
   viewCount: number
   readMinutes: number
@@ -28,7 +31,7 @@ export interface KnowledgeDetail extends KnowledgeCard {
   updatedAt: string
 }
 
-/** 分类/标签聚合项。 */
+/** 标签聚合项。 */
 export interface CategoryCount {
   name: string
   count: number
@@ -44,7 +47,8 @@ export interface PageResult<T> {
 
 export interface KnowledgeQuery {
   keyword?: string
-  category?: string
+  kbId?: string
+  directoryId?: string
   tag?: string
   pageNo?: number
   pageSize?: number
@@ -55,9 +59,11 @@ function toNumber(value: unknown): number {
   return Number(value ?? 0)
 }
 
-/** 分页查询公开知识（关键词/分类/标签组合筛选，F-0201/F-0202）。 */
+/** 分页查询公开知识（关键词/标签/知识库/目录组合筛选，F-0201/F-0202）。 */
 export async function fetchKnowledges(query: KnowledgeQuery): Promise<PageResult<KnowledgeCard>> {
-  const { data } = await http.get<ApiResponse<RawPage<RawCard>>>('/public/knowledge', { params: query })
+  const { data } = await http.get<ApiResponse<RawPage<RawCard>>>('/public/knowledge', {
+    params: query,
+  })
   const body = unwrap(data)
   return {
     total: toNumber(body.total),
@@ -92,12 +98,6 @@ export async function reportView(id: string): Promise<void> {
   unwrap(data)
 }
 
-/** 分类聚合（F-0202，B01 侧栏/B03 筛选）。 */
-export async function fetchCategories(): Promise<CategoryCount[]> {
-  const { data } = await http.get<ApiResponse<RawCategoryCount[]>>('/public/categories')
-  return unwrap(data).map((item) => ({ ...item, count: toNumber(item.count) }))
-}
-
 /** 标签聚合（F-0202，B01 侧栏/B03 筛选）。 */
 export async function fetchTags(): Promise<CategoryCount[]> {
   const { data } = await http.get<ApiResponse<RawCategoryCount[]>>('/public/tags')
@@ -110,7 +110,9 @@ interface RawCard {
   title: string
   summary: string
   authorName: string
-  category: string
+  kbId: string
+  kbName: string
+  directoryId: string
   tags: string[]
   viewCount: string
   readMinutes: string

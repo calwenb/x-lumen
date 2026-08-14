@@ -14,15 +14,16 @@ test('注册后登录进入博客首页并显示用户名', async ({ page }) => 
   await page.getByLabel('密码').fill('Test123456')
   await page.getByRole('button', { name: '注册', exact: true }).click()
 
-  // 注册成功即登录：回到首页（M03 起为 B01 最新知识）并显示用户名
-  await expect(page.getByRole('heading', { name: '最新知识' })).toBeVisible()
-  await expect(page.getByText(username, { exact: true })).toBeVisible()
+  // 注册成功即登录：回到首页（B01 全部知识库）；用户名显示在头像菜单内
+  await expect(page.getByRole('heading', { name: '全部知识库' })).toBeVisible()
+  await page.getByRole('button', { name: `${username} 账号菜单` }).click()
+  await expect(page.getByRole('menuitem', { name: '我的知识库' })).toBeVisible()
 
   // 登出后回到登录入口
-  await page.getByRole('button', { name: '登出' }).click()
-  await expect(page.getByRole('link', { name: '登录' })).toBeVisible()
+  await page.getByRole('menuitem', { name: '退出登录' }).click()
+  await expect(page.getByRole('link', { name: '登录 / 注册' }).first()).toBeVisible()
 
   // 未登录点击登录入口进入登录页
-  await page.getByRole('link', { name: '登录' }).click()
+  await page.getByRole('link', { name: '登录 / 注册' }).first().click()
   await expect(page.getByRole('heading', { name: '欢迎使用 xLumen' })).toBeVisible()
 })

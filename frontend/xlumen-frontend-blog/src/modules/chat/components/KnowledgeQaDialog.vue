@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // 知识级问答弹窗（D02）：单篇问答流式打字 + 引用溯源；详情页集成点。
+// KB-3 检索范围（决策 D13）：默认锁定当前知识所属库（传 kbId），可切换「全部可见库」。
 import { nextTick, ref } from 'vue'
 
 import { streamKnowledgeAsk } from '@/modules/chat/api/chat'
@@ -10,6 +11,10 @@ import type { Citation } from '@/modules/chat/api/chat'
 const props = defineProps<{
   knowledgeId: string
   knowledgeTitle: string
+  /** 当前知识所属知识库 ID（为空则无法锁定本库，默认全部可见库）。 */
+  kbId?: string | null
+  /** 所属知识库名称（选择器展示用）。 */
+  kbName?: string
 }>()
 
 const emit = defineEmits<{
@@ -23,6 +28,9 @@ interface QaMessage {
   citations: Citation[]
   streaming: boolean
 }
+
+/** 检索范围：kb=锁定当前库（默认）；all=全部可见库。 */
+const scope = ref<'kb' | 'all'>(props.kbId ? 'kb' : 'all')
 
 const messages = ref<QaMessage[]>([])
 const draft = ref('')
@@ -73,6 +81,10 @@ async function send(): Promise<void> {
         onDone: () => undefined,
       },
       controller.signal,
+      // KB-3：本库=传 kbId 限定单库；全部可见库=allVisible=true
+      scope.value === 'kb' && props.kbId
+        ? { kbId: props.kbId }
+        : { allVisible: true },
     )
   } catch (error) {
     if (!(error instanceof DOMException && error.name === 'AbortError') && !assistant.content) {
@@ -103,6 +115,15 @@ async function send(): Promise<void> {
           ×
         </button>
       </header>
+
+      <div class="qa-dialog__scope" aria-label="检索范围">
+        <el-radio-group v-model="scope" size="small">
+          <el-radio value="kb" :disabled="!kbId">
+            {{ kbName ? `本库（${kbName}）` : '本库' }}
+          </el-radio>
+          <el-radio value="all">全部可见库</el-radio>
+        </el-radio-group>
+      </div>
 
       <div ref="listEl" class="qa-dialog__messages">
         <p v-if="messages.length === 0" class="qa-dialog__empty">
@@ -204,6 +225,12 @@ async function send(): Promise<void> {
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
+}
+
+.qa-dialog__scope {
+  display: flex;
+  padding: var(--xl-space-2) var(--xl-space-4);
+  border-bottom: 1px solid var(--xl-border);
 }
 
 .qa-dialog__messages {

@@ -80,28 +80,47 @@ export async function createConversation(title: string): Promise<{ id: string }>
   return { id: String(result.id) }
 }
 
+/** 检索范围（KB-3，决策 D13）：kbId 限定单库；allVisible 是否检索全部可见库（默认 true）。 */
+export interface ChatScope {
+  /** 限定检索的知识库 ID（可空；空=按 allVisible 决定范围）。 */
+  kbId?: string
+  /** 是否检索全部可见库（可空=true）。 */
+  allVisible?: boolean
+}
+
 /** 流式对话（F-0701）：chunk 文本增量 / citation 引用 / done 会话归属。 */
 export function streamChat(
-  body: { query: string; conversationId?: string },
+  body: { query: string; conversationId?: string } & ChatScope,
   callbacks: ChatStreamCallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
   return runChatStream(
     '/chat/stream',
-    { query: body.query, ...(body.conversationId ? { conversationId: body.conversationId } : {}) },
+    {
+      query: body.query,
+      ...(body.conversationId ? { conversationId: body.conversationId } : {}),
+      ...(body.kbId ? { kbId: body.kbId } : {}),
+      ...(body.allVisible !== undefined ? { allVisible: body.allVisible } : {}),
+    },
     callbacks,
     signal,
   )
 }
 
-/** 知识级流式问答（F-0702，D02）。 */
+/** 知识级流式问答（F-0702，D02）：scope 空=全部可见库；传 kbId=锁定当前知识库。 */
 export function streamKnowledgeAsk(
   knowledgeId: string,
   query: string,
   callbacks: ChatStreamCallbacks,
   signal?: AbortSignal,
+  scope?: ChatScope,
 ): Promise<void> {
-  return runChatStream(`/chat/knowledge/${knowledgeId}/ask`, { query }, callbacks, signal)
+  return runChatStream(
+    `/chat/knowledge/${knowledgeId}/ask`,
+    { query, ...(scope?.kbId ? { kbId: scope.kbId } : {}), ...(scope?.allVisible !== undefined ? { allVisible: scope.allVisible } : {}) },
+    callbacks,
+    signal,
+  )
 }
 
 /** 解析引用 JSON 字符串（容错：非法 JSON 返回空数组）。 */

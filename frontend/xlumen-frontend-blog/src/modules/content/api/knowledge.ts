@@ -27,6 +27,10 @@ export const VISIBILITY_LABELS: Record<number, string> = {
 export interface KnowledgeListItem {
   id: string
   title: string
+  /** 所属知识库 ID（决策 D16，发布目标取自归属）。 */
+  kbId: string | null
+  /** 所属目录 ID（0=库根）。 */
+  directoryId: string | null
   category: string
   tags: string[]
   visibility: number
@@ -41,6 +45,10 @@ export interface KnowledgeDetail {
   id: string
   title: string
   content: string
+  /** 所属知识库 ID（决策 D16）。 */
+  kbId: string | null
+  /** 所属目录 ID（0=库根）。 */
+  directoryId: string | null
   category: string
   tags: string[]
   visibility: number
@@ -58,6 +66,10 @@ export interface KnowledgeSavePayload {
   category: string
   tags: string[]
   visibility: number
+  /** 所属知识库 ID（必填：后端 CreateKnowledgeDTO kbId 非空，决策 D16）。 */
+  kbId?: string | null
+  /** 所属目录 ID（可空=库根）。 */
+  directoryId?: string | null
 }
 
 /** 列表查询参数。 */
@@ -65,6 +77,10 @@ export interface KnowledgeListQuery {
   status?: number
   visibility?: number
   keyword?: string
+  /** 知识库筛选（可空=全部）。 */
+  kbId?: string
+  /** 目录筛选（0=库根，可空=全部）。 */
+  directoryId?: string
   pageNo: number
   pageSize: number
 }
@@ -82,6 +98,8 @@ interface RawKnowledge {
   id: string
   title: string
   content: string
+  kbId: string | null
+  directoryId: string | null
   category: string
   tags: string[]
   visibility: number
@@ -94,7 +112,12 @@ interface RawKnowledge {
 
 /** 还原统计数值。 */
 function normalize(raw: RawKnowledge): KnowledgeDetail {
-  return { ...raw, viewCount: Number(raw.viewCount) }
+  return {
+    ...raw,
+    viewCount: Number(raw.viewCount),
+    kbId: raw.kbId ?? null,
+    directoryId: raw.directoryId ?? null,
+  }
 }
 
 /** 分页查询作者知识列表（F-0301）。 */
@@ -111,6 +134,8 @@ export async function fetchKnowledges(query: KnowledgeListQuery): Promise<PageRe
     records: body.records.map((r) => ({
       id: r.id,
       title: r.title,
+      kbId: r.kbId ?? null,
+      directoryId: r.directoryId ?? null,
       category: r.category,
       tags: r.tags,
       visibility: r.visibility,

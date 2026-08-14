@@ -1,17 +1,10 @@
 <script setup lang="ts">
-// 应用根组件：顶栏（品牌 Logo、导航：首页/分类/标签/关于、搜索框、登录态，PROTOTYPE B01）与路由出口。
-// 顶栏基于 Element Plus 图标与胶囊激活态，内容展示组件保留定制样式（统一 --xl-* token）。
-import { ref } from 'vue'
+// 应用根组件：顶栏（品牌 Logo、主导航：知识/知识库/AI小光、全局搜索框、写知识 CTA、头像菜单，PROTOTYPE §5.1）
+// 与路由出口。主导航按 PROTOTYPE 固定三项（决策 D16：分类废弃、关于移出主导航）。
+// 当前导航项高亮用 router-link-exact-active（首页 / 为全部路由父级，router-link-active 会全站匹配误高亮）。
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ChatDotRound,
-  EditPen,
-  HomeFilled,
-  CollectionTag,
-  InfoFilled,
-  Search,
-  UserFilled,
-} from '@element-plus/icons-vue'
+import { ChatDotRound, Collection, EditPen, HomeFilled, Search } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 
@@ -21,6 +14,8 @@ const router = useRouter()
 const session = useSessionStore()
 
 const keyword = ref('')
+
+const avatarText = computed(() => (session.snapshot?.username ?? '?').slice(0, 1).toUpperCase())
 
 async function handleLogout(): Promise<void> {
   if (session.refreshToken) {
@@ -36,6 +31,39 @@ function submitSearch(): void {
   void router.push({ name: 'search', query: q ? { keyword: q } : {} })
   keyword.value = ''
 }
+
+/** 头像菜单命令（PROTOTYPE §5.1；个人设置为占位项，V2 提供）。 */
+function handleAccountCommand(command: string): void {
+  switch (command) {
+    case 'my-kbs':
+      void router.push({ name: 'kb-discovery', query: { mine: '1' } })
+      break
+    case 'studio':
+      void router.push({ name: 'workbench' })
+      break
+    case 'recycle-bin':
+      void router.push({ name: 'recycle-bin' })
+      break
+    case 'logout':
+      void handleLogout()
+      break
+  }
+}
+
+/** 移动端汉堡菜单命令。 */
+function handleNavCommand(command: string): void {
+  switch (command) {
+    case 'home':
+      void router.push({ name: 'home' })
+      break
+    case 'kb-discovery':
+      void router.push({ name: 'kb-discovery' })
+      break
+    case 'chat':
+      void router.push({ name: 'chat' })
+      break
+  }
+}
 </script>
 
 <template>
@@ -43,54 +71,71 @@ function submitSearch(): void {
     <header class="app-header">
       <RouterLink class="app-header__brand" to="/">
         <span class="app-header__logo" aria-hidden="true" />
-        xLumen 博客
+        xLumen
       </RouterLink>
       <nav class="app-header__nav">
         <RouterLink class="app-header__link" to="/">
           <el-icon class="app-header__link-icon"><HomeFilled /></el-icon>
-          首页
+          知识
         </RouterLink>
-        <RouterLink class="app-header__link app-header__link--entry" :to="{ name: 'search' }">
-          <el-icon class="app-header__link-icon"><CollectionTag /></el-icon>
-          分类
+        <RouterLink class="app-header__link" :to="{ name: 'kb-discovery' }">
+          <el-icon class="app-header__link-icon"><Collection /></el-icon>
+          知识库
         </RouterLink>
-        <RouterLink class="app-header__link app-header__link--entry" :to="{ name: 'search' }">
-          <el-icon class="app-header__link-icon"><CollectionTag /></el-icon>
-          标签
-        </RouterLink>
-        <RouterLink class="app-header__link" to="/about">
-          <el-icon class="app-header__link-icon"><InfoFilled /></el-icon>
-          关于
+        <RouterLink class="app-header__link" :to="{ name: 'chat' }">
+          <el-icon class="app-header__link-icon"><ChatDotRound /></el-icon>
+          AI小光
         </RouterLink>
       </nav>
+      <div class="app-header__menu">
+        <el-dropdown trigger="click" @command="handleNavCommand">
+          <button type="button" class="app-header__hamburger" aria-label="打开导航菜单">☰</button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="home">知识</el-dropdown-item>
+              <el-dropdown-item command="kb-discovery">知识库</el-dropdown-item>
+              <el-dropdown-item command="chat">AI小光</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
       <form class="app-header__search" @submit.prevent="submitSearch">
         <el-input
           v-model="keyword"
           class="app-header__search-input"
           type="search"
-          placeholder="搜索…"
+          placeholder="搜索知识/知识库…"
           aria-label="搜索知识"
           :prefix-icon="Search"
         />
       </form>
       <div class="app-header__account">
-        <RouterLink v-if="!session.loggedIn" class="app-header__link" to="/login">登录</RouterLink>
+        <RouterLink v-if="!session.loggedIn" class="app-header__login" to="/login"
+          >登录 / 注册</RouterLink
+        >
         <template v-else>
-          <RouterLink class="app-header__link app-header__link--icon" :to="{ name: 'chat' }">
-            <el-icon class="app-header__link-icon"><ChatDotRound /></el-icon>
-            AI 助理
+          <RouterLink class="app-header__write" :to="{ name: 'knowledge-new' }">
+            <el-icon class="app-header__write-icon"><EditPen /></el-icon>
+            写知识
           </RouterLink>
-          <RouterLink class="app-header__link app-header__link--icon" :to="{ name: 'workbench' }">
-            <el-icon class="app-header__link-icon"><EditPen /></el-icon>
-            创作中心
-          </RouterLink>
-          <span class="app-header__user">
-            <el-icon class="app-header__user-icon"><UserFilled /></el-icon>
-            {{ session.snapshot?.username }}
-          </span>
-          <button type="button" class="app-header__link app-header__button" @click="handleLogout">
-            登出
-          </button>
+          <el-dropdown trigger="click" @command="handleAccountCommand">
+            <button
+              type="button"
+              class="app-header__avatar"
+              :aria-label="`${session.snapshot?.username ?? ''} 账号菜单`"
+            >
+              {{ avatarText }}
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="my-kbs">我的知识库</el-dropdown-item>
+                <el-dropdown-item command="studio">创作中心</el-dropdown-item>
+                <el-dropdown-item command="recycle-bin">回收站</el-dropdown-item>
+                <el-dropdown-item disabled>个人设置（即将上线）</el-dropdown-item>
+                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </template>
       </div>
     </header>
@@ -151,19 +196,37 @@ function submitSearch(): void {
   color: var(--xl-color-primary);
 }
 
-.app-header__link.router-link-active {
+/* 当前导航项高亮（洋红系主色；exact 精确匹配：/ 为全部路由父级，泛匹配会全站误高亮） */
+.app-header__link.router-link-exact-active {
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
 }
 
-/* 分类/标签为搜索页工具入口（共享 search 路由）：不做激活态高亮，避免双高亮 */
-.app-header__link--entry.router-link-active {
-  background: none;
-  color: var(--xl-text-secondary);
-}
-
 .app-header__link-icon {
   font-size: 15px;
+}
+
+.app-header__menu {
+  display: none;
+}
+
+.app-header__hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-sm);
+  background: var(--xl-bg-surface);
+  color: var(--xl-text-primary);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.app-header__hamburger:hover {
+  border-color: var(--xl-color-primary);
+  color: var(--xl-color-primary);
 }
 
 .app-header__search {
@@ -191,36 +254,80 @@ function submitSearch(): void {
 .app-header__account {
   display: flex;
   align-items: center;
-  gap: var(--xl-space-1);
+  gap: var(--xl-space-2);
 }
 
-.app-header__button {
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-
-.app-header__user {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--xl-space-1);
-  margin: 0 var(--xl-space-1);
-  color: var(--xl-text-primary);
+.app-header__login {
+  padding: 6px 16px;
+  border: 1px solid var(--xl-border);
+  border-radius: 999px;
+  color: var(--xl-text-secondary);
   font-size: 14px;
+  text-decoration: none;
   white-space: nowrap;
 }
 
-.app-header__user-icon {
-  color: var(--xl-text-muted);
+.app-header__login:hover {
+  border-color: var(--xl-color-primary);
+  color: var(--xl-color-primary);
+}
+
+/* 写知识 CTA：洋红系实心主按钮 */
+.app-header__write {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--xl-space-1);
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: var(--xl-color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--xl-transition);
+}
+
+.app-header__write:hover {
+  background: var(--xl-color-primary-hover);
+}
+
+.app-header__write-icon {
+  font-size: 14px;
+}
+
+.app-header__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 @media (width <= 700px) {
+  .app-header {
+    gap: var(--xl-space-3);
+    padding: 0 var(--xl-space-3);
+  }
+
   .app-header__nav {
     display: none;
   }
 
+  .app-header__menu {
+    display: block;
+  }
+
   .app-header__search {
     max-width: none;
+    margin-left: 0;
   }
 }
 </style>

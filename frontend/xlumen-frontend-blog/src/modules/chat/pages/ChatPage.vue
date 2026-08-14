@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // AI 助理（B00/D01 合一，F-0701）：左侧会话列表（登录可见）+ 右侧消息流（流式打字 + 引用溯源）。
 // 访客无会话功能，单次问答；登录用户可选会话/新对话，回答附带 [序号] 引用卡片。
+// KB-3 检索范围选择器（决策 D13/D16）：全部可见库（默认）/ 指定知识库；访客隐藏选择器默认全部。
 import { nextTick, onMounted, ref } from 'vue'
 import { Plus, UserFilled } from '@element-plus/icons-vue'
 
@@ -11,9 +12,11 @@ import {
   fetchMessages,
   streamChat,
 } from '@/modules/chat/api/chat'
+import { fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import CitationCard from '@/modules/chat/components/CitationCard.vue'
 
 import type { ChatMessage, Citation, Conversation } from '@/modules/chat/api/chat'
+import type { KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
 
 interface ChatItem {
   id: string
@@ -34,6 +37,12 @@ const sending = ref(false)
 const creating = ref(false)
 const listEl = ref<HTMLElement | null>(null)
 
+// 检索范围（KB-3）：全部可见库（默认）/ 指定知识库；访客隐藏选择器。
+const scopeMode = ref<'all' | 'kb'>('all')
+const scopeKbId = ref('')
+const knowledgeBases = ref<KnowledgeBase[]>([])
+const basesLoading = ref(false)
+
 function toChatItem(message: ChatMessage): ChatItem {
   return {
     id: message.id,
@@ -53,6 +62,19 @@ async function loadConversations(): Promise<void> {
     // 会话列表加载失败不阻断问答
   } finally {
     conversationsLoading.value = false
+  }
+}
+
+/** 我的知识库（登录用户可见；加载失败不阻断问答，选择器降级为仅「全部可见库」）。 */
+async function loadKnowledgeBases(): Promise<void> {
+  if (!session.loggedIn) return
+  basesLoading.value = true
+  try {
+    knowledgeBases.value = await fetchKnowledgeBases()
+  } catch {
+    knowledgeBases.value = []
+  } finally {
+    basesLoading.value = false
   }
 }
 
@@ -117,7 +139,12 @@ async function send(): Promise<void> {
   let newConversationId = ''
   try {
     await streamChat(
-      { query, ...(currentId.value ? { conversationId: currentId.value } : {}) },
+      {
+        query,
+        ...(currentId.value ? { conversationId: currentId.value } : {}),
+        // KB-3 检索范围：指定知识库时限定单库；默认不传=全部可见库
+        ...(scopeMode.value === 'kb' && scopeKbId.value ? { kbId: scopeKbId.value } : {}),
+      },
       {
         onChunk: (text) => {
           assistant.content += text
@@ -149,6 +176,7 @@ async function send(): Promise<void> {
 
 onMounted(() => {
   void loadConversations()
+  void loadKnowledgeBases()
 })
 </script>
 
@@ -169,6 +197,22 @@ onMounted(() => {
         >
           {{ creating ? '创建中…' : '新对话' }}
         </el-button>
+        <div class="chat__scope" aria-label="检索范围">
+          <el-radio-group v-model="scopeMode" size="small">
+            <el-radio-button value="all">全部可见库</el-radio-button>
+            <el-radio-button value="kb">指定知识库</el-radio-button>
+          </el-radio-group>
+          <el-select
+            v-if="scopeMode === 'kb'"
+            v-model="scopeKbId"
+            class="chat__scope-select"
+            placeholder="选择知识库"
+            :loading="basesLoading"
+            clearable
+          >
+            <el-option v-for="kb in knowledgeBases" :key="kb.id" :value="kb.id" :label="kb.name" />
+          </el-select>
+        </div>
         <nav class="chat__conversations" aria-label="会话列表">
           <div v-if="conversationsLoading" class="chat__hint">会话加载中…</div>
           <div v-else-if="conversations.length === 0" class="chat__hint">暂无历史会话</div>
@@ -275,6 +319,24 @@ onMounted(() => {
 }
 
 .chat__new {
+  width: 100%;
+}
+
+.chat__scope {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat__scope :deep(.el-radio-group) {
+  display: flex;
+}
+
+.chat__scope :deep(.el-radio-button__inner) {
+  font-size: 12px;
+}
+
+.chat__scope-select {
   width: 100%;
 }
 

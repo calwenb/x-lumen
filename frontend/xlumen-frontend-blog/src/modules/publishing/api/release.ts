@@ -6,11 +6,11 @@ import { http, unwrap } from '@/api/http'
 import type { ApiResponse } from '@/api/types'
 import type { PageResult } from '@/modules/publishing/api/public'
 
-/** 发布入参（立即发布不带 publishAt，定时发布带 publishAt）。 */
+/** 发布入参（立即发布不带 publishAt，定时发布带 publishAt）。
+ * 发布目标（库/目录）由知识本身归属决定（KB-3 起 CreateReleaseDTO 删除 visibility 入参，决策 D16）。 */
 export interface ReleaseRequest {
   knowledgeId: string
   version: string
-  visibility: number
   publishAt?: string
 }
 

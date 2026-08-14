@@ -25,7 +25,9 @@ const commentCount = ref(0)
 
 const knowledgeId = computed(() => String(route.params.id))
 const toc = computed<TocItem[]>(() => (knowledge.value ? extractToc(knowledge.value.content) : []))
-const renderedHtml = computed(() => (knowledge.value ? renderMarkdown(knowledge.value.content) : ''))
+const renderedHtml = computed(() =>
+  knowledge.value ? renderMarkdown(knowledge.value.content) : '',
+)
 const updatedAt = computed(() => (knowledge.value ? formatDate(knowledge.value.updatedAt) : ''))
 
 // D02 知识级问答与 F-1001 读者纠错弹窗
@@ -130,17 +132,13 @@ onUnmounted(() => {
           <div class="detail__meta">
             <span>{{ knowledge.authorName }}</span>
             <span>发布于 {{ formatDate(knowledge.publishedAt) }}</span>
-            <span v-if="updatedAt !== formatDate(knowledge.publishedAt)">更新于 {{ updatedAt }}</span>
+            <span v-if="updatedAt !== formatDate(knowledge.publishedAt)"
+              >更新于 {{ updatedAt }}</span
+            >
             <span>{{ knowledge.readMinutes }} 分钟阅读</span>
             <span>{{ knowledge.viewCount }} 阅读</span>
           </div>
           <div class="detail__tags">
-            <RouterLink
-              v-if="knowledge.category"
-              :to="`/search?category=${encodeURIComponent(knowledge.category)}`"
-            >
-              <el-tag effect="plain" size="small">{{ knowledge.category }}</el-tag>
-            </RouterLink>
             <RouterLink
               v-for="tag in knowledge.tags"
               :key="tag"
@@ -175,6 +173,8 @@ onUnmounted(() => {
       v-if="showQa && knowledge"
       :knowledge-id="knowledge.id"
       :knowledge-title="knowledge.title"
+      :kb-id="knowledge.kbId"
+      :kb-name="knowledge.kbName"
       @close="showQa = false"
     />
     <FeedbackDialog
