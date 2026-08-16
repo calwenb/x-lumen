@@ -25,6 +25,11 @@
             <groupId>com.calwen.xlumen</groupId>
             <artifactId>xlumen-identity</artifactId>
         </dependency>
+        <!-- knowledge：知识库/目录归属校验（内容侧经 KnowledgeApi 校验 kbId/directoryId，BACKEND.md §4 依赖 DAG） -->
+        <dependency>
+            <groupId>com.calwen.xlumen</groupId>
+            <artifactId>xlumen-knowledge</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.calwen.xlumen</groupId>
             <artifactId>xlumen-ai</artifactId>

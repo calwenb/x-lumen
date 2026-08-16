@@ -7,6 +7,7 @@ import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
 import com.calwen.xlumen.identity.service.ActivityLogService;
+import com.calwen.xlumen.knowledge.api.KnowledgeCountApi;
 import com.calwen.xlumen.knowledge.dto.CreateKnowledgeBaseDTO;
 import com.calwen.xlumen.knowledge.dto.UpdateKnowledgeBaseDTO;
 import com.calwen.xlumen.knowledge.entity.KbKnowledgeBaseEntity;
@@ -17,12 +18,14 @@ import com.calwen.xlumen.knowledge.service.KnowledgeBaseService;
 import com.calwen.xlumen.knowledge.vo.KnowledgeBaseVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 知识库服务实现（F-0308，决策 D16）：库 CRUD 与可见性切换落库，审计与跨模块联动走事件。
@@ -41,6 +44,9 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private ActivityLogService activityLogService;
     @Resource
     private ApplicationEventPublisher eventPublisher;
+    /** 知识数统计（反向 SPI）：实现由 content 模块提供，缺省时回退 0。 */
+    @Resource
+    private ObjectProvider<KnowledgeCountApi> knowledgeCountApiProvider;
 
     @Override
     public KnowledgeBaseVO create(CreateKnowledgeBaseDTO dto) {
@@ -159,9 +165,9 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 .eq(KbKnowledgeBaseEntity::getWorkspaceId, workspaceId)
                 .eq(KbKnowledgeBaseEntity::getStatus, 0)
                 .orderByAsc(KbKnowledgeBaseEntity::getName));
-        // knowledgeCount：cnt_knowledge 属 content 模块（knowledge 依赖方向受限无法直查），当前恒为 0，
-        // 待 KB-3 content 改造实现 ContentApi.countKnowledgeByKbs 后由上层聚合补全（F-0308 列表展示）。
-        return kbs.stream().map(e -> toVO(e, 0L)).toList();
+        // knowledgeCount：cnt_knowledge 属 content 模块（依赖方向 content→knowledge），经 KnowledgeCountApi 聚合
+        Map<Long, Long> counts = countKnowledge(workspaceId, kbs.stream().map(KbKnowledgeBaseEntity::getId).toList());
+        return kbs.stream().map(e -> toVO(e, counts.getOrDefault(e.getId(), 0L))).toList();
     }
 
     @Override
@@ -173,7 +179,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         if (kb == null || (workspaceId != null && !workspaceId.equals(kb.getWorkspaceId()))) {
             return null;
         }
-        return toVO(kb, 0L);
+        Long count = countKnowledge(workspaceId, List.of(kbId)).getOrDefault(kbId, 0L);
+        return toVO(kb, count);
     }
 
     @Override
@@ -188,6 +195,15 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             throw new BizException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
         return workspaceId;
+    }
+
+    /** 批量统计库下非回收站知识数；无实现提供方时回退空 Map（调用方按 0 展示）。 */
+    private Map<Long, Long> countKnowledge(Long workspaceId, List<Long> kbIds) {
+        KnowledgeCountApi counter = knowledgeCountApiProvider.getIfAvailable();
+        if (counter == null || kbIds.isEmpty()) {
+            return Map.of();
+        }
+        return counter.countByKbIds(workspaceId, kbIds);
     }
 
     /** 按 ID 取库并做会话空间归属校验，不存在/跨空间统一 404（不暴露资源存在性）。 */

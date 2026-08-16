@@ -11,12 +11,14 @@ import com.calwen.xlumen.knowledge.dto.UpdateDirectoryDTO;
 import com.calwen.xlumen.knowledge.entity.KbDirectoryEntity;
 import com.calwen.xlumen.knowledge.entity.KbKnowledgeBaseEntity;
 import com.calwen.xlumen.knowledge.event.KbDirectoryDeletedEvent;
+import com.calwen.xlumen.knowledge.api.KnowledgeCountApi;
 import com.calwen.xlumen.knowledge.mapper.KbDirectoryMapper;
 import com.calwen.xlumen.knowledge.mapper.KbKnowledgeBaseMapper;
 import com.calwen.xlumen.knowledge.service.DirectoryService;
 import com.calwen.xlumen.knowledge.vo.DirectoryVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,16 +49,22 @@ public class DirectoryServiceImpl implements DirectoryService {
     private KbKnowledgeBaseMapper kbMapper;
     @Resource
     private ApplicationEventPublisher eventPublisher;
+    /** 目录知识数统计（反向 SPI）：实现由 content 模块提供，缺省时回退 0。 */
+    @Resource
+    private ObjectProvider<KnowledgeCountApi> knowledgeCountApiProvider;
 
     @Override
     public List<DirectoryVO> tree(Long kbId) {
         requireKb(kbId);
+        KbKnowledgeBaseEntity kb = kbMapper.selectById(kbId);
         List<KbDirectoryEntity> dirs = directoryMapper.selectList(Wrappers.<KbDirectoryEntity>lambdaQuery()
                 .eq(KbDirectoryEntity::getKbId, kbId)
                 .orderByAsc(KbDirectoryEntity::getName));
+        // 批量统计目录下非回收站知识数（KB-3 遗留恒 0 技术债闭环）
+        Map<Long, Long> counts = countKnowledge(kb, dirs.stream().map(KbDirectoryEntity::getId).toList());
         // 按父目录分组（组内保持 SQL 名称排序）；一级目录平铺返回，子目录挂 children
         Map<Long, List<DirectoryVO>> byParent = dirs.stream()
-                .map(this::toVO)
+                .map(d -> toVO(d, counts.getOrDefault(d.getId(), 0L)))
                 .collect(Collectors.groupingBy(DirectoryVO::getParentId, LinkedHashMap::new, Collectors.toList()));
         byParent.values().forEach(list -> list.forEach(vo -> vo.setChildren(byParent.getOrDefault(vo.getId(), List.of()))));
         return byParent.getOrDefault(0L, List.of());
@@ -88,7 +96,7 @@ public class DirectoryServiceImpl implements DirectoryService {
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         directoryMapper.insert(entity);
-        return toVO(entity);
+        return toVO(entity, 0L);
     }
 
     @Override
@@ -183,14 +191,23 @@ public class DirectoryServiceImpl implements DirectoryService {
         return dir;
     }
 
-    /** 实体转视图；knowledgeCount 当前恒为 0（content 侧统计待 KB-3 content 改造补全）。 */
-    private DirectoryVO toVO(KbDirectoryEntity d) {
+    /** 批量统计目录下非回收站知识数；无实现提供方时回退空 Map（调用方按 0 展示）。 */
+    private Map<Long, Long> countKnowledge(KbKnowledgeBaseEntity kb, List<Long> directoryIds) {
+        KnowledgeCountApi counter = knowledgeCountApiProvider.getIfAvailable();
+        if (counter == null || kb == null || directoryIds.isEmpty()) {
+            return Map.of();
+        }
+        return counter.countByDirectoryIds(kb.getWorkspaceId(), kb.getId(), directoryIds);
+    }
+
+    /** 实体转视图；knowledgeCount 由调用方给定（content 侧统计经 KnowledgeCountApi 聚合）。 */
+    private DirectoryVO toVO(KbDirectoryEntity d, Long knowledgeCount) {
         return DirectoryVO.builder()
                 .id(d.getId())
                 .kbId(d.getKbId())
                 .parentId(d.getParentId())
                 .name(d.getName())
-                .knowledgeCount(0L)
+                .knowledgeCount(knowledgeCount)
                 .children(new ArrayList<>())
                 .build();
     }

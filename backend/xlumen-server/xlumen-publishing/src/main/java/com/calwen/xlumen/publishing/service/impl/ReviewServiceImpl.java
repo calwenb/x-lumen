@@ -17,6 +17,7 @@ import com.calwen.xlumen.content.api.dto.EditorKnowledgeDTO;
 import com.calwen.xlumen.content.enums.KnowledgeStatus;
 import com.calwen.xlumen.identity.api.WorkspaceApi;
 import com.calwen.xlumen.identity.service.ActivityLogService;
+import com.calwen.xlumen.knowledge.api.KnowledgeApi;
 import com.calwen.xlumen.publishing.dto.ApproveDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.dto.RejectDTO;
@@ -58,6 +59,9 @@ public class ReviewServiceImpl implements ReviewService {
     private ContentApi contentApi;
 
     @Resource
+    private KnowledgeApi knowledgeApi;
+
+    @Resource
     private AiApi aiApi;
 
     @Resource
@@ -78,6 +82,11 @@ public class ReviewServiceImpl implements ReviewService {
         KnowledgeStatus status = KnowledgeStatus.of(knowledge.getStatus());
         if (status != KnowledgeStatus.DRAFT && status != KnowledgeStatus.APPROVED) {
             throw new BizException(ErrorCode.CONFLICT, "当前状态不可提交审核");
+        }
+        // 归属兜底（决策 D16）：知识必须归属有效的知识库/目录，拦截历史孤儿数据（BUG-4 防线）
+        if (knowledge.getKbId() == null
+                || !knowledgeApi.checkOwnership(workspaceId, knowledge.getKbId(), knowledge.getDirectoryId())) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "知识未归属有效知识库，请先在编辑器中选择知识库与目录");
         }
         ReviewEntity review = new ReviewEntity();
         review.setWorkspaceId(workspaceId);

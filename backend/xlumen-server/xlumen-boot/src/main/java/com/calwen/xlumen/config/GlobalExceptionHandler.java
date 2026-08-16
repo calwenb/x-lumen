@@ -9,10 +9,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.util.Optional;
 
 /**
  * 全局异常处理：业务异常转换为稳定错误码与统一响应；未知异常只返回 requestId，
@@ -58,12 +62,36 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 请求体不可读（JSON 解析失败）：统一 400。
+     * 请求体不可读（JSON 解析失败）：统一 400，并透出首个解析根因（如字段类型错误），便于前端提示。
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotReadable(HttpMessageNotReadableException e) {
+        String message = Optional.ofNullable(e.getCause())
+                .map(Throwable::getMessage)
+                .map(cause -> cause.split("\n")[0])
+                .map(cause -> "请求参数格式错误：" + cause)
+                .orElse(ErrorCode.INVALID_PARAM.getDefaultMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ErrorCode.INVALID_PARAM.getCode(), ErrorCode.INVALID_PARAM.getDefaultMessage()));
+                .body(ApiResponse.error(ErrorCode.INVALID_PARAM.getCode(), message));
+    }
+
+    /**
+     * 请求方法不支持（如 POST 打到 GET 端点）：统一 405（此前落 500）。
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error(ErrorCode.INVALID_PARAM.getCode(), "请求方法不支持"));
+    }
+
+    /**
+     * 路径/查询参数类型不匹配（如 id 传非数字）：统一 400（此前落 500）。
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ErrorCode.INVALID_PARAM.getCode(),
+                        "参数 " + e.getName() + " 类型不正确"));
     }
 
     /**

@@ -1,17 +1,13 @@
 <script setup lang="ts">
-// 知识列表页（B10，F-0301）：作者知识管理（状态/可见性/关键词筛选 + 新建/编辑/删除）。
+// 知识列表页（B10，F-0301，KB-4 适配决策 D16）：作者知识管理（状态/关键词筛选 + 新建/编辑/删除/提交审核）。
 // 关键状态：加载骨架、空态（引导新建）、失败可重试；删除仅构思/草稿可用（已发布需先下架）。
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
 
-import {
-  deleteKnowledge,
-  fetchKnowledges,
-  STATUS_LABELS,
-  VISIBILITY_LABELS,
-} from '@/modules/content/api/knowledge'
+import { deleteKnowledge, fetchKnowledges, STATUS_LABELS } from '@/modules/content/api/knowledge'
+import { createReview } from '@/modules/publishing/api/review'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
 
 import type { KnowledgeListItem } from '@/modules/content/api/knowledge'
@@ -23,9 +19,9 @@ const total = ref(0)
 const pageNo = ref(1)
 const loading = ref(true)
 const loadError = ref(false)
+const submittingId = ref<string | null>(null)
 
 const filterStatus = ref('')
-const filterVisibility = ref('')
 const keyword = ref('')
 
 /** 状态徽标语义色（el-tag type）：未发布灰/已发布绿/其他主色。 */
@@ -46,7 +42,6 @@ async function load(targetPage = pageNo.value): Promise<void> {
   try {
     const page = await fetchKnowledges({
       ...(filterStatus.value ? { status: Number(filterStatus.value) } : {}),
-      ...(filterVisibility.value ? { visibility: Number(filterVisibility.value) } : {}),
       ...(keyword.value.trim() ? { keyword: keyword.value.trim() } : {}),
       pageNo: targetPage,
       pageSize: PAGE_SIZE,
@@ -85,6 +80,25 @@ async function handleDelete(item: KnowledgeListItem): Promise<void> {
   }
 }
 
+/** 提交审核（F-0902）：草稿/已通过态可用（BUG-5 列表入口补全）。 */
+async function handleSubmitReview(item: KnowledgeListItem): Promise<void> {
+  submittingId.value = item.id
+  try {
+    await createReview(item.id)
+    ElMessage.success('已提交审核')
+    await load(pageNo.value)
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '提交审核失败')
+  } finally {
+    submittingId.value = null
+  }
+}
+
+/** 草稿（2）或已通过（4）可提交审核。 */
+function canSubmitReview(status: number): boolean {
+  return status === 2 || status === 4
+}
+
 onMounted(() => {
   void load()
 })
@@ -94,7 +108,9 @@ onMounted(() => {
   <main class="knowledge-list">
     <div class="knowledge-list__header">
       <h1 class="knowledge-list__title">知识管理</h1>
-      <RouterLink class="knowledge-list__create" :to="{ name: 'knowledge-new' }">新建知识</RouterLink>
+      <RouterLink class="knowledge-list__create" :to="{ name: 'knowledge-new' }"
+        >新建知识</RouterLink
+      >
     </div>
 
     <div class="knowledge-list__filters">
@@ -107,20 +123,6 @@ onMounted(() => {
         <el-option value="" label="全部状态" />
         <el-option
           v-for="(label, value) in STATUS_LABELS"
-          :key="value"
-          :value="String(value)"
-          :label="label"
-        />
-      </el-select>
-      <el-select
-        v-model="filterVisibility"
-        class="knowledge-list__select"
-        aria-label="可见性筛选"
-        placeholder="全部可见性"
-      >
-        <el-option value="" label="全部可见性" />
-        <el-option
-          v-for="(label, value) in VISIBILITY_LABELS"
           :key="value"
           :value="String(value)"
           :label="label"
@@ -162,20 +164,20 @@ onMounted(() => {
               <el-tag :type="statusTagType(item.status)" size="small" effect="light">
                 {{ STATUS_LABELS[item.status] ?? item.status }}
               </el-tag>
-              <el-tag
-                :type="item.visibility === 0 ? 'info' : 'success'"
-                size="small"
-                effect="light"
-              >
-                {{ VISIBILITY_LABELS[item.visibility] ?? item.visibility }}
-              </el-tag>
-              <span v-if="item.category" class="knowledge-list__item-category">{{
-                item.category
-              }}</span>
               <span class="knowledge-list__item-time">{{ formatTime(item.updatedAt) }}</span>
             </div>
           </div>
           <div class="knowledge-list__item-actions">
+            <el-button
+              v-if="canSubmitReview(item.status)"
+              type="success"
+              plain
+              size="small"
+              :loading="submittingId === item.id"
+              @click="handleSubmitReview(item)"
+            >
+              提交审核
+            </el-button>
             <RouterLink
               class="knowledge-list__action"
               :to="{ name: 'knowledge-edit', params: { id: item.id } }"

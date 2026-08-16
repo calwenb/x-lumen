@@ -106,6 +106,7 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
     public KnowledgeDetailVO getKnowledge(Long knowledgeId) {
         // 多用户公开读跨空间（D9 改写）：可见库集合按身份推导（userId 可空=访客，F-0407 决策 D13）
         Long userId = WorkspaceContext.userId();
+        Long workspaceId = WorkspaceContext.workspaceId();
         List<Long> visibleKbIds = knowledgeApi.resolveVisibleKbIds(userId);
         // 热点读缓存（F-1301）：仅访客视角按 id 缓存（键 xlumen:knowledge:detail:{id}，
         // KB-3 分片改造，方案 §3.4）。登录态直查回源：可见范围含私有库，缓存键不含身份，
@@ -117,8 +118,9 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
         if (vo == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "知识不存在或未公开");
         }
-        // liked 为用户态，不缓存，命中缓存后按当前用户重算（避免跨用户串号）
-        vo.setLiked(userId != null && likeService.isLiked(null, knowledgeId, userId));
+        // liked 为用户态，不缓存，命中缓存后按当前用户重算（避免跨用户串号）；
+        // workspaceId 取自登录态（传 null 会被 MP 转成 IS NULL 条件查不到点赞记录）
+        vo.setLiked(userId != null && likeService.isLiked(workspaceId, knowledgeId, userId));
         return vo;
     }
 

@@ -17,6 +17,7 @@ import com.calwen.xlumen.content.mapper.KnowledgeMapper;
 import com.calwen.xlumen.content.service.KnowledgeService;
 import com.calwen.xlumen.content.vo.KnowledgeListItemVO;
 import com.calwen.xlumen.content.vo.KnowledgeVO;
+import com.calwen.xlumen.knowledge.api.KnowledgeApi;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
@@ -29,8 +30,8 @@ import java.util.Objects;
  * 版本乐观锁：MyBatis-Plus @Version 插件，updateById 影响行数 0 即冲突（HTTP 409，PRODUCT §6 禁止静默覆盖）。
  * 已发布版本正文不可修改（PRODUCT §4），修改需走旧文更新闭环（V2 F-1105）。
  * KB-3（决策 D16）：知识单库单目录归属（kb_id+directory_id），无文章级可见性；删除改回收站软删（F-0305）。
- * 归属校验说明：content 不依赖 knowledge 模块（DAG 方向），此处不做跨模块库/目录存在性校验，
- * 由 knowledge 模块 checkOwnership 在发布/公开读时兜底 + 前端约束。
+ * 归属校验（BACKEND.md §4 依赖 DAG：content→knowledge）：创建/自动保存经 KnowledgeApi.checkOwnership 校验
+ * 知识库/目录归属，禁止无归属（kb_id=0）或跨空间孤儿知识入库。
  *
  * @author calwen
  * @date 2026/8/13
@@ -46,16 +47,25 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Resource
     private KnowledgeMapper knowledgeMapper;
 
+    @Resource
+    private KnowledgeApi knowledgeApi;
+
     @Override
     public KnowledgeVO create(CreateKnowledgeDTO dto) {
+        // 单库单目录归属校验（决策 D16）：kbId 必填且库/目录必须属于当前空间，禁止孤儿知识
+        Long kbId = dto.getKbId();
+        Long workspaceId = requireWorkspaceId();
+        if (kbId == null || !knowledgeApi.checkOwnership(workspaceId, kbId, dto.getDirectoryId())) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "请选择有效的知识库与目录");
+        }
         KnowledgeEntity entity = new KnowledgeEntity();
-        entity.setWorkspaceId(requireWorkspaceId());
+        entity.setWorkspaceId(workspaceId);
         entity.setAuthorId(requireUserId());
         entity.setAuthorName(WorkspaceContext.username());
         entity.setTitle(dto.getTitle());
         entity.setContent(dto.getContent() == null ? "" : dto.getContent());
         // 单库单目录归属（决策 D16）：directoryId 空默认挂库根（0）
-        entity.setKbId(dto.getKbId());
+        entity.setKbId(kbId);
         entity.setDirectoryId(dto.getDirectoryId() == null ? 0L : dto.getDirectoryId());
         entity.setTags(dto.getTags());
         entity.setStatus(KnowledgeStatus.DRAFT.getValue());
@@ -136,6 +146,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                 Wrappers.<KnowledgeEntity>lambdaQuery()
                         .eq(KnowledgeEntity::getWorkspaceId, requireWorkspaceId())
                         .eq(KnowledgeEntity::getAuthorId, requireUserId())
+                        // 过滤回收站（F-0305 软删不展示在知识管理列表）
+                        .eq(KnowledgeEntity::getRecycleStatus, 0)
                         .eq(query.getStatus() != null, KnowledgeEntity::getStatus, query.getStatus())
                         .eq(query.getKbId() != null, KnowledgeEntity::getKbId, query.getKbId())
                         .eq(query.getDirectoryId() != null, KnowledgeEntity::getDirectoryId, query.getDirectoryId())

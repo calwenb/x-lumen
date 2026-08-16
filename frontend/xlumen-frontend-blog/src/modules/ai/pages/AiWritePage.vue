@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // AI 写作页（B11，F-0601/F-0604）：主题/草稿/完整知识三种输入，流式打字展示生成过程，
-// 完成后展示标题 + Markdown 预览，可保存为新知识（走 content createKnowledge）。
-import { computed, onBeforeUnmount, ref } from 'vue'
+// 完成后展示标题 + Markdown 预览，可保存为新知识（走 content createKnowledge，归属库必选，决策 D16）。
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { createKnowledge } from '@/modules/content/api/knowledge'
 import { fetchWritingTask, retryWritingTask, submitWriting } from '@/modules/ai/api/writing'
+import { fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
+import type { KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import { streamSse } from '@/modules/ai/utils/sse'
 import AiTaskProgress from '@/modules/ai/components/AiTaskProgress.vue'
@@ -39,7 +41,19 @@ const errorMsg = ref('')
 const saving = ref(false)
 const saveMessage = ref('')
 
+/** 保存为新知识的目标库（决策 D16：单库单目录，创建后不可更换）。 */
+const knowledgeBases = ref<KnowledgeBase[]>([])
+const kbId = ref('')
+
 let controller: AbortController | null = null
+
+onMounted(async () => {
+  try {
+    knowledgeBases.value = await fetchKnowledgeBases()
+  } catch {
+    knowledgeBases.value = []
+  }
+})
 
 const canSubmit = computed(() => {
   if (mode.value === 'topic') return topic.value.trim().length > 0
@@ -176,15 +190,18 @@ async function saveAsKnowledge(): Promise<void> {
     saveMessage.value = '生成内容不完整，请重新生成后再保存'
     return
   }
+  if (!kbId.value) {
+    saveMessage.value = '请选择知识库'
+    return
+  }
   saving.value = true
   saveMessage.value = ''
   try {
     const created = await createKnowledge({
       title,
       content: body,
-      category: '',
+      kbId: kbId.value,
       tags: [],
-      visibility: 1,
     })
     await router.push({ name: 'knowledge-edit', params: { id: created.id } })
   } catch (error) {
@@ -288,6 +305,14 @@ onBeforeUnmount(() => {
       <h2 class="ai-write__result-title">{{ resultTitle }}</h2>
       <div class="ai-write__preview markdown-body" v-html="renderedResult" />
       <div class="ai-write__result-actions">
+        <el-select
+          v-model="kbId"
+          class="ai-write__kb"
+          placeholder="所属知识库（必选）"
+          aria-label="所属知识库"
+        >
+          <el-option v-for="kb in knowledgeBases" :key="kb.id" :label="kb.name" :value="kb.id" />
+        </el-select>
         <el-button type="primary" :loading="saving" @click="saveAsKnowledge">
           {{ saving ? '保存中' : '保存为新知识' }}
         </el-button>

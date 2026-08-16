@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/14 17:04
+> 更新日期：2026/8/16 14:45
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 
@@ -10,6 +10,18 @@
 | --- | --- | --- | --- |
 
 说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D17，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
+
+## 2026/8/16 16:30 · ZCode（全功能测试缺陷统一修复）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/16 16:30 | 统一修复 2026-08-16 自动化测试发现的缺陷（BUG-3~BUG-11 及观察项，详见 STATUS §7）：**后端**——①content 模块 pom 补 `xlumen-knowledge` 依赖（BACKEND §4 依赖 DAG 约定 content→knowledge 落地，KB-2 遗漏）；②`KnowledgeServiceImpl` 创建/自动保存经 `KnowledgeApi.checkOwnership` 校验 kbId/目录归属（拦截无归属与跨空间孤儿，防 kb_id=0 脏数据）＋知识列表查询补 `recycle_status=0` 过滤（软删不再残留列表）；③publishing 提交审核/发布入口补归属兜底校验（历史孤儿无法再走审核发布）；④知识数统计闭环：knowledge 模块定义 `KnowledgeCountApi`（反向 SPI），content 模块实现按 kb_id/directory_id 聚合非回收站计数，库卡片/目录树 knowledgeCount 不再恒 0；⑤`GlobalExceptionHandler` 新增 405/类型不匹配映射（原落 500）、JSON 解析失败透出首个根因；⑥`PublicKnowledgeServiceImpl.getKnowledge` 点赞状态重算改用 `WorkspaceContext.workspaceId()`（原传 null 被 MyBatis-Plus 转 `IS NULL` 条件导致 liked 恒 false，BUG-8 根因）。**前端**——⑦`KnowledgeEditorPage` 重做：删分类/文章级可见性（D16），新增所属知识库/目录选择器（编辑态禁改库，单库单目录）、未选库保存拦截、草稿态「提交审核」按钮；⑧`AiWritePage` 保存前选库；⑨知识管理列表删可见性筛选、草稿行新增「提交审核」；⑩双前端 http 拦截器透出后端业务 message（不再显示裸 "Request failed with status code xxx"）；⑪双前端 session store 持久化快照+accessToken 到 localStorage（Refresh Token 不持久化，符合 FRONTEND §7 白名单），整页刷新不再登出；⑫`LikeButton` 状态以服务端返回为准、切换知识才重置本地状态。**数据**——⑬新增 `sql/migration/86_orphan_cleanup.sql` 幂等清理无归属孤儿知识（含审核/发布/索引关联）并已在 xlumen_dev 执行（清理 4 条 kb_id=0 孤儿），测试产生的评论/点赞一并清除。**验证**：后端 `mvn verify` BUILD SUCCESS（单测全绿）、前端 typecheck/lint/test 全绿、API 全链路复核（创建/自动保存/越权拦截 400、孤儿提交审核 400、库计数、detail liked 登录 true/访客 false、405 映射）、浏览器回归（登录持久化/编辑器选库保存/提交审核入审核中心/删除列表过滤/点赞 3 次状态一致） | STATUS、BACKEND、FRONTEND | D16、D9、D13 |
+
+## 2026/8/16 14:45 · ZCode（初始化待修问题清单 BUGS）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/16 14:45 | 新增 docs/ai/BUGS.md 待修问题清单（编号约定 BUG-001 起顺延、字段模板：日期/模块/状态/复现步骤/现象 vs 期望/补充；**修复仅按用户明确要求进行，AI 不自动认领**，修复后从清单移除并回写 CHANGELOG）；STATUS.md §1 工作流规则 1 增加「通读 BUGS.md」与不自动认领约束 | STATUS、BUGS（新增） | 无 |
 
 ## 2026/8/14 18:55 · ZCode（KB-5 迁移收尾 + KB-6 全量验收）
 

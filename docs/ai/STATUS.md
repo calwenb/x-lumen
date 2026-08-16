@@ -1,12 +1,12 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/14 16:59
+> 更新日期：2026/8/16 16:30
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ## 1. 工作流（强制规则）
 
-1. **阅读**：开工前先确认仓库路径为项目根目录；通读本文件 → 任务相关规范文档：产品 [PRODUCT](../product/PRODUCT.md)（唯一功能事实源，第 5 节总表）、后端 [BACKEND](../backend/BACKEND.md)、前端 [FRONTEND](../frontend/FRONTEND.md)、页面 [PROTOTYPE](../frontend/PROTOTYPE.md)、运行命令 [GLOBAL](../global/GLOBAL.md)。
+1. **阅读**：开工前先确认仓库路径为项目根目录；通读本文件 → 任务相关规范文档：产品 [PRODUCT](../product/PRODUCT.md)（唯一功能事实源，第 5 节总表）、后端 [BACKEND](../backend/BACKEND.md)、前端 [FRONTEND](../frontend/FRONTEND.md)、页面 [PROTOTYPE](../frontend/PROTOTYPE.md)、运行命令 [GLOBAL](../global/GLOBAL.md)、待修问题 [BUGS](./BUGS.md)（**仅按用户明确要求修复，不自动认领**）。
 2. **认领**：在第 5 节待办中把任务标为 `已认领（AI 名）`，一次一项；未认领任务可能被其他 AI 同时开始，冲突以先提交者为准。
 3. **实现与验证**：只做任务范围内变更；目录结构与功能范围不得偏离 docs（决策 D7）；跑通相关质量门禁（命令见 GLOBAL.md，后端编译需 JDK 25）。
 4. **收尾**（不得省略）：更新本文件状态与待办；按 [CHANGELOG.md](./CHANGELOG.md) 头部模板追加一条；代码与文档同一提交。
@@ -186,6 +186,7 @@
 
 > 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/16 16:30 · ZCode：**全功能测试缺陷统一修复（BUG-3~BUG-11 + 观察项，用户要求全部修复）**——①content→knowledge 依赖 DAG 落地（content pom 补 knowledge 依赖）；②知识创建/自动保存归属校验（`KnowledgeApi.checkOwnership` 拦截无归属/跨空间孤儿）+ 列表过滤回收站；③提交审核/发布归属兜底；④知识数统计闭环（`KnowledgeCountApi` 反向 SPI，库/目录计数不再恒 0）；⑤异常映射 405/400 + JSON 解析原因透出；⑥detail 点赞状态修复（workspaceId 传 null 致 liked 恒 false）；⑦编辑器重做（库/目录选择器 + 提交审核入口 + AI 写作选库）；⑧http 错误消息透出；⑨session 持久化（刷新不登出，refreshToken 不落盘）；⑩点赞状态以服务端为准；⑪新增并执行 `sql/migration/86_orphan_cleanup.sql`（清理 4 条 kb_id=0 孤儿知识及测试互动数据）；验证：mvn verify/前端门禁全绿 + API 链路与浏览器回归通过（详见 CHANGELOG）
 - 2026/8/14 18:55 · ZCode：**KB-5 存量迁移收尾 + KB-6 全量验收通过**——迁移数据校验全绿（10 篇知识 0 孤儿、公开库 8 篇、category 平铺目录 5 个、回收站 0）；Redis 缓存清空（旧键族 xlumen:* 全删）；全仓「文章」措辞清零核验（仅剩 ai 模块写作素材语义与历史说明，合法）；全量验收：后端 mvn verify BUILD SUCCESS（10 测试）、前端 typecheck/lint/stylelint/test/build 全绿、双前端 E2E 9/9（blog 8 + admin 1）、PRODUCT §12 完成定义 8 条逐条核对通过、文档一致性核验（REST 路径/表结构/回收站聚合层说明补充 BACKEND §10）；知识平台化重构 KB-1~KB-6 全部交付
 - 2026/8/14 18:50 · ZCode：**KB-4 前端页面交付**——①导航头（App.vue）：品牌 xLumen + 主导航 知识/知识库/AI小光 三项（分类/标签/关于移除，决策 D16）+ 搜索 + 登录态「＋写知识」CTA + 头像下拉（我的知识库/创作中心/回收站/退出）；②B01 首页知识流重写（HomePage.vue）：左栏库导航（登录态库切换器/目录树/标签云，未登录说明卡）+ 右栏知识列表（库 badge 跳库页、🔒 私有标记、范围标题、排序说明、骨架/空态/分页）；③B20 库页/B21 发现页/B22 库管理（knowledge 模块三新页）：库头部+目录树+库内列表、我的知识库卡片墙、卡片墙+编辑/可见性切换/删除二次确认+目录管理；④B16 回收站（RecycleBinPage）：全部/知识库/知识三 Tab + 30 天提示 + 恢复/彻底删除二次确认 + 剩余天数；⑤B13 发布弹窗：删可见性选择（决策 D16），显示知识归属库/目录（反查名称），未归属禁用发布；⑥B00 对话页+知识问答弹窗：检索范围选择器（全部可见库/指定知识库，kbId/allVisible 参数）；⑦B03 搜索页目录化：删分类筛选改知识库+目录筛选、卡片 kbName 徽标；⑧E2E 更新（首页标题「全部知识库」、头像菜单登出、标签筛选替代分类）并全绿（blog 8 + admin 1）；浏览器实测 7 页截图存档 .browser-check/kb4-*.png；KB-5 待认领
 - 2026/8/14 18:30 · ZCode：**KB-3 后端能力交付**——①knowledge 模块新增：知识库 CRUD/可见性切换（KnowledgeBaseController + 二次确认删库连带回收站）、目录树 CRUD（DirectoryController，按名称排序，删除时知识上挂父目录）、回收站聚合（publishing RecycleBinController：kb 侧委托 KnowledgeApi、knowledge 侧委托 ContentApi，含恢复冲突判定）、可见库集合推导单一实现（VisibilityService：访客=全平台公开库、登录=+自己空间私有库，按 owner_user_id 查空间，修复默认空间越权 bug）；②content 模块：知识 CRUD 增加 kbId/directoryId（单库单目录）、发布流程改库+目录（不再传 visibility）、回收站软删/恢复（recycle_status+deleted_at）、公开读按可见库集合过滤（跨空间聚合，workspaceId 可空）；③publishing：公开读按身份聚合跨空间（多用户 D9 改写）、排序规则（updated_at DESC/目录内 created_at ASC）、缓存分片 xlumen:knowledge:detail:{id}、审计 KB_VISIBILITY_CHANGE；④RAG/AI：IndexRequestDTO/SearchRequestDTO 增加 kbId/kbIds（删 visibilityScope）、VectorStore 检索按 kb_id 过滤、AI 问答 kbId/allVisible 范围参数；⑤跨模块事件联动：KbRecycleStatusEvent/KbDirectoryDeletedEvent/KbPurgedEvent/KbVisibilityChangedEvent（content 监听连带软删/恢复/上挂/级联删，publishing 监听缓存失效）；⑥验证：mvn verify BUILD SUCCESS（10 测试）、接口全链路（建库→目录→知识→审核→发布→公开读跨空间→私有 404→越权 404→删库连带→恢复→彻底删除→可见性即时生效→索引 ACTIVE 带 kb_id）、索引状态接口路径修复（/api/v1/knowledge/{id}/index-status）；KB-4 待认领

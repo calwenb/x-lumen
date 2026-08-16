@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// 知识编辑页（B10，F-0301/F-0302/F-0307）：标题/分类/标签/可见性 + Markdown 编辑器。
-// 草稿自动保存（10s 节流 + 失焦触发，F-0302）；显式保存走乐观锁版本校验，409 冲突提供恢复入口。
-import { computed, onMounted, ref } from 'vue'
+// 知识编辑页（B10，F-0301/F-0302/F-0307，KB-4 适配决策 D16）：
+// 单库单目录归属（知识库/目录选择器，无文章级可见性/分类），草稿自动保存（10s 节流 + 失焦触发）。
+// 显式保存走乐观锁版本校验，409 冲突提供恢复入口；草稿态可提交审核（F-0902，BUG-5 入口补全）。
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import {
@@ -9,9 +10,13 @@ import {
   createKnowledge,
   fetchKnowledge,
   updateKnowledge,
+  STATUS_LABELS,
 } from '@/modules/content/api/knowledge'
 import MarkdownEditor from '@/modules/content/components/MarkdownEditor.vue'
 import { useAutoSave } from '@/modules/content/composables/useAutoSave'
+import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
+import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
+import { createReview } from '@/modules/publishing/api/review'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,14 +28,22 @@ const knowledgeId = ref<string | null>(null)
 const version = ref('0')
 const title = ref('')
 const content = ref('')
-const category = ref('')
+const kbId = ref<string>('')
+const directoryId = ref<string>('0')
 const tagsInput = ref('')
-const visibility = ref(1)
+const status = ref(2)
 
 const loading = ref(true)
 const loadError = ref(false)
 const saving = ref(false)
 const saveMessage = ref('')
+const submitting = ref(false)
+
+/** 可选知识库列表（当前空间，F-0308）。 */
+const knowledgeBases = ref<KnowledgeBase[]>([])
+/** 当前库的目录树（扁平化后供下拉选择，0=库根）。 */
+const directoryOptions = ref<Array<{ id: string; label: string }>>([])
+const directoriesLoading = ref(false)
 
 /** 标签：逗号分隔输入 → 数组。 */
 const tags = computed(() =>
@@ -45,18 +58,18 @@ const lastSaved = ref('')
 const lastTitle = ref('')
 const isDirty = () => content.value !== lastSaved.value || title.value !== lastTitle.value
 
-/** 自动保存回调：幂等提交，返回最新 ID/版本。 */
+/** 自动保存回调：新建草稿必须有归属库（决策 D16），未选库时跳过。 */
 async function doAutoSave(): Promise<{ id: string; version: string } | null> {
-  if (!title.value.trim()) {
+  if (!title.value.trim() || !kbId.value) {
     return null
   }
   const saved = await autosaveDraft({
     ...(knowledgeId.value ? { knowledgeId: knowledgeId.value, version: version.value } : {}),
     title: title.value,
     content: content.value,
-    category: category.value,
+    kbId: kbId.value,
+    directoryId: directoryId.value,
     tags: tags.value,
-    visibility: visibility.value,
   })
   knowledgeId.value = saved.id
   version.value = saved.version
@@ -67,6 +80,44 @@ async function doAutoSave(): Promise<{ id: string; version: string } | null> {
 
 const autoSave = useAutoSave(isDirty, doAutoSave)
 
+/** 切换知识库时重新加载目录树并复位目录选择。 */
+watch(kbId, async (next) => {
+  directoryId.value = '0'
+  if (!next) {
+    directoryOptions.value = []
+    return
+  }
+  directoriesLoading.value = true
+  try {
+    const tree = await fetchDirectoryTree(next)
+    directoryOptions.value = flattenDirectories(tree, 0)
+  } catch {
+    directoryOptions.value = []
+  } finally {
+    directoriesLoading.value = false
+  }
+  // 已有知识加载完成后设置目录，避免被 watch 复位
+  if (restoring.value) {
+    restoring.value = false
+  }
+})
+
+/** 目录树扁平化（缩进展示层级，0=库根）。 */
+function flattenDirectories(
+  nodes: DirectoryNode[],
+  depth: number,
+): Array<{ id: string; label: string }> {
+  const result: Array<{ id: string; label: string }> = []
+  for (const node of nodes) {
+    result.push({ id: node.id, label: `${'　'.repeat(depth)}${node.name}` })
+    result.push(...flattenDirectories(node.children, depth + 1))
+  }
+  return result
+}
+
+/** 编辑模式加载过程中抑制目录 watch 复位（加载完统一回填）。 */
+const restoring = ref(false)
+
 /** 冲突提示状态。 */
 const conflict = ref(false)
 
@@ -76,9 +127,9 @@ async function handleConflict(): Promise<void> {
     const latest = await fetchKnowledge(knowledgeId.value)
     title.value = latest.title
     content.value = latest.content
-    category.value = latest.category
+    kbId.value = latest.kbId ?? ''
+    directoryId.value = latest.directoryId ?? '0'
     tagsInput.value = latest.tags.join(', ')
-    visibility.value = latest.visibility
     version.value = latest.version
     lastSaved.value = latest.content
     lastTitle.value = latest.title
@@ -92,6 +143,10 @@ async function handleSave(): Promise<void> {
     saveMessage.value = '请先填写标题'
     return
   }
+  if (!kbId.value) {
+    saveMessage.value = '请选择知识库'
+    return
+  }
   saving.value = true
   conflict.value = false
   saveMessage.value = ''
@@ -100,12 +155,13 @@ async function handleSave(): Promise<void> {
       const created = await createKnowledge({
         title: title.value,
         content: content.value,
-        category: category.value,
+        kbId: kbId.value,
+        directoryId: directoryId.value,
         tags: tags.value,
-        visibility: visibility.value,
       })
       knowledgeId.value = created.id
       version.value = created.version
+      status.value = created.status
       lastSaved.value = content.value
       lastTitle.value = title.value
       await router.replace({ name: 'knowledge-edit', params: { id: created.id } })
@@ -113,11 +169,12 @@ async function handleSave(): Promise<void> {
       const updated = await updateKnowledge(knowledgeId.value, version.value, {
         title: title.value,
         content: content.value,
-        category: category.value,
+        kbId: kbId.value,
+        directoryId: directoryId.value,
         tags: tags.value,
-        visibility: visibility.value,
       })
       version.value = updated.version
+      status.value = updated.status
       lastSaved.value = content.value
       lastTitle.value = title.value
     }
@@ -133,17 +190,49 @@ async function handleSave(): Promise<void> {
   }
 }
 
+/** 提交审核（F-0902）：先保存最新内容再提交，草稿/已通过态可用。 */
+async function handleSubmitReview(): Promise<void> {
+  if (!knowledgeId.value) {
+    saveMessage.value = '请先保存知识再提交审核'
+    return
+  }
+  if (isDirty()) {
+    await handleSave()
+    if (saveMessage.value && saveMessage.value !== '已保存') {
+      return
+    }
+  }
+  submitting.value = true
+  try {
+    await createReview(knowledgeId.value)
+    saveMessage.value = '已提交审核'
+    status.value = 3
+  } catch (error) {
+    saveMessage.value = error instanceof Error ? error.message : '提交审核失败'
+  } finally {
+    submitting.value = false
+  }
+}
+
 onMounted(async () => {
+  // 加载当前空间知识库列表（编辑器归属选择，F-0308）
+  try {
+    knowledgeBases.value = await fetchKnowledgeBases()
+  } catch {
+    knowledgeBases.value = []
+  }
   if (!isNew.value) {
+    restoring.value = true
     try {
       const knowledge = await fetchKnowledge(String(route.params.id))
       knowledgeId.value = knowledge.id
       version.value = knowledge.version
       title.value = knowledge.title
       content.value = knowledge.content
-      category.value = knowledge.category
+      kbId.value = knowledge.kbId ?? ''
+      directoryId.value = knowledge.directoryId ?? '0'
+      status.value = knowledge.status
       tagsInput.value = knowledge.tags.join(', ')
-      visibility.value = knowledge.visibility
       lastSaved.value = knowledge.content
       lastTitle.value = knowledge.title
     } catch {
@@ -155,6 +244,11 @@ onMounted(async () => {
   }
   loading.value = false
 })
+
+/** 草稿（2）或已通过（4）且已落库时可提交审核。 */
+const canSubmitReview = computed(
+  () => !!knowledgeId.value && (status.value === 2 || status.value === 4),
+)
 </script>
 
 <template>
@@ -166,13 +260,21 @@ onMounted(async () => {
           {{
             conflict
               ? '版本冲突'
-              : autoSave.saving.value || saving
+              : autoSave.saving.value || saving || submitting
                 ? '保存中…'
                 : autoSave.savedAt.value
                   ? '已自动保存'
                   : ''
           }}
         </span>
+        <el-button
+          v-if="canSubmitReview"
+          type="success"
+          plain
+          :loading="submitting"
+          @click="handleSubmitReview"
+          >提交审核</el-button
+        >
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
         <RouterLink class="editor-page__back" :to="{ name: 'knowledge-list' }">返回列表</RouterLink>
       </div>
@@ -203,14 +305,33 @@ onMounted(async () => {
           @input="autoSave.touch()"
         />
         <div class="editor-page__row">
-          <el-input
-            v-model="category"
-            class="editor-page__category"
-            type="text"
-            placeholder="分类（如：后端）"
-            aria-label="分类"
-            @input="autoSave.touch()"
-          />
+          <el-select
+            v-model="kbId"
+            class="editor-page__kb"
+            placeholder="所属知识库（必选）"
+            aria-label="所属知识库"
+            :disabled="!isNew"
+            @change="autoSave.touch()"
+          >
+            <el-option v-for="kb in knowledgeBases" :key="kb.id" :label="kb.name" :value="kb.id" />
+          </el-select>
+          <el-select
+            v-model="directoryId"
+            class="editor-page__directory"
+            placeholder="所属目录（默认库根）"
+            aria-label="所属目录"
+            :loading="directoriesLoading"
+            :disabled="!kbId"
+            @change="autoSave.touch()"
+          >
+            <el-option label="（库根）" value="0" />
+            <el-option
+              v-for="dir in directoryOptions"
+              :key="dir.id"
+              :label="dir.label"
+              :value="dir.id"
+            />
+          </el-select>
           <el-input
             v-model="tagsInput"
             class="editor-page__tags"
@@ -220,15 +341,12 @@ onMounted(async () => {
             @input="autoSave.touch()"
           />
         </div>
-        <div class="editor-page__row" role="radiogroup" aria-label="可见性">
-          <span class="editor-page__label">可见性：</span>
-          <label class="editor-page__radio">
-            <input v-model="visibility" type="radio" :value="1" @change="autoSave.touch()" /> 公开
-          </label>
-          <label class="editor-page__radio">
-            <input v-model="visibility" type="radio" :value="0" @change="autoSave.touch()" /> 私有
-          </label>
-          <span class="editor-page__hint">私有不进公开列表与搜索，但参与「小光」AI 问答检索</span>
+        <div class="editor-page__row editor-page__hint">
+          <span v-if="knowledgeId" class="editor-page__status-text">
+            当前状态：{{ STATUS_LABELS[status] ?? status }} · 归属库与目录不可修改（单库单目录，决策
+            D16）
+          </span>
+          <span v-else>知识按「库 → 目录 → 知识」组织，请先选择知识库（新建后不可更换）</span>
         </div>
       </section>
 
@@ -331,23 +449,19 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.editor-page__category,
+.editor-page__kb,
+.editor-page__directory,
 .editor-page__tags {
   flex: 1;
-  min-width: 200px;
-}
-
-.editor-page__label {
-  font-size: 13px;
-  color: var(--xl-text-secondary);
-}
-
-.editor-page__radio {
-  font-size: 13px;
-  color: var(--xl-text-primary);
+  min-width: 180px;
 }
 
 .editor-page__hint {
+  font-size: 12px;
+  color: var(--xl-text-secondary);
+}
+
+.editor-page__status-text {
   font-size: 12px;
   color: var(--xl-text-secondary);
 }

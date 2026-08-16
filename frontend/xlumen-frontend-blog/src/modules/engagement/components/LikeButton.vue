@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 点赞按钮（F-0203，B02）：未登录点击引导登录；切换语义，点击后乐观更新，确认后同步父组件计数。
-// 注意：乐观更新期间不 emit（避免父组件 props 变化触发 watch 重置本地状态，导致“已赞 0”错乱）；
-// 确认/回滚后一次性 emit 同步。
+// 状态以服务端 toggleLike 返回为准（BUG-8 修复）：本地 liked/count 仅在 knowledgeId 变化（组件复用到
+// 另一篇知识）时重置，避免自身 emit 引发的 props 更新把 liked 打回页面初始值。
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -27,13 +27,11 @@ const count = ref(props.count)
 const pending = ref(false)
 
 watch(
-  () => [props.initial, props.count],
+  () => props.knowledgeId,
   () => {
-    // 详情页重载时同步；pending 期间忽略（乐观更新中的 emit 同步不应重置本地状态）
-    if (!pending.value) {
-      liked.value = props.initial
-      count.value = props.count
-    }
+    // 切换知识时同步新的初始状态（同篇知识的点赞交互不触发本 watch）
+    liked.value = props.initial
+    count.value = props.count
   },
 )
 
@@ -46,7 +44,7 @@ async function handleClick(): Promise<void> {
   pending.value = true
   const next = !liked.value
   const nextCount = count.value + (next ? 1 : -1)
-  // 乐观更新：失败回滚；确认/回滚后统一 emit 同步父组件计数
+  // 乐观更新：失败回滚；确认/回滚后统一 emit 同步父组件计数（以服务端返回为准）
   liked.value = next
   count.value = nextCount
   try {

@@ -35,6 +35,11 @@ http.interceptors.response.use(
     const config = axiosError.config
     const status = axiosError.response?.status
     const url = config?.url ?? ''
+    // 优先透出后端业务消息（ApiResponse.message），页面 catch 后展示友好提示而非原始 Axios 状态码文案
+    const bizMessage = axiosError.response?.data?.message
+    if (bizMessage && !bizMessage.includes('Request failed')) {
+      axiosError.message = bizMessage
+    }
     // 仅对需要认证的接口做单飞刷新；/auth/ 路径豁免（FRONTEND.md §8.1）
     if (status === 401 && config && !url.startsWith('/auth/') && !retried.has(config)) {
       retried.add(config)

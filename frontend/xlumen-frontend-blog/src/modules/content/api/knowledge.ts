@@ -31,9 +31,7 @@ export interface KnowledgeListItem {
   kbId: string | null
   /** 所属目录 ID（0=库根）。 */
   directoryId: string | null
-  category: string
   tags: string[]
-  visibility: number
   status: number
   version: string
   viewCount: number
@@ -49,9 +47,7 @@ export interface KnowledgeDetail {
   kbId: string | null
   /** 所属目录 ID（0=库根）。 */
   directoryId: string | null
-  category: string
   tags: string[]
-  visibility: number
   status: number
   version: string
   viewCount: number
@@ -59,15 +55,13 @@ export interface KnowledgeDetail {
   updatedAt: string
 }
 
-/** 保存入参（创建/更新共用）。 */
+/** 保存入参（创建/更新共用；归属库必填，决策 D16）。 */
 export interface KnowledgeSavePayload {
   title: string
   content: string
-  category: string
   tags: string[]
-  visibility: number
   /** 所属知识库 ID（必填：后端 CreateKnowledgeDTO kbId 非空，决策 D16）。 */
-  kbId?: string | null
+  kbId: string
   /** 所属目录 ID（可空=库根）。 */
   directoryId?: string | null
 }
@@ -75,7 +69,6 @@ export interface KnowledgeSavePayload {
 /** 列表查询参数。 */
 export interface KnowledgeListQuery {
   status?: number
-  visibility?: number
   keyword?: string
   /** 知识库筛选（可空=全部）。 */
   kbId?: string
@@ -100,9 +93,7 @@ interface RawKnowledge {
   content: string
   kbId: string | null
   directoryId: string | null
-  category: string
   tags: string[]
-  visibility: number
   status: number
   version: string
   viewCount: string
@@ -121,11 +112,12 @@ function normalize(raw: RawKnowledge): KnowledgeDetail {
 }
 
 /** 分页查询作者知识列表（F-0301）。 */
-export async function fetchKnowledges(query: KnowledgeListQuery): Promise<PageResult<KnowledgeListItem>> {
-  const { data } = await http.get<ApiResponse<{ total: string; pageNo: string; pageSize: string; records: RawKnowledge[] }>>(
-    '/knowledge',
-    { params: query },
-  )
+export async function fetchKnowledges(
+  query: KnowledgeListQuery,
+): Promise<PageResult<KnowledgeListItem>> {
+  const { data } = await http.get<
+    ApiResponse<{ total: string; pageNo: string; pageSize: string; records: RawKnowledge[] }>
+  >('/knowledge', { params: query })
   const body = unwrap(data)
   return {
     total: Number(body.total),
@@ -136,9 +128,7 @@ export async function fetchKnowledges(query: KnowledgeListQuery): Promise<PageRe
       title: r.title,
       kbId: r.kbId ?? null,
       directoryId: r.directoryId ?? null,
-      category: r.category,
       tags: r.tags,
-      visibility: r.visibility,
       status: r.status,
       version: r.version,
       viewCount: Number(r.viewCount),
@@ -160,19 +150,26 @@ export async function createKnowledge(payload: KnowledgeSavePayload): Promise<Kn
 }
 
 /** 更新知识（F-0301）：携带版本号乐观锁，冲突 409。 */
-export async function updateKnowledge(id: string, version: string, payload: KnowledgeSavePayload): Promise<KnowledgeDetail> {
-  const { data } = await http.put<ApiResponse<RawKnowledge>>(`/knowledge/${id}`, { ...payload, version })
+export async function updateKnowledge(
+  id: string,
+  version: string,
+  payload: KnowledgeSavePayload,
+): Promise<KnowledgeDetail> {
+  const { data } = await http.put<ApiResponse<RawKnowledge>>(`/knowledge/${id}`, {
+    ...payload,
+    version,
+  })
   return normalize(unwrap(data))
 }
 
-/** 草稿自动保存（F-0302）：knowledgeId 为空新建草稿；服务端幂等去重。 */
+/** 草稿自动保存（F-0302）：knowledgeId 为空新建草稿（需 kbId 归属，决策 D16）；服务端幂等去重。 */
 export async function autosaveDraft(payload: {
   knowledgeId?: string
   title?: string
   content?: string
-  category?: string
+  kbId?: string | null
+  directoryId?: string | null
   tags?: string[]
-  visibility?: number
   version?: string
 }): Promise<KnowledgeDetail> {
   const { data } = await http.post<ApiResponse<RawKnowledge>>('/knowledge/autosave', payload)
