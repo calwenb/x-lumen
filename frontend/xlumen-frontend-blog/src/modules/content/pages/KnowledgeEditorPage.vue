@@ -4,6 +4,7 @@
 // 显式保存走乐观锁版本校验，409 冲突提供恢复入口；草稿态可提交审核（F-0902，BUG-5 入口补全）。
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 import {
   autosaveDraft,
@@ -205,10 +206,12 @@ async function handleSubmitReview(): Promise<void> {
   submitting.value = true
   try {
     await createReview(knowledgeId.value)
-    saveMessage.value = '已提交审核'
     status.value = 3
+    // BUG-005：提交成功后给出明确反馈并返回知识列表
+    ElMessage.success('已提交审核')
+    await router.push({ name: 'knowledge-list' })
   } catch (error) {
-    saveMessage.value = error instanceof Error ? error.message : '提交审核失败'
+    ElMessage.error(error instanceof Error ? error.message : '提交审核失败')
   } finally {
     submitting.value = false
   }

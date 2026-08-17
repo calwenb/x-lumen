@@ -73,11 +73,10 @@ export async function fetchMessages(conversationId: string): Promise<ChatMessage
   }))
 }
 
-/** 新建会话（F-0701）。 */
+/** 新建会话（F-0701）：后端 data 直接返回 id 字符串（Long 全局序列化为 String）。 */
 export async function createConversation(title: string): Promise<{ id: string }> {
-  const { data } = await http.post<ApiResponse<{ id: string }>>('/chat/conversations', { title })
-  const result = unwrap(data)
-  return { id: String(result.id) }
+  const { data } = await http.post<ApiResponse<string>>('/chat/conversations', { title })
+  return { id: String(unwrap(data)) }
 }
 
 /** 检索范围（KB-3，决策 D13）：kbId 限定单库；allVisible 是否检索全部可见库（默认 true）。 */

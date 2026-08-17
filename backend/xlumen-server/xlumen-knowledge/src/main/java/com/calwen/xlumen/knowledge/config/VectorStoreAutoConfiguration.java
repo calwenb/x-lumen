@@ -12,10 +12,11 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
- * 向量库装配决策（F-0402）：启动时探测 Milvus /healthz 可达性（超时 2s），
+ * 向量库装配决策（F-0402）：启动时探测 Milvus REST v2 可达性（超时 2s），
  * 可达启用 MilvusVectorStore，否则降级 NoopVectorStore（@Bean + if/else 选择）。
  *
  * @author calwen
@@ -47,13 +48,21 @@ public class VectorStoreAutoConfiguration {
         return new NoopVectorStore();
     }
 
-    /** 探测 Milvus /healthz：200 视为可达，其余或异常视为不可达。 */
+    /**
+     * 探测 Milvus REST v2（BUG-004）：/healthz 位于 metrics 端口（9091），打 19530 恒 404 导致恒降级；
+     * 改打与 MilvusVectorStore 数据面一致的 REST v2 端点 collections/has（集合存在与否均返回 200），
+     * 200 视为可达，其余或异常视为不可达。
+     */
     private boolean milvusReachable(MilvusProperties props) {
         try {
+            String body = "{\"collectionName\":\"" + MilvusVectorStore.COLLECTION_NAME
+                    + "\",\"dbName\":\"" + props.getMilvusDatabase() + "\"}";
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://" + props.getMilvusHost() + ":" + props.getMilvusPort() + "/healthz"))
+                    .uri(URI.create("http://" + props.getMilvusHost() + ":" + props.getMilvusPort()
+                            + "/v2/vectordb/collections/has"))
                     .timeout(PROBE_TIMEOUT)
-                    .GET()
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                     .build();
             HttpClient client = HttpClient.newBuilder().connectTimeout(PROBE_TIMEOUT).build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

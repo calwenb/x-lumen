@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/16 16:30
+> 更新日期：2026/8/17
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -171,6 +171,7 @@
 | KB-4 | 知识平台化重构·阶段 4：前端页面（导航头/知识流 B01/库页 B20/发现页 B21/库管理 B22/回收站 B16/发布弹窗/AI 对话范围选择器，F-0208/F-0308） | PROTOTYPE §7 | 已完成（ZCode，2026-08-14 18:50） | ZCode |
 | KB-5 | 知识平台化重构·阶段 5：存量迁移执行与数据校验（默认公开库/默认私有库、category 平铺目录） | 方案 §10 | 已完成（ZCode，2026-08-14 18:55） | ZCode |
 | KB-6 | 知识平台化重构·阶段 6：全量验收（完成定义 PRODUCT §12 + 双前端 E2E + 文档一致性核验） | PRODUCT §12 | 已认领（ZCode） | ZCode |
+| OPT-1 | 技术优化：AI 线程模型评估虚拟线程。主项：chatStreamExecutor（SSE 长连接占平台线程、池满 CallerRuns 堵容器线程）改 `Executors.newVirtualThreadPerTaskExecutor()` + Semaphore 并发上限（限流与线程模型解耦）。候选点：aiTaskExecutor（AI 任务，需保留并发上限）、indexExecutor（发布即索引 embedding/Milvus 阻塞 I/O）、OpenAICompatibleProvider/EmbeddingServiceImpl/MilvusVectorStore 的 JDK HttpClient 阻塞调用；SseService 心跳与 PublishJob 为固定间隔单线程调度，不适用 | 2026-08-17 线程模型评估（chatStreamExecutor 结构性短板，详见会话记录） | 待认领 | |
 
 > 说明：数据分析与知识保鲜（模块十一）为 V2/V3 功能，平台治理（模块十二）MVP 部分（空间设置/审计）随 M13 落地、其余 V2/V3 随依赖模块迭代实现；阶段调整须经 CHANGELOG 记录（决策 D10）。
 > **KB-1~KB-6 实施细则以 `tmp/code-implementation-plan.md` 为准**（含 KB-1 改名 file-level 清单、KB-2 DDL、KB-3 组件清单、各阶段验收门槛与提交边界）。
@@ -186,6 +187,7 @@
 
 > 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/17 15:10 · ZCode：**BUG-002~005 统一修复（用户要求全部修复）**--①chat 流式整段渲染：`ChatPage`/`KnowledgeQaDialog` 占位消息改 `reactive()` 代理修复 onChunk 改裸对象绕过响应式；②审核 AI 审校问题恒 0：`ReviewServiceImpl` 懒回填 `backfillAiResult()`（getReview/reject 挂接，任务 COMPLETED 即写回 `ai_result_json`）；③RAG 检索恒空：Milvus 探测改打 REST v2 `collections/has`（原 /healthz 恒 404 致永远 Noop 降级）+ 索引流水线新增 `reindex()` 强制重建通道 + publishing 新增 `POST /api/v1/knowledge/{knowledgeId}/reindex` 补跑端点；④提交审核不跳转：编辑页成功回调补 ElMessage + 返回知识列表；验证：mvn verify（knowledge/publishing 及依赖链）BUILD SUCCESS、前端 typecheck/lint/test 全绿、Milvus 探测端点实测 200；**遗留运维**：后端重启生效 + 存量 3 版本逐篇 reindex 补跑（详见 CHANGELOG）
 - 2026/8/16 16:30 · ZCode：**全功能测试缺陷统一修复（BUG-3~BUG-11 + 观察项，用户要求全部修复）**——①content→knowledge 依赖 DAG 落地（content pom 补 knowledge 依赖）；②知识创建/自动保存归属校验（`KnowledgeApi.checkOwnership` 拦截无归属/跨空间孤儿）+ 列表过滤回收站；③提交审核/发布归属兜底；④知识数统计闭环（`KnowledgeCountApi` 反向 SPI，库/目录计数不再恒 0）；⑤异常映射 405/400 + JSON 解析原因透出；⑥detail 点赞状态修复（workspaceId 传 null 致 liked 恒 false）；⑦编辑器重做（库/目录选择器 + 提交审核入口 + AI 写作选库）；⑧http 错误消息透出；⑨session 持久化（刷新不登出，refreshToken 不落盘）；⑩点赞状态以服务端为准；⑪新增并执行 `sql/migration/86_orphan_cleanup.sql`（清理 4 条 kb_id=0 孤儿知识及测试互动数据）；验证：mvn verify/前端门禁全绿 + API 链路与浏览器回归通过（详见 CHANGELOG）
 - 2026/8/14 18:55 · ZCode：**KB-5 存量迁移收尾 + KB-6 全量验收通过**——迁移数据校验全绿（10 篇知识 0 孤儿、公开库 8 篇、category 平铺目录 5 个、回收站 0）；Redis 缓存清空（旧键族 xlumen:* 全删）；全仓「文章」措辞清零核验（仅剩 ai 模块写作素材语义与历史说明，合法）；全量验收：后端 mvn verify BUILD SUCCESS（10 测试）、前端 typecheck/lint/stylelint/test/build 全绿、双前端 E2E 9/9（blog 8 + admin 1）、PRODUCT §12 完成定义 8 条逐条核对通过、文档一致性核验（REST 路径/表结构/回收站聚合层说明补充 BACKEND §10）；知识平台化重构 KB-1~KB-6 全部交付
 - 2026/8/14 18:50 · ZCode：**KB-4 前端页面交付**——①导航头（App.vue）：品牌 xLumen + 主导航 知识/知识库/AI小光 三项（分类/标签/关于移除，决策 D16）+ 搜索 + 登录态「＋写知识」CTA + 头像下拉（我的知识库/创作中心/回收站/退出）；②B01 首页知识流重写（HomePage.vue）：左栏库导航（登录态库切换器/目录树/标签云，未登录说明卡）+ 右栏知识列表（库 badge 跳库页、🔒 私有标记、范围标题、排序说明、骨架/空态/分页）；③B20 库页/B21 发现页/B22 库管理（knowledge 模块三新页）：库头部+目录树+库内列表、我的知识库卡片墙、卡片墙+编辑/可见性切换/删除二次确认+目录管理；④B16 回收站（RecycleBinPage）：全部/知识库/知识三 Tab + 30 天提示 + 恢复/彻底删除二次确认 + 剩余天数；⑤B13 发布弹窗：删可见性选择（决策 D16），显示知识归属库/目录（反查名称），未归属禁用发布；⑥B00 对话页+知识问答弹窗：检索范围选择器（全部可见库/指定知识库，kbId/allVisible 参数）；⑦B03 搜索页目录化：删分类筛选改知识库+目录筛选、卡片 kbName 徽标；⑧E2E 更新（首页标题「全部知识库」、头像菜单登出、标签筛选替代分类）并全绿（blog 8 + admin 1）；浏览器实测 7 页截图存档 .browser-check/kb4-*.png；KB-5 待认领

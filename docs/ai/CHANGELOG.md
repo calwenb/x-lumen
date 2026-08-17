@@ -11,6 +11,18 @@
 
 说明：变更内容写模块/文件/接口级别的主要变更；影响文档列受影响的文档相对路径；决策摘要列相关决策编号（D1~D17，见 STATUS.md 第 8 节），无则写"无"；时间精确到分钟（yyyy/M/d HH:mm）。
 
+## 2026/8/17 16:30 · ZCode（小光回答 Markdown 渲染）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/17 16:30 | 小光 AI 助理回答改用 Markdown 渲染（人设约定「对话输出始终用 Markdown」，此前聊天气泡为纯文本插值展示）：`ChatPage.vue`（会话页）与 `KnowledgeQaDialog.vue`（知识级问答弹窗）的助手消息改 `v-html` 渲染 `renderMarkdown()`（复用 publishing 模块 markdown-it + DOMPurify 清洗工具，与 AiWritePage/知识详情同一通道），用户消息保持纯文本插值防 XSS；流式打字光标移出文本节点为兄弟元素；新增气泡内 `markdown-body` scoped `:deep()` 样式（段落/标题/列表/代码块/行内代码/引用/表格/链接，与设计 token 对齐），Markdown 消息体取消 `pre-wrap`。验证：`pnpm lint`（0 errors）+ `pnpm typecheck` 双前端全绿 | CHANGELOG | 无 |
+
+## 2026/8/17 15:10 · ZCode（BUG-002~005 统一修复）
+
+| 时间 | 变更内容 | 影响文档 | 决策摘要 |
+| --- | --- | --- | --- |
+| 2026/8/17 15:10 | 用户要求统一修复 BUGS.md 全部待修项（BUG-002/003/004/005）：**BUG-002 前端 chat 流式整段渲染**--根因 = `ChatPage.vue`/`KnowledgeQaDialog.vue` 的 `onChunk` 回调直接修改 push 前的裸对象引用（`assistant.content += text`），绕过 Vue 3 Proxy 响应式，流式期间零重渲染、`sending=false` 时一次性渲染全量文本；修复 = 占位消息改 `reactive()` 代理后再入列（两处组件同修，chat.ts/sse.ts/后端 SSE 复核均正常）。**BUG-003 审核中心 AI 审校问题恒 0**--根因 = `pub_review.ai_result_json` 仅 `approve()` 回填，PENDING 恒 NULL；修复 = `ReviewServiceImpl` 新增懒回填 `backfillAiResult()`（读取/驳回时若结果为空且任务 COMPLETED 则拉取 `ai_task.result_json` 持久化，幂等、失败不阻断），`getReview()`/`reject()` 挂接，符合「AI 不反向依赖调用方、调用方轮询」既有架构（前端零改动）。**BUG-004 RAG 检索恒空（Milvus 探测缺陷 + 存量补跑）**--①探测改打 `POST {host}:19530/v2/vectordb/collections/has`（与 MilvusVectorStore 数据面同协议，实测 200+code:0；原 `/healthz` 在 9091 打 19530 恒 404 永远降级 Noop）；②`MilvusProperties` 绑定修复：`.env` 经 `spring.config.import` 导入的 `XLUMEN_MILVUS_*` 为大写字面属性，Boot Binder 不做 relaxed binding，字段从未取到 .env 值（一直用写死默认 IP）；改 `@Value("${XLUMEN_MILVUS_HOST:159.75.6.183}")` 显式占位符绑定（对齐 AiProperties/KnowledgeAiProperties 既有模式）；②索引流水线重构：步骤 4-9 提取 `writeIndex()`，新增 `reindex()` 强制重建通道（先失效旧切片/版本绕过 `alreadyIndexed` hash 幂等命中）；③`KnowledgeApi` 新增 `reindexKnowledge`/`getIndexStatus` 跨模块通道，publishing 新增 `IndexBackfillService` + `POST /api/v1/knowledge/{knowledgeId}/reindex` 补跑端点（仅已发布知识，正文经 ContentApi 获取，落 publishing 因 knowledge 模块依赖方向受限无法自取正文）。**BUG-005 提交审核后不跳转**--`KnowledgeEditorPage.handleSubmitReview` 成功分支补 `ElMessage.success` + `router.push({name:'knowledge-list'})`，失败分支改 `ElMessage.error`（与列表页一致）。**验证**：`mvn -pl xlumen-knowledge,xlumen-publishing -am clean verify` BUILD SUCCESS（JDK25）、前端 typecheck/lint（0 errors）/test 全绿、Milvus 探测端点实测可达。**遗留运维事项**（记 BUGS.md 清单备注）：后端需重启使探测修复生效；存量 3 版本索引需逐篇调用 reindex 端点补跑向量 | BUGS、STATUS | D13、D16 |
+
 ## 2026/8/16 16:30 · ZCode（全功能测试缺陷统一修复）
 
 | 时间 | 变更内容 | 影响文档 | 决策摘要 |

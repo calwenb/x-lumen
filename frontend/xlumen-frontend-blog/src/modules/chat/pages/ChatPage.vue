@@ -2,7 +2,7 @@
 // AI 助理（B00/D01 合一，F-0701）：左侧会话列表（登录可见）+ 右侧消息流（流式打字 + 引用溯源）。
 // 访客无会话功能，单次问答；登录用户可选会话/新对话，回答附带 [序号] 引用卡片。
 // KB-3 检索范围选择器（决策 D13/D16）：全部可见库（默认）/ 指定知识库；访客隐藏选择器默认全部。
-import { nextTick, onMounted, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref } from 'vue'
 import { Plus, UserFilled } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
@@ -13,6 +13,7 @@ import {
   streamChat,
 } from '@/modules/chat/api/chat'
 import { fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
+import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import CitationCard from '@/modules/chat/components/CitationCard.vue'
 
 import type { ChatMessage, Citation, Conversation } from '@/modules/chat/api/chat'
@@ -124,13 +125,14 @@ async function send(): Promise<void> {
     citations: [],
     streaming: false,
   })
-  const assistant: ChatItem = {
+  // BUG-002：须用 reactive 代理后再入列，onChunk 持有的引用才能触发流式重渲染
+  const assistant = reactive<ChatItem>({
     id: `local-${Date.now()}-assistant`,
     role: 'assistant',
     content: '',
     citations: [],
     streaming: true,
-  }
+  })
   messages.value.push(assistant)
   sending.value = true
   scrollToBottom()
@@ -249,12 +251,19 @@ onMounted(() => {
           </div>
           <div class="chat-message__bubble">
             <p v-if="message.role === 'assistant'" class="chat-message__name">小光</p>
-            <p class="chat-message__text">
-              {{ message.content
-              }}<span v-if="message.streaming" class="chat-message__cursor" aria-hidden="true"
-                >▍</span
-              >
-            </p>
+            <!-- 小光回答走 Markdown 渲染（DOMPurify 清洗，人设约定）；用户消息保持纯文本防 XSS -->
+            <div
+              v-if="message.role === 'assistant'"
+              class="chat-message__text chat-message__text--md markdown-body"
+              v-html="renderMarkdown(message.content)"
+            ></div>
+            <p v-else class="chat-message__text">{{ message.content }}</p>
+            <span
+              v-if="message.streaming"
+              class="chat-message__cursor"
+              aria-hidden="true"
+              >▍</span
+            >
             <div v-if="message.citations.length > 0" class="chat-message__citations">
               <CitationCard
                 v-for="(citation, index) in message.citations"
@@ -488,6 +497,83 @@ onMounted(() => {
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+
+/* Markdown 消息体：块级标签自带分段，取消 pre-wrap 避免标签间换行被重复渲染 */
+.chat-message__text--md {
+  white-space: normal;
+}
+
+.markdown-body :deep(p) {
+  margin: 0.6em 0;
+}
+
+.markdown-body :deep(p:first-child),
+.markdown-body :deep(p:last-child) {
+  margin-block: 0;
+}
+
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  margin: 1.1em 0 0.5em;
+}
+
+.markdown-body :deep(h2:first-child),
+.markdown-body :deep(h3:first-child),
+.markdown-body :deep(h4:first-child) {
+  margin-top: 0;
+}
+
+.markdown-body :deep(a) {
+  color: var(--xl-color-primary);
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  margin: 0.6em 0;
+  padding-left: 1.6em;
+}
+
+.markdown-body :deep(code) {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--xl-border) 70%, transparent);
+  font-family: var(--xl-font-mono);
+  font-size: 13px;
+}
+
+.markdown-body :deep(pre) {
+  margin: 0.6em 0;
+  padding: var(--xl-space-3);
+  overflow-x: auto;
+  border-radius: 8px;
+  background: var(--xl-text-primary);
+  color: #fff;
+}
+
+.markdown-body :deep(pre code) {
+  padding: 0;
+  background: none;
+  color: inherit;
+}
+
+.markdown-body :deep(blockquote) {
+  margin: 0.6em 0;
+  padding: 0 var(--xl-space-3);
+  border-left: 3px solid var(--xl-color-primary);
+  color: var(--xl-text-secondary);
+}
+
+.markdown-body :deep(table) {
+  margin: 0.6em 0;
+  border-collapse: collapse;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  padding: 4px 10px;
+  border: 1px solid var(--xl-border);
 }
 
 .chat-message__cursor {

@@ -20,12 +20,20 @@ import java.util.List;
 public interface KnowledgeApi {
 
     /**
-     * 索引知识（F-0402）：切片→Embedding→写新索引→检索校验→激活→清理旧版本。
+     * 索引知识（F-0402）：切片->Embedding->写新索引->检索校验->激活->清理旧版本。
      * 异步流水线失败不影响发布（索引状态可查询重试）。
      *
      * @param request 索引请求（含正文快照）
      */
     void indexKnowledge(IndexRequestDTO request);
+
+    /**
+     * 强制重建索引（BUG-004 存量补跑）：失效旧切片/版本后绕过幂等检查重跑流水线，
+     * 供 publishing 补跑入口编排（knowledge 模块依赖方向受限无法自取正文，正文由调用方携带）。
+     *
+     * @param request 索引请求（含正文快照）
+     */
+    void reindexKnowledge(IndexRequestDTO request);
 
     /**
      * 移除知识索引（删除/下架同步出索引，F-0402）。
@@ -34,6 +42,15 @@ public interface KnowledgeApi {
      * @param knowledgeId 知识 ID
      */
     void removeKnowledge(Long workspaceId, Long knowledgeId);
+
+    /**
+     * 查询知识当前索引状态（F-0404）：供 publishing 补跑入口回显结果；未索引返回 null。
+     *
+     * @param workspaceId 工作空间 ID
+     * @param knowledgeId 知识 ID
+     * @return 索引状态或 null
+     */
+    com.calwen.xlumen.knowledge.vo.IndexStatusVO getIndexStatus(Long workspaceId, Long knowledgeId);
 
     /**
      * 向量检索（F-0407 按可见库集合过滤，决策 D13）。

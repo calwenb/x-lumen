@@ -82,6 +82,26 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
             log.info("正文未变化，跳过重复索引：knowledgeId={}, version={}", request.getKnowledgeId(), request.getVersion());
             return;
         }
+        writeIndex(request, chunks, contentHash);
+    }
+
+    @Override
+    public void reindex(IndexRequestDTO request) {
+        String content = clean(request.getContent());
+        if (StrUtil.isBlank(content)) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "正文为空，无法重建索引");
+        }
+        List<Chunk> chunks = chunkingService.chunk(content);
+        if (chunks.isEmpty()) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "切片为空，无法重建索引");
+        }
+        // 强制重建：先失效既有切片/版本（绕过 alreadyIndexed 的 hash 幂等命中），再走完整流水线
+        invalidateExisting(request.getWorkspaceId(), request.getKnowledgeId());
+        writeIndex(request, chunks, sha256(content));
+    }
+
+    /** 步骤 4-9：写 ACTIVATING 版本->Embedding->清旧向量->写新向量->切片元数据->激活->旧版本 STALE。 */
+    private void writeIndex(IndexRequestDTO request, List<Chunk> chunks, String contentHash) {
         // 4. 写 ACTIVATING 版本记录（占位，失败可追溯）
         KbIndexVersionEntity versionEntity = createActivatingVersion(request);
         try {
@@ -91,7 +111,7 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
             for (int i = 0; i < chunks.size(); i++) {
                 chunks.get(i).setEmbedding(embeddings.get(i));
             }
-            // 6. 清旧版本向量 → 写新版本向量（delete 按知识全量删除，等价于删除旧版本向量）
+            // 6. 清旧版本向量 -> 写新版本向量（delete 按知识全量删除，等价于删除旧版本向量）
             vectorStore.delete(request.getWorkspaceId(), request.getKnowledgeId());
             vectorStore.index(request, chunks);
             // 7. 写切片元数据
@@ -104,6 +124,21 @@ public class IndexPipelineServiceImpl implements IndexPipelineService {
             markFailed(versionEntity, e);
             throw e;
         }
+    }
+
+    /** 强制重建前清理：既有切片置失效、非 STALE 版本全部置 STALE（与 removeKnowledge 的元数据清理一致）。 */
+    private void invalidateExisting(Long workspaceId, Long knowledgeId) {
+        kbChunkMapper.update(null, Wrappers.<KbChunkEntity>lambdaUpdate()
+                .eq(KbChunkEntity::getWorkspaceId, workspaceId)
+                .eq(KbChunkEntity::getKnowledgeId, knowledgeId)
+                .eq(KbChunkEntity::getStatus, 1)
+                .set(KbChunkEntity::getStatus, 0));
+        kbIndexVersionMapper.update(null, Wrappers.<KbIndexVersionEntity>lambdaUpdate()
+                .eq(KbIndexVersionEntity::getWorkspaceId, workspaceId)
+                .eq(KbIndexVersionEntity::getKnowledgeId, knowledgeId)
+                .ne(KbIndexVersionEntity::getStatus, STATUS_STALE)
+                .set(KbIndexVersionEntity::getStatus, STATUS_STALE)
+                .set(KbIndexVersionEntity::getUpdatedAt, LocalDateTime.now()));
     }
 
     @Override

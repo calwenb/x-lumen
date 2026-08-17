@@ -13,11 +13,19 @@ import com.calwen.xlumen.knowledge.vo.IndexStatusVO;
 public interface IndexPipelineService {
 
     /**
-     * 索引知识（F-0402）：清洗→切片→幂等检查→Embedding→写向量→激活→旧版本清理。
+     * 索引知识（F-0402）：清洗->切片->幂等检查->Embedding->写向量->激活->旧版本清理。
      *
      * @param request 索引请求（含正文快照）
      */
     void indexKnowledge(IndexRequestDTO request);
+
+    /**
+     * 强制重建索引（BUG-004 存量补跑）：先将已有切片置失效、版本置 STALE，再绕过内容 hash
+     * 幂等检查走完整流水线。用于 Noop 降级期间落库的历史版本补写向量（向量库不可用时抛错回滚状态可重试）。
+     *
+     * @param request 索引请求（含正文快照）
+     */
+    void reindex(IndexRequestDTO request);
 
     /**
      * 移除知识索引（删除/下架同步出索引，F-0402）。

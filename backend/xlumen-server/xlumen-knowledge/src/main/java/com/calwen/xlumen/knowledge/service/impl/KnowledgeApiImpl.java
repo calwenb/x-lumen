@@ -47,8 +47,18 @@ public class KnowledgeApiImpl implements KnowledgeApi {
     }
 
     @Override
+    public void reindexKnowledge(IndexRequestDTO request) {
+        indexPipelineService.reindex(request);
+    }
+
+    @Override
     public void removeKnowledge(Long workspaceId, Long knowledgeId) {
         indexPipelineService.removeKnowledge(workspaceId, knowledgeId);
+    }
+
+    @Override
+    public com.calwen.xlumen.knowledge.vo.IndexStatusVO getIndexStatus(Long workspaceId, Long knowledgeId) {
+        return indexPipelineService.getIndexStatus(workspaceId, knowledgeId);
     }
 
     @Override

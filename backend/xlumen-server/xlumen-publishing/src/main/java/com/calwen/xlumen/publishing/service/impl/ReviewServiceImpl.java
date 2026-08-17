@@ -137,8 +137,11 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ReviewVO getReview(Long reviewId) {
-        return toVO(getOwnedReview(reviewId));
+        ReviewEntity review = getOwnedReview(reviewId);
+        backfillAiResult(review);
+        return toVO(review);
     }
 
     @Override
@@ -169,6 +172,7 @@ public class ReviewServiceImpl implements ReviewService {
         if (!dto.getVersion().equals(review.getVersion())) {
             throw new BizException(ErrorCode.CONFLICT, "版本冲突");
         }
+        backfillAiResult(review);
         review.setStatus(STATUS_REJECTED);
         review.setRejectReason(dto.getReason().trim());
         review.setRejectPosition(dto.getPosition().trim());
@@ -189,6 +193,27 @@ public class ReviewServiceImpl implements ReviewService {
             throw new BizException(ErrorCode.NOT_FOUND, "审核记录不存在");
         }
         return review;
+    }
+
+    /**
+     * BUG-003 懒回填：审核记录尚未落 AI 结果且任务已完成时，从 ai_task 拉取快照写回 pub_review.ai_result_json。
+     * 幂等（已有结果即跳过）；回填失败不阻断读取/流转，下次访问重试。
+     */
+    private void backfillAiResult(ReviewEntity review) {
+        if (review.getAiTaskId() == null || StrUtil.isNotBlank(review.getAiResultJson())) {
+            return;
+        }
+        try {
+            TaskResultVO task = aiApi.queryTask(WorkspaceContext.workspaceId(), review.getAiTaskId());
+            if (task != null && AiTaskStatus.COMPLETED.name().equals(task.getStatus())
+                    && StrUtil.isNotBlank(task.getResultJson())) {
+                review.setAiResultJson(task.getResultJson());
+                review.setUpdatedAt(LocalDateTime.now());
+                reviewMapper.updateById(review);
+            }
+        } catch (Exception ignored) {
+            // AI 任务查询异常不阻断审核详情/驳回主流程
+        }
     }
 
     /** 知识状态迁移：重读当前版本做乐观锁，失败抛 409。 */

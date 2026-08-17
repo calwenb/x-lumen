@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // 知识级问答弹窗（D02）：单篇问答流式打字 + 引用溯源；详情页集成点。
 // KB-3 检索范围（决策 D13）：默认锁定当前知识所属库（传 kbId），可切换「全部可见库」。
-import { nextTick, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
 
 import { streamKnowledgeAsk } from '@/modules/chat/api/chat'
+import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import CitationCard from '@/modules/chat/components/CitationCard.vue'
 
 import type { Citation } from '@/modules/chat/api/chat'
@@ -54,13 +55,14 @@ async function send(): Promise<void> {
     citations: [],
     streaming: false,
   })
-  const assistant: QaMessage = {
+  // BUG-002：须用 reactive 代理后再入列，onChunk 持有的引用才能触发流式重渲染
+  const assistant = reactive<QaMessage>({
     id: `qa-${Date.now()}-assistant`,
     role: 'assistant',
     content: '',
     citations: [],
     streaming: true,
-  }
+  })
   messages.value.push(assistant)
   asking.value = true
   scrollToBottom()
@@ -136,12 +138,19 @@ async function send(): Promise<void> {
           :class="`qa-message--${message.role}`"
         >
           <div class="qa-message__bubble">
-            <p class="qa-message__text">
-              {{ message.content
-              }}<span v-if="message.streaming" class="qa-message__cursor" aria-hidden="true"
-                >▍</span
-              >
-            </p>
+            <!-- 小光回答走 Markdown 渲染（DOMPurify 清洗，人设约定）；用户消息保持纯文本防 XSS -->
+            <div
+              v-if="message.role === 'assistant'"
+              class="qa-message__text qa-message__text--md markdown-body"
+              v-html="renderMarkdown(message.content)"
+            ></div>
+            <p v-else class="qa-message__text">{{ message.content }}</p>
+            <span
+              v-if="message.streaming"
+              class="qa-message__cursor"
+              aria-hidden="true"
+              >▍</span
+            >
             <div v-if="message.citations.length > 0" class="qa-message__citations">
               <CitationCard
                 v-for="(citation, index) in message.citations"
@@ -278,6 +287,66 @@ async function send(): Promise<void> {
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+
+/* Markdown 消息体：块级标签自带分段，取消 pre-wrap 避免标签间换行被重复渲染 */
+.qa-message__text--md {
+  white-space: normal;
+}
+
+.markdown-body :deep(p) {
+  margin: 0.6em 0;
+}
+
+.markdown-body :deep(p:first-child),
+.markdown-body :deep(p:last-child) {
+  margin-block: 0;
+}
+
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  margin: 1.1em 0 0.5em;
+}
+
+.markdown-body :deep(a) {
+  color: var(--xl-color-primary);
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  margin: 0.6em 0;
+  padding-left: 1.6em;
+}
+
+.markdown-body :deep(code) {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--xl-border) 70%, transparent);
+  font-family: var(--xl-font-mono);
+  font-size: 13px;
+}
+
+.markdown-body :deep(pre) {
+  margin: 0.6em 0;
+  padding: var(--xl-space-3);
+  overflow-x: auto;
+  border-radius: 8px;
+  background: var(--xl-text-primary);
+  color: #fff;
+}
+
+.markdown-body :deep(pre code) {
+  padding: 0;
+  background: none;
+  color: inherit;
+}
+
+.markdown-body :deep(blockquote) {
+  margin: 0.6em 0;
+  padding: 0 var(--xl-space-3);
+  border-left: 3px solid var(--xl-color-primary);
+  color: var(--xl-text-secondary);
 }
 
 .qa-message__cursor {
