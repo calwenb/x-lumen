@@ -14,21 +14,26 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 
 ## 已实现
 
-文档体系（本次交付，7 份）：
+文档体系 9 份（产品/全局/后端/前端/原型 + AI 协作三件套 STATUS/CHANGELOG/BUGS），各文档职责与权威范围见 [全局文档](docs/global/GLOBAL.md) 第 2 节。
 
 - [产品设计文档](docs/product/PRODUCT.md)：产品定位、13 模块 82 项功能总表（唯一功能事实源，MVP 39 / V2 31 / V3 12）、行为规则与完成定义
 - [全局文档](docs/global/GLOBAL.md)：总体架构、仓库结构、技术基线、本地运行与质量门禁命令
-- [后端开发文档](docs/backend/BACKEND.md)：7 个 Maven 模块（按未来微服务边界合并，决策 D15）、SQL 编号契约（00~95）、MVC 规则与编码规范
+- [后端开发文档](docs/backend/BACKEND.md)：7 个 Maven 模块、SQL 编号契约（00~95）、MVC 规则与编码规范
 - [前端开发文档](docs/frontend/FRONTEND.md)：blog/admin 双应用工程结构、状态管理、接口与视觉规范
 - [前端原型文档](docs/frontend/PROTOTYPE.md)：B/A/D 页面清单、线框与交互流程
-- [开发状态与交接文档](docs/ai/STATUS.md)：强制工作流、待办 M01~M13、文档一致性核验、决策 D1~D17
+- [开发状态与交接文档](docs/ai/STATUS.md)：强制工作流、能力基线、待办认领、决策 D1~D17
 - [AI 变更日志](docs/ai/CHANGELOG.md)：按会话倒序的变更记录
+- [待修问题清单](docs/ai/BUGS.md)：用户自测缺陷记录（仅按明确要求修复）
 
-代码骨架（M01）已交付（2026-08-12）：后端 7 个 Maven 模块骨架与配置体系、SQL 初始化链路、前端 blog/admin 双应用脚手架，详见 [开发状态与交接文档](docs/ai/STATUS.md) 第 3 节；业务模块（M02~M13）按 STATUS.md 第 5 节待办实施。
+代码交付状态（进行中状态以 [开发状态与交接文档](docs/ai/STATUS.md) 为准）：
+
+- **MVP 全部 13 个里程碑已交付并通过运行时验证**（2026-08-12 ~ 2026-08-13）：代码骨架、身份与多租户、博客公开页、内容管理、RAG 索引（Noop 降级待 Milvus 环境）、AI 基座/创作/对话/增值、审核发布、读者纠错、管理后台与热点缓存。
+- **知识平台化重构 KB-1~KB-6 已全部交付**（2026-08-14）：文章->知识全量改名、知识库/目录/回收站、库级可见性与跨空间公开读、前端 8 屏、存量迁移与全量验收。
+- 2026-08-16/17：全功能测试缺陷（BUG-3~11）与 BUG-002~005 统一修复、小光回答 Markdown 渲染；当前待办仅 OPT-1（虚拟线程评估）待认领。
 
 ## 本地快速开始
 
-### 6.1 前置环境
+### 前置环境
 
 | 工具 | 版本要求 | 用途 |
 | --- | --- | --- |
@@ -41,7 +46,7 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 
 > 本机不安装 yq：初始化脚本直接解析 `.env`（真实参数为 `-EnvFile`）。MySQL、Redis、RocketMQ、Milvus、MinIO 使用现有服务器实例，需提前取得地址、账号、密码与访问白名单。
 
-### 6.2 配置准备
+### 配置准备
 
 复制模板并填写真实值（`.env` 已加入 `.gitignore`，真实值不得提交；Windows 下必须以 UTF-8 无 BOM 编码保存）：
 
@@ -51,7 +56,7 @@ Copy-Item backend/xlumen-server/config/.env.example backend/xlumen-server/config
 
 `application.yml` 通过 `spring.config.import` 加载 `.env`（`optional:file:config/.env[.properties]`，含 `../config/`、`backend/xlumen-server/config/` 相对路径回退），变量统一 `${XLUMEN_XXX}` 命名（如 `XLUMEN_DB_URL`、`XLUMEN_JWT_SECRET`、`XLUMEN_BAILIAN_API_KEY`）。
 
-### 6.3 初始化数据库
+### 初始化数据库
 
 ```powershell
 ./scripts/init-db.ps1 -EnvFile "./backend/xlumen-server/config/.env"
@@ -59,7 +64,7 @@ Copy-Item backend/xlumen-server/config/.env.example backend/xlumen-server/config
 
 `init-db.ps1` 真实参数为 `-EnvFile`（默认 `../backend/xlumen-server/config/.env`）：解析 `.env` 的 `KEY=VALUE` 行（跳过 `#` 注释），读取 `XLUMEN_DB_URL` / `XLUMEN_DB_USERNAME` / `XLUMEN_DB_PASSWORD`，按编号顺序执行 `backend/xlumen-server/sql/init/` 全部脚本。
 
-### 6.4 启动后端
+### 启动后端
 
 ```powershell
 cd backend/xlumen-server
@@ -74,7 +79,7 @@ mvn -pl xlumen-boot -am package -DskipTests
 java -jar xlumen-boot/target/xlumen-boot-*.jar
 ```
 
-### 6.5 启动前端
+### 启动前端
 
 仓库根目录执行（根 package.json 通过 `pnpm --dir` 代理两应用脚本；首次运行先在根目录 `pnpm install`）：
 

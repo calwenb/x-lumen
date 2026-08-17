@@ -16,135 +16,45 @@
 
 **MVP 全部 13 个里程碑已完成**：M01~M03（骨架/身份/公开页）、M04（内容管理）、M05（RAG 索引）、M06+M12（AI 基座）、M07（AI 创作）、M08（AI 对话）、M09（AI 增值）、M10（审核发布）、M11（读者纠错）、M13（管理后台）与 F-1301 缓存均已交付并通过运行时验证。**待环境**：本机 Docker/Milvus 未安装，向量检索以 NoopVectorStore 降级运行（索引元数据正常，向量写入待 Milvus 就绪后自动生效）。
 
-**知识平台化重构（2026-08-14 定稿）**：产品定位升级为多用户知识平台（决策 D9 改写），知识库→目录→知识三层体系 + 库级可见性 + 文章概念统一改名知识，设计经用户逐项确认（完整方案 `tmp/knowledge-redesign-proposal.md`）；**阶段 0 文档先行已交付**（PRODUCT/PROTOTYPE/BACKEND/FRONTEND/GLOBAL/README 同步）；阶段 1（概念改名）~阶段 6（验收）见第 5 节待办，按认领机制逐项实施。
+**知识平台化重构（2026-08-14 定稿，KB-1~KB-6 已全部交付）**：产品定位升级为多用户知识平台（决策 D9 改写），知识库->目录->知识三层体系 + 库级可见性 + 文章概念统一改名知识，设计经用户逐项确认（方案已随实施完成删除，可经 git 历史回溯）；阶段 0 文档先行与阶段 1~6 实施均已完成（2026-08-14），交付摘要见第 3 节，明细见 CHANGELOG 对应条目。
 
 > 里程碑完成标准：代码骨架以 M01 定义为准（目录结构与 docs 一致，决策 D7）；MVP 模块以功能总表对应功能验收（完成定义见 PRODUCT.md 第 12 节）。
 
-## 3. 已完成
+## 3. 已完成（能力基线摘要）
 
-### 知识平台化重构 · 阶段 0 文档先行（2026-08-14）
+> 本节只保留能力基线与踩坑备忘，供快速了解当前系统形态；各次交付的完整改动与验证记录以 [CHANGELOG.md](./CHANGELOG.md) 对应日期条目为准，不再在此重复展开。
 
-- 产品级变更设计定稿并经用户逐项确认（9 项决策 + 4 个开放问题全部拍板：cnt_article 物理改名 cnt_knowledge、/api/v1/articles 全改 /api/v1/knowledge 不保留兼容期、私有库授权 V2、回收站 30 天）。
-- PRODUCT.md 重写：定位/角色/三主线闭环/状态机可见性规则/功能总表 73→77 项（MVP 39/V2 26/V3 12；新增 F-0106/F-0208/F-0308/F-0309、F-0305 提 MVP、F-0307 重定义、模块四更名知识索引（RAG））/行为规则（库级可见性/单库单目录/删库回收站/排序规则）/安全（库级越权）。
-- PROTOTYPE.md 重写：导航头「知识/知识库/AI小光」+ 8 屏原型（B01 知识流身份聚合、B20 库页、B21 发现页、B22 库管理、B16 回收站提 MVP、B10/B13 发布选库目录）+ 页面清单调整。
-- BACKEND.md：模块职责（knowledge 扩库/目录管理、content→knowledge 依赖方向）、核心表清单（cnt_knowledge/kb_knowledge_base/kb_directory/kb_kb_grant）、§13 重写按库切分检索、REST 路径规范（/api/v1/knowledge，决策 D17）。
-- FRONTEND.md：模块映射与知识措辞；GLOBAL.md/README.md：定位、模块概览、统计同步；tmp/knowledge-redesign-proposal.md 评审稿存档（状态已确认）。
-- 验证：docs 全仓「文章」措辞清零核验（仅保留历史 CHANGELOG 条目与兼容说明）；**代码未动**（阶段 1 起实施）。
+| 交付 | 日期 | 摘要 |
+| --- | --- | --- |
+| M01 代码骨架 | 2026-08-12 | 后端 7 个 Maven 模块与 common 基座、.env 配置体系（D8）、SQL 初始化链路（00~95 编号契约 + init-db.ps1）、blog/admin 双应用脚手架（pnpm Monorepo） |
+| M02 身份与多租户 | 2026-08-12 | JWT 15 分钟短时效 + 刷新令牌 SHA-256 哈希存 Redis、GETDEL 轮换防重放；注册即建空间（D9）；五角色；双层校验（接口权限 + Service 资源归属） |
+| M03 博客公开页 | 2026-08-12 | 公开列表/详情（markdown-it + DOMPurify XSS 清洗、标题目录导航）、搜索/标签 JSON_TABLE 聚合、评论/点赞幂等切换、阅读量 Redis 24h 防刷 |
+| M04 内容管理 | 2026-08-13 | 知识 CRUD + 自动保存幂等 + version 乐观锁（冲突 409）；8 状态机一次定版（构思->草稿->待审核->已通过->定时发布->已发布->更新中->已下架） |
+| M05 RAG 索引 | 2026-08-13 | 发布即索引流水线：事件->清洗->切片->Embedding（百炼 text-embedding-v4，32 片/批）->Milvus/Noop 写向量->kb_chunk 元数据 + kb_index_version 版本管理 |
+| M06+M12 AI 基座 | 2026-08-13 | ModelGateway（供应商解析 + 熔断 + 连通性测试）、AiTask 任务底座（幂等键 + Redis 进度 + SSE 事件）、场景模型配置（ai_scene_config 优先、.env 回退） |
+| M07 AI 创作 | 2026-08-13 | AI 写作（topic/draft/content 至少一项 -> 结构化 title+content）、审校异源校验（写作/审校模型不同源，结构化 severity/position/evidence/suggestion） |
+| M08 AI 对话 | 2026-08-13 | 小光（D14）SSE 流式问答（chunk/citation/done 协议）、会话/消息落库、知识级问答、引用溯源 |
+| M09 AI 增值 | 2026-08-13 | 摘要/SEO 结构化输出（Schema 校验）落库 ai_enhance_result |
+| M10 审核发布 | 2026-08-13 | 双闸门（AI 审校关联 + 人工审核，force_review 可关）、驳回三要素 + 版本 409、立即/定时发布（pub_release 幂等 + PublishJob 每分钟扫描） |
+| M11 读者纠错 | 2026-08-13 | 匿名提交（permitAll）+ 追踪号 + Redis 限流（同 IP 每分钟 1 条，超限 429） |
+| M13+F-1301 后台与缓存 | 2026-08-13 | admin 四页（登录/空间设置/模型配置/审计日志）、热点缓存 cache-aside（空值哨兵 + 降级回源） |
+| KB-1~KB-6 知识平台化重构 | 2026-08-14 | 文章->知识全仓改名（D17，不保留兼容期）、kb_knowledge_base/kb_directory 三层体系（单库单目录）、库级可见性 + 可见库集合单一推导（VisibilityService）、回收站（publishing 聚合，30 天，recycle_status 独立软删列）、跨空间公开读、前端 8 屏（B01/B16/B20~B22 等）、存量迁移与全量验收 |
+| 后端风格优化 | 2026-08-14 | PageQueryDTO 分页基类、@PathVariable/@RequestParam 隐式命名（根 POM -parameters）、业务内部类清零、Controller 参数全 DTO 封装 |
+| 全功能测试缺陷修复 | 2026-08-16 | BUG-3~11：content->knowledge 依赖 DAG 补齐、知识归属/孤儿防线（checkOwnership + 86_orphan_cleanup.sql 清理 4 条 kb_id=0 孤儿）、库/目录计数闭环（KnowledgeCountApi 反向 SPI）、编辑器重做（选库/目录/提交审核入口）、session 持久化（refreshToken 不落盘）、点赞状态以服务端为准、http 错误消息透出 |
+| BUG-002~005 修复 | 2026-08-17 | chat 流式整段渲染（占位消息改 reactive 代理）、审核 AI 结果懒回填（backfillAiResult）、RAG 检索恒空（Milvus 探测改 REST v2 collections/has + reindex 强制重建 + 补跑端点）、提交审核后跳转 |
+| 小光 Markdown 渲染 | 2026-08-17 | ChatPage/KnowledgeQaDialog 助手消息改 v-html 渲染 renderMarkdown()（复用 markdown-it + DOMPurify 通道），用户消息保持纯文本插值防 XSS |
 
-### 知识平台化重构 · 方案自检修正与 V2 规划扩充（2026-08-14 16:59）
+踩坑备忘（实现时易复犯，背景详见 CHANGELOG 对应条目）：
 
-- 统计数修正：功能总表实际阶段分布 MVP 39 / V2 26 / V3 12（原标注 41/24 为沿用旧文档错误基数，脚本核验后修正 PRODUCT/GLOBAL/README/BACKEND/CHANGELOG 共 6 处）。
-- 用户确认三项实现决策：回收站用独立软删列（`recycle_status`+`deleted_at`，不扩 8 状态机）；目录按名称排序走数据库排序规则（废弃拼音首字母与 `sort_key` 列）；热点知识缓存按库/目录维度分片（`xlumen:knowledge:{kbId}:{directoryId}`）。
-- 补实现约束：删库/删知识连带取消定时发布任务并作废审核；可见库集合推导收敛为单一服务能力（公开读/搜索/RAG 检索/列表共用，F-0407 单一实现）；多用户跨空间公开读写入 BACKEND §9。
-- B01 定稿：左栏导航 + 右栏主内容（用户要求内容放右边）；未选目录按更新时间倒序、选中目录后按创建时间正序。
-- V2 规划扩充（用户确认）：F-0209 作者主页、F-0210 URL slug、F-0211 知识库关注、F-0310 知识置顶、F-0311 回收站批量、F-1101 统计按库维度；发现页（B21）默认最近更新倒序；PROTOTYPE 新增 B24 作者主页；总表 77→82 项（MVP 39 / V2 31 / V3 12）。
-
-### 后端代码风格优化（2026-08-14）
-
-- 移除 19 处冗余 `@PathVariable("xxx")` 显式名称（参数名与路径模板一致时省略，根 POM 显式开启 `-parameters` 保障隐式名称绑定；`ChatController` 会话消息接口路径模板 `{id}` 改名 `{conversationId}` 与参数名对齐）。
-- 新增分页基类 `common.dto.PageQueryDTO`（`pageNo=1`/`pageSize=20` 默认值，`@SuperBuilder` 继承）：`ArticleListQueryDTO`、publishing/content 两处 `ArticleQueryDTO`、`CommentQueryDTO` 全部继承（公开文章列表默认 pageSize 由 10 统一为 20，前端始终显式传参无实际影响）。
-- 业务类内部类清零：`WorkspaceContext.Scope`→`WorkspaceScope`、`RefreshTokenService.RefreshSession`→`RefreshSession`、`ModelGatewayImpl.CircuitState`、`ChunkingServiceImpl.Section` 全部提取为顶层类型。
-- 继续落实参数封装（2026-08-14 下午）：Controller 全部去除 `@RequestParam`——新增 `ReviewQueryDTO`（status 筛选）、`AuditLogQueryDTO`（action 筛选）继承 `PageQueryDTO`；`ReleaseController` 直接绑定基类 `PageQueryDTO`；`ArticleController.list` 复用 `ArticleListQueryDTO` 自动绑定（删除手动 builder）；对应 Service 接口与实现签名统一改 DTO 入参。
-- 验证：`mvn verify` BUILD SUCCESS（新增 ArticleQueryDTOTest 4 个断言分页继承默认值）；运行时 API 全端点验证隐式绑定（详情/评论/阅读量/文章 CRUD/任务/审核/模型配置 `{scene}`）+ DTO 查询参数绑定（审核列表/发布列表/审计日志/文章列表，非法参数类型 400）；双前端 E2E 9 通过（blog 8 + admin 1）。
-
-### 内容管理与可见性（M04，2026-08-13）
-
-- F-0301/F-0302 文章 CRUD 与自动保存：cnt_article 新增 version 列（乐观锁插件 @Version）+ idx_article_ws_status 索引；创建/编辑/删除（仅构思/草稿）；自动保存幂等（content 不变跳过写库）；版本校验冲突 409；8 状态机一次定版（1 构思 2 草稿 3 待审核 4 已通过 5 定时发布 6 已发布 7 更新中 8 已下架，存量迁移 1→2、2→6、3→8）。
-- F-0307 可见性：公开 1/私有 0，私有文章仅作者可见；公开读过滤 status=6。
-- 前端：B10 文章列表页（筛选/分页）、B11 编辑器（MarkdownEditor + useAutoSave 自动保存）、工作台页；路由 /studio/articles、/studio/editor。
-- 验证：接口全链路（创建/编辑/删除/自动保存幂等/私有过滤）+ 门禁全绿。
-
-### AI 基座（M06+M12，2026-08-13）
-
-- F-0501 模型网关：ModelGateway 供应商解析（BAILIAN/DEEPSEEK/MOCK）+ 场景模型（表 ai_scene_config 优先、.env 回退）+ 简单熔断（连续 5 次失败熔断 60s）+ 连通性测试接口。
-- F-0502 任务底座：ai_task（幂等键去重）+ AiTaskDispatcher 线程池 + 进度 Redis（xlumen:task:progress）+ SSE 任务事件；F-0503 流式 SSE（SseService chunk/citation/done 协议）。
-- 关键修复：Spring Boot 4 的 Binder 对 .env 导入的大写属性不做 relaxed binding，AiProperties/KnowledgeAiProperties 全部字段改 @Value 显式占位符绑定（数据库连接正常证明 .env 加载成功，是 @ConfigurationProperties 绑定失效）。
-- 验证：AI 审校任务真实百炼调用 COMPLETED（结构化输出过 Schema 校验）、SSE 流式对话、任务幂等。
-
-### AI 创作（M07，2026-08-13）
-
-- F-0601 写作：topic/draft/content 至少一项，异步任务返回 taskId，结构化 title+content 输出。
-- F-0604 审校：写作与审校模型异源校验（checkHeterogeneous，默认写作 qwen-plus / 审校 qwen-max），结构化 severity/position/evidence/suggestion 输出。
-- 前端：B11 编辑器集成 AiWritePage 写作面板（/studio/writing）、审校结果展示。
-- 验证：写作/审校任务真实百炼 COMPLETED；审校检测出错别字（“开发着”）。
-
-### RAG 索引（M05，2026-08-13）
-
-- F-0402~F-0405 发布即索引（决策 D13）：ArticlePublishedEvent（正文快照）→ 清洗 → 切片 → 幂等（SHA-256）→ Embedding（百炼 text-embedding-v4，32 片/批）→ Milvus/Noop 写向量 → kb_chunk 元数据 + kb_index_version（ACTIVATING→ACTIVE→STALE）。
-- F-0407 检索：Embedding(query) → VectorStore.search；Noop 降级返回空列表（明确无向量依据，不产生无依据输出）。
-- 降级：Milvus 不可达自动 NoopVectorStore（启动 WARN + 元数据照常落库），待 Docker/Milvus 就绪自动生效。
-- 验证：发布→索引 ACTIVE（2 chunk）、定时发布→索引 ACTIVE（1 chunk）、检索接口、索引状态接口。
-
-### AI 对话（M08，2026-08-13）
-
-- F-0701 通用问答（SSE 流式）：chat_conversation/chat_message 落库，chunk/citation/done 事件协议，AI 统一称呼“小光”（决策 D14）。
-- F-0702 文章级问答：单篇检索限定；Noop 降级时明确回复“未检索到任何相关文章证据”。
-- 前端：B00 菜单入口 /studio/chat、ArticleQaDialog 详情页问答弹窗、CitationCard 引用卡片。
-- 验证：SSE 流式全链路（会话自动创建/消息持久化/引用溯源事件）。
-
-### AI 增值（M09，2026-08-13）
-
-- F-0801 摘要 / F-0802 SEO：结构化输出（summary / title+keywords+description）落库 ai_enhance_result。
-- 前端：EnhancePanel 编辑器增值面板。
-- 验证：摘要与 SEO 真实百炼调用成功并落库。
-
-### 审核与发布（M10，2026-08-13）
-
-- F-0902/F-0903 审核：双闸门（AI 审校结果关联 + 人工审核；force_review=0 自动通过人工闸门）；驳回三要素（原因/位置/期望）必填 + 版本校验 409。
-- F-0904/F-0905 发布：立即/定时发布（pub_release 幂等键 + uk=article_id+version）；定时发布 PublishJob 每分钟扫描到期执行；发布成功发 ArticlePublishedEvent + 写审计 ARTICLE_PUBLISH + 失效热点缓存。
-- 前端：B12 审核中心（正文/AI 审校并排 + 驳回表单）、B13 发布页（立即/定时 + 二次确认）。
-- 验证：提交→AI 审校→approve→发布→索引→公开可见全链路；reject 回草稿；定时发布 13:42:22 到期自动执行。
-
-### 读者纠错（M11，2026-08-13）
-
-- F-1001 匿名纠错反馈：无需登录提交（SecurityConfig permitAll），返回追踪号；Redis 限流防刷（同 IP 每分钟 1 条，超限 429）。
-- 前端：FeedbackDialog 详情页纠错弹窗。
-- 验证：匿名提交成功 + 追踪号；连续提交第 2 次起 429。
-
-### 缓存与管理后台（F-1301 + M13，2026-08-13）
-
-- F-1301 热点缓存：公开详情 cache-aside（xlumen:article:{ws}:{id}，5min TTL + 空值哨兵）、分类/标签聚合缓存、发布/下架 evictAll；Redis 异常降级回源。
-- M13 管理后台：工作区设置（intro/forceReview，审计 WORKSPACE_SETTINGS_UPDATE）、模型场景配置（增改查 + 连通性测试）、审计日志查询；admin 前端（LoginPage/WorkspaceSettingsPage/ModelConfigPage/AuditLogPage + 侧边栏布局）。
-- 验证：详情/分类/标签缓存键写入 Redis；模型配置更新 + 真实 ping 百炼；审计日志记录 ARTICLE_PUBLISH/REVIEW_REJECT/WORKSPACE_SETTINGS_UPDATE。
-
-### 博客前台公开页（M03，2026-08-12）
-
-- F-0201 文章列表/详情：公开读走默认空间（决策 D9，identity WorkspaceApi 提供）；列表卡片含阅读时间/互动统计（批量 IN 统计防 N+1）；详情为已发布正文快照，Markdown 渲染（markdown-it + DOMPurify XSS 清洗，PRODUCT §10）+ 标题目录导航；草稿/私有文章 404（F-0307 由 ContentApi 保证）。
-- F-0202 分类/标签/搜索：cnt_article.category + tags(JSON) 公开筛选维度；关键词标题/摘要 LIKE（MVP 先 LIKE 后 ES）；分类 GROUP BY 聚合、标签 JSON_TABLE 聚合；搜索页组合筛选 + 命中高亮 + 服务端分页；顶栏搜索框。
-- F-0203 评论/点赞/阅读量：eng_comment（parent_id 回复 + user_name 冗余）/ eng_like（唯一键幂等切换）；评论与点赞需登录（SecurityConfig 仅 GET 与 view POST 匿名）；阅读量 Redis setIfAbsent 24h 防刷 + cnt_article.view_count 原子自增。
-- 页面：B01 首页（文章卡片 + 分类/标签侧栏 + 骨架/空态/重试）、B02 详情（目录导航 + Markdown 渲染 + 点赞/评论）、B03 搜索（组合筛选 + 高亮 + 分页）、B04 关于；App 顶栏升级（导航 + 搜索框）。
-- **雪花 ID 精度修复（重要）**：1.9e18 超出 JS Number 安全整数（2^53），后端 Long 统一序列化为 String（JacksonConfig，Boot 4 = Jackson 3 tools.jackson 包 + JacksonModule），前端 ID 类字段 string、统计数值 API 层 Number() 还原（BACKEND.md §5.3 已约定）。
-- 表结构：40_content.sql（cnt_article，公开读字段 M03 落地）/ 60_engagement.sql（eng_comment/eng_like）入库；测试文章（公开 3 + 草稿 1 + 私有 1）为验证数据，不进脚本。
-- 验证：接口全链路（列表/搜索/分类/标签/详情/404 过滤/阅读量防刷/评论/点赞切换/未登录 401/落库核实）+ E2E 8 个全部通过（public 6 + auth 1 + smoke 1）+ 前端 lint/stylelint/typecheck/test/build 全绿 + 浏览器实测（.browser-check/m03-*.png）。
-
-### 身份与多租户（M02，2026-08-12）
-
-- F-0101 注册/登录/登出/刷新：JWT（HS256，15 分钟短时效）+ 刷新令牌（SHA-256 哈希存 Redis、GETDEL 轮换防重放、登出撤销）；注册即建空间（决策 D9）；登录失败统一提示 + 300ms 统一延迟防枚举（PRODUCT §10）。
-- F-0102 工作空间：MVP 单空间（iam_workspace + iam_workspace_member，注册自动创建默认空间与 OWNER 绑定）；`GET /api/v1/workspaces/current` 返回空间与角色。
-- F-0103 多角色：iam_role 五种角色（OWNER/ADMIN/EDITOR/AUTHOR/VISITOR）入库，JWT roles claim → ROLE_xxx 权限映射。
-- F-0104 双层校验：SecurityConfig 接口权限（方法级安全）+ Service 资源归属校验（WorkspaceContext 来自 JWT claims，不信任 URL/Header/DTO）；401/403 统一 JSON。
-- 表结构：10_identity.sql 新增 iam_role/iam_user/iam_workspace/iam_workspace_member（已执行入库）。
-- 前端（blog）：B08 登录/注册页（/login）、会话 Store 原子操作（establish/clear/setTokens）、401 单飞刷新（/auth/ 豁免）、路由守卫（guest/authenticated meta）、顶栏登录态与登出。
-- 验证：后端单测 3 个通过（注册冲突/登录失败/令牌签发）+ 接口全链路（注册/登录/刷新轮换/重放 401/登出撤销 401/未认证 401）+ E2E 2 个通过（冒烟、注册登录登出流程）+ 浏览器实测（.browser-check/m02-*.png 截图）；前端 lint/stylelint/typecheck/test/build 全绿。
-
-### 代码骨架（M01，2026-08-12）
-
-- `backend/xlumen-server/`：父 POM + 7 个 Maven 模块（common 基座：ApiResponse/ErrorCode/BizException/RequestId(+Filter)/WorkspaceContext；identity/content/publishing/knowledge/ai 按 BACKEND §4 依赖 DAG；boot 装配：启动类、全局异常处理、MyBatis-Plus 分页、系统探活接口 `/api/v1/system/ping`）。
-- 配置体系（决策 D8）：`config/.env.example`（模板入库）+ `config/.env`（真实值不入库）；`application.yml` 经 `spring.config.import` 加载 .env；`logback-spring.xml` Appender 显式激活、级别经 `XLUMEN_LOG_LEVEL` 控制。
-- SQL 初始化链路：`sql/init/` 00_database.sql ~ 80_ai_enhance.sql（编号契约，90/95 随 V2/V3 创建）+ `scripts/init-db.ps1`（`-EnvFile` 解析 .env，`-Reset` 限 xlumen_dev/xlumen_test 且二次确认）。
-- 前端：pnpm Monorepo 双应用 `frontend/xlumen-frontend-blog`（:5173，10 个模块目录）与 `frontend/xlumen-frontend-admin`（:5174，5 个模块目录），Vue 3.5 + Vite 7 + TS strict（含 noUncheckedIndexedAccess 等四项）+ Element Plus + Pinia 3 + ESLint 9 flat + Stylelint + Vitest + Playwright，Design Token 落地 styles/tokens.css。
-- 根工程：`package.json`（`pnpm --dir` 代理 lint/stylelint/typecheck/test/build/test:e2e）、`pnpm-workspace.yaml`、`.editorconfig`、`.gitignore`。
-- 验证：后端 `mvn -T 1C clean verify` BUILD SUCCESS（JDK 25 / Spring Boot 4.1.0）；应用启动连接 MySQL（159.75.6.183，库 xlumen_dev 已初始化）与 Redis，`/actuator/health` UP；前端 lint/stylelint/typecheck/test/build 全部通过，E2E 冒烟见 CHANGELOG。
-
-### 文档体系（2026-08-12 交付）
-
-- `docs/ai/STATUS.md`（本文件）、`docs/ai/CHANGELOG.md`、`docs/product/PRODUCT.md`。
-- `docs/global/GLOBAL.md`、`docs/backend/BACKEND.md`、`docs/frontend/FRONTEND.md`、`docs/frontend/PROTOTYPE.md`、根 `README.md`。
-- 交付规范：新文档以实际链路为准；功能清单唯一来源为 PRODUCT.md 第 5 节总表，其他文档引用不复制。
+- **Spring Boot 4 relaxed binding 失效**：.env 经 spring.config.import 导入的大写属性不做宽松绑定，配置属性类（AiProperties/MilvusProperties 等）必须用 @Value 显式占位符绑定。
+- **雪花 ID 精度**：Long 超出 JS Number 安全整数，后端全局序列化为 String（BACKEND §5.3 已约定）。
+- **Milvus 探测**：必须打 REST v2 `collections/has` 接口（/healthz 恒 404 曾导致永远 Noop 降级）；本机 Docker/Milvus 未装，向量以 NoopVectorStore 降级运行（索引元数据正常）。
+- **环境**：编译前 JAVA_HOME 必须指向 JDK 25；本地 Redis 需无密码启动（.env 密码为空）。
+- **遗留运维**：Milvus 就绪后，存量已发布知识需逐篇调用 reindex 补跑端点重建向量（BUG-004 收尾事项，见 BUGS.md 备注）。
 
 ## 4. 进行中
 
-知识平台化重构：阶段 0 已交付，阶段 1~6 待认领（见第 5 节待办表末尾）。
+无进行中任务。待办仅 OPT-1（AI 线程模型虚拟线程评估，待认领，见第 5 节）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
 
 ## 5. 待办
 
@@ -165,16 +75,16 @@
 | M11 | 互动与反馈闭环（F-1001） | PRODUCT §5 模块十 | 已完成 | Qoder 代理 |
 | M12 | 技术基础设施（F-1301~F-1303） | PRODUCT §5 模块十三 | 已完成（F-1301 缓存；F-1302/F-1303 门禁/备份随工程实践落地） | Qoder 代理 |
 | M13 | 管理后台配置管理（空间/成员/角色 F-1201、审计 F-1202、模型配置 F-0501/F-0502 管理面） | PROTOTYPE A01~A04 | 已完成 | Qoder 代理 |
-| KB-1 | 知识平台化重构·阶段 1：概念改名「文章→知识」（全仓 grep 清单：文档/后端类名接口事件审计常量/前端路由文案组件/测试断言；物理表 cnt_article→cnt_knowledge、路径 /api/v1/articles→/api/v1/knowledge；纯改名零行为变更） | tmp/knowledge-redesign-proposal.md §3/§12 | 已完成（ZCode，2026-08-14 17:40） | ZCode |
+| KB-1 | 知识平台化重构·阶段 1：概念改名「文章→知识」（全仓 grep 清单：文档/后端类名接口事件审计常量/前端路由文案组件/测试断言；物理表 cnt_article→cnt_knowledge、路径 /api/v1/articles→/api/v1/knowledge；纯改名零行为变更） | 方案 §3/§12（已随实施完成删除） | 已完成（ZCode，2026-08-14 17:40） | ZCode |
 | KB-2 | 知识平台化重构·阶段 2：数据模型（kb_knowledge_base/kb_directory 新表 DDL、cnt_knowledge 改造 kb_id/directory_id 去 category/visibility、kb_chunk/kb_index_version 加 kb_id、迁移脚本幂等） | 方案 §5/§10、BACKEND §7/§8 | 已完成（ZCode，2026-08-14 18:05） | ZCode |
 | KB-3 | 知识平台化重构·阶段 3：后端能力（库 CRUD/回收站/目录树/排序/可见性过滤/检索按库/发布选库，F-0305/F-0307/F-0308/F-0309/F-0407） | 方案 §7/§9、BACKEND §13 | 已完成（ZCode，2026-08-14 18:30） | ZCode |
 | KB-4 | 知识平台化重构·阶段 4：前端页面（导航头/知识流 B01/库页 B20/发现页 B21/库管理 B22/回收站 B16/发布弹窗/AI 对话范围选择器，F-0208/F-0308） | PROTOTYPE §7 | 已完成（ZCode，2026-08-14 18:50） | ZCode |
 | KB-5 | 知识平台化重构·阶段 5：存量迁移执行与数据校验（默认公开库/默认私有库、category 平铺目录） | 方案 §10 | 已完成（ZCode，2026-08-14 18:55） | ZCode |
-| KB-6 | 知识平台化重构·阶段 6：全量验收（完成定义 PRODUCT §12 + 双前端 E2E + 文档一致性核验） | PRODUCT §12 | 已认领（ZCode） | ZCode |
+| KB-6 | 知识平台化重构·阶段 6：全量验收（完成定义 PRODUCT §12 + 双前端 E2E + 文档一致性核验） | PRODUCT §12 | 已完成（ZCode，2026-08-14 18:55） | ZCode |
 | OPT-1 | 技术优化：AI 线程模型评估虚拟线程。主项：chatStreamExecutor（SSE 长连接占平台线程、池满 CallerRuns 堵容器线程）改 `Executors.newVirtualThreadPerTaskExecutor()` + Semaphore 并发上限（限流与线程模型解耦）。候选点：aiTaskExecutor（AI 任务，需保留并发上限）、indexExecutor（发布即索引 embedding/Milvus 阻塞 I/O）、OpenAICompatibleProvider/EmbeddingServiceImpl/MilvusVectorStore 的 JDK HttpClient 阻塞调用；SseService 心跳与 PublishJob 为固定间隔单线程调度，不适用 | 2026-08-17 线程模型评估（chatStreamExecutor 结构性短板，详见会话记录） | 待认领 | |
 
 > 说明：数据分析与知识保鲜（模块十一）为 V2/V3 功能，平台治理（模块十二）MVP 部分（空间设置/审计）随 M13 落地、其余 V2/V3 随依赖模块迭代实现；阶段调整须经 CHANGELOG 记录（决策 D10）。
-> **KB-1~KB-6 实施细则以 `tmp/code-implementation-plan.md` 为准**（含 KB-1 改名 file-level 清单、KB-2 DDL、KB-3 组件清单、各阶段验收门槛与提交边界）。
+> KB-1~KB-6 已全部交付验收；实施细则方案（`knowledge-redesign-proposal.md` / `code-implementation-plan.md`）已随实施完成删除，需要时经 git 历史回溯。
 
 ## 6. 文档一致性核验
 
@@ -185,31 +95,12 @@
 
 ## 7. 最近变更
 
-> 历史记录已按用户要求清空，CHANGELOG 仅保留最新一条；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
+> 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/17 17:30 · ZCode：**文档体系治理（评审问题六项统一修复）**--①README「已实现」刷新（原文误标 M02~M13 待办，与实际进度矛盾）、补 BUGS/design 导航、去除快速开始 6.x 编号残留；②STATUS §3 压缩为能力基线摘要 + 踩坑备忘（历史细节归 CHANGELOG，消除双份记史）、§4/§5 修正 KB-6 状态与进行中描述、§7 精简为最近 3 条并补 8/17 16:30 遗漏条目；③GLOBAL §2 导航表补 BUGS.md、§4 结构树同步（docs 9 份 + design/）；④tmp/ 两份方案转正迁入 docs/design/（STATUS 引用同步，CHANGELOG 历史条目按记录原貌保留）；⑤CHANGELOG 条目格式改版为「标题 + 元信息行 + 正文」并全量转换存量条目；⑥BACKEND §10 补 reindex 端点。纯文档变更，代码零改动。（后续同日按用户要求：design/ 两份方案已随实施完成删除，引用同步清理。）
+- 2026/8/17 16:30 · ZCode：**小光回答 Markdown 渲染**--ChatPage/KnowledgeQaDialog 助手消息改 v-html 渲染 renderMarkdown()（复用 markdown-it + DOMPurify 通道，与知识详情同一渲染管线），用户消息保持纯文本插值防 XSS；流式打字光标移出文本节点为兄弟元素；新增气泡内 markdown-body scoped 样式对齐设计 token。验证：pnpm lint + typecheck 双前端全绿。
 - 2026/8/17 15:10 · ZCode：**BUG-002~005 统一修复（用户要求全部修复）**--①chat 流式整段渲染：`ChatPage`/`KnowledgeQaDialog` 占位消息改 `reactive()` 代理修复 onChunk 改裸对象绕过响应式；②审核 AI 审校问题恒 0：`ReviewServiceImpl` 懒回填 `backfillAiResult()`（getReview/reject 挂接，任务 COMPLETED 即写回 `ai_result_json`）；③RAG 检索恒空：Milvus 探测改打 REST v2 `collections/has`（原 /healthz 恒 404 致永远 Noop 降级）+ 索引流水线新增 `reindex()` 强制重建通道 + publishing 新增 `POST /api/v1/knowledge/{knowledgeId}/reindex` 补跑端点；④提交审核不跳转：编辑页成功回调补 ElMessage + 返回知识列表；验证：mvn verify（knowledge/publishing 及依赖链）BUILD SUCCESS、前端 typecheck/lint/test 全绿、Milvus 探测端点实测 200；**遗留运维**：后端重启生效 + 存量 3 版本逐篇 reindex 补跑（详见 CHANGELOG）
 - 2026/8/16 16:30 · ZCode：**全功能测试缺陷统一修复（BUG-3~BUG-11 + 观察项，用户要求全部修复）**——①content→knowledge 依赖 DAG 落地（content pom 补 knowledge 依赖）；②知识创建/自动保存归属校验（`KnowledgeApi.checkOwnership` 拦截无归属/跨空间孤儿）+ 列表过滤回收站；③提交审核/发布归属兜底；④知识数统计闭环（`KnowledgeCountApi` 反向 SPI，库/目录计数不再恒 0）；⑤异常映射 405/400 + JSON 解析原因透出；⑥detail 点赞状态修复（workspaceId 传 null 致 liked 恒 false）；⑦编辑器重做（库/目录选择器 + 提交审核入口 + AI 写作选库）；⑧http 错误消息透出；⑨session 持久化（刷新不登出，refreshToken 不落盘）；⑩点赞状态以服务端为准；⑪新增并执行 `sql/migration/86_orphan_cleanup.sql`（清理 4 条 kb_id=0 孤儿知识及测试互动数据）；验证：mvn verify/前端门禁全绿 + API 链路与浏览器回归通过（详见 CHANGELOG）
-- 2026/8/14 18:55 · ZCode：**KB-5 存量迁移收尾 + KB-6 全量验收通过**——迁移数据校验全绿（10 篇知识 0 孤儿、公开库 8 篇、category 平铺目录 5 个、回收站 0）；Redis 缓存清空（旧键族 xlumen:* 全删）；全仓「文章」措辞清零核验（仅剩 ai 模块写作素材语义与历史说明，合法）；全量验收：后端 mvn verify BUILD SUCCESS（10 测试）、前端 typecheck/lint/stylelint/test/build 全绿、双前端 E2E 9/9（blog 8 + admin 1）、PRODUCT §12 完成定义 8 条逐条核对通过、文档一致性核验（REST 路径/表结构/回收站聚合层说明补充 BACKEND §10）；知识平台化重构 KB-1~KB-6 全部交付
-- 2026/8/14 18:50 · ZCode：**KB-4 前端页面交付**——①导航头（App.vue）：品牌 xLumen + 主导航 知识/知识库/AI小光 三项（分类/标签/关于移除，决策 D16）+ 搜索 + 登录态「＋写知识」CTA + 头像下拉（我的知识库/创作中心/回收站/退出）；②B01 首页知识流重写（HomePage.vue）：左栏库导航（登录态库切换器/目录树/标签云，未登录说明卡）+ 右栏知识列表（库 badge 跳库页、🔒 私有标记、范围标题、排序说明、骨架/空态/分页）；③B20 库页/B21 发现页/B22 库管理（knowledge 模块三新页）：库头部+目录树+库内列表、我的知识库卡片墙、卡片墙+编辑/可见性切换/删除二次确认+目录管理；④B16 回收站（RecycleBinPage）：全部/知识库/知识三 Tab + 30 天提示 + 恢复/彻底删除二次确认 + 剩余天数；⑤B13 发布弹窗：删可见性选择（决策 D16），显示知识归属库/目录（反查名称），未归属禁用发布；⑥B00 对话页+知识问答弹窗：检索范围选择器（全部可见库/指定知识库，kbId/allVisible 参数）；⑦B03 搜索页目录化：删分类筛选改知识库+目录筛选、卡片 kbName 徽标；⑧E2E 更新（首页标题「全部知识库」、头像菜单登出、标签筛选替代分类）并全绿（blog 8 + admin 1）；浏览器实测 7 页截图存档 .browser-check/kb4-*.png；KB-5 待认领
-- 2026/8/14 18:30 · ZCode：**KB-3 后端能力交付**——①knowledge 模块新增：知识库 CRUD/可见性切换（KnowledgeBaseController + 二次确认删库连带回收站）、目录树 CRUD（DirectoryController，按名称排序，删除时知识上挂父目录）、回收站聚合（publishing RecycleBinController：kb 侧委托 KnowledgeApi、knowledge 侧委托 ContentApi，含恢复冲突判定）、可见库集合推导单一实现（VisibilityService：访客=全平台公开库、登录=+自己空间私有库，按 owner_user_id 查空间，修复默认空间越权 bug）；②content 模块：知识 CRUD 增加 kbId/directoryId（单库单目录）、发布流程改库+目录（不再传 visibility）、回收站软删/恢复（recycle_status+deleted_at）、公开读按可见库集合过滤（跨空间聚合，workspaceId 可空）；③publishing：公开读按身份聚合跨空间（多用户 D9 改写）、排序规则（updated_at DESC/目录内 created_at ASC）、缓存分片 xlumen:knowledge:detail:{id}、审计 KB_VISIBILITY_CHANGE；④RAG/AI：IndexRequestDTO/SearchRequestDTO 增加 kbId/kbIds（删 visibilityScope）、VectorStore 检索按 kb_id 过滤、AI 问答 kbId/allVisible 范围参数；⑤跨模块事件联动：KbRecycleStatusEvent/KbDirectoryDeletedEvent/KbPurgedEvent/KbVisibilityChangedEvent（content 监听连带软删/恢复/上挂/级联删，publishing 监听缓存失效）；⑥验证：mvn verify BUILD SUCCESS（10 测试）、接口全链路（建库→目录→知识→审核→发布→公开读跨空间→私有 404→越权 404→删库连带→恢复→彻底删除→可见性即时生效→索引 ACTIVE 带 kb_id）、索引状态接口路径修复（/api/v1/knowledge/{id}/index-status）；KB-4 待认领
-- 2026/8/14 17:40 · ZCode：**KB-1 概念改名交付**（文章→知识，纯改名零行为变更）——后端 81 个 Java 文件（27 个文件重命名：ArticleController→KnowledgeController、ArticlePublishedEvent→KnowledgePublishedEvent、PublicArticleController→PublicKnowledgeController、HotArticleCacheService→HotKnowledgeCacheService 等；审计常量 ARTICLE_PUBLISH→KNOWLEDGE_PUBLISH、缓存键 xlumen:article:*→xlumen:knowledge:*、接口路径 /api/v1/articles→/api/v1/knowledge 全量切换不保留旧路径）+ 前端 blog 38 个文件（路由 /articles/:id→/knowledge/:id、/studio/articles→/studio/knowledge、组件 ArticleListPage/ArticleEditorPage/ArticleDetailPage/ArticleQaDialog 改名、API URL 与 26 处界面文案「文章」→「知识」、E2E 断言同步）+ SQL 双轨（init 6 脚本物理改名 cnt_knowledge/knowledge_id/uk_release_ws_knowledge_version 等 + 新建幂等迁移脚本 sql/migration/85_kb_migration.sql，开发库 xlumen_dev 已执行迁移）；验证：mvn verify BUILD SUCCESS（8/8 模块，KnowledgeQueryDTOTest 4 测试）、前端 typecheck/lint/stylelint/test/build 全绿、E2E 9/9（blog 8 + admin 1）、grep 清零（后端 Article*/articles/cnt_article/ARTICLE_PUBLISH/xlumen:article 全 0 命中，前端「文章」/articles 路径全 0，仅保留 HTML5 <article> 语义标签）、运行时抽查 4 链路（公开列表/详情、登录 CRUD、知识问答 SSE、索引状态）；发现并处理：本地 Redis 需无密码启动（与 .env 一致）、开发库表注释历史乱码（8/14 事故遗留，非本次引入，已记录待修）；KB-2 待认领
-
-- 2026/8/14 16:59 · ZCode：知识平台化重构方案自检修正 + V2 规划扩充——统计数修正（MVP 39/V2 26/V3 12）、三实现决策落实（回收站独立软删列/目录按名称 DB 排序/缓存按库分片）、B01 左导航右内容定稿、V2 增项 5 个（作者主页/URL slug/知识库关注/知识置顶/回收站批量）+ 统计按库维度；总表 77→82 项（MVP 39/V2 31/V3 12）；代码仍未动。
-
-- 2026/8/14 16:04 · ZCode：知识平台化重构设计定稿 + 阶段 0 文档先行——多用户知识平台定位（D9 改写）、知识库→目录→知识三层体系（D16）、文章概念统一改名知识（D17）、RAG 按库切分（D13 改写）；PRODUCT 功能总表 73→77 项、PROTOTYPE 8 屏原型、BACKEND/FRONTEND/GLOBAL/README 同步；4 个开放问题全部确认（cnt_knowledge 物理改名、/api/v1/knowledge 不保留兼容、授权 V2、回收站 30 天）；阶段 1~6 已列入待办待认领。
-
-- 2026/8/14 14:00 · ZCode：后端代码风格优化——①移除 19 处冗余 `@PathVariable("xxx")` 显式名称（根 POM 显式开启 `-parameters`；ChatController 路径模板 `{id}`→`{conversationId}` 对齐参数名）；②新增分页基类 `common/dto/PageQueryDTO`（默认 1/20，`@SuperBuilder` 继承），4 个分页 QueryDTO 全部继承并去除重复字段；③业务类内部类清零（WorkspaceScope/RefreshSession/CircuitState/Section 提取为顶层类）；④Controller 全部去除 `@RequestParam`：新增 ReviewQueryDTO/AuditLogQueryDTO，ReleaseController 直接绑定 PageQueryDTO，ArticleController 复用 ArticleListQueryDTO 自动绑定，对应 Service 签名改 DTO 入参；BACKEND §5.1 新增分页基类/隐式命名/禁内部类规范；验证：mvn verify 全绿（新增 ArticleQueryDTOTest 4 断言）、运行时 API 全端点隐式绑定验证通过（公开读/文章 CRUD/任务/审核/模型配置/审核列表/发布列表/审计日志，非法参数类型 400）、双前端 E2E 9 通过（blog 8 + admin 1）。
-
-- 2026/8/13 14:00 · Qoder 代理：MVP 全部里程碑交付（M04~M13 + F-1301）——内容管理（CRUD+自动保存+8 状态机）、AI 基座（网关+任务底座+SSE）、AI 创作（写作+审校异源校验）、RAG 索引（发布即索引+Noop 降级）、AI 对话（小光+引用溯源）、AI 增值（摘要+SEO）、审核发布（双闸门+定时发布 PublishJob）、读者纠错（匿名+限流）、热点缓存与管理后台；修复 Spring Boot 4 .env 大写属性 relaxed binding 失效（@Value 显式绑定）、GlobalExceptionHandler 404/JSON 解析异常处理、ai 与 publishing 同名 Bean 冲突、审校默认模型 qwen-max（异源）；运行时全链路验证通过（真实百炼调用：审校/写作/摘要/SEO/Embedding/连通性测试），Milvus 待环境（Noop 降级）。
-
-- 2026/8/13 01:20 · Qoder 代理：后端代码风格统一重构——**去“业务域”概念（传统 MVC 扁平包结构）**：publishing 的 engagement 域拆为 Comment/Like 资源（CommentController/LikeController + CommentService/LikeService，URL 不变）；identity 去 iam 域（扁平化 + WorkspaceApiImpl 移位 + TokenVO/UserProfileVO/WorkspaceVO 改 class+Lombok）；content 去 editor 域且 DTO 改 class+Lombok、ContentApi.listPublished 参数封装（ArticleQueryDTO）；修复历史遗留：identity 单行乱码损坏文件从 git 恢复重建、(wenhailong) 垃圾目录清理、PublicArticleServiceImpl 未适配新签名；BACKEND §3/§4/§5/§7/§8 同步去域措辞 + §5.1 新增编码风格规范（参数封装/DTO·VO class+Lombok/命名规则）；mvn verify BUILD SUCCESS + 3 单测通过。
-- 2026/8/12 21:40 · Qoder 代理：M03 博客前台公开页交付——F-0201 列表/详情（Markdown 渲染 + XSS 清洗 + 目录导航）、F-0202 分类/标签/搜索（组合筛选 + 命中高亮 + 分页）、F-0203 评论/点赞/阅读量（Redis 24h 防刷）；cnt_article/eng_comment/eng_like 入库；B01~B04 四页 + 顶栏导航搜索；修复雪花 ID 精度（Long→String 全局序列化）；后端接口全链路/E2E 8 个/门禁/浏览器实测全部通过（详见第 3 节与 CHANGELOG）。
-- 2026/8/12 19:50 · Qoder 代理：M02 身份与多租户交付——F-0101 注册/登录/登出/刷新（JWT + 刷新令牌 GETDEL 轮换防重放、防枚举统一延迟）、F-0102 注册即建空间、F-0103 五角色体系、F-0104 双层校验（接口权限 + Service 资源归属）；10_identity.sql 四张表入库；blog 前端 B08 登录注册页 + 401 单飞刷新 + 路由守卫；后端单测/接口全链路/E2E/浏览器实测全部通过（详见第 3 节与 CHANGELOG）。
-- 2026/8/12 19:05 · Qoder 代理：M01 代码骨架交付——后端 7 模块骨架与 common 基座类型、.env 配置体系、SQL 初始化链路（init-db.ps1 + sql/init 编号脚本，开发库 xlumen_dev 已在 159.75.6.183 初始化）、前端 blog/admin 双应用脚手架与根工程配置；后端编译/启动验证与前端质量门禁全部通过（详见第 3 节与 CHANGELOG）。
-- 2026/8/12 18:03 · Qoder 代理：Maven 模块压缩 12→7（新增决策 D15）——按未来微服务边界合并：identity(+platform)、content(+analytics)、publishing(+engagement)、ai(+chat+ai-enhance)，模块内按业务域分包、表前缀不变；BACKEND 模块表/依赖 DAG/分包规则、GLOBAL 结构树、FRONTEND 模块映射、README 同步。
-- 2026/8/12 17:58 · Qoder 代理：前台导航 F-0701 菜单标签 [AI 对话]→[AI 助理]，位置调整为首页右侧、分类左侧；PROTOTYPE/FRONTEND 同步。
-- 2026/8/12 17:51 · Qoder 代理：AI 命名确定——产品内 AI 统一称呼为**小光**（新增决策 D14），PRODUCT §8 命名规则、PROTOTYPE B00/B07/D01/D02 文案同步。
-- 2026/8/12 17:46 · Qoder 代理：产品与工程重大变更——前后端职责重组（blog 承载创作/阅读/互动/AI 对话全链路，admin 仅管理员配置管理：空间/成员/角色、模型配置、审计）、主页恢复文章展示页（B00 降为菜单入口）、发布即索引（取消外部资料导入 F-0401/F-0406）、新增文章可见性 F-0307（私有文章亦建索引、检索按身份过滤）、F-1201/F-1202 提升 MVP、仓库目录重组（backend/xlumen-server、frontend/xlumen-frontend-blog :5173、frontend/xlumen-frontend-admin :5174，工程文件留根目录）；功能总表 74→73 项（MVP 37/V2 24/V3 12）；新增决策 D11~D13；技术约定补充（界面生成用 frontend-design Skill、优先复用工具类/开源框架、必要注释）；8 份文档同步更新。
 
 ## 8. 关键决策摘要（详见规范文档，勿推翻）
 

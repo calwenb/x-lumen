@@ -1,6 +1,6 @@
 # xLumen 全局文档
 
-> 更新日期：2026/8/14
+> 更新日期：2026/8/17
 > **本仓库专属**。
 > 适用范围：项目概览、文档导航、总体架构、仓库结构、技术基线、本地运行命令与质量门禁、扩展性路线图。
 > 引用原则：**引用不复制**——架构图（第 3 节）、技术基线（第 5 节）、运行与质量门禁命令（第 6/7 节）全仓唯一维护在本文档；功能清单唯一来源为 PRODUCT.md 第 5 节总表；内容状态机文字版见 PRODUCT.md 第 4 节。
@@ -41,6 +41,7 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 | [前端原型文档](../frontend/PROTOTYPE.md) | 页面结构、线框、交互流程与页面状态 | 页面结构 |
 | [开发状态与交接文档](../ai/STATUS.md) | 多 AI 协作工作流、里程碑、待办认领、已知问题、决策摘要 | 会话交接核心 |
 | [AI 变更日志](../ai/CHANGELOG.md) | 按会话倒序的变更记录 | 变更记录唯一来源 |
+| [待修问题清单](../ai/BUGS.md) | 用户自测缺陷记录与修复状态 | 缺陷清单唯一来源（仅按用户明确要求修复） |
 
 阅读顺序：
 
@@ -81,9 +82,10 @@ flowchart TB
 
 ```text
 xlumen/
-├─ docs/                                # 文档体系（本次交付已存在，7 份）
+├─ docs/                                # 文档体系（9 份）
 │  ├─ ai/STATUS.md                      # 开发状态与交接（AI 必读）
 │  ├─ ai/CHANGELOG.md                   # AI 变更日志
+│  ├─ ai/BUGS.md                        # 待修问题清单（仅按用户明确要求修复）
 │  ├─ product/PRODUCT.md                # 产品设计（功能总表唯一事实源）
 │  ├─ backend/BACKEND.md                # 后端开发文档
 │  ├─ frontend/FRONTEND.md              # 前端开发文档
@@ -110,7 +112,7 @@ xlumen/
 └─ .gitignore                           # 忽略 .env、node_modules、target 等（M01 骨架阶段创建）
 ```
 
-> 标注说明：docs/（7 份文档）与根 README.md 为文档体系交付；backend/、frontend/、scripts/ 与根工程配置（package.json、pnpm-workspace.yaml、.editorconfig、.gitignore）已随 M01 代码骨架创建（2026-08-12 交付）。目录结构以本文与 BACKEND/FRONTEND 契约为准（决策 D7 文档先行，代码骨架不得偏离）。
+> 标注说明：docs/ 与根 README.md 为文档体系交付（初版 7 份；BUGS.md 于 2026-08-16 新增）；backend/、frontend/、scripts/ 与根工程配置（package.json、pnpm-workspace.yaml、.editorconfig、.gitignore）已随 M01 代码骨架创建（2026-08-12 交付）。目录结构以本文与 BACKEND/FRONTEND 契约为准（决策 D7 文档先行，代码骨架不得偏离）。
 
 ## 5. 技术基线
 
