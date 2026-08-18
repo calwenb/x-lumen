@@ -35,19 +35,31 @@ test('互动与导航增强端到端验收', async ({ page }) => {
   const like = page.getByRole('button', { name: /赞 \d+/ })
   const dislike = page.getByRole('button', { name: /踩 \d+/ })
   const favorite = page.getByRole('button', { name: /收藏 \d+/ })
+  await expect(like).toContainText('赞')
+  await expect(dislike).toContainText('踩')
+  await expect(favorite).toContainText('收藏')
+  // 跨用户计数随多次运行累积，断言一律按「基线 + 增量」（列表首篇可能有历史赞踩/收藏）
+  const num = (t: string): number => Number(t.match(/\d+/)?.[0] ?? '0')
+  const baseLike = num(await like.innerText())
+  const baseDislike = num(await dislike.innerText())
+  const baseFav = num(await favorite.innerText())
 
-  // 点赞 -> 计数 +1；再点踩 -> 赞取消、踩生效（互斥）
+  // 点赞 -> 计数 +1 且高亮；再点踩 -> 互斥切换（赞回落基线、踩 +1 且高亮）；再点踩 -> 取消
   await like.click()
-  await expect(like).toHaveText(/赞 [1-9]\d*/)
+  await expect(like).toHaveAttribute('aria-pressed', 'true')
+  await expect(like).toHaveText(new RegExp(`赞 ${baseLike + 1}`))
   await dislike.click()
-  await expect(like).toHaveText(/赞 0/)
-  await expect(dislike).toHaveText(/踩 [1-9]\d*/)
-  await dislike.click() // 取消点踩，恢复中性
-  await expect(dislike).toHaveText(/踩 0/)
+  await expect(like).not.toHaveAttribute('aria-pressed', 'true')
+  await expect(like).toHaveText(new RegExp(`赞 ${baseLike}`))
+  await expect(dislike).toHaveAttribute('aria-pressed', 'true')
+  await expect(dislike).toHaveText(new RegExp(`踩 ${baseDislike + 1}`))
+  await dislike.click()
+  await expect(dislike).not.toHaveAttribute('aria-pressed', 'true')
+  await expect(dislike).toHaveText(new RegExp(`踩 ${baseDislike}`))
 
   // 收藏 -> 计数 +1，收藏页出现该知识；取消收藏 -> 列表移除
   await favorite.click()
-  await expect(favorite).toHaveText(/收藏 [1-9]\d*/)
+  await expect(favorite).toHaveText(new RegExp(`收藏 ${baseFav + 1}`))
   await page.getByRole('button', { name: `${username} 账号菜单` }).click()
   await page.getByRole('menuitem', { name: '我的收藏' }).click()
   await expect(page.getByRole('link', { name: knowledgeTitle }).first()).toBeVisible()
