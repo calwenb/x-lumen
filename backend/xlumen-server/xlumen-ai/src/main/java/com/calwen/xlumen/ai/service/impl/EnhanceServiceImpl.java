@@ -20,7 +20,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * AI 增值服务实现（F-0801/F-0802）：SUMMARY/SEO 同步生成，结构化校验后落 ai_enhance_result。
+ * AI 增值服务实现（F-0801/F-0802/F-0808）：SUMMARY/SEO 同步生成，结构化校验后落 ai_enhance_result；
+ * F-0808 抽出 generateAndStoreSummary 供发布事件监听（KnowledgePublishedSummaryListener）异步复用。
  *
  * @author calwen
  * @date 2026/8/13
@@ -56,11 +57,34 @@ public class EnhanceServiceImpl implements EnhanceService {
             throw new BizException(ErrorCode.INVALID_PARAM, "待处理内容不能为空");
         }
         AiScene scene = parseScene(dto.getScene());
+        if (scene == AiScene.SUMMARY) {
+            // F-0808：SUMMARY 复用可复用的摘要生成方法（发布事件监听同款路径）
+            return generateAndStoreSummary(workspaceId, dto.getKnowledgeId(), null, content);
+        }
         String resultJson = generate(workspaceId, scene, content);
+        return store(workspaceId, dto.getKnowledgeId(), scene, resultJson);
+    }
 
+    @Override
+    public EnhanceResultVO generateAndStoreSummary(Long workspaceId, Long knowledgeId, String title, String content) {
+        if (workspaceId == null) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "工作空间不能为空");
+        }
+        // 标题拼入待摘要文本（可空），正文为空视为非法入参
+        String text = StrUtil.isBlank(title) ? "" : title.trim() + "\n\n";
+        text += content == null ? "" : content.trim();
+        if (StrUtil.isBlank(text)) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "待处理内容不能为空");
+        }
+        String resultJson = generate(workspaceId, AiScene.SUMMARY, text);
+        return store(workspaceId, knowledgeId, AiScene.SUMMARY, resultJson);
+    }
+
+    /** 落库并组装返回视图（scene/knowledgeId 由调用方填充）。 */
+    private EnhanceResultVO store(Long workspaceId, Long knowledgeId, AiScene scene, String resultJson) {
         AiEnhanceResultEntity entity = new AiEnhanceResultEntity();
         entity.setWorkspaceId(workspaceId);
-        entity.setKnowledgeId(dto.getKnowledgeId());
+        entity.setKnowledgeId(knowledgeId);
         entity.setScene(scene.name());
         entity.setResultJson(resultJson);
         enhanceResultMapper.insert(entity);

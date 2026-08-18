@@ -14,6 +14,7 @@ import com.calwen.xlumen.publishing.dto.CreateCommentDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.entity.CommentEntity;
 import com.calwen.xlumen.publishing.mapper.CommentMapper;
+import com.calwen.xlumen.publishing.service.CommentReactionService;
 import com.calwen.xlumen.publishing.service.CommentService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 评论服务实现（F-0203）：列表/发表 + 批量统计防 N+1。
+ * 评论服务实现（F-0203/F-0213）：列表/发表 + 批量统计防 N+1（评论数与赞/踩计数同模式聚合）。
  * 登录态接口的 workspaceId/userId/userName 全部来自 WorkspaceContext（JWT claims，F-0104）。
  *
  * @author calwen
@@ -41,6 +42,9 @@ public class CommentServiceImpl implements CommentService {
     @Resource
     private WorkspaceApi workspaceApi;
 
+    @Resource
+    private CommentReactionService commentReactionService;
+
     @Override
     public PageResult<CommentVO> listComments(Long knowledgeId, CommentQueryDTO query) {
         Page<CommentEntity> page = commentMapper.selectPage(new Page<>(query.getPageNo(), query.getPageSize()),
@@ -49,10 +53,20 @@ public class CommentServiceImpl implements CommentService {
                         .eq(CommentEntity::getKnowledgeId, knowledgeId)
                         .eq(CommentEntity::getStatus, STATUS_NORMAL)
                         .orderByAsc(CommentEntity::getCreatedAt));
+        // 赞/踩计数与当前用户反应批量聚合（IN 一次取回，避免 N+1，BACKEND.md §18；
+        // 跨空间聚合 workspaceId 传 null，匿名用户 myReaction 全部为 null）
+        List<Long> commentIds = page.getRecords().stream().map(CommentEntity::getId).toList();
+        Long userId = WorkspaceContext.userId();
+        Map<Long, Long> likeCounts = commentReactionService.countLikes(null, commentIds);
+        Map<Long, Long> dislikeCounts = commentReactionService.countDislikes(null, commentIds);
+        Map<Long, String> myReactions = commentReactionService.mapUserReactions(null, commentIds, userId);
         List<CommentVO> records = page.getRecords().stream()
                 .map(c -> CommentVO.builder()
                         .id(c.getId()).knowledgeId(c.getKnowledgeId()).parentId(c.getParentId())
-                        .userName(c.getUserName()).content(c.getContent()).createdAt(c.getCreatedAt()).build())
+                        .userName(c.getUserName()).content(c.getContent()).createdAt(c.getCreatedAt())
+                        .likeCount(likeCounts.getOrDefault(c.getId(), 0L))
+                        .dislikeCount(dislikeCounts.getOrDefault(c.getId(), 0L))
+                        .myReaction(userId == null ? null : myReactions.get(c.getId())).build())
                 .toList();
         return PageResult.<CommentVO>builder()
                 .total(page.getTotal()).pageNo(page.getCurrent()).pageSize(page.getSize()).records(records).build();

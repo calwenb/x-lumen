@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// 应用根组件：顶栏（品牌 Logo、主导航：知识/知识库/AI小光、全局搜索框、写知识 CTA、头像菜单，PROTOTYPE §5.1）
-// 与路由出口。主导航按 PROTOTYPE 固定三项（决策 D16：分类废弃、关于移出主导航）。
+// 应用根组件：顶栏（品牌 Logo、主导航：知识/知识库/创作中心(登录态，F-0214)/AI小光、全局搜索框、
+// 写知识 CTA、头像菜单，PROTOTYPE §5.1）与路由出口。
 // 当前导航项高亮用 router-link-exact-active（首页 / 为全部路由父级，router-link-active 会全站匹配误高亮）。
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChatDotRound, Collection, EditPen, HomeFilled, Search } from '@element-plus/icons-vue'
+import { ChatDotRound, Collection, EditPen, HomeFilled, Monitor, Search } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 
@@ -38,6 +38,9 @@ function handleAccountCommand(command: string): void {
     case 'my-kbs':
       void router.push({ name: 'kb-discovery', query: { mine: '1' } })
       break
+    case 'favorites':
+      void router.push({ name: 'favorites' })
+      break
     case 'studio':
       void router.push({ name: 'workbench' })
       break
@@ -58,6 +61,9 @@ function handleNavCommand(command: string): void {
       break
     case 'kb-discovery':
       void router.push({ name: 'kb-discovery' })
+      break
+    case 'studio':
+      void router.push({ name: 'workbench' })
       break
     case 'chat':
       void router.push({ name: 'chat' })
@@ -82,6 +88,11 @@ function handleNavCommand(command: string): void {
           <el-icon class="app-header__link-icon"><Collection /></el-icon>
           知识库
         </RouterLink>
+        <!-- 创作中心（F-0214）：一级导航，仅登录态显示 -->
+        <RouterLink v-if="session.loggedIn" class="app-header__link" :to="{ name: 'workbench' }">
+          <el-icon class="app-header__link-icon"><Monitor /></el-icon>
+          创作中心
+        </RouterLink>
         <RouterLink class="app-header__link" :to="{ name: 'chat' }">
           <el-icon class="app-header__link-icon"><ChatDotRound /></el-icon>
           AI小光
@@ -94,6 +105,7 @@ function handleNavCommand(command: string): void {
             <el-dropdown-menu>
               <el-dropdown-item command="home">知识</el-dropdown-item>
               <el-dropdown-item command="kb-discovery">知识库</el-dropdown-item>
+              <el-dropdown-item v-if="session.loggedIn" command="studio">创作中心</el-dropdown-item>
               <el-dropdown-item command="chat">AI小光</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -129,6 +141,7 @@ function handleNavCommand(command: string): void {
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="my-kbs">我的知识库</el-dropdown-item>
+                <el-dropdown-item command="favorites">我的收藏</el-dropdown-item>
                 <el-dropdown-item command="studio">创作中心</el-dropdown-item>
                 <el-dropdown-item command="recycle-bin">回收站</el-dropdown-item>
                 <el-dropdown-item disabled>个人设置（即将上线）</el-dropdown-item>

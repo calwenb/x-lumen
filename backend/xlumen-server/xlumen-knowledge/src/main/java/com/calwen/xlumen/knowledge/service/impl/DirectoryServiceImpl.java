@@ -100,7 +100,7 @@ public class DirectoryServiceImpl implements DirectoryService {
     }
 
     @Override
-    public void update(Long kbId, Long directoryId, UpdateDirectoryDTO dto) {
+    public DirectoryVO update(Long kbId, Long directoryId, UpdateDirectoryDTO dto) {
         KbDirectoryEntity dir = getOwnedDirectory(kbId, directoryId);
         if (StrUtil.isNotBlank(dto.getName())) {
             String name = dto.getName().trim();
@@ -118,6 +118,10 @@ public class DirectoryServiceImpl implements DirectoryService {
         }
         dir.setUpdatedAt(LocalDateTime.now());
         directoryMapper.updateById(dir);
+        // 返回更新后视图：契约与 create 一致（前端 F-0312 重命名后依赖响应值，不得返回空）
+        KbKnowledgeBaseEntity kb = kbMapper.selectById(kbId);
+        Map<Long, Long> counts = countKnowledge(kb, List.of(dir.getId()));
+        return toVO(dir, counts.getOrDefault(dir.getId(), 0L));
     }
 
     @Override

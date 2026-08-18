@@ -9,6 +9,7 @@ import { ArrowDown, Document } from '@element-plus/icons-vue'
 
 import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import { fetchKnowledges, fetchTags } from '@/modules/publishing/api/public'
+import DirectoryTreeContextMenu from '@/modules/knowledge/components/DirectoryTreeContextMenu.vue'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
 import { useSessionStore } from '@/stores/session'
 
@@ -44,6 +45,13 @@ const privateKbIds = computed(
   () => new Set(myKnowledgeBases.value.filter((kb) => kb.visibility === 0).map((kb) => kb.id)),
 )
 const selectedKb = computed(() => myKnowledgeBases.value.find((kb) => kb.id === selectedKbId.value))
+
+// F-0312 库主判定：左栏库切换器数据源为 fetchKnowledgeBases（鉴权接口，仅返回登录用户自己的库），
+// 选中库必然属于当前用户，故「已选中某库」即等价于库主，右键菜单可用。
+const isKbOwner = computed(() => Boolean(selectedKb.value))
+
+/** F-0312 右键菜单实例（open(event, node?) 由目录树 contextmenu 调用，node 省略 = 树根）。 */
+const dirMenu = ref<InstanceType<typeof DirectoryTreeContextMenu> | null>(null)
 
 /** 范围标题：全部知识库 / [库名] / [目录名]。 */
 const scopeTitle = computed(() => {
@@ -137,6 +145,23 @@ async function toggleTag(name: string): Promise<void> {
   await load(1)
 }
 
+/** F-0312 右键菜单操作成功后刷新目录树（知识数随树节点返回；失败保留原树）。 */
+async function refreshDirectories(): Promise<void> {
+  if (!selectedKbId.value) return
+  directoryTree.value = await fetchDirectoryTree(selectedKbId.value).catch(
+    () => directoryTree.value,
+  )
+}
+
+/** F-0312 删除目录后：选中目录在删除范围内则重置为「全部知识」，并重新拉取列表（知识上挂父目录）。 */
+function onDirectoryDeleted(ids: string[]): void {
+  if (selectedDirectoryId.value && ids.includes(selectedDirectoryId.value)) {
+    selectedDirectoryId.value = ''
+    selectedDirectoryName.value = ''
+  }
+  void load(1)
+}
+
 function openKnowledge(id: string): void {
   void router.push(`/knowledge/${id}`)
 }
@@ -190,7 +215,7 @@ onMounted(async () => {
         <template v-if="session.loggedIn">
           <!-- 选中库：目录树 + 标签云 -->
           <template v-if="selectedKbId">
-            <section class="side-card">
+            <section class="side-card" @contextmenu="dirMenu?.open($event)">
               <h2 class="side-card__title">目录</h2>
               <p v-if="sideLoading" class="side-card__hint">目录加载中…</p>
               <p v-else-if="directoryTree.length === 0" class="side-card__hint">该知识库暂无目录</p>
@@ -202,6 +227,7 @@ onMounted(async () => {
                     :class="{ 'side-card__dir--active': node.id === selectedDirectoryId }"
                     :style="{ paddingLeft: `${10 + node.depth * 14}px` }"
                     @click="toggleDirectory(node)"
+                    @contextmenu.stop="dirMenu?.open($event, { id: node.id, name: node.name })"
                   >
                     <span>{{ node.name }}</span>
                     <span class="side-card__count">{{ node.knowledgeCount }}</span>
@@ -325,6 +351,16 @@ onMounted(async () => {
         </template>
       </section>
     </div>
+
+    <!-- F-0312 目录树右键菜单（新增/重命名/删除，仅库主；open 非库主时忽略） -->
+    <DirectoryTreeContextMenu
+      ref="dirMenu"
+      :kb-id="selectedKbId"
+      :owner="isKbOwner"
+      :directories="directoryTree"
+      @refresh="refreshDirectories"
+      @deleted="onDirectoryDeleted"
+    />
   </main>
 </template>
 

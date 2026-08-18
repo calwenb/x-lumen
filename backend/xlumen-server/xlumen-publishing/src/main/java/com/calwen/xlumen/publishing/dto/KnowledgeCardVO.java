@@ -59,4 +59,7 @@ public class KnowledgeCardVO {
 
     /** 发布时间。 */
     private LocalDateTime publishedAt;
+
+    /** 收藏时间（F-0212 我的收藏列表专用字段，公开列表为 null）。 */
+    private LocalDateTime favoritedAt;
 }

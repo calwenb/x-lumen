@@ -43,6 +43,7 @@
 | 全功能测试缺陷修复 | 2026-08-16 | BUG-3~11：content->knowledge 依赖 DAG 补齐、知识归属/孤儿防线（checkOwnership + 86_orphan_cleanup.sql 清理 4 条 kb_id=0 孤儿）、库/目录计数闭环（KnowledgeCountApi 反向 SPI）、编辑器重做（选库/目录/提交审核入口）、session 持久化（refreshToken 不落盘）、点赞状态以服务端为准、http 错误消息透出 |
 | BUG-002~005 修复 | 2026-08-17 | chat 流式整段渲染（占位消息改 reactive 代理）、审核 AI 结果懒回填（backfillAiResult）、RAG 检索恒空（Milvus 探测改 REST v2 collections/has + reindex 强制重建 + 补跑端点）、提交审核后跳转 |
 | 小光 Markdown 渲染 | 2026-08-17 | ChatPage/KnowledgeQaDialog 助手消息改 v-html 渲染 renderMarkdown()（复用 markdown-it + DOMPurify 通道），用户消息保持纯文本插值防 XSS |
+| IDEAS 批次 + BUG-006 | 2026-08-18 | F-0212 知识赞/踩互斥+收藏+B23 收藏页、F-0213 评论赞踩（eng_like 三态化 + eng_favorite/eng_comment_reaction 新表）、F-0214 创作中心主导航、F-0312 目录树右键菜单（B01/B20 共用组件）、F-0808 详情 AI 摘要（发布事件异步生成+aiSummary 透出）；BUG-006 详情页 TOC 空时 grid 单栏回退修复；顺带修复目录 PUT 重命名返回空值契约缺陷 |
 
 踩坑备忘（实现时易复犯，背景详见 CHANGELOG 对应条目）：
 
@@ -54,7 +55,7 @@
 
 ## 4. 进行中
 
-无进行中任务。待办仅 OPT-1（AI 线程模型虚拟线程评估，待认领，见第 5 节）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
+无进行中任务。IDEAS 批次（F-0212/F-0213/F-0214/F-0312/F-0808 + BUG-006）已于 2026-08-18 交付，见第 5 节待办与 CHANGELOG 20:47 条目。待办仅 OPT-1（AI 线程模型虚拟线程评估，待认领）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
 
 ## 5. 待办
 
@@ -81,6 +82,12 @@
 | KB-4 | 知识平台化重构·阶段 4：前端页面（导航头/知识流 B01/库页 B20/发现页 B21/库管理 B22/回收站 B16/发布弹窗/AI 对话范围选择器，F-0208/F-0308） | PROTOTYPE §7 | 已完成（ZCode，2026-08-14 18:50） | ZCode |
 | KB-5 | 知识平台化重构·阶段 5：存量迁移执行与数据校验（默认公开库/默认私有库、category 平铺目录） | 方案 §10 | 已完成（ZCode，2026-08-14 18:55） | ZCode |
 | KB-6 | 知识平台化重构·阶段 6：全量验收（完成定义 PRODUCT §12 + 双前端 E2E + 文档一致性核验） | PRODUCT §12 | 已完成（ZCode，2026-08-14 18:55） | ZCode |
+| BUG-006 | 知识详情页排版错乱修复（TOC 为空时 grid 两栏定义致正文塞进 200px 目录列 + 页头/正文标题重复渲染） | BUGS.md BUG-006 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
+| F-0212 | 知识互动增强：点赞/点踩互斥 + 收藏 toggle + 个人收藏页 B23（前端 blog + 后端 publishing + DB） | PRODUCT §5 模块二、PROTOTYPE B23 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
+| F-0213 | 评论点赞/点踩：互斥切换 + 计数展示（前端 blog + 后端 publishing + DB） | PRODUCT §5 模块二 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
+| F-0214 | 创作中心一级导航：主导航「知识库」右侧新增入口（登录态显示，纯前端） | PRODUCT §5 模块二 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
+| F-0312 | 目录树右键菜单：B01/B20 节点右键 编辑/删除/新增子目录，树根右键新增根目录（仅库主，纯前端复用既有目录 CRUD API） | PRODUCT §5 模块三 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
+| F-0808 | 知识详情 AI 摘要：发布事件异步生成（复用 F-0801）+ 详情页摘要区块（后端 ai/publishing + 前端 blog） | PRODUCT §5 模块八 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
 | OPT-1 | 技术优化：AI 线程模型评估虚拟线程。主项：chatStreamExecutor（SSE 长连接占平台线程、池满 CallerRuns 堵容器线程）改 `Executors.newVirtualThreadPerTaskExecutor()` + Semaphore 并发上限（限流与线程模型解耦）。候选点：aiTaskExecutor（AI 任务，需保留并发上限）、indexExecutor（发布即索引 embedding/Milvus 阻塞 I/O）、OpenAICompatibleProvider/EmbeddingServiceImpl/MilvusVectorStore 的 JDK HttpClient 阻塞调用；SseService 心跳与 PublishJob 为固定间隔单线程调度，不适用 | 2026-08-17 线程模型评估（chatStreamExecutor 结构性短板，详见会话记录） | 待认领 | |
 
 > 说明：数据分析与知识保鲜（模块十一）为 V2/V3 功能，平台治理（模块十二）MVP 部分（空间设置/审计）随 M13 落地、其余 V2/V3 随依赖模块迭代实现；阶段调整须经 CHANGELOG 记录（决策 D10）。
@@ -97,10 +104,9 @@
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/18 20:47 · ZCode：**IDEAS 批次立项实施 + BUG-006 修复**--按用户要求执行 IDEAS.md 全部 5 条（登记 F-0212 知识赞/踩互斥+收藏+B23 收藏页、F-0213 评论赞踩、F-0214 创作中心主导航、F-0312 目录树右键菜单、F-0808 详情 AI 摘要；eng_like 三态化 + eng_favorite/eng_comment_reaction 新表 + 87 迁移已在 xlumen_dev 执行）；BUG-006 根因 = TOC 空时 grid 两栏定义（正文塞 200px 列）+ 标题重复渲染，修复 = 单栏回退 + 去重复标题；顺带修复目录 PUT 重命名返回空值致右键重命名后树不刷新的契约缺陷（后端 update 返回 DirectoryVO）。验证：mvn verify BUILD SUCCESS（38 测试）、前端门禁全绿、新增 e2e/enhancements.spec.ts + 既有 9 条 E2E 全绿、后端已重启运行新代码。
 - 2026/8/17 17:30 · ZCode：**文档体系治理（评审问题六项统一修复）**--①README「已实现」刷新（原文误标 M02~M13 待办，与实际进度矛盾）、补 BUGS/design 导航、去除快速开始 6.x 编号残留；②STATUS §3 压缩为能力基线摘要 + 踩坑备忘（历史细节归 CHANGELOG，消除双份记史）、§4/§5 修正 KB-6 状态与进行中描述、§7 精简为最近 3 条并补 8/17 16:30 遗漏条目；③GLOBAL §2 导航表补 BUGS.md、§4 结构树同步（docs 9 份 + design/）；④tmp/ 两份方案转正迁入 docs/design/（STATUS 引用同步，CHANGELOG 历史条目按记录原貌保留）；⑤CHANGELOG 条目格式改版为「标题 + 元信息行 + 正文」并全量转换存量条目；⑥BACKEND §10 补 reindex 端点。纯文档变更，代码零改动。（后续同日按用户要求：design/ 两份方案已随实施完成删除，引用同步清理。）
 - 2026/8/17 16:30 · ZCode：**小光回答 Markdown 渲染**--ChatPage/KnowledgeQaDialog 助手消息改 v-html 渲染 renderMarkdown()（复用 markdown-it + DOMPurify 通道，与知识详情同一渲染管线），用户消息保持纯文本插值防 XSS；流式打字光标移出文本节点为兄弟元素；新增气泡内 markdown-body scoped 样式对齐设计 token。验证：pnpm lint + typecheck 双前端全绿。
-- 2026/8/17 15:10 · ZCode：**BUG-002~005 统一修复（用户要求全部修复）**--①chat 流式整段渲染：`ChatPage`/`KnowledgeQaDialog` 占位消息改 `reactive()` 代理修复 onChunk 改裸对象绕过响应式；②审核 AI 审校问题恒 0：`ReviewServiceImpl` 懒回填 `backfillAiResult()`（getReview/reject 挂接，任务 COMPLETED 即写回 `ai_result_json`）；③RAG 检索恒空：Milvus 探测改打 REST v2 `collections/has`（原 /healthz 恒 404 致永远 Noop 降级）+ 索引流水线新增 `reindex()` 强制重建通道 + publishing 新增 `POST /api/v1/knowledge/{knowledgeId}/reindex` 补跑端点；④提交审核不跳转：编辑页成功回调补 ElMessage + 返回知识列表；验证：mvn verify（knowledge/publishing 及依赖链）BUILD SUCCESS、前端 typecheck/lint/test 全绿、Milvus 探测端点实测 200；**遗留运维**：后端重启生效 + 存量 3 版本逐篇 reindex 补跑（详见 CHANGELOG）
-- 2026/8/16 16:30 · ZCode：**全功能测试缺陷统一修复（BUG-3~BUG-11 + 观察项，用户要求全部修复）**——①content→knowledge 依赖 DAG 落地（content pom 补 knowledge 依赖）；②知识创建/自动保存归属校验（`KnowledgeApi.checkOwnership` 拦截无归属/跨空间孤儿）+ 列表过滤回收站；③提交审核/发布归属兜底；④知识数统计闭环（`KnowledgeCountApi` 反向 SPI，库/目录计数不再恒 0）；⑤异常映射 405/400 + JSON 解析原因透出；⑥detail 点赞状态修复（workspaceId 传 null 致 liked 恒 false）；⑦编辑器重做（库/目录选择器 + 提交审核入口 + AI 写作选库）；⑧http 错误消息透出；⑨session 持久化（刷新不登出，refreshToken 不落盘）；⑩点赞状态以服务端为准；⑪新增并执行 `sql/migration/86_orphan_cleanup.sql`（清理 4 条 kb_id=0 孤儿知识及测试互动数据）；验证：mvn verify/前端门禁全绿 + API 链路与浏览器回归通过（详见 CHANGELOG）
 
 ## 8. 关键决策摘要（详见规范文档，勿推翻）
 

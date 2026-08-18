@@ -24,11 +24,15 @@ export interface KnowledgeCard {
   publishedAt: string
 }
 
-/** 知识详情（B02）。 */
+/** 知识详情（B02；F-0212 起携带点踩/收藏统计与收藏态，F-0808 起携带 AI 摘要）。 */
 export interface KnowledgeDetail extends KnowledgeCard {
   content: string
   liked: boolean
   updatedAt: string
+  dislikeCount: number
+  favoriteCount: number
+  favorited: boolean
+  aiSummary?: string | null
 }
 
 /** 标签聚合项。 */
@@ -89,6 +93,8 @@ export async function fetchKnowledge(id: string): Promise<KnowledgeDetail> {
     commentCount: toNumber(knowledge.commentCount),
     likeCount: toNumber(knowledge.likeCount),
     readMinutes: toNumber(knowledge.readMinutes),
+    dislikeCount: toNumber(knowledge.dislikeCount),
+    favoriteCount: toNumber(knowledge.favoriteCount),
   }
 }
 
@@ -125,6 +131,10 @@ interface RawKnowledgeDetail extends RawCard {
   content: string
   liked: boolean
   updatedAt: string
+  dislikeCount: string
+  favoriteCount: string
+  favorited: boolean
+  aiSummary?: string | null
 }
 
 interface RawPage<T> {

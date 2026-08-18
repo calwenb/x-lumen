@@ -16,6 +16,7 @@ import {
   updateKnowledgeBase,
 } from '@/modules/knowledge/api/knowledgeBase'
 import { fetchKnowledges } from '@/modules/publishing/api/public'
+import DirectoryTreeContextMenu from '@/modules/knowledge/components/DirectoryTreeContextMenu.vue'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
 
 import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
@@ -46,6 +47,9 @@ const editForm = ref({ name: '', intro: '', cover: '' })
 const dirVisible = ref(false)
 const dirName = ref('')
 const dirParentId = ref('')
+
+/** F-0312 右键菜单实例（open(event, node?) 由目录树 contextmenu 调用，node 省略 = 树根「全部知识」）。 */
+const dirMenu = ref<InstanceType<typeof DirectoryTreeContextMenu> | null>(null)
 
 /** 目录总数（扁平化树节点）。 */
 const directoryCount = computed(() => countDirectories(directories.value))
@@ -166,6 +170,19 @@ async function submitDirectory(): Promise<void> {
   }
 }
 
+/** F-0312 右键菜单操作成功后刷新目录树（目录总数 computed 自动更新；失败保留原树）。 */
+async function refreshDirectories(): Promise<void> {
+  directories.value = await fetchDirectoryTree(kbId.value).catch(() => directories.value)
+}
+
+/** F-0312 删除目录后：选中目录在删除范围内则重置为「全部知识」，并重新拉取列表（知识上挂父目录）。 */
+function onDirectoryDeleted(ids: string[]): void {
+  if (selectedDirectoryId.value && ids.includes(selectedDirectoryId.value)) {
+    selectedDirectoryId.value = ''
+  }
+  void loadList(1)
+}
+
 onMounted(() => {
   void loadOwnerInfo()
   void loadList(1)
@@ -225,6 +242,7 @@ onMounted(() => {
           class="kb-detail__all"
           :class="{ 'kb-detail__all--active': selectedDirectoryId === '' }"
           @click="selectDirectory('')"
+          @contextmenu="dirMenu?.open($event)"
         >
           <el-icon><Collection /></el-icon>
           全部知识
@@ -237,6 +255,10 @@ onMounted(() => {
           default-expand-all
           class="kb-detail__tree"
           @node-click="(data: DirectoryNode) => selectDirectory(data.id)"
+          @node-contextmenu="
+            (event: MouseEvent, data: DirectoryNode) =>
+              dirMenu?.open(event, { id: data.id, name: data.name })
+          "
         >
           <template #default="{ data }">
             <span
@@ -334,6 +356,16 @@ onMounted(() => {
         <el-button type="primary" @click="submitDirectory">创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- F-0312 目录树右键菜单（新增子目录/重命名/删除，仅库主；open 非库主时忽略） -->
+    <DirectoryTreeContextMenu
+      ref="dirMenu"
+      :kb-id="kbId"
+      :owner="isOwner"
+      :directories="directories"
+      @refresh="refreshDirectories"
+      @deleted="onDirectoryDeleted"
+    />
   </main>
 </template>
 

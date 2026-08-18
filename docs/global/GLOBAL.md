@@ -42,6 +42,7 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 | [开发状态与交接文档](../ai/STATUS.md) | 多 AI 协作工作流、里程碑、待办认领、已知问题、决策摘要 | 会话交接核心 |
 | [AI 变更日志](../ai/CHANGELOG.md) | 按会话倒序的变更记录 | 变更记录唯一来源 |
 | [待修问题清单](../ai/BUGS.md) | 用户自测缺陷记录与修复状态 | 缺陷清单唯一来源（仅按用户明确要求修复） |
+| [功能想法池](../ai/IDEAS.md) | 用户功能想法收集与评估状态 | 想法清单唯一来源（采纳须经 PRODUCT 功能总表登记） |
 
 阅读顺序：
 
@@ -82,10 +83,11 @@ flowchart TB
 
 ```text
 xlumen/
-├─ docs/                                # 文档体系（9 份）
+├─ docs/                                # 文档体系（10 份）
 │  ├─ ai/STATUS.md                      # 开发状态与交接（AI 必读）
 │  ├─ ai/CHANGELOG.md                   # AI 变更日志
 │  ├─ ai/BUGS.md                        # 待修问题清单（仅按用户明确要求修复）
+│  ├─ ai/IDEAS.md                       # 功能想法池（采纳须登记 PRODUCT 功能总表）
 │  ├─ product/PRODUCT.md                # 产品设计（功能总表唯一事实源）
 │  ├─ backend/BACKEND.md                # 后端开发文档
 │  ├─ frontend/FRONTEND.md              # 前端开发文档

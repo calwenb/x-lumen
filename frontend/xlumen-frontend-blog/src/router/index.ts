@@ -52,6 +52,12 @@ const router = createRouter({
       meta: { title: '关于' },
     },
     {
+      path: '/favorites',
+      name: 'favorites',
+      component: () => import('@/modules/engagement/pages/FavoritesPage.vue'),
+      meta: { authenticated: true, title: '我的收藏' },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/modules/identity/pages/LoginPage.vue'),

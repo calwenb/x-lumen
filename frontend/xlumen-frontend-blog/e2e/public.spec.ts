@@ -60,7 +60,7 @@ test.describe('博客前台公开页（M03）', () => {
     const likeButton = page.getByRole('button', { name: /赞/ })
     if ((await likeButton.innerText()).includes('已赞')) {
       await likeButton.click()
-      await expect(likeButton).toHaveText(/点赞/)
+      await expect(likeButton).toHaveText(/赞 0/)
     }
 
     // 未登录：点赞引导登录
@@ -77,7 +77,7 @@ test.describe('博客前台公开页（M03）', () => {
     const likeAfterLogin = page.getByRole('button', { name: /赞/ })
     if ((await likeAfterLogin.innerText()).includes('已赞')) {
       await likeAfterLogin.click()
-      await expect(likeAfterLogin).toHaveText(/点赞/)
+      await expect(likeAfterLogin).toHaveText(/赞 0/)
     }
     await likeAfterLogin.click()
     await expect(likeAfterLogin).toHaveText(/已赞/)

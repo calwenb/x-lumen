@@ -1,14 +1,17 @@
 <script setup lang="ts">
 // 评论区（F-0203，B02）：评论列表 + 发表评论；发表需登录，未登录引导登录页。
+// F-0213：每条评论底部提供赞/踩互斥按钮，以服务端返回 reaction 校正并增减本地计数。
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
 import { useSessionStore } from '@/stores/session'
 
-import { createComment, fetchComments } from '@/modules/engagement/api/engagement'
+import { createComment, fetchComments, toggleCommentDislike, toggleCommentLike } from '@/modules/engagement/api/engagement'
 
 import type { CommentItem } from '@/modules/engagement/api/engagement'
+
+type MyReaction = 'LIKE' | 'DISLIKE'
 
 const props = defineProps<{
   knowledgeId: string
@@ -26,6 +29,8 @@ const loading = ref(true)
 const loadError = ref(false)
 const draft = ref('')
 const submitting = ref(false)
+// 正在切换反应的评论 id：请求期间禁用该评论的两个反应按钮，防重复提交
+const pendingCommentId = ref<string | null>(null)
 
 /** 相对时间：分钟/小时/天前。 */
 function formatTime(iso: string): string {
@@ -73,6 +78,42 @@ async function submit(): Promise<void> {
 }
 
 onMounted(load)
+
+/** 评论反应迁移：from 移除旧计数，to 计入新计数（null 侧不计数）。 */
+function applyCommentTransition(comment: CommentItem, from: MyReaction | null, to: MyReaction | null): void {
+  if (from === 'LIKE') comment.likeCount -= 1
+  else if (from === 'DISLIKE') comment.dislikeCount -= 1
+  if (to === 'LIKE') comment.likeCount += 1
+  else if (to === 'DISLIKE') comment.dislikeCount += 1
+}
+
+/** 评论赞/踩（F-0213）：toggle 语义（已选中取消、互斥切换），服务端 reaction 校正。 */
+async function react(comment: CommentItem, target: MyReaction): Promise<void> {
+  if (!session.loggedIn) {
+    await router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
+    return
+  }
+  if (pendingCommentId.value) return
+  pendingCommentId.value = comment.id
+  const original = comment.myReaction
+  const guess = original === target ? null : target
+  applyCommentTransition(comment, original, guess)
+  comment.myReaction = guess
+  try {
+    const result = target === 'LIKE' ? await toggleCommentLike(comment.id) : await toggleCommentDislike(comment.id)
+    const final = result.reaction === 'NONE' ? null : result.reaction
+    if (final !== comment.myReaction) {
+      applyCommentTransition(comment, comment.myReaction, final)
+      comment.myReaction = final
+    }
+  } catch {
+    applyCommentTransition(comment, comment.myReaction, original)
+    comment.myReaction = original
+    ElMessage.error('操作失败，请稍后重试')
+  } finally {
+    pendingCommentId.value = null
+  }
+}
 </script>
 
 <template>
@@ -93,6 +134,30 @@ onMounted(load)
             <span class="comment-item__time">{{ formatTime(comment.createdAt) }}</span>
           </div>
           <p class="comment-item__content">{{ comment.content }}</p>
+          <div class="comment-item__actions">
+            <button
+              type="button"
+              class="comment-reaction"
+              :class="{ 'comment-reaction--liked': comment.myReaction === 'LIKE' }"
+              :disabled="pendingCommentId === comment.id"
+              :aria-pressed="comment.myReaction === 'LIKE'"
+              @click="react(comment, 'LIKE')"
+            >
+              <span aria-hidden="true">👍</span>
+              <span>{{ comment.likeCount }}</span>
+            </button>
+            <button
+              type="button"
+              class="comment-reaction"
+              :class="{ 'comment-reaction--disliked': comment.myReaction === 'DISLIKE' }"
+              :disabled="pendingCommentId === comment.id"
+              :aria-pressed="comment.myReaction === 'DISLIKE'"
+              @click="react(comment, 'DISLIKE')"
+            >
+              <span aria-hidden="true">👎</span>
+              <span>{{ comment.dislikeCount }}</span>
+            </button>
+          </div>
         </li>
       </ul>
     </template>
@@ -177,6 +242,48 @@ onMounted(load)
   font-size: 14px;
   line-height: 1.7;
   overflow-wrap: break-word;
+}
+
+.comment-item__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
+  margin-top: var(--xl-space-2);
+}
+
+.comment-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  color: var(--xl-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.comment-reaction:hover {
+  border-color: var(--xl-color-primary);
+  color: var(--xl-color-primary);
+}
+
+.comment-reaction:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.comment-reaction--liked {
+  border-color: var(--xl-color-primary);
+  background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
+  color: var(--xl-color-primary);
+}
+
+.comment-reaction--disliked {
+  border-color: var(--xl-color-danger);
+  background: color-mix(in srgb, var(--xl-color-danger) 8%, transparent);
+  color: var(--xl-color-danger);
 }
 
 .comment-form {

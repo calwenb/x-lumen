@@ -1,13 +1,15 @@
 <script setup lang="ts">
-// 知识详情（B02，F-0201/F-0203）：标题/作者/时间/阅读时间/标签 + 目录导航 + Markdown 正文 + 点赞/评论。
+// 知识详情（B02，F-0201/F-0203/F-0212/F-0808）：标题/作者/时间/阅读时间/标签 + AI 摘要 +
+// 目录导航 + Markdown 正文 + 赞/踩/收藏/评论。
 // 关键状态：加载骨架、404 不可访问解释、失败可重试；进入页面上报一次阅读量（防刷由后端保证）。
 // 目录（TOC）滚动高亮：监听滚动，当前章节主色 + 左侧竖线。
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import CommentList from '@/modules/engagement/components/CommentList.vue'
+import FavoriteButton from '@/modules/engagement/components/FavoriteButton.vue'
 import FeedbackDialog from '@/modules/engagement/components/FeedbackDialog.vue'
-import LikeButton from '@/modules/engagement/components/LikeButton.vue'
+import ReactionBar from '@/modules/engagement/components/ReactionBar.vue'
 import KnowledgeQaDialog from '@/modules/chat/components/KnowledgeQaDialog.vue'
 import { fetchKnowledge, reportView } from '@/modules/publishing/api/public'
 import { extractToc, renderMarkdown } from '@/modules/publishing/utils/markdown'
@@ -25,8 +27,17 @@ const commentCount = ref(0)
 
 const knowledgeId = computed(() => String(route.params.id))
 const toc = computed<TocItem[]>(() => (knowledge.value ? extractToc(knowledge.value.content) : []))
+// 正文若以与标题相同的一级标题开头，去掉该行，避免页头标题重复渲染（BUG-006）
+function stripLeadingTitle(source: string): string {
+  const match = /^(#\s+.+)\r?\n?/.exec(source.trimStart())
+  if (match && match[1] && match[1].replace(/^#\s+/, '').trim() === knowledge.value?.title.trim()) {
+    return source.trimStart().slice(match[0].length)
+  }
+  return source
+}
+
 const renderedHtml = computed(() =>
-  knowledge.value ? renderMarkdown(knowledge.value.content) : '',
+  knowledge.value ? renderMarkdown(stripLeadingTitle(knowledge.value.content)) : '',
 )
 const updatedAt = computed(() => (knowledge.value ? formatDate(knowledge.value.updatedAt) : ''))
 
@@ -78,6 +89,20 @@ function scrollToAnchor(anchor: string): void {
   document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+/** 赞/踩计数同步（F-0212）：ReactionBar 以服务端结果校正后回传。 */
+function onCountsChange(counts: { likeCount: number; dislikeCount: number }): void {
+  if (!knowledge.value) return
+  knowledge.value.likeCount = counts.likeCount
+  knowledge.value.dislikeCount = counts.dislikeCount
+}
+
+/** 收藏状态同步（F-0212）。 */
+function onFavoriteChange(state: { favorited: boolean; count: number }): void {
+  if (!knowledge.value) return
+  knowledge.value.favorited = state.favorited
+  knowledge.value.favoriteCount = state.count
+}
+
 onMounted(async () => {
   await load()
   if (!notFound.value && !loadError.value) {
@@ -108,7 +133,7 @@ onUnmounted(() => {
       <p class="detail__state-text">知识加载失败</p>
       <el-button type="primary" plain @click="load">重试</el-button>
     </div>
-    <div v-else class="detail__layout">
+    <div v-else class="detail__layout" :class="{ 'detail__layout--single': toc.length === 0 }">
       <aside v-if="toc.length > 0" class="detail__toc">
         <h2 class="detail__toc-title">目录</h2>
         <button
@@ -149,18 +174,31 @@ onUnmounted(() => {
           </div>
         </header>
 
+        <!-- AI 摘要（F-0808）：有值才渲染，浅色卡片，不参与 TOC -->
+        <div v-if="knowledge.aiSummary" class="detail__summary">
+          <el-tag class="detail__summary-tag" size="small" effect="plain">AI 摘要</el-tag>
+          <p class="detail__summary-text">{{ knowledge.aiSummary }}</p>
+        </div>
+
         <div class="markdown-body" v-html="renderedHtml" />
 
         <div class="detail__actions">
-          <LikeButton
+          <ReactionBar
             :knowledge-id="knowledge.id"
-            :initial="knowledge.liked"
-            :count="knowledge.likeCount"
-            @update:count="knowledge.likeCount = $event"
+            :initial-reaction="knowledge.liked ? 'LIKE' : null"
+            :like-count="knowledge.likeCount"
+            :dislike-count="knowledge.dislikeCount"
+            @update:counts="onCountsChange"
+          />
+          <FavoriteButton
+            :knowledge-id="knowledge.id"
+            :initial="knowledge.favorited"
+            :count="knowledge.favoriteCount"
+            @update:state="onFavoriteChange"
           />
           <el-button plain @click="showQa = true">问「小光」</el-button>
           <el-button plain @click="showFeedback = true">纠错反馈</el-button>
-          <span class="detail__actions-hint">登录后可点赞与评论</span>
+          <span class="detail__actions-hint">登录后可点赞、收藏与评论</span>
         </div>
       </article>
     </div>
@@ -236,6 +274,11 @@ onUnmounted(() => {
   gap: var(--xl-space-6);
   justify-content: center;
   align-items: start;
+}
+
+/* BUG-006：目录为空时目录栏不渲染，必须退回单栏，否则正文被塞进 200px 的目录列 */
+.detail__layout--single {
+  grid-template-columns: minmax(0, 760px);
 }
 
 .detail__toc {
@@ -329,6 +372,30 @@ onUnmounted(() => {
 
 .detail__tags a {
   text-decoration: none;
+}
+
+/* AI 摘要区块（F-0808）：header 与正文之间，浅色卡片（AI 色 token 化） */
+.detail__summary {
+  display: flex;
+  gap: var(--xl-space-3);
+  align-items: flex-start;
+  margin-top: var(--xl-space-4);
+  padding: var(--xl-space-3) var(--xl-space-4);
+  border: 1px solid color-mix(in srgb, var(--xl-color-ai) 30%, transparent);
+  border-radius: var(--xl-radius-card);
+  background: color-mix(in srgb, var(--xl-color-ai) 6%, transparent);
+}
+
+.detail__summary-tag {
+  flex-shrink: 0;
+}
+
+.detail__summary-text {
+  margin: 0;
+  color: var(--xl-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: break-word;
 }
 
 .detail__actions {

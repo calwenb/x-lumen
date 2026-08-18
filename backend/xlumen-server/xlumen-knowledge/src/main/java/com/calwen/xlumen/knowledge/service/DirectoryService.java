@@ -40,8 +40,9 @@ public interface DirectoryService {
      * @param kbId        知识库 ID
      * @param directoryId 目录 ID
      * @param dto         更新入参（名称可空=不修改）
+     * @return 更新后的目录视图（与 create 契约一致，前端右键菜单重命名后依赖返回值刷新）
      */
-    void update(Long kbId, Long directoryId, UpdateDirectoryDTO dto);
+    DirectoryVO update(Long kbId, Long directoryId, UpdateDirectoryDTO dto);
 
     /**
      * 删除目录（F-0309）：目录及其全部子目录删除；目录下知识上挂父目录（根级目录删除挂库根

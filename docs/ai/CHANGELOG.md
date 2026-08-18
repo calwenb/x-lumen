@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/17
+> 更新日期：2026/8/18
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 
@@ -13,6 +13,19 @@
 
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
+
+## 2026/8/18 20:47 · ZCode（IDEAS 批次立项实施 + BUG-006 修复）
+
+> 影响文档：ai/IDEAS.md、ai/BUGS.md、ai/STATUS.md、product/PRODUCT.md、frontend/PROTOTYPE.md · 决策摘要：D9、D16、D17
+
+按用户要求执行 IDEAS.md 全部 5 条想法（登记 F-0212/F-0213/F-0214/F-0312/F-0808，PROTOTYPE 新增 B23 收藏页）并修复 BUG-006。**BUG-006 知识详情页排版错乱**--根因：`extractToc` 仅提取 h2~h4，短文无二级以上标题时目录栏不渲染，但 `.detail__layout` 的 grid 仍为 `200px minmax(0,760px)` 两栏定义，正文被自动布局塞进 200px 的目录列（正文每行 3~5 字、操作区按钮竖排、「登录后可点赞与评论」竖排、评论区飘出卡片、标题因正文首个 H1 重复渲染）；修复 = TOC 为空时加 `detail__layout--single` 退回单栏 `minmax(0,760px)` + `stripLeadingTitle` 去掉与页头标题重复的正文首个 `# 标题`。验证：1280 视口下正文卡片 760px 精确居中（x=260）、标题唯一、视觉复核五项全通过。**F-0212 知识点赞/点踩/收藏**--`eng_like` 加 `reaction_type` 列升级为三态互斥反应（无→激活/同型取消/异型切换），`eng_like` 存量行默认 1=赞语义不变；新表 `eng_favorite`（uk_favorite_ws_knowledge_user）；LikeController 拆 `/like` `/dislike`（返回 `{reaction:LIKE|DISLIKE|NONE}`）+ 收藏 toggle + `GET /api/v1/public/favorites` 收藏分页（复用公开卡片 VO + favoritedAt，按可见性过滤）；KnowledgeDetailVO 增 dislikeCount/favoriteCount/favorited。前端 ReactionBar（赞踩互斥）+ FavoriteButton + B23 收藏页 `/favorites`（取消收藏即时移除）+ 头像下拉「我的收藏」。**F-0213 评论点赞/点踩**--新表 `eng_comment_reaction`；`POST /api/v1/public/comments/{commentId}/like|dislike` 三态互斥（评论不存在/已删 404）；CommentVO 增 likeCount/dislikeCount/myReaction（listComments 批量聚合防 N+1）；CommentList 每条评论底部 👍/👎 互斥。**F-0214 创作中心一级导航**--App.vue 主导航「知识库」与「AI小光」间新增「创作中心」（登录态显示，路由 workbench），移动端汉堡菜单同步。**F-0312 目录树右键菜单**--新增共用组件 `DirectoryTreeContextMenu.vue`（Teleport 固定定位菜单，视口钳位，mousedown/Escape/scroll 关闭）接入 B01 首页与 B20 库页：树根右键新增根目录、节点右键 新增子目录/重命名/删除（ElMessageBox 二次确认，连带规则文案=子树删除+知识上挂父目录，仅库主）；B20 走 el-tree @node-contextmenu、B01 走按钮 @contextmenu（库切换器数据源为鉴权接口等价库主）。**F-0808 知识详情 AI 摘要**--`EnhanceServiceImpl` 抽出 `generateAndStoreSummary()`（enhance() 复用）；ai 模块新增 `KnowledgePublishedSummaryListener`（@EventListener 接发布事件 → aiTaskExecutor 异步生成，失败仅 warn 降级）；`AiApi.findLatestSummary`（scene=SUMMARY 取最新）→ KnowledgeDetailVO.aiSummary → 详情页 header 与正文间「AI 摘要」区块（公开读者可见）。**顺带修复契约缺陷**--`DirectoryController.PUT /directories/{id}` 原返回 `data:null` 而前端 `updateDirectory` 按 POST 契约 `mapDirectory(unwrap(null))` 抛 TypeError 致右键重命名后树不刷新（DB 已改名、UI 不刷新）；修复 = 后端 update 返回更新后 DirectoryVO（含 knowledgeCount）。**DB 迁移**--`sql/migration/87_reaction_upgrade.sql`（幂等：信息架构校验加列 + IF NOT EXISTS 建表）已在 xlumen_dev 执行并校验（列/两表就位、存量行 reaction_type 全 1）。**验证**：`mvn -pl xlumen-publishing,xlumen-ai -am clean verify` BUILD SUCCESS（38 测试全过）+ 全量 `mvn clean package` 通过；前端 typecheck/lint/stylelint/test 双应用全绿；新增 `e2e/enhancements.spec.ts`（注册→创作中心→收藏页→赞踩互斥→收藏/取消→评论点赞→右键菜单增删改全链路）与既有 9 条 E2E 全部通过；后端已重启运行新代码，详情/收藏/反应接口 curl 冒烟通过（未登录 401 正确）。
+
+## 2026/8/18 · ZCode（新建功能想法池 IDEAS.md）
+
+> 影响文档：ai/IDEAS.md（新增）、global/GLOBAL.md、ai/CHANGELOG.md · 决策摘要：无
+
+- 新增 `docs/ai/IDEAS.md` 功能想法池：记录用户尚未评估的新功能想法，编号 `IDEA-001` 起顺延；状态流转为 待评估 -> 已采纳（转入 STATUS.md 第 5 节待办 + PRODUCT.md 第 5 节功能总表登记 F-xxxx）/ 已否决；采纳前不得开工。
+- GLOBAL.md 第 2 节文档导航表新增「功能想法池」行、第 4 节目录树补 `ai/IDEAS.md` 条目、文档体系数量 9 -> 10 份。
 
 ## 2026/8/17 17:50 · ZCode（design/ 方案随实施完成删除）
 

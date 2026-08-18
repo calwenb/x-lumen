@@ -1,6 +1,7 @@
 package com.calwen.xlumen.publishing.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import com.calwen.xlumen.ai.api.AiApi;
 import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
@@ -16,6 +17,7 @@ import com.calwen.xlumen.publishing.dto.KnowledgeDetailVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeQueryDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.service.CommentService;
+import com.calwen.xlumen.publishing.service.FavoriteService;
 import com.calwen.xlumen.publishing.service.HotKnowledgeCacheService;
 import com.calwen.xlumen.publishing.service.LikeService;
 import com.calwen.xlumen.publishing.service.PublicKnowledgeService;
@@ -55,6 +57,12 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
 
     @Resource
     private LikeService likeService;
+
+    @Resource
+    private FavoriteService favoriteService;
+
+    @Resource
+    private AiApi aiApi;
 
     @Resource
     private HotKnowledgeCacheService hotKnowledgeCacheService;
@@ -118,25 +126,36 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
         if (vo == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "知识不存在或未公开");
         }
-        // liked 为用户态，不缓存，命中缓存后按当前用户重算（避免跨用户串号）；
+        // liked/favorited 为用户态，不缓存，命中缓存后按当前用户重算（避免跨用户串号）；
         // workspaceId 取自登录态（传 null 会被 MP 转成 IS NULL 条件查不到点赞记录）
         vo.setLiked(userId != null && likeService.isLiked(workspaceId, knowledgeId, userId));
+        vo.setFavorited(userId != null && favoriteService.isFavorited(workspaceId, knowledgeId, userId));
         return vo;
     }
 
-    /** 组装知识详情（缓存回源）：互动统计批量取回，kbName 由本层填充，liked 置 false 由外层重算。 */
+    /** 组装知识详情（缓存回源）：互动统计批量取回，kbName 由本层填充，liked/favorited 置默认由外层重算。 */
     private KnowledgeDetailVO buildKnowledgeDetail(Long knowledgeId, List<Long> visibleKbIds) {
         // 新签名：可见库集合过滤（content agent 已改，决策 D13）；workspaceId=null 跨空间聚合
         KnowledgeDetailDTO knowledge = contentApi.getPublished(null, knowledgeId, visibleKbIds);
         if (knowledge == null) {
             return null;
         }
-        String kbName = knowledge.getKbId() == null ? null
-                : loadKbNames(List.of(knowledge.getKbId())).get(knowledge.getKbId());
+        KnowledgeBaseVO kb = knowledge.getKbId() == null ? null
+                : knowledgeApi.getKnowledgeBaseById(knowledge.getKbId());
+        String kbName = kb == null ? null : kb.getName();
         long commentCount = commentService.countComments(null, List.of(knowledgeId))
                 .getOrDefault(knowledgeId, 0L);
         long likeCount = likeService.countLikes(null, List.of(knowledgeId))
                 .getOrDefault(knowledgeId, 0L);
+        // 点踩/收藏计数同模式批量聚合（F-0212，跨空间聚合）
+        long dislikeCount = likeService.countDislikes(null, List.of(knowledgeId))
+                .getOrDefault(knowledgeId, 0L);
+        long favoriteCount = favoriteService.countFavorites(null, List.of(knowledgeId))
+                .getOrDefault(knowledgeId, 0L);
+        // AI 摘要（F-0808）：非用户态，可随缓存回源结果一起缓存；摘要落库在知识归属空间
+        // （与发布事件 workspaceId 对齐），跨空间读时经 kbId 反查库归属空间
+        String aiSummary = kb == null ? null
+                : aiApi.findLatestSummary(kb.getWorkspaceId(), knowledgeId);
         return KnowledgeDetailVO.builder()
                 .id(knowledge.getId()).title(knowledge.getTitle()).summary(knowledge.getSummary()).content(knowledge.getContent())
                 .authorName(knowledge.getAuthorName())
@@ -144,6 +163,8 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
                 .tags(knowledge.getTags())
                 .viewCount(knowledge.getViewCount()).readMinutes(knowledge.getReadMinutes())
                 .commentCount(commentCount).likeCount(likeCount).liked(false)
+                .dislikeCount(dislikeCount).favoriteCount(favoriteCount).favorited(false)
+                .aiSummary(aiSummary)
                 .publishedAt(knowledge.getPublishedAt()).updatedAt(knowledge.getUpdatedAt()).build();
     }
 

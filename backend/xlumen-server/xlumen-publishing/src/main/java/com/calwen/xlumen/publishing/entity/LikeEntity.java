@@ -9,7 +9,8 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 知识点赞实体（eng_like，F-0203）：唯一键 (workspace_id, knowledge_id, user_id) 承担幂等，点赞/取消更新 status。
+ * 知识反应实体（eng_like，F-0203/F-0212）：唯一键 (workspace_id, knowledge_id, user_id) 承担幂等，
+ * 赞/踩共用一行三态互斥，取消/切换更新 status 与 reaction_type。
  *
  * @author calwen
  * @date 2026/8/12
@@ -29,10 +30,13 @@ public class LikeEntity {
     /** 知识 ID（逻辑外键 cnt_knowledge.id）。 */
     private Long knowledgeId;
 
-    /** 点赞用户 ID（逻辑外键 iam_user.id）。 */
+    /** 反应用户 ID（逻辑外键 iam_user.id）。 */
     private Long userId;
 
-    /** 状态：1 已赞 0 取消。 */
+    /** 反应类型：1 点赞 2 点踩。 */
+    private Integer reactionType;
+
+    /** 状态：1 活动中 0 已取消。 */
     private Integer status;
 
     /** 创建时间。 */

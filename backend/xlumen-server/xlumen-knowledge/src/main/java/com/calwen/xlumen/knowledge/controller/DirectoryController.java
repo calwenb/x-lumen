@@ -64,13 +64,12 @@ public class DirectoryController {
      * @param kbId        知识库 ID
      * @param directoryId 目录 ID
      * @param dto         更新入参
-     * @return 空响应
+     * @return 更新后的目录视图
      */
     @PutMapping("/{directoryId}")
-    public ApiResponse<Void> update(@PathVariable Long kbId, @PathVariable Long directoryId,
-                                    @Valid @RequestBody UpdateDirectoryDTO dto) {
-        directoryService.update(kbId, directoryId, dto);
-        return ApiResponse.success(null);
+    public ApiResponse<DirectoryVO> update(@PathVariable Long kbId, @PathVariable Long directoryId,
+                                           @Valid @RequestBody UpdateDirectoryDTO dto) {
+        return ApiResponse.success(directoryService.update(kbId, directoryId, dto));
     }
 
     /**

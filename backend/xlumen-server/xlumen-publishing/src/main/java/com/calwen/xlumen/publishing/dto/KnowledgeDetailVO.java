@@ -9,8 +9,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 知识详情（B02，F-0201）：正文 + 互动统计 + 当前用户点赞状态（登录时）。
- * KB-3 起携带库信息（决策 D16，详情面包屑），category 废弃。
+ * 知识详情（B02，F-0201）：正文 + 互动统计 + 当前用户点赞/收藏状态（登录时）。
+ * KB-3 起携带库信息（决策 D16，详情面包屑），category 废弃；
+ * F-0212 增加点踩/收藏统计，F-0808 增加 AI 摘要。
  *
  * @author calwen
  * @date 2026/8/12
@@ -60,8 +61,20 @@ public class KnowledgeDetailVO {
     /** 点赞数。 */
     private long likeCount;
 
+    /** 点踩数（F-0212）。 */
+    private Long dislikeCount;
+
+    /** 收藏数（F-0212）。 */
+    private Long favoriteCount;
+
     /** 当前用户是否已点赞（登录时有效）。 */
     private boolean liked;
+
+    /** 当前用户是否已收藏（F-0212，登录时有效）。 */
+    private Boolean favorited;
+
+    /** AI 摘要（F-0808，发布时异步生成；非用户态，随访客缓存一起缓存；无则为 null）。 */
+    private String aiSummary;
 
     /** 发布时间。 */
     private LocalDateTime publishedAt;
