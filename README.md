@@ -14,7 +14,7 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 
 ## 已实现
 
-文档体系 9 份（产品/全局/后端/前端/原型 + AI 协作三件套 STATUS/CHANGELOG/BUGS），各文档职责与权威范围见 [全局文档](docs/global/GLOBAL.md) 第 2 节。
+文档体系 11 份（产品/全局/后端/前端/原型 + AI 协作五件套 STATUS/CHANGELOG/BUGS/IDEAS/QA），各文档职责与权威范围见 [全局文档](docs/global/GLOBAL.md) 第 2 节。
 
 - [产品设计文档](docs/product/PRODUCT.md)：产品定位、13 模块 82 项功能总表（唯一功能事实源，MVP 39 / V2 31 / V3 12）、行为规则与完成定义
 - [全局文档](docs/global/GLOBAL.md)：总体架构、仓库结构、技术基线、本地运行与质量门禁命令
@@ -24,6 +24,8 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 - [开发状态与交接文档](docs/ai/STATUS.md)：强制工作流、能力基线、待办认领、决策 D1~D17
 - [AI 变更日志](docs/ai/CHANGELOG.md)：按会话倒序的变更记录
 - [待修问题清单](docs/ai/BUGS.md)：用户自测缺陷记录（仅按明确要求修复）
+- [功能想法池](docs/ai/IDEAS.md)：用户功能想法收集与评估状态（采纳须登记 PRODUCT 功能总表）
+- [AI 浏览器测试指南](docs/ai/QA.md)：用户发起、AI 代理 browser-use 浏览器测试的发起模式、环境自检与结果流转
 
 代码交付状态（进行中状态以 [开发状态与交接文档](docs/ai/STATUS.md) 为准）：
 

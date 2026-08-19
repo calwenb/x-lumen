@@ -1,12 +1,12 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/17
+> 更新日期：2026/8/19
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ## 1. 工作流（强制规则）
 
-1. **阅读**：开工前先确认仓库路径为项目根目录；通读本文件 → 任务相关规范文档：产品 [PRODUCT](../product/PRODUCT.md)（唯一功能事实源，第 5 节总表）、后端 [BACKEND](../backend/BACKEND.md)、前端 [FRONTEND](../frontend/FRONTEND.md)、页面 [PROTOTYPE](../frontend/PROTOTYPE.md)、运行命令 [GLOBAL](../global/GLOBAL.md)、待修问题 [BUGS](./BUGS.md)（**仅按用户明确要求修复，不自动认领**）。
+1. **阅读**：开工前先确认仓库路径为项目根目录；通读本文件 → 任务相关规范文档：产品 [PRODUCT](../product/PRODUCT.md)（唯一功能事实源，第 5 节总表）、后端 [BACKEND](../backend/BACKEND.md)、前端 [FRONTEND](../frontend/FRONTEND.md)、页面 [PROTOTYPE](../frontend/PROTOTYPE.md)、运行命令 [GLOBAL](../global/GLOBAL.md)、待修问题 [BUGS](./BUGS.md)（**仅按用户明确要求修复，不自动认领**）、浏览器测试 [QA](./QA.md)（AI 浏览器测试发起前必读）。
 2. **认领**：在第 5 节待办中把任务标为 `已认领（AI 名）`，一次一项；未认领任务可能被其他 AI 同时开始，冲突以先提交者为准。
 3. **实现与验证**：只做任务范围内变更；目录结构与功能范围不得偏离 docs（决策 D7）；跑通相关质量门禁（命令见 GLOBAL.md，后端编译需 JDK 25）。
 4. **收尾**（不得省略）：更新本文件状态与待办；按 [CHANGELOG.md](./CHANGELOG.md) 头部模板追加一条；代码与文档同一提交。
@@ -104,9 +104,9 @@
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/19 11:00 · ZCode：**新建 AI 浏览器测试指南 QA.md**--按用户要求为「AI 代理用 browser-use 操作浏览器做全功能/指定模块测试」建立规范文档（发起模式、环境自检 8 项、操作规范踩坑备忘、模块入口速查、结果流转；引用不复制 PRODUCT/PROTOTYPE/GLOBAL/BUGS）；GLOBAL §2 导航表/§4 结构树补 QA 并计数 10->11 份，README 文档清单补 IDEAS（8/18 遗漏）与 QA 并计数 9->11 份，本文件 §1 阅读清单补 QA。纯文档变更，代码零改动。
 - 2026/8/18 20:47 · ZCode：**IDEAS 批次立项实施 + BUG-006 修复**--按用户要求执行 IDEAS.md 全部 5 条（登记 F-0212 知识赞/踩互斥+收藏+B23 收藏页、F-0213 评论赞踩、F-0214 创作中心主导航、F-0312 目录树右键菜单、F-0808 详情 AI 摘要；eng_like 三态化 + eng_favorite/eng_comment_reaction 新表 + 87 迁移已在 xlumen_dev 执行）；BUG-006 根因 = TOC 空时 grid 两栏定义（正文塞 200px 列）+ 标题重复渲染，修复 = 单栏回退 + 去重复标题；顺带修复目录 PUT 重命名返回空值致右键重命名后树不刷新的契约缺陷（后端 update 返回 DirectoryVO）。验证：mvn verify BUILD SUCCESS（38 测试）、前端门禁全绿、新增 e2e/enhancements.spec.ts + 既有 9 条 E2E 全绿、后端已重启运行新代码。
 - 2026/8/17 17:30 · ZCode：**文档体系治理（评审问题六项统一修复）**--①README「已实现」刷新（原文误标 M02~M13 待办，与实际进度矛盾）、补 BUGS/design 导航、去除快速开始 6.x 编号残留；②STATUS §3 压缩为能力基线摘要 + 踩坑备忘（历史细节归 CHANGELOG，消除双份记史）、§4/§5 修正 KB-6 状态与进行中描述、§7 精简为最近 3 条并补 8/17 16:30 遗漏条目；③GLOBAL §2 导航表补 BUGS.md、§4 结构树同步（docs 9 份 + design/）；④tmp/ 两份方案转正迁入 docs/design/（STATUS 引用同步，CHANGELOG 历史条目按记录原貌保留）；⑤CHANGELOG 条目格式改版为「标题 + 元信息行 + 正文」并全量转换存量条目；⑥BACKEND §10 补 reindex 端点。纯文档变更，代码零改动。（后续同日按用户要求：design/ 两份方案已随实施完成删除，引用同步清理。）
-- 2026/8/17 16:30 · ZCode：**小光回答 Markdown 渲染**--ChatPage/KnowledgeQaDialog 助手消息改 v-html 渲染 renderMarkdown()（复用 markdown-it + DOMPurify 通道，与知识详情同一渲染管线），用户消息保持纯文本插值防 XSS；流式打字光标移出文本节点为兄弟元素；新增气泡内 markdown-body scoped 样式对齐设计 token。验证：pnpm lint + typecheck 双前端全绿。
 
 ## 8. 关键决策摘要（详见规范文档，勿推翻）
 

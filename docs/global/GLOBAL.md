@@ -1,6 +1,6 @@
 # xLumen 全局文档
 
-> 更新日期：2026/8/17
+> 更新日期：2026/8/19
 > **本仓库专属**。
 > 适用范围：项目概览、文档导航、总体架构、仓库结构、技术基线、本地运行命令与质量门禁、扩展性路线图。
 > 引用原则：**引用不复制**——架构图（第 3 节）、技术基线（第 5 节）、运行与质量门禁命令（第 6/7 节）全仓唯一维护在本文档；功能清单唯一来源为 PRODUCT.md 第 5 节总表；内容状态机文字版见 PRODUCT.md 第 4 节。
@@ -43,6 +43,7 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 | [AI 变更日志](../ai/CHANGELOG.md) | 按会话倒序的变更记录 | 变更记录唯一来源 |
 | [待修问题清单](../ai/BUGS.md) | 用户自测缺陷记录与修复状态 | 缺陷清单唯一来源（仅按用户明确要求修复） |
 | [功能想法池](../ai/IDEAS.md) | 用户功能想法收集与评估状态 | 想法清单唯一来源（采纳须经 PRODUCT 功能总表登记） |
+| [AI 浏览器测试指南](../ai/QA.md) | AI 代理 browser-use 浏览器测试的发起模式、环境自检、操作规范与结果流转 | AI 浏览器测试规范唯一来源 |
 
 阅读顺序：
 
@@ -83,11 +84,12 @@ flowchart TB
 
 ```text
 xlumen/
-├─ docs/                                # 文档体系（10 份）
+├─ docs/                                # 文档体系（11 份）
 │  ├─ ai/STATUS.md                      # 开发状态与交接（AI 必读）
 │  ├─ ai/CHANGELOG.md                   # AI 变更日志
 │  ├─ ai/BUGS.md                        # 待修问题清单（仅按用户明确要求修复）
 │  ├─ ai/IDEAS.md                       # 功能想法池（采纳须登记 PRODUCT 功能总表）
+│  ├─ ai/QA.md                          # AI 浏览器测试指南（browser-use 全功能/指定模块测试）
 │  ├─ product/PRODUCT.md                # 产品设计（功能总表唯一事实源）
 │  ├─ backend/BACKEND.md                # 后端开发文档
 │  ├─ frontend/FRONTEND.md              # 前端开发文档
@@ -114,7 +116,7 @@ xlumen/
 └─ .gitignore                           # 忽略 .env、node_modules、target 等（M01 骨架阶段创建）
 ```
 
-> 标注说明：docs/ 与根 README.md 为文档体系交付（初版 7 份；BUGS.md 于 2026-08-16 新增）；backend/、frontend/、scripts/ 与根工程配置（package.json、pnpm-workspace.yaml、.editorconfig、.gitignore）已随 M01 代码骨架创建（2026-08-12 交付）。目录结构以本文与 BACKEND/FRONTEND 契约为准（决策 D7 文档先行，代码骨架不得偏离）。
+> 标注说明：docs/ 与根 README.md 为文档体系交付（初版 7 份；BUGS.md 2026-08-16、IDEAS.md 2026-08-18、QA.md 2026-08-19 新增）；backend/、frontend/、scripts/ 与根工程配置（package.json、pnpm-workspace.yaml、.editorconfig、.gitignore）已随 M01 代码骨架创建（2026-08-12 交付）。目录结构以本文与 BACKEND/FRONTEND 契约为准（决策 D7 文档先行，代码骨架不得偏离）。
 
 ## 5. 技术基线
 

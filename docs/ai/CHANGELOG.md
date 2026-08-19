@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/18
+> 更新日期：2026/8/19
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 
@@ -13,6 +13,34 @@
 
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
+
+## 2026/8/19 11:50 · ZCode（2026-08-19 全功能测试结论）
+
+> 影响文档：docs/ai/BUGS.md、docs/ai/assets/browser-test-2026-08-19/{api-smoke,e2e-baseline,bug-007-repro,docs-audit}.md · 决策摘要：D9、D13、D16、D17
+
+按用户 `/goal 做一轮全功能测试` 执行 xLumen MVP 全功能测试，遵守 QA.md 三条铁律（不替代质量门禁 / 缺陷不自动修 / 环境假缺陷先排除）。**范围**：PRODUCT §5（87 项/MVP 44）+ STATUS §3 能力基线 = 12 模块（身份/阅读/互动/内容/KB 体系/审核/AI 对话/AI 写作/AI 增强/RAG/Admin/多用户可见性），分 4 路并行——主代理 browser-use 实测 6 模块（互动/内容/KB 体系/AI 对话/AI 写作/Admin/多用户可见性），3 子代理分别承担 API 冒烟 70 端点、Playwright E2E 10/10 回放、BUG-007 根因复现+文档一致性审计。**测试账号**：`qa_alpha_20260819`（qa_ 前缀独立空间，零污染真实数据，账号已自动获 OWNER 角色可测 admin）。**结论**：
+- **互动/内容/KB 体系/AI 对话/Admin 模块全部通过**——F-0212 赞踩互斥、收藏 toggle、B23 收藏页；F-0213 评论反应；F-0214 创作中心导航；F-0312 目录树右键菜单（新增子目录/重命名/删除）；F-0808 AI 摘要；D9 跨用户可见性；D17 文章→知识；审核中心审批 + AI 审校回填；Admin 空间设置/模型配置/审计日志（3 页可见，审计记录含 KNOWLEDGE_PUBLISH/REVIEW_REJECT）。
+- **新发现 10 个 BUG 候选**（BUG-007 根因修正 + BUG-008~010、012~017，跳号 011 留给 createdAt 同源增强），全部按 BUGS.md 模板登记，**仅记录未修**——
+  - BUG-007 修正根因：`ContentApiImpl` 公开读路径强制 `eq(status,6)` 把「APPROVED + published_at=NULL」中间态挡掉，与原推测「可见库推导缺陷」不符（subagent 复现 SQL + 行号 + 修复候选三方向已交付 `bug-007-repro.md`）
+  - BUG-008 HomePage 左栏「公开知识库」computed 取数错（仅显示「我的公开库」），与 BUG-007 症状重叠但根因不同
+  - BUG-009 详情页已登录态仍显示「登录后可点赞、收藏与评论」提示
+  - BUG-010 评论/AI 增值结果 `createdAt: null`（前端现象「20684 天前」的真根因）——subagent API 冒烟定位
+  - BUG-012 读者纠错同 IP 限流失效（QA §3.7 M11 契约违反）
+  - BUG-013 知识 update 接受越界 kbId/directoryId 静默写入（create 路径已加 checkOwnership，update 路径遗漏）
+  - BUG-014 知识版本历史端点缺失（`cnt_knowledge_version` 表已建无 controller）
+  - BUG-015 提交审核后作者侧 getOwned 偶发 404（SUSPECT 待复核）
+  - BUG-016 下架（unpublish）端点完全缺失（`KnowledgeStatus.OFFLINE(8)` 状态无迁移接口）
+  - BUG-017 编辑态提示「归属库与目录不可修改」但目录可改（文案 vs 行为错位）
+- **文档一致性审计**（docs-audit.md）：7/10 一致，4 项差异——
+  - D1（中）README.md:19 / GLOBAL.md:14 引用 PRODUCT 旧值「82 项 / MVP 39」，现行 PRODUCT §5「87 项 / MVP 44」
+  - D2-D3（低）STATUS.md:101 §6 W7 行「73 项 / MVP 37」与 PROTOTYPE 范围「B00~B19、A01~A07」已过时
+  - D4（低）README.md:17 文本「11 份」与下方 10 项链接清单未对齐（11=10 docs+1 README 自身）
+- **遗留运维事项**：①测试期间未重启后端（QA 铁律），本批次 BUG 中仅 BUG-010 时戳类建议先修；②新账号 `qa_alpha_20260819` 无默认知识库，需 API 建库才能进首页 KB 切换；③qa_ 账号 8-19 22:00 自动清理（QA §3.8）；④dev server 端口残留 PIDs 44080/34312 已清，仅 5173/5174 主实例；⑤BUG-007 修复候选三方向待用户裁决。
+- **顺带澄清**：BUG-007 与 BUG-008 同症状异根；BUG-010「20684 天前」= 评论/AI 增值 `createdAt` 后端时戳不回填（不是前端格式化 bug）；subagent 报告「BUG-008~021」中 008/014/016~018/020/021 共 7 条是任务清单的端点路径假设过时（非代码缺陷）已剔除，仅真实后端缺陷并入本批次 BUGS。
+
+> 影响文档：ai/QA.md（新增）、global/GLOBAL.md、README.md、ai/STATUS.md、ai/CHANGELOG.md · 决策摘要：无
+
+按用户要求建立 QA 测试文档，规范「用户发起、AI 代理用会话内置 browser-use 能力操作真实浏览器」的测试工作流。**新增 `docs/ai/QA.md`**：①定位与分工（单元/集成、Playwright E2E、AI 浏览器测试三层手段表；不替代质量门禁、缺陷不自动修复、环境假缺陷先排除三条铁律）；②三种发起模式（全功能巡检按 PRODUCT §5+STATUS §3 推导 / 指定模块或 F-xxxx、Bxx 页面 / 缺陷复现 BUG-xxxx）；③环境自检 8 项（后端健康检查、双前端可达、Vite 端口自增与残留 dev server 陷阱、Redis 无密码、Noop 向量降级的假缺陷判定、AI 真实调用注意、`qa_` 测试账号与数据安全（注册即 OWNER 可测 admin，不动真实账号数据）、先读 BUGS 已知问题）；④browser-use 操作规范踩坑备忘（登录态会话内存态/整页刷新重登、fullPage 截图平铺伪影、点击超时降级 Playwright、SSE 流式等待放宽、雪花 ID 完整复制）；⑤12 模块入口速查表（blog/admin 路由 + 核心链路骨架，验收基准统一引用 PRODUCT §12）；⑥结果流转（缺陷记 BUGS、会话结论记 CHANGELOG、修复时沉淀 E2E 回归用例、测试数据 `qa_` 前缀约定）。**导航同步**：GLOBAL §2 导航表新增 QA 行、§4 结构树补 `ai/QA.md` 并计数 10->11 份、标注说明补 IDEAS/QA 新增日期；README 文档清单补 IDEAS（2026/8/18 新增时的遗漏）与 QA 两行、计数 9->11 份；STATUS §1 阅读清单补 QA、§7 追加本条目并维持最近 3 条。纯文档变更，代码与质量门禁零影响。
 
 ## 2026/8/18 20:47 · ZCode（IDEAS 批次立项实施 + BUG-006 修复）
 
