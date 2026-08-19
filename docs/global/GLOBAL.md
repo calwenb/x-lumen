@@ -165,18 +165,15 @@ Copy-Item backend/xlumen-server/config/.env.example backend/xlumen-server/config
 
 ### 6.4 启动后端
 
-```powershell
-cd backend/xlumen-server
-mvn -pl xlumen-boot -am spring-boot:run
-```
-
-或打包后运行（默认地址 `http://localhost:8080`，健康检查 `http://localhost:8080/actuator/health`）：
+打包后运行（推荐，默认地址 `http://localhost:8080`，健康检查 `http://localhost:8080/actuator/health`；JDK 25）：
 
 ```powershell
 cd backend/xlumen-server
 mvn -pl xlumen-boot -am package -DskipTests
 java -jar xlumen-boot/target/xlumen-boot-*.jar
 ```
+
+> **不要**用 `mvn -pl xlumen-boot -am spring-boot:run`——`-am` 会让 spring-boot:run 在 reactor 的父 POM 上执行而报 `Unable to find a suitable main class`；且 spring-boot:run 从本地 `~/.m2` 解析兄弟模块，若未先 `mvn install` 会吃到旧版本 jar（症状：接口缺新字段）。确需 spring-boot:run 时：先 `mvn install -DskipTests`，再到 `xlumen-boot/` 目录内执行 `mvn spring-boot:run`（不带 `-am`）。
 
 ### 6.5 启动前端
 

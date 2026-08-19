@@ -10,7 +10,8 @@ From `backend/xlumen-server/`:
 
 ```powershell
 mvn -T 1C clean verify
-mvn -pl xlumen-boot -am spring-boot:run
+mvn -pl xlumen-boot -am package -DskipTests
+java -jar xlumen-boot/target/xlumen-boot-*.jar
 ```
 
 From the repository root:
