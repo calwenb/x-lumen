@@ -20,6 +20,7 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -89,6 +90,9 @@ public class CommentServiceImpl implements CommentService {
         comment.setParentId(dto.getParentId());
         comment.setContent(dto.getContent().trim());
         comment.setStatus(STATUS_NORMAL);
+        // BUG-010：DB 有 DEFAULT CURRENT_TIMESTAMP 但 MyBatis-Plus insert 不回填内存实体，
+        // 不手动赋值则返回 VO 的 createdAt 为 null（前端「xx 天前」把 null 当 1970）。
+        comment.setCreatedAt(LocalDateTime.now());
         commentMapper.insert(comment);
         return CommentVO.builder()
                 .id(comment.getId()).knowledgeId(comment.getKnowledgeId()).parentId(comment.getParentId())

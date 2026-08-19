@@ -252,11 +252,11 @@ onMounted(async () => {
             </section>
           </template>
 
-          <!-- 全部知识库：公开库列表 + 我的知识库入口 -->
+          <!-- 全部知识库：我的公开库列表 + 我的知识库入口（BUG-008：数据源为鉴权接口仅返回自己的库，标题对齐语义） -->
           <template v-else>
             <section class="side-card">
-              <h2 class="side-card__title">公开知识库</h2>
-              <p v-if="publicKnowledgeBases.length === 0" class="side-card__hint">暂无公开知识库</p>
+              <h2 class="side-card__title">我的公开库</h2>
+              <p v-if="publicKnowledgeBases.length === 0" class="side-card__hint">暂无我的公开库</p>
               <RouterLink
                 v-for="kb in publicKnowledgeBases"
                 :key="kb.id"

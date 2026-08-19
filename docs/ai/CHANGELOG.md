@@ -14,6 +14,31 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/8/19 12:05 · ZCode（BUGS.md 修复批次：9 条修复 + 1 条复核关闭）
+
+> 影响文档：docs/ai/BUGS.md、backend/xlumen-server/sql/migration/88_knowledge_version.sql · 决策摘要：D9、D13、D16、D17
+
+按用户「执行修复 BUGS.md」要求修复 2026-08-19 全功能测试批次缺陷。**修复 9 条（BUG-007/008/009/010/012/013/014/016/017）+ 复核 1 条（BUG-015 未复现保留 SUSPECT）**，全部从 BUGS.md 清单移除、编号不回收。
+
+**后端 content**：
+- BUG-014 知识版本历史（F-0303 补全）——`cnt_knowledge_version` 表此前在 BUGS.md 被误记「8-12 M04 已建表」，实际全仓无 DDL；本次补建表（init/40_content.sql + migration 88）+ `KnowledgeVersionEntity/Mapper` + 创建/更新/自动保存落库后写标题/正文快照（`saveVersionSnapshot`，MyBatis-Plus @Version 回写版本号）+ `GET /api/v1/knowledge/{id}/versions` 分页端点（版本降序，越权 404）。
+- BUG-013 知识 update/autosave 接受越界 directoryId 静默写入——同库内换目录前经 `KnowledgeApi.checkOwnership` 校验，越界返回 400「目录不属于当前知识库」（create 路径已有，update/autosave 补全）。
+- BUG-016 下架端点缺失 + 删除闭环——新增 `POST /api/v1/releases/{knowledgeId}/unpublish`（仅已发布可下架 → UNPUBLISHED(8) + 出索引 + 失效热点缓存 + 审计 KNOWLEDGE_UNPUBLISH，乐观锁冲突 409）；`KnowledgeServiceImpl.delete` 允许已下架删除（「删除已发布需先下架」闭环）。
+
+**后端 publishing**：
+- BUG-010 评论/AI 增值 createdAt 为 null——`CommentServiceImpl.createComment` 与 `EnhanceServiceImpl.store` insert 前手动 `setCreatedAt(now)`（DB 有 DEFAULT 但 MyBatis-Plus 不回填内存实体；前端「20684 天前」的根因）。
+- BUG-012 读者纠错限流失效——`FeedbackServiceImpl` RATE_LIMIT 2→1（M11 契约同 IP 每分钟 1 条，第二次即 429）。
+- BUG-007 审核通过后无发布入口——`ReleaseController` 补 `@PreAuthorize("hasRole('OWNER')")`（F-0903 职责分离落地）；`ReleaseServiceImpl.release` 移除「发布入参版本 == 知识当前版本」强校验（approve 状态迁移经 @Version 会把知识版本 +1，审核快照版本必然落后；幂等改由 release 表 knowledgeId+version 记录保证，迁移仍用知识当前版本防覆盖并发）。
+
+**前端 blog**：
+- BUG-007 配套：审核中心 `ReviewCenterPage` 「已通过」详情新增「发布」按钮（调 `createRelease` 立即发布，409 冲突恢复提示）。
+- BUG-008 HomePage 左栏 H2「公开知识库」→「我的公开库」（数据源是鉴权接口仅返回自己的库，标题对齐语义；空态同步）。
+- BUG-009 详情页「登录后可点赞、收藏与评论」加 `v-if="!session.loggedIn"`（登录态隐藏）。
+- BUG-017 编辑器提示文案「归属库与目录不可修改」→「归属库不可修改，目录可调整」（与目录 select 实际行为对齐）。
+- BUG-010 前端防御：`CommentList.formatTime` 空时戳返回空串（避免 null 当 1970）。
+
+**验证**：后端 `mvn -pl xlumen-boot -am package` 通过 + 受影响模块单测全绿；前端 typecheck/lint 干净（仅既有 CRLF 警告）；E2E 9/9 通过；curl 实测——版本快照 create v0 + update v1、越界目录 400、评论 createdAt 非 null、feedback 第二次 429、approve→release→公开可见（status 4→6）、unpublish→公开隐藏（status 8）→已下架可删除。**环境注意**：修复验证期间发现 8080 端口存在守护进程自动拉起 `java -jar` 后端（PID 1400 等），排查时曾误判旧代码存活；spring-boot:run 不带 `-am` 时依赖模块从 .m2 取旧 jar，须 `mvn -pl xlumen-boot -am package` 后 `java -jar` 运行新代码。
+
 ## 2026/8/19 11:50 · ZCode（2026-08-19 全功能测试结论）
 
 > 影响文档：docs/ai/BUGS.md、docs/ai/assets/browser-test-2026-08-19/{api-smoke,e2e-baseline,bug-007-repro,docs-audit}.md · 决策摘要：D9、D13、D16、D17

@@ -36,3 +36,16 @@ CREATE TABLE IF NOT EXISTS `cnt_knowledge` (
 --   ALTER TABLE cnt_knowledge ADD KEY idx_knowledge_ws_status (workspace_id, status, updated_at);
 --   UPDATE cnt_knowledge SET status = CASE status WHEN 1 THEN 2 WHEN 2 THEN 6 WHEN 3 THEN 8 ELSE status END;
 --   UPDATE cnt_knowledge SET status = 2 WHERE status NOT BETWEEN 1 AND 8;
+
+-- 知识版本快照表（F-0303 历史版本，BUG-014 补全）：每次落库（创建/更新/自动保存）记录当时标题/正文快照
+CREATE TABLE IF NOT EXISTS `cnt_knowledge_version` (
+    `id`           BIGINT     NOT NULL COMMENT '主键（雪花 ID）',
+    `workspace_id` BIGINT     NOT NULL COMMENT '工作空间 ID（逻辑外键 iam_workspace.id）',
+    `knowledge_id` BIGINT     NOT NULL COMMENT '知识 ID（逻辑外键 cnt_knowledge.id）',
+    `version`      BIGINT     NOT NULL COMMENT '版本号（对应 cnt_knowledge.version 落库后的值）',
+    `title`        VARCHAR(200) NOT NULL COMMENT '标题快照',
+    `content`      MEDIUMTEXT NOT NULL COMMENT '正文 Markdown 快照',
+    `created_at`   DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '快照时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_knowledge_version_kid_version` (`knowledge_id`, `version`)
+) ENGINE = InnoDB COMMENT ='知识版本快照（F-0303）';

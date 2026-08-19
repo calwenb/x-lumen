@@ -6,7 +6,9 @@ import com.calwen.xlumen.content.dto.CreateKnowledgeDTO;
 import com.calwen.xlumen.content.dto.DraftSaveDTO;
 import com.calwen.xlumen.content.dto.UpdateKnowledgeDTO;
 import com.calwen.xlumen.content.vo.KnowledgeListItemVO;
+import com.calwen.xlumen.content.vo.KnowledgeVersionVO;
 import com.calwen.xlumen.content.vo.KnowledgeVO;
+import com.calwen.xlumen.common.dto.PageQueryDTO;
 
 /**
  * 知识服务（F-0301/F-0302/F-0307）：CRUD + 草稿自动保存 + 回收站软删/恢复（F-0305，决策 D16）。
@@ -75,4 +77,13 @@ public interface KnowledgeService {
      * @param knowledgeId 知识 ID
      */
     void restore(Long knowledgeId);
+
+    /**
+     * 分页查询知识版本历史（F-0303 历史版本，BUG-014 补全）：版本号降序；越权/不存在 404。
+     *
+     * @param knowledgeId 知识 ID
+     * @param query       分页参数
+     * @return 版本快照分页
+     */
+    ContentPageResult<KnowledgeVersionVO> listVersions(Long knowledgeId, PageQueryDTO query);
 }

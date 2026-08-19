@@ -346,7 +346,7 @@ const canSubmitReview = computed(
         </div>
         <div class="editor-page__row editor-page__hint">
           <span v-if="knowledgeId" class="editor-page__status-text">
-            当前状态：{{ STATUS_LABELS[status] ?? status }} · 归属库与目录不可修改（单库单目录，决策
+            当前状态：{{ STATUS_LABELS[status] ?? status }} · 归属库不可修改，目录可调整（单库单目录，决策
             D16）
           </span>
           <span v-else>知识按「库 → 目录 → 知识」组织，请先选择知识库（新建后不可更换）</span>

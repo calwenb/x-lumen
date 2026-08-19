@@ -11,6 +11,7 @@ import FavoriteButton from '@/modules/engagement/components/FavoriteButton.vue'
 import FeedbackDialog from '@/modules/engagement/components/FeedbackDialog.vue'
 import ReactionBar from '@/modules/engagement/components/ReactionBar.vue'
 import KnowledgeQaDialog from '@/modules/chat/components/KnowledgeQaDialog.vue'
+import { useSessionStore } from '@/stores/session'
 import { fetchKnowledge, reportView } from '@/modules/publishing/api/public'
 import { extractToc, renderMarkdown } from '@/modules/publishing/utils/markdown'
 
@@ -18,6 +19,7 @@ import type { KnowledgeDetail } from '@/modules/publishing/api/public'
 import type { TocItem } from '@/modules/publishing/utils/markdown'
 
 const route = useRoute()
+const session = useSessionStore()
 
 const knowledge = ref<KnowledgeDetail | null>(null)
 const loading = ref(true)
@@ -198,7 +200,7 @@ onUnmounted(() => {
           />
           <el-button plain @click="showQa = true">问「小光」</el-button>
           <el-button plain @click="showFeedback = true">纠错反馈</el-button>
-          <span class="detail__actions-hint">登录后可点赞、收藏与评论</span>
+          <span v-if="!session.loggedIn" class="detail__actions-hint">登录后可点赞、收藏与评论</span>
         </div>
       </article>
     </div>

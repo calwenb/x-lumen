@@ -104,9 +104,9 @@
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/19 12:05 · ZCode：**BUGS.md 修复批次（9 条修复 + 1 条复核关闭）**--按用户「执行修复 BUGS.md」修复 8-19 全功能测试缺陷：BUG-014 版本历史补全（cnt_knowledge_version 建表 + 快照写入 + GET /knowledge/{id}/versions）、BUG-013 update/autosave 越界目录 400、BUG-016 unpublish 端点 + 已下架可删除、BUG-010 评论/AI 增值 createdAt 回填、BUG-012 纠错限流 1/分钟、BUG-007 审核中心「发布」按钮 + ReleaseController 授权 + release 移除版本强校验（approve 后版本 +1）、BUG-008 HomePage「我的公开库」文案、BUG-009 登录提示 v-if、BUG-017 编辑器文案对齐；BUG-015 复核未复现保留 SUSPECT。验证：mvn package + 单测全绿、前端门禁干净、E2E 9/9、curl 全链路（v0/v1 快照、429、approve→发布→公开可见、下架→隐藏→可删除）。环境注意：8080 有守护自动拉起 java -jar，spring-boot:run 不带 -am 会取 .m2 旧依赖，须 package 后 java -jar。
+- 2026/8/19 11:50 · ZCode：**2026-08-19 全功能测试结论**--主代理 + 3 子代理并行（API 冒烟 70 端点 / Playwright E2E 10/10 / BUG-007 复现 + 文档审计），覆盖 PRODUCT §5 + STATUS §3 共 12 模块；互动/内容/KB 体系/AI 对话/Admin/审核/多用户可见性通过；新发现 10 个 BUG 候选（BUG-007 根因修正 + 008~010、012~017）全部登记 BUGS.md 仅记录未修；文档审计 4 项差异（README/GLOBAL 旧值、STATUS W7 快照、链接计数）；qa_alpha_20260819 测试账号按 QA §3.8 22:00 清理。
 - 2026/8/19 11:00 · ZCode：**新建 AI 浏览器测试指南 QA.md**--按用户要求为「AI 代理用 browser-use 操作浏览器做全功能/指定模块测试」建立规范文档（发起模式、环境自检 8 项、操作规范踩坑备忘、模块入口速查、结果流转；引用不复制 PRODUCT/PROTOTYPE/GLOBAL/BUGS）；GLOBAL §2 导航表/§4 结构树补 QA 并计数 10->11 份，README 文档清单补 IDEAS（8/18 遗漏）与 QA 并计数 9->11 份，本文件 §1 阅读清单补 QA。纯文档变更，代码零改动。
-- 2026/8/18 20:47 · ZCode：**IDEAS 批次立项实施 + BUG-006 修复**--按用户要求执行 IDEAS.md 全部 5 条（登记 F-0212 知识赞/踩互斥+收藏+B23 收藏页、F-0213 评论赞踩、F-0214 创作中心主导航、F-0312 目录树右键菜单、F-0808 详情 AI 摘要；eng_like 三态化 + eng_favorite/eng_comment_reaction 新表 + 87 迁移已在 xlumen_dev 执行）；BUG-006 根因 = TOC 空时 grid 两栏定义（正文塞 200px 列）+ 标题重复渲染，修复 = 单栏回退 + 去重复标题；顺带修复目录 PUT 重命名返回空值致右键重命名后树不刷新的契约缺陷（后端 update 返回 DirectoryVO）。验证：mvn verify BUILD SUCCESS（38 测试）、前端门禁全绿、新增 e2e/enhancements.spec.ts + 既有 9 条 E2E 全绿、后端已重启运行新代码。
-- 2026/8/17 17:30 · ZCode：**文档体系治理（评审问题六项统一修复）**--①README「已实现」刷新（原文误标 M02~M13 待办，与实际进度矛盾）、补 BUGS/design 导航、去除快速开始 6.x 编号残留；②STATUS §3 压缩为能力基线摘要 + 踩坑备忘（历史细节归 CHANGELOG，消除双份记史）、§4/§5 修正 KB-6 状态与进行中描述、§7 精简为最近 3 条并补 8/17 16:30 遗漏条目；③GLOBAL §2 导航表补 BUGS.md、§4 结构树同步（docs 9 份 + design/）；④tmp/ 两份方案转正迁入 docs/design/（STATUS 引用同步，CHANGELOG 历史条目按记录原貌保留）；⑤CHANGELOG 条目格式改版为「标题 + 元信息行 + 正文」并全量转换存量条目；⑥BACKEND §10 补 reindex 端点。纯文档变更，代码零改动。（后续同日按用户要求：design/ 两份方案已随实施完成删除，引用同步清理。）
 
 ## 8. 关键决策摘要（详见规范文档，勿推翻）
 

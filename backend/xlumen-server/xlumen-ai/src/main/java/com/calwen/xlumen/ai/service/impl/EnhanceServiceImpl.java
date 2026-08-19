@@ -87,6 +87,8 @@ public class EnhanceServiceImpl implements EnhanceService {
         entity.setKnowledgeId(knowledgeId);
         entity.setScene(scene.name());
         entity.setResultJson(resultJson);
+        // BUG-010：DB 有 DEFAULT CURRENT_TIMESTAMP 但 MyBatis-Plus insert 不回填内存实体，需手动赋值
+        entity.setCreatedAt(java.time.LocalDateTime.now());
         enhanceResultMapper.insert(entity);
         return EnhanceResultVO.builder()
                 .id(entity.getId())

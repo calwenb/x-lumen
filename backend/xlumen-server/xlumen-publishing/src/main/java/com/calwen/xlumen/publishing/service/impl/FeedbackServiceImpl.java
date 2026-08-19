@@ -22,7 +22,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * 读者纠错服务实现（F-1001）：匿名可提交（user_id 可空），同一 IP 60s 限流 2 次（Redis 降级放行）。
+ * 读者纠错服务实现（F-1001）：匿名可提交（user_id 可空），同一 IP 每分钟 1 条限流（M11，Redis 降级放行）。
  * 工作空间取默认空间（MVP 单空间，决策 D9）。
  *
  * @author calwen
@@ -34,7 +34,8 @@ public class FeedbackServiceImpl implements FeedbackService {
     private static final Logger log = LoggerFactory.getLogger(FeedbackServiceImpl.class);
 
     private static final Duration RATE_TTL = Duration.ofSeconds(60);
-    private static final long RATE_LIMIT = 2;
+    /** M11 契约：同 IP 每分钟 1 条，超限 429。count > 1 即拒绝第二次。 */
+    private static final long RATE_LIMIT = 1;
     private static final String RATE_KEY = "xlumen:feedback:rate:%s";
 
     private static final int STATUS_PENDING = 1;
@@ -80,7 +81,7 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .createdAt(entity.getCreatedAt()).build();
     }
 
-    /** IP 限流：60s 内最多 2 次；Redis 异常降级放行（不阻断合法提交）。 */
+    /** IP 限流：每分钟最多 1 条（M11 契约）；Redis 异常降级放行（不阻断合法提交）。 */
     private void checkRateLimit(String ip) {
         if (StrUtil.isBlank(ip)) {
             return;

@@ -32,8 +32,9 @@ const submitting = ref(false)
 // 正在切换反应的评论 id：请求期间禁用该评论的两个反应按钮，防重复提交
 const pendingCommentId = ref<string | null>(null)
 
-/** 相对时间：分钟/小时/天前。 */
+/** 相对时间：分钟/小时/天前；时戳缺失（后端未回填）时返回空串，避免 null 当 1970（BUG-010 防御）。 */
 function formatTime(iso: string): string {
+  if (!iso) return ''
   const diff = Date.now() - new Date(iso).getTime()
   const minutes = Math.floor(diff / 60000)
   if (minutes < 1) return '刚刚'

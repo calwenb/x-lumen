@@ -82,9 +82,10 @@ public class ReleaseServiceImpl implements ReleaseService {
                 || knowledgeApi.getKnowledgeBase(workspaceId, knowledge.getKbId()) == null) {
             throw new BizException(ErrorCode.CONFLICT, "知识未归属有效知识库，无法发布");
         }
-        if (!dto.getVersion().equals(knowledge.getVersion())) {
-            throw new BizException(ErrorCode.CONFLICT, "版本冲突");
-        }
+        // 幂等兜底：同一知识同一提交版本只允许一次发布记录（F-0905）。
+        // BUG-007 配套：发布入参版本是审核通过时的快照版本，approve 状态迁移经 @Version 乐观锁
+        // 会把知识版本号 +1，故不在此强校验 dto.version 与知识当前版本相等；真正迁移的
+        // expectedVersion 在 doRelease 内取知识当前版本（防覆盖并发），幂等由本查询保证。
         Long exists = releaseMapper.selectCount(Wrappers.<ReleaseEntity>lambdaQuery()
                 .eq(ReleaseEntity::getWorkspaceId, workspaceId)
                 .eq(ReleaseEntity::getKnowledgeId, dto.getKnowledgeId())
@@ -176,6 +177,34 @@ public class ReleaseServiceImpl implements ReleaseService {
             hotKnowledgeCacheService.evictAll();
         } catch (Exception e) {
             log.warn("发布后置处理失败（事件/审计/缓存失效），releaseId={}", release.getId(), e);
+        }
+    }
+
+    @Override
+    public void unpublish(Long knowledgeId) {
+        Long workspaceId = WorkspaceContext.workspaceId();
+        EditorKnowledgeDTO knowledge = contentApi.getEditorKnowledge(workspaceId, knowledgeId);
+        if (knowledge == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
+        }
+        if (KnowledgeStatus.of(knowledge.getStatus()) != KnowledgeStatus.PUBLISHED) {
+            throw new BizException(ErrorCode.CONFLICT, "仅已发布知识可下架");
+        }
+        // 乐观锁：知识当前版本即期望版本，冲突由 publishKnowledge 返回 false → 409
+        boolean ok = contentApi.publishKnowledge(workspaceId, KnowledgePublishDTO.builder()
+                .knowledgeId(knowledgeId).expectedVersion(knowledge.getVersion())
+                .targetStatus(KnowledgeStatus.UNPUBLISHED.getValue()).build());
+        if (!ok) {
+            throw new BizException(ErrorCode.CONFLICT, "下架失败，版本冲突");
+        }
+        // 后置处理失败不影响下架主流程（出索引/缓存失效/审计单独降级）
+        try {
+            knowledgeApi.removeKnowledge(workspaceId, knowledgeId);
+            hotKnowledgeCacheService.evictAll();
+            activityLogService.record(workspaceId, WorkspaceContext.userId(), WorkspaceContext.username(),
+                    "KNOWLEDGE_UNPUBLISH", "KNOWLEDGE", knowledgeId, null);
+        } catch (Exception e) {
+            log.warn("下架后置处理失败（出索引/缓存失效/审计），knowledgeId={}", knowledgeId, e);
         }
     }
 

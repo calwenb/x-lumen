@@ -1,5 +1,6 @@
 package com.calwen.xlumen.content.controller;
 
+import com.calwen.xlumen.common.dto.PageQueryDTO;
 import com.calwen.xlumen.common.web.ApiResponse;
 import com.calwen.xlumen.content.api.dto.ContentPageResult;
 import com.calwen.xlumen.content.dto.KnowledgeListQueryDTO;
@@ -8,6 +9,7 @@ import com.calwen.xlumen.content.dto.DraftSaveDTO;
 import com.calwen.xlumen.content.dto.UpdateKnowledgeDTO;
 import com.calwen.xlumen.content.service.KnowledgeService;
 import com.calwen.xlumen.content.vo.KnowledgeListItemVO;
+import com.calwen.xlumen.content.vo.KnowledgeVersionVO;
 import com.calwen.xlumen.content.vo.KnowledgeVO;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -93,5 +95,14 @@ public class KnowledgeController {
     public ApiResponse<Void> restore(@PathVariable Long knowledgeId) {
         knowledgeService.restore(knowledgeId);
         return ApiResponse.success(null);
+    }
+
+    /**
+     * 知识版本历史（F-0303，BUG-014）：版本号降序分页，含标题/正文快照。
+     */
+    @GetMapping("/{knowledgeId}/versions")
+    public ApiResponse<ContentPageResult<KnowledgeVersionVO>> versions(
+            @PathVariable Long knowledgeId, PageQueryDTO query) {
+        return ApiResponse.success(knowledgeService.listVersions(knowledgeId, query));
     }
 }

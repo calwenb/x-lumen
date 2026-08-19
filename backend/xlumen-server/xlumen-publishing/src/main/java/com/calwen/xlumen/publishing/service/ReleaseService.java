@@ -33,4 +33,12 @@ public interface ReleaseService {
      * 定时发布扫描（F-0905）：扫描 PENDING 且 publish_at<=now 的记录并幂等执行，由 PublishJob 每分钟调用。
      */
     void publishDue();
+
+    /**
+     * 下架知识（F-0906，BUG-016 补全）：仅已发布（6）可下架，乐观锁版本冲突 409；
+     * 迁移 UNPUBLISHED(8) 并出索引、失效热点缓存、写审计。与 V2 F-1105 回滚发布对接。
+     *
+     * @param knowledgeId 知识 ID
+     */
+    void unpublish(Long knowledgeId);
 }

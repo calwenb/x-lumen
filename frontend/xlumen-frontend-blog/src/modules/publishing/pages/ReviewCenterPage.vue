@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// 审核中心（B12，F-0902/F-0904）：审核列表（状态筛选）+ 详情（AI 审校问题 + 通过/驳回）。
+// 审核中心（B12，F-0902/F-0904）：审核列表（状态筛选）+ 详情（AI 审校问题 + 通过/驳回/发布）。
 // 关键状态：加载骨架、空态、失败重试、409 冲突恢复、429 提示（PROTOTYPE §11）。
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+import { createRelease } from '@/modules/publishing/api/release'
 import {
   approveReview,
   fetchReview,
@@ -148,6 +149,44 @@ async function approve(): Promise<void> {
   } catch (error) {
     if (isConflict(error)) {
       actionError.value = '该审核已被处理（版本冲突），列表已刷新'
+      await load(pageNo.value)
+      closeDetail()
+    } else {
+      actionError.value = isRateLimited(error) ? '操作过于频繁，请稍后再试' : '操作失败，请稍后重试'
+    }
+  } finally {
+    acting.value = false
+  }
+}
+
+/** 发布已通过知识（BUG-007 补全 F-0904 流程入口）：立即发布，公开可见。 */
+async function publish(): Promise<void> {
+  if (!selected.value || acting.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确认发布「${selected.value.knowledgeTitle}」？发布后将在公开/私有库中可见。`,
+      '发布知识',
+      { confirmButtonText: '发布', cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch {
+    // 用户取消
+    return
+  }
+  acting.value = true
+  actionError.value = ''
+  actionMessage.value = ''
+  try {
+    await createRelease({
+      knowledgeId: selected.value.knowledgeId,
+      version: selected.value.version,
+    })
+    actionMessage.value = '已发布'
+    ElMessage.success('已发布，公开可见')
+    await load(pageNo.value)
+    closeDetail()
+  } catch (error) {
+    if (isConflict(error)) {
+      actionError.value = '发布冲突（该版本已发布或知识状态已变化），列表已刷新'
       await load(pageNo.value)
       closeDetail()
     } else {
@@ -307,6 +346,13 @@ onMounted(() => {
           <p><strong>驳回原因：</strong>{{ selected.rejectReason }}</p>
           <p><strong>驳回位置：</strong>{{ selected.rejectPosition }}</p>
           <p><strong>期望修改：</strong>{{ selected.rejectExpectation }}</p>
+        </div>
+
+        <div v-if="selected.status === 'APPROVED'" class="review-detail__actions">
+          <el-button type="success" :loading="acting" @click="publish">
+            {{ acting ? '处理中' : '发布' }}
+          </el-button>
+          <p class="review-detail__hint">已通过审核，发布后知识在所属库中公开可见（F-0904）。</p>
         </div>
 
         <div v-if="selected.status === 'PENDING'" class="review-detail__actions">
