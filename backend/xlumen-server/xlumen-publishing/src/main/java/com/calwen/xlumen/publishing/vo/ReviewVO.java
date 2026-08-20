@@ -40,6 +40,15 @@ public class ReviewVO {
     /** AI 审校结果快照（可空）。 */
     private String aiResultJson;
 
+    /** AI 任务原始状态（QUEUED/RUNNING/COMPLETED/FAILED/CANCELLED）。 */
+    private String aiTaskStatus;
+
+    /** 自动发布判定：REVIEWING/READY/BLOCKED/FAILED/PUBLISHED。 */
+    private String autoDecision;
+
+    /** AI 任务失败原因（脱敏）。 */
+    private String aiErrorMessage;
+
     /** 驳回原因。 */
     private String rejectReason;
 

@@ -32,6 +32,7 @@ AI 浏览器测试由**用户发起**（AI 不自行发起）：AI 用 browser-u
 ## 3. 环境自检（开测前逐项确认，任一项不过先解决再开测）
 
 1. **后端健康**：`http://localhost:8080/actuator/health` 返回 UP（启动命令见 GLOBAL §6.4；编译与运行 JAVA_HOME 必须指向 JDK 25）。
+   开发环境如需自动处理端口冲突，复制 `.env.example` 后设置 `XLUMEN_DEV_PORT_GUARD=true`；守卫会展示 PID/进程名并等待输入 `y`，生产默认关闭。
 2. **双前端可达**：blog `http://localhost:5173`、admin `http://localhost:5174`（命令见 GLOBAL §6.5）。
 3. **端口陷阱**：Vite 端口被占用时自动递增（5174/5175/5176…），开测前确认浏览器访问的是当前实例端口；反复启停残留的旧 dev server 先清掉，防止测到旧代码。
 4. **Redis**：本地须无密码启动（`.env` 密码为空；带密码启动会导致注册/登录 500）。
@@ -57,9 +58,9 @@ AI 浏览器测试由**用户发起**（AI 不自行发起）：AI 用 browser-u
 | 身份与多租户 | blog `/login` | 注册（即登录、即建空间）-> 首页头像菜单 -> 登出 -> 再登录；admin 登录复用同一账号 |
 | 博客公开阅读 | `/`、`/knowledge/:id`、`/search`、`/kb/:id`、`/knowledge-bases`、`/about` | 访客视角知识流按身份聚合（公开库 + 库 badge）、详情渲染与目录导航、搜索组合筛选、发现页、库页目录过滤 |
 | 互动与反馈 | `/knowledge/:id`、`/favorites` | 知识赞/踩互斥、收藏 toggle、评论发表与评论赞踩、纠错匿名提交（同 IP 每分钟 1 条，超限 429）；B23 收藏页取消收藏即时移除 |
-| 内容管理 | `/studio`、`/studio/knowledge`、`/studio/knowledge/new` 与 `/:id/edit` | 创作中心 -> 知识列表 -> 编辑器：选库/目录、自动保存、版本冲突 409、草稿「提交审核」 |
+| 内容管理 | `/studio`、`/studio/knowledge`、`/studio/knowledge/new` 与 `/:id/edit` | 创作中心 -> 知识列表（自动瀑布流）-> 编辑器：选库/目录、自动保存、版本冲突 409、发布前自动 AI 审核 |
 | 知识库体系 | `/studio/knowledge-bases`、`/studio/recycle-bin` | 建库（公开/私有）、目录树右键 增/删/改、删库连带回收站、回收站恢复与彻底删除（默认 30 天） |
-| 审核与发布 | `/studio/review`、`/studio/releases` | 双闸门：AI 审校问题数 -> 人工通过/驳回三要素 -> 立即/定时发布 -> 下架 |
+| 审核与发布 | `/studio/knowledge/:id/edit`、`/studio/releases` | 编辑器发布触发 AI 审核：error/失败阻断，warning/info 作者确认后继续 -> 立即/定时发布；审核中心入口暂时隐藏 |
 | AI 对话 | `/chat`、详情页「问这篇 AI」 | 流式回答、检索范围选择、引用编号展开溯源、知识级问答；访客受限预览引导登录 |
 | AI 写作 | `/studio/writing` | topic/draft 输入 -> 结构化产出 -> 选库保存进内容管理 |
 | AI 内容增值 | `/knowledge/:id` | 详情页 AI 摘要区块（发布事件异步生成；存量旧知识无摘要属预期） |

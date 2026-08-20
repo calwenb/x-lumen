@@ -5,6 +5,8 @@ import { ref } from 'vue'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 
 const model = defineModel<string>({ required: true })
+defineProps<{ disabled?: boolean }>()
+const emit = defineEmits<{ blur: [] }>()
 
 const mode = ref<'edit' | 'preview' | 'split'>('edit')
 </script>
@@ -20,6 +22,7 @@ const mode = ref<'edit' | 'preview' | 'split'>('edit')
           :aria-selected="mode === 'edit'"
           class="markdown-editor__mode"
           :class="{ 'markdown-editor__mode--active': mode === 'edit' }"
+          :disabled="disabled"
           @click="mode = 'edit'"
         >
           编辑
@@ -30,6 +33,7 @@ const mode = ref<'edit' | 'preview' | 'split'>('edit')
           :aria-selected="mode === 'split'"
           class="markdown-editor__mode"
           :class="{ 'markdown-editor__mode--active': mode === 'split' }"
+          :disabled="disabled"
           @click="mode = 'split'"
         >
           双栏
@@ -40,6 +44,7 @@ const mode = ref<'edit' | 'preview' | 'split'>('edit')
           :aria-selected="mode === 'preview'"
           class="markdown-editor__mode"
           :class="{ 'markdown-editor__mode--active': mode === 'preview' }"
+          :disabled="disabled"
           @click="mode = 'preview'"
         >
           预览
@@ -56,6 +61,8 @@ const mode = ref<'edit' | 'preview' | 'split'>('edit')
         class="markdown-editor__input"
         placeholder="支持 Markdown 语法：标题、列表、代码块、链接……"
         aria-label="正文编辑区"
+        :disabled="disabled"
+        @blur="emit('blur')"
       />
       <div
         v-show="mode !== 'edit'"
@@ -110,6 +117,11 @@ const mode = ref<'edit' | 'preview' | 'split'>('edit')
   color: var(--xl-color-primary);
 }
 
+.markdown-editor__mode:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .markdown-editor__body {
   display: grid;
   grid-template-columns: 1fr;
@@ -132,6 +144,11 @@ const mode = ref<'edit' | 'preview' | 'split'>('edit')
   font-size: 14px;
   line-height: 1.7;
   outline: none;
+}
+
+.markdown-editor__input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .markdown-editor__preview {

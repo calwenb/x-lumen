@@ -9,7 +9,7 @@ import {
   purgeRecycleBinItem,
   restoreRecycleBinItem,
 } from '@/modules/knowledge/api/knowledgeBase'
-import Pagination from '@/modules/publishing/components/Pagination.vue'
+import { useInfinitePage } from '@/composables/useInfinitePage'
 
 import type { RecycleBinItem } from '@/modules/knowledge/api/knowledgeBase'
 
@@ -25,11 +25,7 @@ const TYPE_LABELS: Record<RecycleBinItem['type'], string> = {
 }
 
 const activeTab = ref<RecycleTab>('all')
-const items = ref<RecycleBinItem[]>([])
-const total = ref(0)
-const pageNo = ref(1)
-const loading = ref(true)
-const loadError = ref(false)
+const sentinel = ref<HTMLElement | null>(null)
 
 function toQueryType(tab: RecycleTab): 'kb' | 'knowledge' | undefined {
   return tab === 'all' ? undefined : tab
@@ -49,41 +45,30 @@ function formatTime(iso: string): string {
   return iso.slice(0, 16).replace('T', ' ')
 }
 
-async function load(targetPage = pageNo.value): Promise<void> {
-  loading.value = true
-  loadError.value = false
-  try {
-    // exactOptionalPropertyTypes：type 仅在非 all 时携带，避免显式 undefined 传参
-    const params: { type?: 'kb' | 'knowledge'; pageNo: number; pageSize: number } = {
-      pageNo: targetPage,
-      pageSize: PAGE_SIZE,
-    }
+const infinite = useInfinitePage<RecycleBinItem>({
+  sentinel,
+  pageSize: PAGE_SIZE,
+  loadPage: (pageNo, pageSize) => {
+    const params: { type?: 'kb' | 'knowledge'; pageNo: number; pageSize: number } = { pageNo, pageSize }
     const type = toQueryType(activeTab.value)
     if (type) params.type = type
-    const page = await fetchRecycleBin(params)
-    items.value = page.records
-    total.value = page.total
-    pageNo.value = targetPage
-  } catch {
-    loadError.value = true
-  } finally {
-    loading.value = false
-  }
-}
+    return fetchRecycleBin(params)
+  },
+})
+
+const items = infinite.items
+const loading = infinite.loading
+const loadError = infinite.error
 
 function onTabChange(): void {
-  void load(1)
-}
-
-function onPageChange(target: number): void {
-  void load(target)
+  void infinite.loadFirst()
 }
 
 async function restore(item: RecycleBinItem): Promise<void> {
   try {
     await restoreRecycleBinItem(item.type, item.id)
     ElMessage.success(`「${item.name}」已恢复`)
-    await load()
+    await infinite.loadFirst()
   } catch (error) {
     // 后端 409「原知识库不存在，无法恢复」等错误文案透出
     ElMessage.error(
@@ -106,10 +91,7 @@ async function purge(item: RecycleBinItem): Promise<void> {
   try {
     await purgeRecycleBinItem(item.type, item.id)
     ElMessage.success('已彻底删除')
-    // 当前页删空则回退一页
-    await load(
-      total.value > 1 && items.value.length === 1 ? Math.max(1, pageNo.value - 1) : pageNo.value,
-    )
+    await infinite.loadFirst()
   } catch (error) {
     ElMessage.error(
       error instanceof Error && error.message ? error.message : '彻底删除失败，请稍后重试',
@@ -118,7 +100,7 @@ async function purge(item: RecycleBinItem): Promise<void> {
 }
 
 onMounted(() => {
-  void load(1)
+  void infinite.loadFirst()
 })
 </script>
 
@@ -141,7 +123,7 @@ onMounted(() => {
       </div>
       <div v-else-if="loadError" class="recycle-bin__state">
         <p>回收站加载失败</p>
-        <el-button type="primary" plain size="small" @click="load(1)">重试</el-button>
+        <el-button type="primary" plain size="small" @click="infinite.retry()">重试</el-button>
       </div>
       <div v-else-if="items.length === 0" class="recycle-bin__state">回收站空空如也。</div>
       <template v-else>
@@ -182,12 +164,12 @@ onMounted(() => {
             </template>
           </el-table-column>
         </el-table>
-        <Pagination
-          :page-no="pageNo"
-          :page-size="PAGE_SIZE"
-          :total="total"
-          @change="onPageChange"
-        />
+        <div ref="sentinel" class="recycle-bin__sentinel" aria-hidden="true" />
+        <div v-if="infinite.loadingMore" class="recycle-bin__load-more" role="status">加载更多…</div>
+        <div v-else-if="infinite.loadMoreError" class="recycle-bin__load-more">
+          <el-button type="primary" plain size="small" @click="infinite.retryMore()">重试加载</el-button>
+        </div>
+        <div v-else-if="!infinite.hasMore" class="recycle-bin__load-more">已加载全部回收站条目</div>
       </template>
     </section>
   </main>
@@ -228,6 +210,18 @@ onMounted(() => {
   text-align: center;
   color: var(--xl-text-secondary);
   font-size: 14px;
+}
+
+.recycle-bin__sentinel {
+  height: 1px;
+}
+
+.recycle-bin__load-more {
+  min-height: 34px;
+  padding: 14px 0 4px;
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  text-align: center;
 }
 
 .recycle-bin__state :deep(.el-skeleton) {

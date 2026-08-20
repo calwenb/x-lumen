@@ -2,6 +2,7 @@ package com.calwen.xlumen;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import com.calwen.xlumen.config.DevPortConflictGuard;
 
 /**
  * xLumen 应用启动类：模块化单体唯一装配入口（决策 D1）。
@@ -14,6 +15,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class XlumenApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(XlumenApplication.class, args);
+        SpringApplication application = new SpringApplication(XlumenApplication.class);
+        application.addListeners(new DevPortConflictGuard());
+        application.run(args);
     }
 }

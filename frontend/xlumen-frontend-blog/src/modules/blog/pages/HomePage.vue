@@ -10,7 +10,7 @@ import { ArrowDown, Document } from '@element-plus/icons-vue'
 import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import { fetchKnowledges, fetchTags } from '@/modules/publishing/api/public'
 import DirectoryTreeContextMenu from '@/modules/knowledge/components/DirectoryTreeContextMenu.vue'
-import Pagination from '@/modules/publishing/components/Pagination.vue'
+import { useInfinitePage } from '@/composables/useInfinitePage'
 import { useSessionStore } from '@/stores/session'
 
 import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
@@ -22,11 +22,7 @@ const session = useSessionStore()
 const router = useRouter()
 
 // 右栏列表状态
-const knowledges = ref<KnowledgeCard[]>([])
-const pageNo = ref(1)
-const total = ref(0)
-const loading = ref(true)
-const loadError = ref(false)
+const sentinel = ref<HTMLElement | null>(null)
 
 // 左栏范围状态（空 kbId = 全部知识库）
 const myKnowledgeBases = ref<KnowledgeBase[]>([])
@@ -91,26 +87,23 @@ function isPrivateCard(knowledge: KnowledgeCard): boolean {
   return session.loggedIn && Boolean(knowledge.kbId) && privateKbIds.value.has(knowledge.kbId)
 }
 
-async function load(targetPage: number): Promise<void> {
-  loading.value = true
-  loadError.value = false
-  try {
-    const page = await fetchKnowledges({
+const infinite = useInfinitePage<KnowledgeCard>({
+  sentinel,
+  pageSize: PAGE_SIZE,
+  loadPage: (pageNo, pageSize) =>
+    fetchKnowledges({
       ...(selectedKbId.value ? { kbId: selectedKbId.value } : {}),
       ...(selectedDirectoryId.value ? { directoryId: selectedDirectoryId.value } : {}),
       ...(selectedTag.value ? { tag: selectedTag.value } : {}),
-      pageNo: targetPage,
-      pageSize: PAGE_SIZE,
-    })
-    knowledges.value = page.records
-    total.value = page.total
-    pageNo.value = page.pageNo
-  } catch {
-    loadError.value = true
-  } finally {
-    loading.value = false
-  }
-}
+      pageNo,
+      pageSize,
+    }),
+})
+
+const knowledges = infinite.items
+const total = infinite.total
+const loading = infinite.loading
+const loadError = infinite.error
 
 /** 库切换器：command 为 'all' 表示全部知识库，否则为库 ID。 */
 async function switchKb(command: string): Promise<void> {
@@ -124,7 +117,7 @@ async function switchKb(command: string): Promise<void> {
     directoryTree.value = await fetchDirectoryTree(selectedKbId.value).catch(() => [])
     sideLoading.value = false
   }
-  await load(1)
+  await infinite.loadFirst()
 }
 
 /** 选中/取消目录（再次点击取消）；选中后列表按创建时间正序（后端保证）。 */
@@ -136,13 +129,13 @@ async function toggleDirectory(node: FlatDirectory): Promise<void> {
     selectedDirectoryId.value = node.id
     selectedDirectoryName.value = node.name
   }
-  await load(1)
+  await infinite.loadFirst()
 }
 
 /** 标签筛选（再次点击取消）。 */
 async function toggleTag(name: string): Promise<void> {
   selectedTag.value = selectedTag.value === name ? '' : name
-  await load(1)
+  await infinite.loadFirst()
 }
 
 /** F-0312 右键菜单操作成功后刷新目录树（知识数随树节点返回；失败保留原树）。 */
@@ -159,7 +152,7 @@ function onDirectoryDeleted(ids: string[]): void {
     selectedDirectoryId.value = ''
     selectedDirectoryName.value = ''
   }
-  void load(1)
+  void infinite.loadFirst()
 }
 
 function openKnowledge(id: string): void {
@@ -175,7 +168,7 @@ onMounted(async () => {
     myKnowledgeBases.value = kbs
     tags.value = tagList
   }
-  await load(1)
+  await infinite.loadFirst()
 })
 </script>
 
@@ -288,66 +281,74 @@ onMounted(async () => {
         </div>
         <div v-else-if="loadError" class="home__state">
           <p class="home__state-text">知识加载失败</p>
-          <button type="button" class="home__retry" @click="load(pageNo)">重试</button>
+          <button type="button" class="home__retry" @click="infinite.retry()">重试</button>
         </div>
         <template v-else>
           <div v-if="knowledges.length === 0" class="home__empty">
             <el-icon class="home__empty-icon"><Document /></el-icon>
             <p>{{ emptyText }}</p>
           </div>
-          <article
-            v-for="knowledge in knowledges"
-            v-else
-            :key="knowledge.id"
-            class="knowledge-card"
-            @click="openKnowledge(knowledge.id)"
-          >
-            <div class="knowledge-card__badges">
-              <RouterLink
-                v-if="knowledge.kbName"
-                class="knowledge-card__kb"
-                :to="`/kb/${knowledge.kbId}`"
-                @click.stop
-              >
-                <el-tag size="small" round effect="plain">{{ knowledge.kbName }}</el-tag>
-              </RouterLink>
-              <el-tag
-                v-if="isPrivateCard(knowledge)"
-                class="knowledge-card__private"
-                size="small"
-                round
-                effect="plain"
-              >
-                🔒 私有
-              </el-tag>
-            </div>
-            <RouterLink
-              class="knowledge-card__title"
-              :to="`/knowledge/${knowledge.id}`"
-              @click.stop
+          <div v-if="knowledges.length > 0" class="home__cards">
+            <article
+              v-for="knowledge in knowledges"
+              :key="knowledge.id"
+              class="knowledge-card"
+              @click="openKnowledge(knowledge.id)"
             >
-              {{ knowledge.title }}
-            </RouterLink>
-            <p class="knowledge-card__summary">{{ knowledge.summary }}</p>
-            <div class="knowledge-card__meta">
-              <span>{{ knowledge.authorName }}</span>
-              <span>{{ formatDate(knowledge.publishedAt) }}</span>
-              <span>{{ knowledge.readMinutes }} 分钟阅读</span>
-              <span>{{ knowledge.viewCount }} 阅读</span>
-            </div>
-            <div v-if="knowledge.tags.length > 0" class="knowledge-card__tags">
+              <div class="knowledge-card__badges">
+                <RouterLink
+                  v-if="knowledge.kbName"
+                  class="knowledge-card__kb"
+                  :to="`/kb/${knowledge.kbId}`"
+                  @click.stop
+                >
+                  <el-tag size="small" round effect="plain">{{ knowledge.kbName }}</el-tag>
+                </RouterLink>
+                <el-tag
+                  v-if="isPrivateCard(knowledge)"
+                  class="knowledge-card__private"
+                  size="small"
+                  round
+                  effect="plain"
+                >
+                  🔒 私有
+                </el-tag>
+              </div>
               <RouterLink
-                v-for="tag in knowledge.tags"
-                :key="tag"
-                class="knowledge-card__tag"
-                :to="`/search?tag=${encodeURIComponent(tag)}`"
+                class="knowledge-card__title"
+                :to="`/knowledge/${knowledge.id}`"
                 @click.stop
               >
-                # {{ tag }}
+                {{ knowledge.title }}
               </RouterLink>
-            </div>
-          </article>
-          <Pagination :page-no="pageNo" :page-size="PAGE_SIZE" :total="total" @change="load" />
+              <p class="knowledge-card__summary">{{ knowledge.summary }}</p>
+              <div class="knowledge-card__meta">
+                <span>{{ knowledge.authorName }}</span>
+                <span>{{ formatDate(knowledge.publishedAt) }}</span>
+                <span>{{ knowledge.readMinutes }} 分钟阅读</span>
+                <span>{{ knowledge.viewCount }} 阅读</span>
+              </div>
+              <div v-if="knowledge.tags.length > 0" class="knowledge-card__tags">
+                <RouterLink
+                  v-for="tag in knowledge.tags"
+                  :key="tag"
+                  class="knowledge-card__tag"
+                  :to="`/search?tag=${encodeURIComponent(tag)}`"
+                  @click.stop
+                >
+                  # {{ tag }}
+                </RouterLink>
+              </div>
+            </article>
+          </div>
+          <div ref="sentinel" class="home__sentinel" aria-hidden="true" />
+          <div v-if="infinite.loadingMore" class="home__load-more" role="status">加载更多…</div>
+          <div v-else-if="infinite.loadMoreError" class="home__load-more">
+            <el-button type="primary" plain size="small" @click="infinite.retryMore()"
+              >重试加载</el-button
+            >
+          </div>
+          <div v-else-if="!infinite.hasMore" class="home__load-more">已加载全部知识</div>
         </template>
       </section>
     </div>
@@ -366,9 +367,10 @@ onMounted(async () => {
 
 <style scoped>
 .home {
-  max-width: 1080px;
+  width: min(calc(100% - 48px), 1180px);
   margin: 0 auto;
   padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
+  box-sizing: border-box;
 }
 
 .home-layout {
@@ -505,9 +507,15 @@ onMounted(async () => {
   margin: 0;
 }
 
+.home__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-4);
+}
+
 .knowledge-card {
   padding: var(--xl-space-4) var(--xl-space-6);
-  margin-bottom: var(--xl-space-4);
+  margin: 0;
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
@@ -516,6 +524,18 @@ onMounted(async () => {
   transition:
     box-shadow var(--xl-transition),
     transform var(--xl-transition);
+}
+
+.home__sentinel {
+  height: 1px;
+}
+
+.home__load-more {
+  min-height: 34px;
+  padding: 14px 0 4px;
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  text-align: center;
 }
 
 .knowledge-card:hover {

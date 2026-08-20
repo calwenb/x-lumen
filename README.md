@@ -1,6 +1,6 @@
 # xLumen
 
-xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公开/私有），用多级目录组织知识（即文章），前台主页为知识列表页（按身份聚合，公开库知识带库标记），AI 对话（AI小光）为前台菜单入口（RAG 按身份检索可见知识库生成回答并引用来源），知识的创建、编辑、发布、阅读与互动全部在前台完成；围绕"输入 → AI 写作 → 审校 → 审核 → 发布（发布即索引，按知识库切分）→ 反馈 → 更新"内容闭环，AI 直接输出完整知识并配合知识对话与内容增值能力；管理后台仅供管理员进行空间、模型与审计等配置管理。
+xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公开/私有），用多级目录组织知识（即文章），前台主页为知识列表页（按身份聚合，公开库知识带库标记），AI 对话（AI小光）为前台菜单入口（RAG 按身份检索可见知识库生成回答并引用来源），知识的创建、编辑、发布、阅读与互动全部在前台完成；围绕"输入 → AI 写作 → 审校 → AI 自动审核 → 发布（发布即索引，按知识库切分）→ 反馈 → 更新"内容闭环，AI 直接输出完整知识并配合知识对话与内容增值能力；管理后台仅供管理员进行空间、模型与审计等配置管理。
 
 > **本仓库专属**。
 
@@ -16,12 +16,12 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 
 文档体系 11 份（产品/全局/后端/前端/原型 + AI 协作五件套 STATUS/CHANGELOG/BUGS/IDEAS/QA），各文档职责与权威范围见 [全局文档](docs/global/GLOBAL.md) 第 2 节。
 
-- [产品设计文档](docs/product/PRODUCT.md)：产品定位、13 模块 82 项功能总表（唯一功能事实源，MVP 39 / V2 31 / V3 12）、行为规则与完成定义
+- [产品设计文档](docs/product/PRODUCT.md)：产品定位、13 模块 90 项功能总表（唯一功能事实源，MVP 47 / V2 41 / V3 2）、行为规则与完成定义
 - [全局文档](docs/global/GLOBAL.md)：总体架构、仓库结构、技术基线、本地运行与质量门禁命令
 - [后端开发文档](docs/backend/BACKEND.md)：7 个 Maven 模块、SQL 编号契约（00~95）、MVC 规则与编码规范
 - [前端开发文档](docs/frontend/FRONTEND.md)：blog/admin 双应用工程结构、状态管理、接口与视觉规范
 - [前端原型文档](docs/frontend/PROTOTYPE.md)：B/A/D 页面清单、线框与交互流程
-- [开发状态与交接文档](docs/ai/STATUS.md)：强制工作流、能力基线、待办认领、决策 D1~D17
+- [开发状态与交接文档](docs/ai/STATUS.md)：强制工作流、能力基线、待办认领、决策 D1~D18
 - [AI 变更日志](docs/ai/CHANGELOG.md)：按会话倒序的变更记录
 - [待修问题清单](docs/ai/BUGS.md)：用户自测缺陷记录（仅按明确要求修复）
 - [功能想法池](docs/ai/IDEAS.md)：用户功能想法收集与评估状态（采纳须登记 PRODUCT 功能总表）
@@ -80,6 +80,8 @@ cd backend/xlumen-server
 mvn -pl xlumen-boot -am package -DskipTests
 java -jar xlumen-boot/target/xlumen-boot-*.jar
 ```
+
+开发环境若端口残留，可在 `backend/xlumen-server/config/.env` 设置 `XLUMEN_DEV_PORT_GUARD=true`，启动时输入 `y` 确认结束占用进程；生产默认关闭。
 
 ### 启动前端
 

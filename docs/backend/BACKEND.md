@@ -1,6 +1,6 @@
 # xLumen 后端开发文档
 
-> 更新日期：2026/8/17
+> 更新日期：2026/8/20
 > **本仓库专属**。
 > 架构形态：多 Maven 模块的 Spring Boot 模块化单体；包结构：传统 MVC。
 > 适用范围：后端技术基线、模块划分、编码规范、数据规则、配置与性能约束。
@@ -12,7 +12,7 @@
 
 开始实现前依次阅读：
 
-1. [产品设计文档](../product/PRODUCT.md)——产品行为、验收要求与 13 模块 82 项功能总表（唯一功能事实源，MVP 39 / V2 31 / V3 12）。
+1. [产品设计文档](../product/PRODUCT.md)——产品行为、验收要求与 13 模块 90 项功能总表（唯一功能事实源，MVP 47 / V2 41 / V3 2）。
 2. 本文档——后端实现方式。
 3. [全局文档](../global/GLOBAL.md)——本地初始化、启动命令与质量门禁命令。
 
@@ -61,7 +61,7 @@ backend/xlumen-server/
 | `xlumen-common` | 统一响应 `ApiResponse`、`BizException`、`WorkspaceContext`、`RequestId`、事件信封等真正通用的基础类型 | — | MVP 基座 |
 | `xlumen-identity` | 用户、登录、会话、工作空间、成员、角色与权限（F-0101~F-0106）；空间设置、审计（MVP），配额、通知（V2）（F-1201~F-1204） | `iam_`、`plt_` | MVP |
 | `xlumen-content` | 知识 CRUD、草稿自动保存、版本、AI 写作结果落库（F-0301~F-0307）；访问统计、时效检测、缺口分析、更新建议、旧知识更新闭环（F-1101~F-1105，V2/V3） | `cnt_`、`analytics_` | MVP（analytics V2/V3） |
-| `xlumen-publishing` | 审核状态机、双闸门审核、发布幂等、回滚下架、博客前台公开读与知识库浏览（F-0901~F-0906、F-0201~F-0208）；评论、点赞、读者纠错（F-1001~F-1004） | `pub_`、`eng_` | MVP（通知 V2） |
+| `xlumen-publishing` | 审核状态机、AI 自动审核发布、发布幂等、回滚下架、博客前台公开读与知识库浏览（F-0901~F-0907、F-0201~F-0208）；评论、点赞、读者纠错（F-1001~F-1004） | `pub_`、`eng_` | MVP（通知 V2） |
 | `xlumen-knowledge` | 知识库与目录管理（F-0308/F-0309，库 CRUD/回收站/目录树）、知识自动索引流水线（发布触发）、索引管理与检索、检索权限过滤、引用溯源（F-0402~F-0405、F-0407） | `kb_` | MVP |
 | `xlumen-ai` | 模型网关、场景模型配置、流式输出、AI 写作任务、审校（F-0501~F-0505、F-0601~F-0607）；AI 对话、知识级问答、访客助手（F-0701~F-0705）；摘要、SEO、翻译、配图等增值（F-0801~F-0807） | `ai_`、`chat_`、`ai_enhance_` | MVP |
 | `xlumen-boot` | 应用启动、Security、中间件和配置装配 | — | 装配层 |
@@ -249,7 +249,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - 所有工作空间业务查询必须包含 `workspace_id` 条件；新增 Mapper 方法时必须测试跨工作空间数据不可见。
 - 工作空间 ID 来自可信会话上下文，不直接信任 URL、Header 或 DTO 中的值；权限变化即时生效。
 - 平台级跨工作空间操作使用独立接口、独立权限和审计日志。
-- 职责分离：作者默认不能直接发布；编辑不能审核自己提交的知识（F-0903）；个人空间可关闭强制审核（决策 D9）。
+- 职责分离：作者默认不能直接发布；编辑不能审核自己提交的知识（F-0903）；发布入口先提交独立 AI Reviewer 任务，结果为 `READY` 才允许发布，`BLOCKED/FAILED` 自动退回草稿；旧审核中心与发布自动 AI 审核开关暂时隐藏（F-0907）。
 - **知识库可见性（F-0307/F-0308）**：知识可见性由所属知识库决定，公开库知识对所有人可见、私有库仅库主可见；公开读与检索必须同时校验知识状态（已发布）与库可见性，私有库知识对外不可见（404 语义，不暴露存在性）；库越权访问必须由 Service 层强制执行并专项测试。
 - **多用户公开读（D9 改写）**：首页知识流、公开库发现页与公开搜索**跨空间聚合全平台公开库**（不再绑定默认空间）；私有库知识仍按「空间归属 + 库可见性 + 授权名单」过滤；跨空间公开读接口必须显式标注并测试越权场景。
 - **可见库集合推导收敛**：身份→可见知识库集合的推导（公开库全集 + 自己私有库 + 授权库 V2）统一收敛为单一服务能力，公开读、搜索、RAG 检索与知识列表共用同一推导结果，禁止各模块散落重复过滤条件（F-0407 单一实现）。
@@ -260,6 +260,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - **知识资源统一路径 `/api/v1/knowledge`**（决策 D17：概念统一后不可数名词；旧 `/api/v1/articles` 直接废弃，不保留兼容期，前后端同仓同 PR 切换）。知识库资源 `/api/v1/knowledge-bases`，目录资源 `/api/v1/knowledge-bases/{kbId}/directories`，回收站资源 `/api/v1/recycle-bin`（type=kb|knowledge，恢复 `/{type}/{id}/restore`、彻底删除 `/{type}/{id}?confirm=CONFIRM`）。
 - **回收站聚合层在 publishing**：knowledge 模块依赖方向受限（content→ai→knowledge 环）无法直连 cnt_knowledge，回收站统一编排收敛到 publishing（RecycleBinController + RecycleBinFacadeService，同时依赖 content+knowledge 无环）；kb 侧委托 KnowledgeApi（listRecycledKbs/restoreRecycledKb/purgeRecycledKb），knowledge 侧委托 ContentApi（listRecycledKnowledge/getRecycledKnowledge/restoreKnowledge/purgeKnowledge，恢复含冲突判定：原目录已删→挂库根、原库已彻底删除→409「原知识库不存在，无法恢复」）。
 - **索引补跑**：`POST /api/v1/knowledge/{knowledgeId}/reindex`（仅已发布知识；2026-08-17 BUG-004 修复引入，publishing `IndexBackfillService` 承载，正文经 ContentApi 获取），用于 Milvus 接入后或索引修复后的存量向量重建；`reindex()` 走强制重建通道（先失效旧切片/版本，绕过 hash 幂等命中）。
+- **自动审核发布（F-0907）**：`POST /api/v1/reviews/auto` 创建 Reviewer 任务，`GET /api/v1/reviews/{id}` 返回 `REVIEWING/READY/BLOCKED/FAILED/PUBLISHED` 状态；仅 `READY` 可调用 `POST /api/v1/reviews/{id}/publish`，结果含 `error` 或任务失败会幂等退回草稿。发布接口按知识版本返回已有发布记录，避免重复创建。
 - OpenAPI 是前端生成接口类型的唯一来源（决策 D4）；Controller、DTO 和 VO 提供准确的 Schema 与校验规则。
 - 分页参数统一为 `pageNo`、`pageSize`，并限制最大 `pageSize`（上限见第 18 节）。
 
@@ -280,7 +281,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 
 - 事务放在 Service Impl 的公共写方法，统一 `@Transactional(rollbackFor = Exception.class)`；Controller、Job 和消息消费者不展开业务事务。
 - 同一模块的相关数据在一个本地事务内完成；外部调用不能长时间占用数据库事务——先保存任务，再异步调用。
-- 审核、发布、配额结算和任务恢复使用业务幂等键；捕获重复请求时返回已有结果，不重复创建版本、发布内容或扣减配额（F-0905 发布幂等）。
+- 审核、发布、配额结算和任务恢复使用业务幂等键；捕获重复请求时返回已有结果，不重复创建版本、发布内容或扣减配额（F-0905 发布幂等）。自动审核发布重复调用按知识版本返回已有发布记录。
 - 知识和发布计划使用乐观锁（版本号），审核、发布、回滚、下架必须校验版本，冲突返回 409，禁止静默覆盖。
 - 唯一索引可以解决的问题不使用分布式锁；分布式锁只用于短临界区，设置合理超时和安全释放逻辑。
 

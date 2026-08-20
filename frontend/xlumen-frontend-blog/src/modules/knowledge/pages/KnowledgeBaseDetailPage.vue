@@ -17,7 +17,7 @@ import {
 } from '@/modules/knowledge/api/knowledgeBase'
 import { fetchKnowledges } from '@/modules/publishing/api/public'
 import DirectoryTreeContextMenu from '@/modules/knowledge/components/DirectoryTreeContextMenu.vue'
-import Pagination from '@/modules/publishing/components/Pagination.vue'
+import { useInfinitePage } from '@/composables/useInfinitePage'
 
 import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
 import type { KnowledgeCard } from '@/modules/publishing/api/public'
@@ -35,11 +35,7 @@ const isOwner = ref(false)
 const directories = ref<DirectoryNode[]>([])
 
 const selectedDirectoryId = ref('')
-const knowledges = ref<KnowledgeCard[]>([])
-const total = ref(0)
-const pageNo = ref(1)
-const loading = ref(true)
-const loadError = ref(false)
+const sentinel = ref<HTMLElement | null>(null)
 
 const editVisible = ref(false)
 const editForm = ref({ name: '', intro: '', cover: '' })
@@ -76,25 +72,20 @@ function formatDate(iso: string): string {
 }
 
 /** 知识列表加载：全部视图不传 directoryId，选中目录只传参（排序由后端处理）。 */
-async function loadList(targetPage = pageNo.value): Promise<void> {
-  loading.value = true
-  loadError.value = false
-  try {
-    const page = await fetchKnowledges({
+const infinite = useInfinitePage<KnowledgeCard>({
+  sentinel,
+  pageSize: PAGE_SIZE,
+  loadPage: (pageNo, pageSize) => fetchKnowledges({
       kbId: kbId.value,
       ...(selectedDirectoryId.value ? { directoryId: selectedDirectoryId.value } : {}),
-      pageNo: targetPage,
-      pageSize: PAGE_SIZE,
-    })
-    knowledges.value = page.records
-    total.value = page.total
-    pageNo.value = targetPage
-  } catch {
-    loadError.value = true
-  } finally {
-    loading.value = false
-  }
-}
+      pageNo,
+      pageSize,
+    }),
+})
+
+const knowledges = infinite.items
+const loading = infinite.loading
+const loadError = infinite.error
 
 /** 登录态下匹配自己的库：命中则加载库详情 + 目录树（库主模式），否则保持访客占位。 */
 async function loadOwnerInfo(): Promise<void> {
@@ -114,7 +105,7 @@ async function loadOwnerInfo(): Promise<void> {
 /** 目录/全部视图切换：重置到第一页重新查询。 */
 function selectDirectory(id: string): void {
   selectedDirectoryId.value = id
-  void loadList(1)
+  void infinite.loadFirst()
 }
 
 /** 编辑库资料（库主）：name 必填，intro/cover 可空。 */
@@ -180,12 +171,12 @@ function onDirectoryDeleted(ids: string[]): void {
   if (selectedDirectoryId.value && ids.includes(selectedDirectoryId.value)) {
     selectedDirectoryId.value = ''
   }
-  void loadList(1)
+  void infinite.loadFirst()
 }
 
 onMounted(() => {
   void loadOwnerInfo()
-  void loadList(1)
+  void infinite.loadFirst()
 })
 </script>
 
@@ -279,7 +270,7 @@ onMounted(() => {
         </div>
         <div v-else-if="loadError" class="kb-detail__state">
           <p class="kb-detail__state-text">知识加载失败</p>
-          <el-button type="primary" plain @click="loadList(pageNo)">重试</el-button>
+          <el-button type="primary" plain @click="infinite.retry()">重试</el-button>
         </div>
         <template v-else>
           <div v-if="knowledges.length === 0" class="kb-detail__state">
@@ -311,7 +302,12 @@ onMounted(() => {
               </RouterLink>
             </div>
           </article>
-          <Pagination :page-no="pageNo" :page-size="PAGE_SIZE" :total="total" @change="loadList" />
+          <div ref="sentinel" class="kb-detail__sentinel" aria-hidden="true" />
+          <div v-if="infinite.loadingMore" class="kb-detail__load-more" role="status">加载更多…</div>
+          <div v-else-if="infinite.loadMoreError" class="kb-detail__load-more">
+            <el-button type="primary" plain size="small" @click="infinite.retryMore()">重试加载</el-button>
+          </div>
+          <div v-else-if="!infinite.hasMore" class="kb-detail__load-more">已加载全部知识</div>
         </template>
       </section>
     </div>
@@ -556,6 +552,18 @@ onMounted(() => {
   margin: 0 auto var(--xl-space-3);
   font-size: 40px;
   color: var(--xl-text-muted);
+}
+
+.kb-detail__sentinel {
+  height: 1px;
+}
+
+.kb-detail__load-more {
+  min-height: 34px;
+  padding: 14px 0 4px;
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  text-align: center;
 }
 
 .kb-detail__skeleton {

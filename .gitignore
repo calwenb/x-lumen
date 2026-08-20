@@ -20,6 +20,7 @@ frontend/**/coverage/
 
 # ---- 验证产物 ----
 .browser-check/
+.corepack/
 
 # ---- 编辑器与系统 ----
 .idea/workspace.xml
@@ -30,4 +31,3 @@ Thumbs.db
 
 # ---- ZCode 会话内部数据 ----
 .zcode/
-

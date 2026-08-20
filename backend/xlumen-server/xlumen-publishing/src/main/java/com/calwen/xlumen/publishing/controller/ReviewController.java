@@ -3,6 +3,7 @@ package com.calwen.xlumen.publishing.controller;
 import com.calwen.xlumen.common.web.ApiResponse;
 import com.calwen.xlumen.publishing.dto.ApproveDTO;
 import com.calwen.xlumen.publishing.dto.CreateReviewDTO;
+import com.calwen.xlumen.publishing.dto.AutoPublishDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.dto.RejectDTO;
 import com.calwen.xlumen.publishing.dto.ReviewQueryDTO;
@@ -37,6 +38,12 @@ public class ReviewController {
         return ApiResponse.success(reviewService.submitReview(dto.getKnowledgeId()));
     }
 
+    /** 自动发布链路：始终执行 Reviewer AI 任务。 */
+    @PostMapping("/auto")
+    public ApiResponse<ReviewVO> submitAutoReview(@Valid @RequestBody CreateReviewDTO dto) {
+        return ApiResponse.success(reviewService.submitAutoReview(dto.getKnowledgeId()));
+    }
+
     /** 审核列表（F-0902）：按状态筛选 + 分页（查询参数由 ReviewQueryDTO 自动绑定）。 */
     @GetMapping
     public ApiResponse<PageResult<ReviewVO>> listReviews(ReviewQueryDTO query) {
@@ -47,6 +54,13 @@ public class ReviewController {
     @GetMapping("/{id}")
     public ApiResponse<ReviewVO> getReview(@PathVariable Long id) {
         return ApiResponse.success(reviewService.getReview(id));
+    }
+
+    /** AI 无 error 后完成审核并发布，warning/info 由前端确认后调用。 */
+    @PostMapping("/{id}/publish")
+    public ApiResponse<com.calwen.xlumen.publishing.vo.ReleaseVO> publishAfterAutoReview(
+            @PathVariable Long id, @RequestBody AutoPublishDTO dto) {
+        return ApiResponse.success(reviewService.publishAfterAutoReview(id, dto));
     }
 
     /** 审核通过（F-0903）：知识迁移 APPROVED(4)。 */

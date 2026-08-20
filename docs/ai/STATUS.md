@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/19
+> 更新日期：2026/8/20
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -35,7 +35,7 @@
 | M07 AI 创作 | 2026-08-13 | AI 写作（topic/draft/content 至少一项 -> 结构化 title+content）、审校异源校验（写作/审校模型不同源，结构化 severity/position/evidence/suggestion） |
 | M08 AI 对话 | 2026-08-13 | 小光（D14）SSE 流式问答（chunk/citation/done 协议）、会话/消息落库、知识级问答、引用溯源 |
 | M09 AI 增值 | 2026-08-13 | 摘要/SEO 结构化输出（Schema 校验）落库 ai_enhance_result |
-| M10 审核发布 | 2026-08-13 | 双闸门（AI 审校关联 + 人工审核，force_review 可关）、驳回三要素 + 版本 409、立即/定时发布（pub_release 幂等 + PublishJob 每分钟扫描） |
+| M10 审核发布 | 2026-08-13 | 发布前自动 AI 审核（error/失败阻断，warning/info 作者确认），旧审核接口保留回退；立即/定时发布（pub_release 幂等 + PublishJob 每分钟扫描） |
 | M11 读者纠错 | 2026-08-13 | 匿名提交（permitAll）+ 追踪号 + Redis 限流（同 IP 每分钟 1 条，超限 429） |
 | M13+F-1301 后台与缓存 | 2026-08-13 | admin 四页（登录/空间设置/模型配置/审计日志）、热点缓存 cache-aside（空值哨兵 + 降级回源） |
 | KB-1~KB-6 知识平台化重构 | 2026-08-14 | 文章->知识全仓改名（D17，不保留兼容期）、kb_knowledge_base/kb_directory 三层体系（单库单目录）、库级可见性 + 可见库集合单一推导（VisibilityService）、回收站（publishing 聚合，30 天，recycle_status 独立软删列）、跨空间公开读、前端 8 屏（B01/B16/B20~B22 等）、存量迁移与全量验收 |
@@ -55,7 +55,7 @@
 
 ## 4. 进行中
 
-无进行中任务。IDEAS 批次（F-0212/F-0213/F-0214/F-0312/F-0808 + BUG-006）已于 2026-08-18 交付，见第 5 节待办与 CHANGELOG 20:47 条目。待办仅 OPT-1（AI 线程模型虚拟线程评估，待认领）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
+IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾已完成；V2 规划经决策 D18 调整为 AI 优先（原 V3 的 AI 功能并入 V2，V2 内 24 项标「AI 优先」，见 PRODUCT §5 阶段标记说明）。待办为 OPT-1（AI 线程模型虚拟线程评估，待认领）与 V2-AI 优先批次（见 §5 待办）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
 
 ## 5. 待办
 
@@ -88,9 +88,13 @@
 | F-0214 | 创作中心一级导航：主导航「知识库」右侧新增入口（登录态显示，纯前端） | PRODUCT §5 模块二 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
 | F-0312 | 目录树右键菜单：B01/B20 节点右键 编辑/删除/新增子目录，树根右键新增根目录（仅库主，纯前端复用既有目录 CRUD API） | PRODUCT §5 模块三 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
 | F-0808 | 知识详情 AI 摘要：发布事件异步生成（复用 F-0801）+ 详情页摘要区块（后端 ai/publishing + 前端 blog） | PRODUCT §5 模块八 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
+| F-0215 | 知识列表自动瀑布流：保留服务端分页契约，前端滚动触底累计加载 | PRODUCT §5 模块二、PROTOTYPE B01/B03/B16/B20/B23 | 已完成（Codex，2026-08-20） | Codex |
+| F-0907 | 发布自动 AI 审核：error/失败阻断，warning/info 作者确认后继续；审核中心入口暂时隐藏 | PRODUCT §5 模块九、PROTOTYPE B10/B12/B13 | 已完成（Codex，2026-08-20） | Codex |
+| F-1307 | 开发启动端口守卫：显式开启后检测占用、交互确认并结束进程 | GLOBAL §6.4、BACKEND §18 | 已完成（Codex，2026-08-20） | Codex |
 | OPT-1 | 技术优化：AI 线程模型评估虚拟线程。主项：chatStreamExecutor（SSE 长连接占平台线程、池满 CallerRuns 堵容器线程）改 `Executors.newVirtualThreadPerTaskExecutor()` + Semaphore 并发上限（限流与线程模型解耦）。候选点：aiTaskExecutor（AI 任务，需保留并发上限）、indexExecutor（发布即索引 embedding/Milvus 阻塞 I/O）、OpenAICompatibleProvider/EmbeddingServiceImpl/MilvusVectorStore 的 JDK HttpClient 阻塞调用；SseService 心跳与 PublishJob 为固定间隔单线程调度，不适用 | 2026-08-17 线程模型评估（chatStreamExecutor 结构性短板，详见会话记录） | 待认领 | |
+| V2-AI | V2 AI 优先批次：按 PRODUCT §5 标记「AI 优先」的 24 项分批实施（决策 D18；建议先 AI 对话/创作增值，后保鲜/治理），V3 仅剩 F-0207/F-1305 | PRODUCT §5 模块五~八及 AI 标注项、PROTOTYPE §7/§8 | 待认领 | |
 
-> 说明：数据分析与知识保鲜（模块十一）为 V2/V3 功能，平台治理（模块十二）MVP 部分（空间设置/审计）随 M13 落地、其余 V2/V3 随依赖模块迭代实现；阶段调整须经 CHANGELOG 记录（决策 D10）。
+> 说明：数据分析与知识保鲜（模块十一）经决策 D18 全部并入 V2（含原 V3 的知识缺口分析 F-1103）；平台治理（模块十二）MVP 部分（空间设置/审计）已随 M13 落地，F-1203/F-1204 经 D18 并入 V2（AI 优先）；V2 内按「AI 优先」顺序实施；阶段调整须经 CHANGELOG 记录（决策 D10）。
 > KB-1~KB-6 已全部交付验收；实施细则方案（`knowledge-redesign-proposal.md` / `code-implementation-plan.md`）已随实施完成删除，需要时经 git 历史回溯。
 
 ## 6. 文档一致性核验
@@ -104,9 +108,9 @@
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/20 · ZCode：**AI 相关功能优先级提升（决策 D18）**--按用户「提升 AI 相关功能优先级」将 V3 的 10 项 AI 功能并入 V2（F-0505/F-0607/F-0704/F-0705/F-0806/F-0807/F-1003/F-1103/F-1203/F-1204），V2 内 24 项 AI 功能标「V2（AI 优先）」优先实施；总表统计更新为 90 项（MVP 47 / V2 41 / V3 2），V3 仅剩非 AI 的 F-0207/F-1305；待办新增 V2-AI 优先批次。纯文档变更，代码零改动。
+- 2026/8/20 · Codex：**IDEA-006~008 落地**——知识列表改为 IntersectionObserver 自动瀑布流；发布链路新增自动 AI 审核与 warning/info 确认，审核中心入口暂时隐藏且保留旧接口；开发环境新增可选端口冲突交互守卫。双前端 lint/stylelint/typecheck/test/build、后端 JDK25 package、内置浏览器回归均已完成。
 - 2026/8/19 12:05 · ZCode：**BUGS.md 修复批次（9 条修复 + 1 条复核关闭）**--按用户「执行修复 BUGS.md」修复 8-19 全功能测试缺陷：BUG-014 版本历史补全（cnt_knowledge_version 建表 + 快照写入 + GET /knowledge/{id}/versions）、BUG-013 update/autosave 越界目录 400、BUG-016 unpublish 端点 + 已下架可删除、BUG-010 评论/AI 增值 createdAt 回填、BUG-012 纠错限流 1/分钟、BUG-007 审核中心「发布」按钮 + ReleaseController 授权 + release 移除版本强校验（approve 后版本 +1）、BUG-008 HomePage「我的公开库」文案、BUG-009 登录提示 v-if、BUG-017 编辑器文案对齐；BUG-015 复核未复现保留 SUSPECT。验证：mvn package + 单测全绿、前端门禁干净、E2E 9/9、curl 全链路（v0/v1 快照、429、approve→发布→公开可见、下架→隐藏→可删除）。环境注意：8080 有守护自动拉起 java -jar，spring-boot:run 不带 -am 会取 .m2 旧依赖，须 package 后 java -jar。
-- 2026/8/19 11:50 · ZCode：**2026-08-19 全功能测试结论**--主代理 + 3 子代理并行（API 冒烟 70 端点 / Playwright E2E 10/10 / BUG-007 复现 + 文档审计），覆盖 PRODUCT §5 + STATUS §3 共 12 模块；互动/内容/KB 体系/AI 对话/Admin/审核/多用户可见性通过；新发现 10 个 BUG 候选（BUG-007 根因修正 + 008~010、012~017）全部登记 BUGS.md 仅记录未修；文档审计 4 项差异（README/GLOBAL 旧值、STATUS W7 快照、链接计数）；qa_alpha_20260819 测试账号按 QA §3.8 22:00 清理。
-- 2026/8/19 11:00 · ZCode：**新建 AI 浏览器测试指南 QA.md**--按用户要求为「AI 代理用 browser-use 操作浏览器做全功能/指定模块测试」建立规范文档（发起模式、环境自检 8 项、操作规范踩坑备忘、模块入口速查、结果流转；引用不复制 PRODUCT/PROTOTYPE/GLOBAL/BUGS）；GLOBAL §2 导航表/§4 结构树补 QA 并计数 10->11 份，README 文档清单补 IDEAS（8/18 遗漏）与 QA 并计数 9->11 份，本文件 §1 阅读清单补 QA。纯文档变更，代码零改动。
 
 ## 8. 关键决策摘要（详见规范文档，勿推翻）
 
@@ -129,6 +133,7 @@
 | D15 | **Maven 模块压缩 12→7**：按未来微服务拆分边界合并——identity（+platform）、content（+analytics）、publishing（+engagement）、knowledge、ai（+chat+ai-enhance）+ common/boot；**模块内统一传统 MVC 扁平结构（不引入业务域包，去 engagement/editor/iam 等域概念）**，表前缀保持独立，拆分边界以模块 + 表前缀为准（BACKEND §4/§5） |
 | D16 | **知识库体系**：知识=文章（概念统一）；空间→知识库→多级目录→知识三层；单库单目录；可见性库级决定（公开/私有/授权名单 V2），删除文章级可见性；目录树替代分类（标签保留）；删库连带回收站（默认 30 天）；知识不可跨库移动（仅复制或重新发布）（PRODUCT §4/§5/§6，BACKEND §13） |
 | D17 | **概念统一（文章→知识）**：全项目「文章」统一改名「知识」——文档措辞、后端类名/接口/事件/审计常量、前端路由/文案/组件、测试断言全量替换；物理表名 `cnt_article`→`cnt_knowledge`、接口路径 `/api/v1/articles`→`/api/v1/knowledge` 同步全改，**不保留兼容期**（前后端同仓同 PR 切换）（BACKEND §10） |
+| D18 | **AI 相关功能优先级提升（2026/8/20）**：V3 的 AI 功能并入 V2（F-0505、F-0607、F-0704/F-0705、F-0806/F-0807、F-1003、F-1103、F-1203/F-1204），V2 内 24 项 AI 相关功能标「AI 优先」优先实施（AI 范围定义见 PRODUCT §5 阶段标记说明）；V3 仅剩非 AI 的 F-0207/F-1305 |
 
 ## 9. 环境速查
 

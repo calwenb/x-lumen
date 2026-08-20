@@ -2,7 +2,7 @@
 // 创作工作台（B09）：内容创作链路聚合入口（知识管理/写作/审核/发布）。
 // 依赖各里程碑逐个接入：M04 知识管理；AI 写作随 M07、审核随 M10、发布随 M10 接入路由后启用。
 import { RouterLink } from 'vue-router'
-import { ChatLineRound, DocumentChecked, EditPen, Promotion } from '@element-plus/icons-vue'
+import { DocumentChecked, EditPen, Promotion } from '@element-plus/icons-vue'
 
 /** 工作台入口定义：路由可用则展示。 */
 const entries = [
@@ -15,16 +15,9 @@ const entries = [
   },
   {
     title: 'AI 写作',
-    description: '「小光」输入主题或草稿直接输出完整知识，AI 审校把关（F-0601/F-0604）',
+      description: '「小光」输入主题或草稿直接输出完整知识，发布前自动审校（F-0601/F-0604/F-0907）',
     to: { name: 'writing' },
     icon: EditPen,
-    enabled: true,
-  },
-  {
-    title: '审核中心',
-    description: '双闸门审核：AI 审校 + 人工审核，驳回需填写原因/位置/期望修改（F-0902/F-0904）',
-    to: { name: 'review-center' },
-    icon: ChatLineRound,
     enabled: true,
   },
   {
@@ -41,7 +34,7 @@ const entries = [
   <main class="workbench">
     <h1 class="workbench__title">创作工作台</h1>
     <p class="workbench__intro">
-      从这里开始内容创作：写知识 → AI 审校 → 人工审核 → 发布 → 自动索引，形成完整闭环。
+      从这里开始内容创作：写知识 → 发布前自动 AI 审校 → 发布 → 自动索引，形成完整闭环。
     </p>
     <ul class="workbench__entries">
       <li

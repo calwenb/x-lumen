@@ -12,7 +12,7 @@
 
 | 应用 | 目录 | 端口 | 用户 | 核心职责 |
 | --- | --- | --- | --- | --- |
-| 博客前台 | `frontend/xlumen-frontend-blog/` | 5173 | 访客、登录读者、博主（OWNER） | 知识展示/阅读/互动、知识库浏览、AI 对话（[AI小光] 菜单入口，F-0701）、创作中心（创作/审校/审核/发布/知识库管理） |
+| 博客前台 | `frontend/xlumen-frontend-blog/` | 5173 | 访客、登录读者、博主（OWNER） | 知识展示/阅读/互动、知识库浏览、AI 对话（[AI小光] 菜单入口，F-0701）、创作中心（创作/审校/自动审核发布/知识库管理） |
 | 管理后台 | `frontend/xlumen-frontend-admin/` | 5174 | 仅管理员（OWNER/ADMIN） | 空间/成员/角色、模型配置、审计日志等配置管理，不参与内容流转 |
 
 - 两个 pnpm 应用分别构建和运行；仓库根 `package.json` 通过 `pnpm --dir frontend/xlumen-frontend-blog` / `pnpm --dir frontend/xlumen-frontend-admin` 代理两应用脚本，质量门禁统一在仓库根执行（命令见 GLOBAL.md）。
@@ -73,7 +73,7 @@ frontend/xlumen-frontend-admin/src/    # 管理后台（仅管理员）
 │  ├─ workspace/           # 空间/成员/角色设置（F-1201/F-0102/F-0103）
 │  ├─ model/               # 供应商密钥与场景模型配置（F-0501/F-0502）
 │  ├─ audit/               # 审计日志（F-1202）
-│  └─ analytics/           # 配额、数据看板、时效检测（V2/V3，F-0504/F-1101/F-1102）
+│  └─ analytics/           # 配额、数据看板、时效检测（V2，F-0504/F-1101/F-1102）
 ├─ App.vue
 └─ main.ts
 ```
@@ -85,12 +85,12 @@ blog 应用前端模块与后端 Maven 模块对应关系（后端模块职责�
 | `identity` | xlumen-identity（iam_） | MVP | 登录/注册/登出（F-0101），博主与读者均在 blog 登录 |
 | `blog` | xlumen-publishing（pub_，公开读） | MVP | 首页知识列表、详情、搜索目录标签、知识库页/发现页、关于（F-0201/0202/0208） |
 | `content` | xlumen-content（cnt_） | MVP | 知识 CRUD 与编辑器（F-0301）、自动保存（F-0302）、库/目录归属（F-0307/F-0309）、版本/定时/图片（F-0303/0304/0306，V2） |
-| `ai` | xlumen-ai（ai_，gateway/writing 域） | MVP | AI 写作/大纲可选确认/审校任务页（F-0601~0604） |
+| `ai` | xlumen-ai（ai_，gateway/writing 域） | MVP/V2 | AI 写作（F-0601）/审校（F-0604）MVP；大纲确认/增强写作/任务恢复/辅助编辑/代码解读（F-0602/F-0603/F-0605~F-0607，V2） |
 | `knowledge` | xlumen-knowledge（kb_） | MVP | 知识库管理/目录管理/回收站（F-0308/0309/F-0305）、知识索引状态与重建（F-0402/0403）、检索测试（F-0404）、引用溯源展示（F-0405） |
-| `publishing` | xlumen-publishing（pub_，review/release 域） | MVP | 审核中心（F-0902~0904）、状态机与发布（F-0901/0905）、下架回滚（F-0906，V2） |
-| `chat` | xlumen-ai（chat_，chat 域） | MVP | AI小光对话菜单页 B00（F-0701）、知识级问答（F-0702）、访客助手（F-0703，V2） |
+| `publishing` | xlumen-publishing（pub_，review/release 域） | MVP | 发布前自动 AI 审核（F-0907）、状态机与发布（F-0901/0905）、旧审核中心接口保留回退（F-0902~0904）、下架回滚（F-0906，V2） |
+| `chat` | xlumen-ai（chat_，chat 域） | MVP | AI小光对话菜单页 B00（F-0701）、知识级问答（F-0702）；访客助手/多文档对比/知识库洞察（F-0703~F-0705，V2） |
 | `engagement` | xlumen-publishing（eng_，engagement 域） | MVP/V2 | 评论点赞阅读量（F-0203）、读者纠错（F-1001）、通知中心（F-1004，V2） |
-| `ai-enhance` | xlumen-ai（ai_enhance_，enhance 域） | MVP/V2 | 摘要/SEO（F-0801/0802）、翻译/配图/标签（F-0803~0805，V2） |
+| `ai-enhance` | xlumen-ai（ai_enhance_，enhance 域） | MVP/V2 | 摘要/SEO（F-0801/0802）MVP；翻译/配图/标签/语音/分享卡片（F-0803~F-0807，V2） |
 | `workbench` | —（聚合） | MVP | 创作工作台 B09：指标、快捷操作、任务入口 |
 
 admin 应用前端模块：
@@ -101,7 +101,7 @@ admin 应用前端模块：
 | `workspace` | xlumen-identity（iam_ + plt_，platform 域） | MVP | 空间设置（F-1201）、成员与角色（F-0102/0103，成员邀请 V2） |
 | `model` | xlumen-ai（ai_，gateway 域） | MVP | 供应商密钥与场景模型配置（F-0501/0502） |
 | `audit` | xlumen-identity（plt_，platform 域） | MVP | 审计日志（F-1202） |
-| `analytics` | xlumen-content（analytics_，analytics 域）/ xlumen-ai | V2/V3 | 配额（F-0504）、数据看板（F-1101）、时效检测（F-1102） |
+| `analytics` | xlumen-content（analytics_，analytics 域）/ xlumen-ai | V2 | 配额（F-0504）、数据看板（F-1101）、时效检测/知识缺口/更新建议（F-1102~F-1104）、AI Trace 与运行监控（F-0505/F-1203）、敏感内容检测（F-1204） |
 
 业务模块内部统一采用（两应用同一规则）：
 
@@ -230,7 +230,7 @@ WebSocket 只用于站内通知（F-1004）与协作状态。业务最终状态�
 - 优先使用 Element Plus 公共 API 和 CSS Variables，不依赖内部 DOM。
 - 仅封装存在稳定业务语义的组件，例如 `AiTaskProgress`、`EvidenceCard`、`ReviewIssueList`。
 - 禁止在业务样式中散落硬编码颜色、任意 `z-index` 和 `!important`。
-- 表格必须提供加载、空数据、错误、无权限和分页状态。
+- 列表必须提供加载、空数据、错误、无权限和继续加载/已到底状态；“自动瀑布流”统一指滚动触底累计追加，不改变各页面原型规定的单列/卡片墙结构，后端分页契约仍由 API 层承载。
 - 弹窗适用于短任务；长表单、复杂审核和编辑工作台使用独立页面或抽屉；删除、发布、下架和覆盖版本属于危险操作，必须说明影响范围并二次确认。
 
 ### 10.3 深浅色主题切换（F-1306，V2）
@@ -280,7 +280,7 @@ stateDiagram-v2
 
 - 博客前台以 LCP ≤ 2.5s、INP ≤ 200ms、CLS ≤ 0.1 为良好目标，数值以压测校准（NFR 见 PRODUCT.md 第 11 节）。
 - 路由级拆包；Markdown 编辑器、ECharts、Mermaid 和 Shiki 等重组件按需加载。
-- 大列表使用服务端分页；确有需要时再使用虚拟滚动。
+- 大列表默认使用服务端分页 + `IntersectionObserver` 自动累计加载；确有需要时再使用虚拟滚动，避免一次性拉取全量数据。
 - 自动保存每 10 秒或失焦触发，内容未变化时不发请求。
 - 构建产物生成体积报告，新增大型依赖必须说明用途和替代方案。
 

@@ -1,10 +1,12 @@
 package com.calwen.xlumen.publishing.service;
 
 import com.calwen.xlumen.publishing.dto.ApproveDTO;
+import com.calwen.xlumen.publishing.dto.AutoPublishDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.dto.RejectDTO;
 import com.calwen.xlumen.publishing.dto.ReviewQueryDTO;
 import com.calwen.xlumen.publishing.vo.ReviewVO;
+import com.calwen.xlumen.publishing.vo.ReleaseVO;
 
 /**
  * 审核服务（F-0902/F-0903）：提交审核/列表/详情/通过/驳回，状态流转规则集中本服务。
@@ -22,6 +24,12 @@ public interface ReviewService {
      * @return 审核记录视图
      */
     ReviewVO submitReview(Long knowledgeId);
+
+    /** 新发布链路：始终提交 AI 审核，不受旧 forceReview 设置影响。 */
+    ReviewVO submitAutoReview(Long knowledgeId);
+
+    /** AI 审核无 error 后自动通过并立即/定时发布。 */
+    ReleaseVO publishAfterAutoReview(Long reviewId, AutoPublishDTO dto);
 
     /**
      * 分页查询当前空间的审核记录。

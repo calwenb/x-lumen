@@ -26,6 +26,9 @@ export interface ReviewVO {
   status: string
   aiTaskId: string
   aiResultJson: string
+  aiTaskStatus: string
+  autoDecision: 'REVIEWING' | 'READY' | 'BLOCKED' | 'FAILED' | 'PUBLISHED' | ''
+  aiErrorMessage: string
   rejectReason: string
   rejectPosition: string
   rejectExpectation: string
@@ -57,6 +60,9 @@ interface RawReview {
   status: string
   aiTaskId: string | null
   aiResultJson: string | null
+  aiTaskStatus: string | null
+  autoDecision: string | null
+  aiErrorMessage: string | null
   rejectReason: string | null
   rejectPosition: string | null
   rejectExpectation: string | null
@@ -73,6 +79,9 @@ function normalizeReview(raw: RawReview): ReviewVO {
     status: raw.status ?? 'PENDING',
     aiTaskId: raw.aiTaskId ?? '',
     aiResultJson: raw.aiResultJson ?? '',
+    aiTaskStatus: raw.aiTaskStatus ?? '',
+    autoDecision: (raw.autoDecision ?? '') as ReviewVO['autoDecision'],
+    aiErrorMessage: raw.aiErrorMessage ?? '',
     rejectReason: raw.rejectReason ?? '',
     rejectPosition: raw.rejectPosition ?? '',
     rejectExpectation: raw.rejectExpectation ?? '',
@@ -85,6 +94,25 @@ function normalizeReview(raw: RawReview): ReviewVO {
 export async function createReview(knowledgeId: string): Promise<ReviewVO> {
   const { data } = await http.post<ApiResponse<RawReview>>('/reviews', { knowledgeId })
   return normalizeReview(unwrap(data))
+}
+
+/** 新发布链路：始终执行 AI 审核。 */
+export async function createAutoReview(knowledgeId: string): Promise<ReviewVO> {
+  const { data } = await http.post<ApiResponse<RawReview>>('/reviews/auto', { knowledgeId })
+  return normalizeReview(unwrap(data))
+}
+
+/** AI 无 error 后发布；publishAt 为空表示立即发布。 */
+export async function publishAfterAutoReview(
+  reviewId: string,
+  publishAt?: string,
+): Promise<{ id: string; status: string }> {
+  const { data } = await http.post<ApiResponse<{ id: string; status: string }>>(
+    `/reviews/${reviewId}/publish`,
+    publishAt ? { publishAt } : {},
+  )
+  const result = unwrap(data)
+  return { id: String(result.id), status: result.status }
 }
 
 /** 分页查询审核列表（F-0904）。 */

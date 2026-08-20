@@ -7,19 +7,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
 
 import { deleteKnowledge, fetchKnowledges, STATUS_LABELS } from '@/modules/content/api/knowledge'
-import { createReview } from '@/modules/publishing/api/review'
-import Pagination from '@/modules/publishing/components/Pagination.vue'
+import { useInfinitePage } from '@/composables/useInfinitePage'
 
 import type { KnowledgeListItem } from '@/modules/content/api/knowledge'
 
 const PAGE_SIZE = 10
 
-const knowledges = ref<KnowledgeListItem[]>([])
-const total = ref(0)
-const pageNo = ref(1)
-const loading = ref(true)
-const loadError = ref(false)
-const submittingId = ref<string | null>(null)
+const sentinel = ref<HTMLElement | null>(null)
 
 const filterStatus = ref('')
 const keyword = ref('')
@@ -36,28 +30,23 @@ function formatTime(iso: string): string {
   return iso.slice(0, 16).replace('T', ' ')
 }
 
-async function load(targetPage = pageNo.value): Promise<void> {
-  loading.value = true
-  loadError.value = false
-  try {
-    const page = await fetchKnowledges({
+const infinite = useInfinitePage<KnowledgeListItem>({
+  sentinel,
+  pageSize: PAGE_SIZE,
+  loadPage: (pageNo, pageSize) => fetchKnowledges({
       ...(filterStatus.value ? { status: Number(filterStatus.value) } : {}),
       ...(keyword.value.trim() ? { keyword: keyword.value.trim() } : {}),
-      pageNo: targetPage,
-      pageSize: PAGE_SIZE,
-    })
-    knowledges.value = page.records
-    total.value = page.total
-    pageNo.value = targetPage
-  } catch {
-    loadError.value = true
-  } finally {
-    loading.value = false
-  }
-}
+      pageNo,
+      pageSize,
+    }),
+})
+
+const knowledges = infinite.items
+const loading = infinite.loading
+const loadError = infinite.error
 
 function applyFilters(): void {
-  void load(1)
+  void infinite.loadFirst()
 }
 
 async function handleDelete(item: KnowledgeListItem): Promise<void> {
@@ -74,33 +63,14 @@ async function handleDelete(item: KnowledgeListItem): Promise<void> {
   try {
     await deleteKnowledge(item.id)
     ElMessage.success('已删除')
-    await load(pageNo.value)
+    await infinite.loadFirst()
   } catch {
     ElMessage.error('删除失败，仅构思/草稿状态的知识可删除')
   }
 }
 
-/** 提交审核（F-0902）：草稿/已通过态可用（BUG-5 列表入口补全）。 */
-async function handleSubmitReview(item: KnowledgeListItem): Promise<void> {
-  submittingId.value = item.id
-  try {
-    await createReview(item.id)
-    ElMessage.success('已提交审核')
-    await load(pageNo.value)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '提交审核失败')
-  } finally {
-    submittingId.value = null
-  }
-}
-
-/** 草稿（2）或已通过（4）可提交审核。 */
-function canSubmitReview(status: number): boolean {
-  return status === 2 || status === 4
-}
-
 onMounted(() => {
-  void load()
+  void infinite.loadFirst()
 })
 </script>
 
@@ -144,7 +114,7 @@ onMounted(() => {
     </div>
     <div v-else-if="loadError" class="knowledge-list__state">
       <p>加载失败，请稍后重试。</p>
-      <el-button type="primary" plain @click="load()">重试</el-button>
+      <el-button type="primary" plain @click="infinite.retry()">重试</el-button>
     </div>
     <div v-else-if="knowledges.length === 0" class="knowledge-list__state">
       <el-icon class="knowledge-list__state-icon"><Document /></el-icon>
@@ -168,16 +138,6 @@ onMounted(() => {
             </div>
           </div>
           <div class="knowledge-list__item-actions">
-            <el-button
-              v-if="canSubmitReview(item.status)"
-              type="success"
-              plain
-              size="small"
-              :loading="submittingId === item.id"
-              @click="handleSubmitReview(item)"
-            >
-              提交审核
-            </el-button>
             <RouterLink
               class="knowledge-list__action"
               :to="{ name: 'knowledge-edit', params: { id: item.id } }"
@@ -196,7 +156,12 @@ onMounted(() => {
           </div>
         </li>
       </ul>
-      <Pagination :page-no="pageNo" :page-size="PAGE_SIZE" :total="total" @change="load" />
+      <div ref="sentinel" class="knowledge-list__sentinel" aria-hidden="true" />
+      <div v-if="infinite.loadingMore" class="knowledge-list__load-more" role="status">加载更多…</div>
+      <div v-else-if="infinite.loadMoreError" class="knowledge-list__load-more">
+        <el-button type="primary" plain size="small" @click="infinite.retryMore()">重试加载</el-button>
+      </div>
+      <div v-else-if="!infinite.hasMore" class="knowledge-list__load-more">已加载全部知识</div>
     </template>
   </main>
 </template>
@@ -326,6 +291,18 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.knowledge-list__sentinel {
+  height: 1px;
+}
+
+.knowledge-list__load-more {
+  min-height: 34px;
+  padding: 14px 0 4px;
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  text-align: center;
 }
 
 .knowledge-list__action {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 搜索/标签页（B03，F-0202）：关键词 + 标签 + 知识库/目录组合筛选，服务端分页，命中高亮。
+// 搜索/标签页（B03，F-0202）：关键词 + 标签 + 知识库/目录组合筛选，滚动触底自动追加，命中高亮。
 // 关键状态：搜索中骨架、无结果空态（清空筛选建议）、失败可重试；搜索结果仅含公开知识（F-0307 由后端保证）。
 // 决策 D16：category 废弃（后端已删 /public/categories 接口与 category 参数，目录树接管），
 // 知识库/目录筛选需登录（fetchKnowledgeBases/fetchDirectoryTree 为鉴权接口，未登录显示空态说明）。
@@ -8,7 +8,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import { fetchKnowledges, fetchTags } from '@/modules/publishing/api/public'
-import Pagination from '@/modules/publishing/components/Pagination.vue'
+import { useInfinitePage } from '@/composables/useInfinitePage'
 import { useSessionStore } from '@/stores/session'
 
 import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
@@ -28,11 +28,7 @@ const knowledgeBases = ref<KnowledgeBase[]>([])
 const directories = ref<DirectoryOption[]>([])
 const tags = ref<CategoryCount[]>([])
 
-const results = ref<KnowledgeCard[]>([])
-const pageNo = ref(1)
-const total = ref(0)
-const loading = ref(true)
-const loadError = ref(false)
+const sentinel = ref<HTMLElement | null>(null)
 
 interface DirectoryOption {
   value: string
@@ -113,27 +109,23 @@ function applyFilters(): void {
   void router.push({ name: 'search', query })
 }
 
-async function load(targetPage: number): Promise<void> {
-  loading.value = true
-  loadError.value = false
-  try {
-    const page = await fetchKnowledges({
+const infinite = useInfinitePage<KnowledgeCard>({
+  sentinel,
+  pageSize: PAGE_SIZE,
+  loadPage: (pageNo, pageSize) => fetchKnowledges({
       ...(keyword.value ? { keyword: keyword.value } : {}),
       ...(kbId.value ? { kbId: kbId.value } : {}),
       ...(kbId.value && directoryId.value ? { directoryId: directoryId.value } : {}),
       ...(tag.value ? { tag: tag.value } : {}),
-      pageNo: targetPage,
-      pageSize: PAGE_SIZE,
-    })
-    results.value = page.records
-    total.value = page.total
-    pageNo.value = page.pageNo
-  } catch {
-    loadError.value = true
-  } finally {
-    loading.value = false
-  }
-}
+      pageNo,
+      pageSize,
+    }),
+})
+
+const results = infinite.items
+const total = infinite.total
+const loading = infinite.loading
+const loadError = infinite.error
 
 // 从 URL 恢复筛选状态并查询（顶栏搜索框与标签链接共用本页）；directoryId 仅在 kbId 存在时生效
 watch(
@@ -143,12 +135,12 @@ watch(
     tag.value = (query.tag as string | undefined) ?? ''
     kbId.value = (query.kbId as string | undefined) ?? ''
     directoryId.value = kbId.value ? ((query.directoryId as string | undefined) ?? '') : ''
-    void load(1)
+    void infinite.loadFirst()
   },
 )
 
 onMounted(async () => {
-  const tasks: Promise<unknown>[] = [load(1), fetchTags().then((list) => (tags.value = list))]
+  const tasks: Promise<unknown>[] = [infinite.loadFirst(), fetchTags().then((list) => (tags.value = list))]
   if (session.loggedIn) tasks.push(loadKnowledgeBases())
   await Promise.all(tasks)
 })
@@ -206,7 +198,7 @@ onMounted(async () => {
     </div>
     <div v-else-if="loadError" class="search__state">
       <p class="search__state-text">搜索失败</p>
-      <el-button type="primary" plain @click="load(pageNo)">重试</el-button>
+      <el-button type="primary" plain @click="infinite.retry()">重试</el-button>
     </div>
     <div v-else-if="results.length === 0" class="search__state">
       <p class="search__state-text">没有找到相关知识，试试清空筛选或更换关键词。</p>
@@ -214,7 +206,8 @@ onMounted(async () => {
     </div>
     <template v-else>
       <p class="search__summary">共 {{ total }} 篇相关知识</p>
-      <article v-for="knowledge in results" :key="knowledge.id" class="search-card">
+      <div class="search__cards">
+        <article v-for="knowledge in results" :key="knowledge.id" class="search-card">
         <RouterLink class="search-card__title" :to="`/knowledge/${knowledge.id}`">
           <span v-html="highlight(knowledge.title, keyword)" />
         </RouterLink>
@@ -224,8 +217,14 @@ onMounted(async () => {
           <span>{{ formatDate(knowledge.publishedAt) }}</span>
           <span>{{ knowledge.readMinutes }} 分钟阅读</span>
         </div>
-      </article>
-      <Pagination :page-no="pageNo" :page-size="PAGE_SIZE" :total="total" @change="load" />
+        </article>
+      </div>
+      <div ref="sentinel" class="search__sentinel" aria-hidden="true" />
+      <div v-if="infinite.loadingMore" class="search__load-more" role="status">加载更多…</div>
+      <div v-else-if="infinite.loadMoreError" class="search__load-more">
+        <el-button type="primary" plain size="small" @click="infinite.retryMore()">重试加载</el-button>
+      </div>
+      <div v-else-if="!infinite.hasMore" class="search__load-more">已加载全部知识</div>
     </template>
   </main>
 </template>
@@ -279,6 +278,23 @@ onMounted(async () => {
   background: color-mix(in srgb, var(--xl-border) 60%, transparent);
 }
 
+.search__cards {
+  column-count: 2;
+  column-gap: var(--xl-space-4);
+}
+
+.search__sentinel {
+  height: 1px;
+}
+
+.search__load-more {
+  min-height: 34px;
+  padding: 14px 0 4px;
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
 .search__state-text {
   color: var(--xl-text-secondary);
   font-size: 14px;
@@ -304,6 +320,7 @@ onMounted(async () => {
 }
 
 .search-card {
+  break-inside: avoid;
   padding: var(--xl-space-4) var(--xl-space-6);
   margin-bottom: var(--xl-space-4);
   border: 1px solid var(--xl-border);
@@ -318,6 +335,12 @@ onMounted(async () => {
 .search-card:hover {
   box-shadow: var(--xl-shadow-md);
   transform: translateY(-2px);
+}
+
+@media (width <= 640px) {
+  .search__cards {
+    column-count: 1;
+  }
 }
 
 .search-card__title {

@@ -19,17 +19,23 @@ import com.calwen.xlumen.identity.api.WorkspaceApi;
 import com.calwen.xlumen.identity.service.ActivityLogService;
 import com.calwen.xlumen.knowledge.api.KnowledgeApi;
 import com.calwen.xlumen.publishing.dto.ApproveDTO;
+import com.calwen.xlumen.publishing.dto.AutoPublishDTO;
+import com.calwen.xlumen.publishing.dto.CreateReleaseDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.dto.RejectDTO;
 import com.calwen.xlumen.publishing.dto.ReviewQueryDTO;
 import com.calwen.xlumen.publishing.entity.ReviewEntity;
 import com.calwen.xlumen.publishing.mapper.ReviewMapper;
 import com.calwen.xlumen.publishing.service.ReviewService;
+import com.calwen.xlumen.publishing.service.ReleaseService;
+import com.calwen.xlumen.publishing.vo.ReleaseVO;
 import com.calwen.xlumen.publishing.vo.ReviewVO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONUtil;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -68,11 +74,26 @@ public class ReviewServiceImpl implements ReviewService {
     private WorkspaceApi workspaceApi;
 
     @Resource
+    private ReleaseService releaseService;
+
+    @Resource
     private ActivityLogService activityLogService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ReviewVO submitReview(Long knowledgeId) {
+        return submitReview(knowledgeId, false);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ReviewVO submitAutoReview(Long knowledgeId) {
+        ReviewVO review = submitReview(knowledgeId, true);
+        return getReview(review.getId());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    private ReviewVO submitReview(Long knowledgeId, boolean forceAi) {
         Long workspaceId = WorkspaceContext.workspaceId();
         Long userId = WorkspaceContext.userId();
         EditorKnowledgeDTO knowledge = contentApi.getEditorKnowledge(workspaceId, knowledgeId);
@@ -88,6 +109,16 @@ public class ReviewServiceImpl implements ReviewService {
                 || !knowledgeApi.checkOwnership(workspaceId, knowledge.getKbId(), knowledge.getDirectoryId())) {
             throw new BizException(ErrorCode.INVALID_PARAM, "知识未归属有效知识库，请先在编辑器中选择知识库与目录");
         }
+        if (forceAi) {
+            ReviewEntity existing = reviewMapper.selectOne(Wrappers.<ReviewEntity>lambdaQuery()
+                    .eq(ReviewEntity::getWorkspaceId, workspaceId)
+                    .eq(ReviewEntity::getKnowledgeId, knowledgeId)
+                    .eq(ReviewEntity::getVersion, knowledge.getVersion())
+                    .in(ReviewEntity::getStatus, STATUS_PENDING, STATUS_APPROVED)
+                    .orderByDesc(ReviewEntity::getUpdatedAt)
+                    .last("LIMIT 1"));
+            if (existing != null) return toVO(existing);
+        }
         ReviewEntity review = new ReviewEntity();
         review.setWorkspaceId(workspaceId);
         review.setKnowledgeId(knowledgeId);
@@ -99,7 +130,7 @@ public class ReviewServiceImpl implements ReviewService {
         reviewMapper.insert(review);
 
         // 强制审核关闭 → 直接通过；否则提交 AI 审校任务（场景 REVIEWER，幂等键 review-{id}）
-        boolean forced = !Boolean.FALSE.equals(workspaceApi.forceReviewEnabled(workspaceId));
+        boolean forced = forceAi || !Boolean.FALSE.equals(workspaceApi.forceReviewEnabled(workspaceId));
         if (!forced) {
             review.setStatus(STATUS_APPROVED);
         } else {
@@ -124,6 +155,47 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ReleaseVO publishAfterAutoReview(Long reviewId, AutoPublishDTO dto) {
+        ReviewEntity review = getOwnedReview(reviewId);
+        if (STATUS_APPROVED.equals(review.getStatus())) {
+            ReleaseVO existing = releaseService.findByKnowledgeVersion(review.getKnowledgeId(), review.getVersion());
+            if (existing != null) return existing;
+            throw new BizException(ErrorCode.CONFLICT, "该审核已通过但发布记录不存在，请联系管理员");
+        }
+        if (!STATUS_PENDING.equals(review.getStatus())) {
+            throw new BizException(ErrorCode.CONFLICT, "该审核已被阻断，请修改后重新发布");
+        }
+        TaskResultVO task = review.getAiTaskId() == null
+                ? null : aiApi.queryTask(WorkspaceContext.workspaceId(), review.getAiTaskId());
+        if (task == null || !AiTaskStatus.COMPLETED.name().equals(task.getStatus())) {
+            throw new BizException(ErrorCode.CONFLICT, "AI 审核尚未完成");
+        }
+        String resultJson = task.getResultJson();
+        try {
+            if (containsError(resultJson)) {
+                finalizeBlocked(review, "AI 审核发现高风险问题", "请查看 AI 审核问题", "修复 error 问题后重新发布");
+                throw new BizException(ErrorCode.CONFLICT, "AI 审核未通过，请先修复高风险问题");
+            }
+        } catch (BizException e) {
+            if (!STATUS_REJECTED.equals(review.getStatus())) {
+                finalizeBlocked(review, "AI 审核结果无效", "AI 结果", "请重新发起审核");
+            }
+            throw e;
+        }
+        review.setAiResultJson(resultJson);
+        review.setStatus(STATUS_APPROVED);
+        review.setUpdatedAt(LocalDateTime.now());
+        reviewMapper.updateById(review);
+        migrateKnowledge(review.getKnowledgeId(), KnowledgeStatus.APPROVED.getValue());
+        return releaseService.release(CreateReleaseDTO.builder()
+                .knowledgeId(review.getKnowledgeId())
+                .version(review.getVersion())
+                .publishAt(dto == null ? null : dto.getPublishAt())
+                .build());
+    }
+
+    @Override
     public PageResult<ReviewVO> listReviews(ReviewQueryDTO query) {
         Long workspaceId = WorkspaceContext.workspaceId();
         Page<ReviewEntity> page = reviewMapper.selectPage(new Page<>(query.getPageNo(), query.getPageSize()),
@@ -141,7 +213,7 @@ public class ReviewServiceImpl implements ReviewService {
     public ReviewVO getReview(Long reviewId) {
         ReviewEntity review = getOwnedReview(reviewId);
         backfillAiResult(review);
-        return toVO(review);
+        return enrichAutoState(review);
     }
 
     @Override
@@ -157,6 +229,9 @@ public class ReviewServiceImpl implements ReviewService {
                 throw new BizException(ErrorCode.CONFLICT, "AI 审校未完成");
             }
             review.setAiResultJson(task.getResultJson());
+            if (containsError(review.getAiResultJson())) {
+                throw new BizException(ErrorCode.CONFLICT, "AI 审核发现高风险问题，不能人工通过");
+            }
         }
         review.setStatus(STATUS_APPROVED);
         review.setUpdatedAt(LocalDateTime.now());
@@ -216,6 +291,55 @@ public class ReviewServiceImpl implements ReviewService {
         }
     }
 
+    /** 计算自动发布状态；阻断/失败时幂等地把知识退回草稿，避免卡在待审核。 */
+    private ReviewVO enrichAutoState(ReviewEntity review) {
+        if (review.getAiTaskId() == null) {
+            return toVO(review, "", STATUS_APPROVED.equals(review.getStatus()) ? "PUBLISHED" : "READY", "");
+        }
+        TaskResultVO task = aiApi.queryTask(WorkspaceContext.workspaceId(), review.getAiTaskId());
+        String taskStatus = task == null ? "" : task.getStatus();
+        if (task == null || !AiTaskStatus.COMPLETED.name().equals(taskStatus)) {
+            if (task != null && (AiTaskStatus.FAILED.name().equals(taskStatus)
+                    || AiTaskStatus.CANCELLED.name().equals(taskStatus))) {
+                finalizeBlocked(review, "AI 审核执行失败", "AI 任务", task.getErrorMsg());
+                return toVO(review, taskStatus, "FAILED", task.getErrorMsg());
+            }
+            return toVO(review, taskStatus, "REVIEWING", task == null ? "" : task.getErrorMsg());
+        }
+        String resultJson = task.getResultJson();
+        try {
+            if (containsError(resultJson)) {
+                finalizeBlocked(review, "AI 审核发现高风险问题", "请查看 AI 审核问题", "修复 error 问题后重新发布");
+                return toVO(review, taskStatus, "BLOCKED", "AI 审核发现高风险问题");
+            }
+        } catch (BizException e) {
+            finalizeBlocked(review, "AI 审核结果无效", "AI 结果", "请重新发起审核");
+            return toVO(review, taskStatus, "BLOCKED", e.getMessage());
+        }
+        return toVO(review, taskStatus, STATUS_APPROVED.equals(review.getStatus()) ? "PUBLISHED" : "READY", "");
+    }
+
+    private boolean containsError(String resultJson) {
+        if (StrUtil.isBlank(resultJson)) return false;
+        try {
+            JSONArray issues = JSONUtil.parseArray(resultJson);
+            return issues.stream().anyMatch(item -> "error".equalsIgnoreCase(JSONUtil.parseObj(item).getStr("severity")));
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.CONFLICT, "AI 审核结果格式无效，请重试");
+        }
+    }
+
+    private void finalizeBlocked(ReviewEntity review, String reason, String position, String expectation) {
+        if (!STATUS_PENDING.equals(review.getStatus())) return;
+        review.setStatus(STATUS_REJECTED);
+        review.setRejectReason(reason);
+        review.setRejectPosition(position);
+        review.setRejectExpectation(expectation);
+        review.setUpdatedAt(LocalDateTime.now());
+        reviewMapper.updateById(review);
+        migrateKnowledge(review.getKnowledgeId(), KnowledgeStatus.DRAFT.getValue());
+    }
+
     /** 知识状态迁移：重读当前版本做乐观锁，失败抛 409。 */
     private void migrateKnowledge(Long knowledgeId, int targetStatus) {
         Long workspaceId = WorkspaceContext.workspaceId();
@@ -240,11 +364,16 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     private ReviewVO toVO(ReviewEntity r) {
+        return toVO(r, "", "", "");
+    }
+
+    private ReviewVO toVO(ReviewEntity r, String taskStatus, String decision, String errorMessage) {
         return ReviewVO.builder()
                 .id(r.getId()).knowledgeId(r.getKnowledgeId()).knowledgeTitle(r.getKnowledgeTitle())
                 .version(r.getVersion()).status(r.getStatus()).aiTaskId(r.getAiTaskId())
                 .aiResultJson(r.getAiResultJson()).rejectReason(r.getRejectReason())
                 .rejectPosition(r.getRejectPosition()).rejectExpectation(r.getRejectExpectation())
+                .aiTaskStatus(taskStatus).autoDecision(decision).aiErrorMessage(errorMessage)
                 .createdAt(r.getCreatedAt()).updatedAt(r.getUpdatedAt()).build();
     }
 }

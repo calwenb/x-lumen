@@ -1,6 +1,9 @@
 package com.calwen.xlumen.publishing.service.impl;
 
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.calwen.xlumen.common.context.WorkspaceContext;
@@ -18,7 +21,9 @@ import com.calwen.xlumen.knowledge.vo.KnowledgeBaseVO;
 import com.calwen.xlumen.publishing.dto.CreateReleaseDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.entity.ReleaseEntity;
+import com.calwen.xlumen.publishing.entity.ReviewEntity;
 import com.calwen.xlumen.publishing.mapper.ReleaseMapper;
+import com.calwen.xlumen.publishing.mapper.ReviewMapper;
 import com.calwen.xlumen.publishing.service.HotKnowledgeCacheService;
 import com.calwen.xlumen.publishing.service.ReleaseService;
 import com.calwen.xlumen.publishing.vo.ReleaseVO;
@@ -50,6 +55,9 @@ public class ReleaseServiceImpl implements ReleaseService {
 
     @Resource
     private ReleaseMapper releaseMapper;
+
+    @Resource
+    private ReviewMapper reviewMapper;
 
     @Resource
     private ContentApi contentApi;
@@ -86,12 +94,15 @@ public class ReleaseServiceImpl implements ReleaseService {
         // BUG-007 配套：发布入参版本是审核通过时的快照版本，approve 状态迁移经 @Version 乐观锁
         // 会把知识版本号 +1，故不在此强校验 dto.version 与知识当前版本相等；真正迁移的
         // expectedVersion 在 doRelease 内取知识当前版本（防覆盖并发），幂等由本查询保证。
-        Long exists = releaseMapper.selectCount(Wrappers.<ReleaseEntity>lambdaQuery()
+        ReleaseEntity existing = releaseMapper.selectOne(Wrappers.<ReleaseEntity>lambdaQuery()
                 .eq(ReleaseEntity::getWorkspaceId, workspaceId)
                 .eq(ReleaseEntity::getKnowledgeId, dto.getKnowledgeId())
                 .eq(ReleaseEntity::getVersion, dto.getVersion()));
-        if (exists != null && exists > 0) {
-            throw new BizException(ErrorCode.CONFLICT, "该版本已提交发布");
+        if (existing != null) {
+            return toVO(existing);
+        }
+        if (!hasPassedAutoReview(workspaceId, dto.getKnowledgeId(), dto.getVersion())) {
+            throw new BizException(ErrorCode.CONFLICT, "发布前必须完成自动 AI 审核");
         }
         ReleaseEntity release = new ReleaseEntity();
         release.setWorkspaceId(workspaceId);
@@ -111,6 +122,35 @@ public class ReleaseServiceImpl implements ReleaseService {
             doRelease(release);
         }
         return toVO(release);
+    }
+
+    /** 新发布链路的最后一道服务端门禁，防止旧审核接口或直调发布接口绕过 Reviewer。 */
+    private boolean hasPassedAutoReview(Long workspaceId, Long knowledgeId, Long version) {
+        ReviewEntity review = reviewMapper.selectOne(Wrappers.<ReviewEntity>lambdaQuery()
+                .eq(ReviewEntity::getWorkspaceId, workspaceId)
+                .eq(ReviewEntity::getKnowledgeId, knowledgeId)
+                .eq(ReviewEntity::getVersion, version)
+                .eq(ReviewEntity::getStatus, "APPROVED")
+                .isNotNull(ReviewEntity::getAiTaskId)
+                .orderByDesc(ReviewEntity::getUpdatedAt)
+                .last("LIMIT 1"));
+        if (review == null || StrUtil.isBlank(review.getAiResultJson())) return false;
+        try {
+            JSONArray issues = JSONUtil.parseArray(review.getAiResultJson());
+            return issues.stream().noneMatch(item ->
+                    "error".equalsIgnoreCase(JSONUtil.parseObj(item).getStr("severity")));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public ReleaseVO findByKnowledgeVersion(Long knowledgeId, Long version) {
+        ReleaseEntity release = releaseMapper.selectOne(Wrappers.<ReleaseEntity>lambdaQuery()
+                .eq(ReleaseEntity::getWorkspaceId, WorkspaceContext.workspaceId())
+                .eq(ReleaseEntity::getKnowledgeId, knowledgeId)
+                .eq(ReleaseEntity::getVersion, version));
+        return release == null ? null : toVO(release);
     }
 
     @Override

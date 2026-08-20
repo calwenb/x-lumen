@@ -90,12 +90,7 @@ watch([intro, forceReview], () => {
           placeholder="介绍你的空间…"
         />
       </el-form-item>
-      <el-form-item label="发布审核">
-        <div class="settings__switch-row">
-          <el-switch v-model="forceReview" aria-label="开启发布审核" />
-          <span class="settings__switch-hint">开启后，成员发布内容需管理员审核</span>
-        </div>
-      </el-form-item>
+      <!-- F-0907：旧 forceReview 字段继续随表单保存以支持回退，但暂不向用户展示。 -->
       <div class="settings__actions">
         <el-button type="primary" native-type="submit" :loading="saving">
           {{ saving ? '保存中…' : '保存' }}

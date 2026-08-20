@@ -7,7 +7,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { fetchKnowledges, VISIBILITY_LABELS } from '@/modules/content/api/knowledge'
 import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
-import { createRelease, fetchReleases } from '@/modules/publishing/api/release'
+import { fetchReleases } from '@/modules/publishing/api/release'
+import {
+  createAutoReview,
+  fetchReview,
+  parseReviewIssues,
+  publishAfterAutoReview,
+} from '@/modules/publishing/api/review'
+import { useInfinitePage } from '@/composables/useInfinitePage'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
 
 import type { KnowledgeListItem } from '@/modules/content/api/knowledge'
@@ -34,9 +41,7 @@ const RELEASE_STATUS_LABELS: Record<string, string> = {
   FAILED: '发布失败',
 }
 
-const approved = ref<ReleaseRow[]>([])
-const approvedLoading = ref(true)
-const approvedError = ref(false)
+const approvedSentinel = ref<HTMLElement | null>(null)
 
 const releases = ref<ReleaseVO[]>([])
 const releasesTotal = ref(0)
@@ -100,32 +105,35 @@ function resolveTarget(knowledge: KnowledgeListItem): { kbName: string; director
   return { kbName: kbNameById.get(knowledge.kbId) ?? '未知知识库', directoryName }
 }
 
-async function loadApproved(): Promise<void> {
-  approvedLoading.value = true
-  approvedError.value = false
-  try {
-    const page = await fetchKnowledges({ status: APPROVED_STATUS, pageNo: 1, pageSize: 50 })
+const approvedInfinite = useInfinitePage<ReleaseRow>({
+  sentinel: approvedSentinel,
+  pageSize: PAGE_SIZE,
+  loadPage: async (pageNo, pageSize) => {
+    const page = await fetchKnowledges({ status: APPROVED_STATUS, pageNo, pageSize })
     await loadKbIndex()
     const kbIds = [
       ...new Set(page.records.map((item) => item.kbId).filter((id): id is string => Boolean(id))),
     ]
     await Promise.all(kbIds.map(loadDirectoryIndex))
-    approved.value = page.records.map((knowledge) => {
-      const target = resolveTarget(knowledge)
-      return {
-        knowledge,
-        kbName: target.kbName,
-        directoryName: target.directoryName,
-        publishAt: '',
-        releasing: false,
-      }
-    })
-  } catch {
-    approvedError.value = true
-  } finally {
-    approvedLoading.value = false
-  }
-}
+    return {
+      ...page,
+      records: page.records.map((knowledge) => {
+        const target = resolveTarget(knowledge)
+        return {
+          knowledge,
+          kbName: target.kbName,
+          directoryName: target.directoryName,
+          publishAt: '',
+          releasing: false,
+        }
+      }),
+    }
+  },
+})
+
+const approved = approvedInfinite.items
+const approvedLoading = approvedInfinite.loading
+const approvedError = approvedInfinite.error
 
 async function loadReleases(targetPage: number): Promise<void> {
   releasesLoading.value = true
@@ -145,11 +153,15 @@ async function loadReleases(targetPage: number): Promise<void> {
 async function releaseNow(row: ReleaseRow): Promise<void> {
   if (row.releasing) return
   try {
-    await ElMessageBox.confirm(`确认立即发布「${row.knowledge.title}」吗？`, '立即发布', {
-      confirmButtonText: '立即发布',
-      cancelButtonText: '取消',
-      type: 'warning',
-    })
+    await ElMessageBox.confirm(
+      `确认发布「${row.knowledge.title}」吗？确认后系统会先自动进行 AI 审核，审核通过后才会正式发布。`,
+      '确认发布',
+      {
+        confirmButtonText: '立即发布',
+        cancelButtonText: '取消',
+        type: 'warning',
+      },
+    )
   } catch {
     // 用户取消
     return
@@ -165,8 +177,8 @@ async function releaseScheduled(row: ReleaseRow): Promise<void> {
   }
   try {
     await ElMessageBox.confirm(
-      `确认于 ${row.publishAt.replace('T', ' ')} 定时发布「${row.knowledge.title}」吗？`,
-      '定时发布',
+      `确认于 ${row.publishAt.replace('T', ' ')} 发布「${row.knowledge.title}」吗？确认后系统会先自动进行 AI 审核，审核通过后才会进入定时发布。`,
+      '确认发布',
       {
         confirmButtonText: '定时发布',
         cancelButtonText: '取消',
@@ -183,14 +195,38 @@ async function releaseScheduled(row: ReleaseRow): Promise<void> {
 async function doRelease(row: ReleaseRow, publishAt?: string): Promise<void> {
   row.releasing = true
   try {
-    // 发布目标（库/目录）由知识本身归属决定（KB-3 起不再传 visibility，决策 D16）
-    await createRelease({
-      knowledgeId: row.knowledge.id,
-      version: row.knowledge.version,
-      ...(publishAt ? { publishAt } : {}),
-    })
+    const review = await createAutoReview(row.knowledge.id)
+    let latest = review
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      if (latest.autoDecision !== 'REVIEWING') break
+      await new Promise((resolve) => window.setTimeout(resolve, 2000))
+      latest = await fetchReview(review.id)
+    }
+    if (latest.autoDecision === 'BLOCKED' || latest.autoDecision === 'FAILED') {
+      const issues = parseReviewIssues(latest.aiResultJson).filter(
+        (issue) => issue.severity === 'error',
+      )
+      const details = issues
+        .map((issue, index) => {
+          const location = issue.position ? `位置：${issue.position}` : ''
+          const evidence = issue.evidence ? `依据：${issue.evidence}` : ''
+          const suggestion = issue.suggestion ? `建议：${issue.suggestion}` : ''
+          return `${index + 1}. ${[location, evidence, suggestion].filter(Boolean).join('；')}`
+        })
+        .join('\n')
+      await ElMessageBox.alert(
+        details || latest.aiErrorMessage || 'AI 审核发现高风险问题，请修改后重试。',
+        'AI 审核未通过',
+        { confirmButtonText: '知道了', type: 'error' },
+      )
+      return
+    }
+    if (latest.autoDecision !== 'READY' && latest.autoDecision !== 'PUBLISHED') {
+      throw new Error('AI 审核仍在处理中，请稍后从编辑器重试')
+    }
+    await publishAfterAutoReview(review.id, publishAt)
     ElMessage.success('发布成功，已建立 RAG 索引')
-    await Promise.all([loadApproved(), loadReleases(1)])
+    await Promise.all([approvedInfinite.loadFirst(), loadReleases(1)])
   } catch (error) {
     ElMessage.error(
       error instanceof Error && error.message ? error.message : '发布失败，请稍后重试',
@@ -201,7 +237,7 @@ async function doRelease(row: ReleaseRow, publishAt?: string): Promise<void> {
 }
 
 onMounted(() => {
-  void loadApproved()
+  void approvedInfinite.loadFirst()
   void loadReleases(1)
 })
 </script>
@@ -223,7 +259,9 @@ onMounted(() => {
       </div>
       <div v-else-if="approvedError" class="release-page__state">
         <p>待发布知识加载失败</p>
-        <el-button type="primary" plain size="small" @click="loadApproved">重试</el-button>
+        <el-button type="primary" plain size="small" @click="approvedInfinite.retry"
+          >重试</el-button
+        >
       </div>
       <div v-else-if="approved.length === 0" class="release-page__state">暂无待发布知识。</div>
       <ul v-else class="release-page__list">
@@ -268,6 +306,19 @@ onMounted(() => {
           </div>
         </li>
       </ul>
+      <div
+        v-if="approved.length > 0"
+        ref="approvedSentinel"
+        class="release-page__load-more"
+        role="status"
+      >
+        <span v-if="approvedInfinite.loadingMore">加载更多…</span>
+        <span v-else-if="approvedInfinite.loadMoreError">
+          加载失败，请
+          <button type="button" @click="approvedInfinite.retryMore">重试</button>
+        </span>
+        <span v-else-if="!approvedInfinite.hasMore">已加载全部待发布知识</span>
+      </div>
     </section>
 
     <section class="release-page__section">
@@ -361,6 +412,20 @@ onMounted(() => {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.release-page__load-more {
+  padding: 14px 0;
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.release-page__load-more button {
+  border: 0;
+  background: transparent;
+  color: var(--xl-color-primary);
+  cursor: pointer;
 }
 
 .release-row {

@@ -2,13 +2,6 @@
 // 与服务端幂等去重（KnowledgeServiceImpl.autosave）配合，避免无效版本增长。
 import { onBeforeUnmount, ref } from 'vue'
 
-/** 自动保存状态。 */
-export interface AutoSaveState {
-  saving: boolean
-  savedAt: Date | null
-  conflict: boolean
-}
-
 /** 保存回调：返回保存后的知识 ID 与版本（供页面回填）。 */
 export type SaveHandler = () => Promise<{ id: string; version: string } | null>
 
@@ -23,10 +16,10 @@ const INTERVAL_MS = 10000
  * @param onConflict 版本冲突回调（409）
  */
 export function useAutoSave(isDirty: () => boolean, onSave: SaveHandler, onConflict?: () => void) {
-  const state: AutoSaveState = { saving: false, savedAt: null, conflict: false }
   const saving = ref(false)
   const savedAt = ref<Date | null>(null)
   const conflict = ref(false)
+  const error = ref('')
 
   let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -37,14 +30,17 @@ export function useAutoSave(isDirty: () => boolean, onSave: SaveHandler, onConfl
     }
     saving.value = true
     conflict.value = false
+    error.value = ''
     try {
-      await onSave()
-      savedAt.value = new Date()
-    } catch (error) {
+      const result = await onSave()
+      if (result) savedAt.value = new Date()
+    } catch (caught) {
       // 409 版本冲突：标记冲突态，由页面提供恢复入口（查看最新/复制/覆盖）
-      if (error instanceof Error && error.message.includes('冲突')) {
+      if (caught instanceof Error && caught.message.includes('冲突')) {
         conflict.value = true
         onConflict?.()
+      } else {
+        error.value = caught instanceof Error ? caught.message : '自动保存失败'
       }
     } finally {
       saving.value = false
@@ -82,5 +78,5 @@ export function useAutoSave(isDirty: () => boolean, onSave: SaveHandler, onConfl
     }
   })
 
-  return { state, saving, savedAt, conflict, save, touch, flush }
+  return { saving, savedAt, conflict, error, save, touch, flush }
 }

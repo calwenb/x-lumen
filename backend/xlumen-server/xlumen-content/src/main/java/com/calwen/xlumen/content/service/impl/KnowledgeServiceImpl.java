@@ -125,9 +125,13 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         KnowledgeEntity entity = getOwned(dto.getKnowledgeId());
         checkEditable(entity);
         String newContent = dto.getContent() == null ? "" : dto.getContent();
-        // 幂等：内容/标题均未变化时跳过写库（前端节流触发，避免无效版本增长）
+        Long newDirectoryId = dto.getDirectoryId() == null ? entity.getDirectoryId() : dto.getDirectoryId();
+        List<String> newTags = dto.getTags() == null ? entity.getTags() : dto.getTags();
+        // 幂等：正文、标题、目录和标签均未变化时才跳过，避免发布读取到旧元数据。
         if (Objects.equals(entity.getContent(), newContent)
-                && Objects.equals(entity.getTitle(), dto.getTitle())) {
+                && Objects.equals(entity.getTitle(), dto.getTitle())
+                && Objects.equals(entity.getDirectoryId(), newDirectoryId)
+                && Objects.equals(entity.getTags(), newTags)) {
             return toVO(entity);
         }
         entity.setTitle(StrUtil.blankToDefault(dto.getTitle(), entity.getTitle()));
@@ -137,10 +141,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             if (!knowledgeApi.checkOwnership(requireWorkspaceId(), entity.getKbId(), dto.getDirectoryId())) {
                 throw new BizException(ErrorCode.INVALID_PARAM, "目录不属于当前知识库");
             }
-            entity.setDirectoryId(dto.getDirectoryId());
+            entity.setDirectoryId(newDirectoryId);
         }
         if (dto.getTags() != null) {
-            entity.setTags(dto.getTags());
+            entity.setTags(newTags);
         }
         entity.setVersion(dto.getVersion() == null ? entity.getVersion() : dto.getVersion());
         if (knowledgeMapper.updateById(entity) == 0) {

@@ -22,6 +22,11 @@ public interface ReleaseService {
     ReleaseVO release(CreateReleaseDTO dto);
 
     /**
+     * 查询当前空间指定知识版本的发布记录，用于审核自动发布的重复请求返回已有结果。
+     */
+    ReleaseVO findByKnowledgeVersion(Long knowledgeId, Long version);
+
+    /**
      * 分页查询当前空间的发布记录。
      *
      * @param query 分页参数（默认值即接口默认值）
