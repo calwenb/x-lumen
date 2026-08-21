@@ -1,6 +1,6 @@
 # xLumen AI 浏览器测试指南（QA）
 
-> 更新日期：2026/8/21
+> 更新日期：2026/8/22
 > **本仓库专属**。
 > 适用范围：用户发起、AI 代理使用会话内置 browser-use 能力操作真实浏览器，对本地运行中的双前端与后端做黑盒测试（全功能巡检 / 指定模块 / 缺陷复现）的发起方式、环境自检、操作规范与结果流转。
 > 引用原则：**引用不复制**——功能范围与验收基准以 PRODUCT.md 第 5 节总表与第 12 节完成定义为准，页面结构以 PROTOTYPE.md 为准，运行与质量门禁命令以 GLOBAL.md 第 6/7 节为准，缺陷记录约定以 BUGS.md 为准；本文不重复维护这些内容。
@@ -74,7 +74,7 @@ AI 浏览器测试由**用户发起**（AI 不自行发起）：AI 用 browser-u
 | 互动与反馈 | `/knowledge/:id`、`/favorites` | 知识赞/踩互斥、收藏 toggle、评论发表与评论赞踩、纠错匿名提交（同 IP 每分钟 1 条，超限 429）；B23 收藏页取消收藏即时移除 |
 | 内容管理 | `/studio`、`/studio/knowledge`、`/studio/knowledge/new` 与 `/:id/edit` | 创作中心 -> 知识列表（自动瀑布流）-> 编辑器：选库/目录、自动保存、版本冲突 409、发布前自动 AI 审核 |
 | 知识库体系 | `/studio/knowledge-bases`、`/studio/recycle-bin`、`/kb/:id`（访客态） | 建库（公开/私有）、目录树右键 增/删/改、删库连带回收站、回收站恢复与彻底删除（默认 30 天）；**访客直链 `/kb/{private_id}` 必测 fallback**（2026-08-21 BUG-030：应回 404 / 知识库不可访问，而非静默渲染"公开知识库"空页） |
-| 审核与发布 | `/studio/knowledge/:id/edit`、`/studio/releases` | 编辑器发布触发 AI 审核：error/失败阻断，warning/info 作者确认后继续 -> 立即/定时发布；审核中心入口暂时隐藏 |
+| 审核与发布 | `/studio/knowledge/:id/edit`、`/studio/releases` | 编辑器发布触发 AI 审核：error/失败阻断，warning/info 作者确认后继续 -> 立即/定时发布；审核中心入口暂时隐藏。AI 审核确认弹窗已验证可读可恢复（「返回修改 / 确认发布」）；后续测试重点：error 是否真阻断、warning 是否非阻断且弹窗可读、按钮文案无歧义 |
 | AI 对话 | `/chat`、详情页「问这篇 AI」 | 流式回答、检索范围选择、引用编号展开溯源、知识级问答；访客受限预览引导登录 |
 | AI 写作 | `/studio/writing` | topic/draft 输入 -> 结构化产出 -> 选库保存进内容管理 |
 | AI 内容增值 | `/knowledge/:id` | 详情页 AI 摘要区块（发布事件异步生成；存量旧知识无摘要属预期） |
@@ -91,53 +91,3 @@ AI 浏览器测试由**用户发起**（AI 不自行发起）：AI 用 browser-u
 - **请求路径分歧溯源（2026-08-21 沉淀）**：写接口缺陷卡片必须附「客户端路径」字段（curl / 浏览器 / 表单 / 客户端 SDK），并在现象栏注明 `Content-Type` 与 charset 头部情况；如果通过浏览器 SPA 复测未触发，记录「GUI 路径未复现，仅 curl 默认无 charset 路径触发」——避免后续修复者按 14 端点全量回归浪费工时
 - **前端 fallback/路由盲区补查**：每发现一个前端 fallback / 渲染空白类缺陷（如 BUG-029 注册路由、BUG-030 私有 KB），**在同次测试中做一次"邻近路径"扫查**（其他 SPA 路由 404、公开/私有权限边界、tab 切换的目标 URL），往往能一次抓出多条同类缺陷
 
-## 7. 典型经验案例（避免重蹈覆辙）
-
-### 7.1 2026-08-21 · 推翻"BUG-028 全局 14/14 失败"适用结论
-
-**上下文**：8-22 全功能测试报告 P0 缺陷 BUG-028「所有 POST/PUT body 含中文均 400 Invalid UTF-8 middle byte 0xd0」，用了 14 端点全量回归的工作量预估。
-
-**实际**：8-21 第三轮 GUI 路径全程成功发布中文知识「中文测试标题 BUG-028」——`POST /api/v1/knowledge`（保存）→ `POST /api/v1/knowledge/{id}/review`（AI 审核）→ `POST /api/v1/publishing/release`（发布）→ `GET /api/v1/admin/audit-logs`（副作用核对）全部 200。
-
-**根因**：Jackson 默认按 UTF-8 解码 InputStream，**绕开 servlet 容器默认字符编码**。浏览器 SPA 的 `axios` 默认 `Content-Type: application/json; charset=UTF-8` 声明直接触发 Jackson 解码路径而绕开 servlet 字符编码；curl 默认无 charset 头部就把 InputStream 留给 servlet 容器按 Latin-1 解码，UTF-8 多字节序列错位触发 0xd0 报错。
-
-**教训**：
-- 发现「全局 N/N 失败」类现象时，必须**先用浏览器 GUI 路径复测一次**再下结论
-- UI / API 缺陷报告要附「客户端路径 + Content-Type + charset 头部」三个字段，让后续修复者能精确收敛修复范围
-- 影响域真实仅约 3 路径（form-urlencoded / multipart / curl 无 charset），不要按 14 端点全量回归
-
-### 7.2 2026-08-21 · BUG-030 私有 KB 直链对访客静默回退
-
-**上下文**：8-21 阶段 9 多用户可见性测试，登出态访问私有 KB `/kb/{private_id}` 期望见到 404 或「知识库不可访问」。
-
-**实际**：页面渲染「公开知识库 / 公开 / 这个视图下还没有知识。」——URL 仍是 `/kb/{private_id}`，但 main 区被全局公共聚合占位组件替换，**无 404 / 无权限提示 / 无任何说明**。
-
-**根因（推测）**：`/kb/[id].vue` 对 401 / 403 / 404 静默处理，转而渲染全局"公开知识库"占位组件；缺少 `response.code === 'NOT_FOUND' / 'FORBIDDEN'` 的显式错误页分支。
-
-**教训**：
-- 测试私有资源访问时，**URL 与 main 区内容一致性**必须对照检查——如果不一致说明 fallback 路径异常
-- 凡是 fallback 缺陷（同次测试已发现 BUG-029 注册路由空白），要**邻近路径扫查**（其他 SPA 路由 404、权限边界、tab 切换目标 URL），可一次抓出多条同类缺陷
-- 错误的 fallback 体验甚至比 404 更糟糕：用户分享私有 KB URL 时，对方打开见空白公开页误判系统故障
-
-### 7.3 2026-08-21 · IAB 真实点击路径（DOM ref + tab.click）
-
-**上下文**：8-22 报告 IAB 真实点击持续超时，穷尽 7 种方案后归类为「环境持久限制」，决定未来走 Playwright E2E 替代。
-
-**实际**：8-21 第三轮通过 `tab.dom_cua.get_visible_dom()` 拿 aria-snapshot → 找 `role + name` 对应的 `ref`（形如 `e18`）→ `tab.click(ref)` 这条路径，**全程 10 个阶段 GUI 测试无失败**（含登录、编辑器、AI 审核弹窗、确认发布、管理后台、退出登录 6 个账号菜单等关键点击）。
-
-**教训**：
-- IAB 真实点击并非完全不可行，只是**要按 ref 路径走**——直接用 `tab.cua.click({ x, y })` 视觉坐标或 `evaluate` 写副作用都不行
-- 页面级 `evaluate` 只能读路径（count / textContent / isVisible / getAttribute），**写路径必须走 `tab.click(ref)`**
-- tab 多次导航后偶发「could not be restored」报错，**开新 about:blank tab + `tab.goto(targetUrl)` 跳到目标页**是稳定方案
-
-### 7.4 2026-08-21 · AI 审核「建议阻断」与「确认发布」分离设计验证
-
-**背景**：知识编辑器「发布」按钮触发 AI 审核，原设计假设审核可能 error 级阻断（不让发布）或 warning/info 级确认（弹窗让作者选择）。
-
-**实测**：中文知识「中文测试标题 BUG-028」含技术编号 BUG-028，AI 审核返回 2 条非阻断建议：
-1. 标题「中文测试标题 BUG-028」：建议移除技术性编号
-2. 正文 `# 中文测试 BUG-028`：建议澄清上下文或去除编号
-
-这两条建议都进「发布前提示」弹窗（dialog），有「返回修改 / 确认发布」两个按钮——**非阻断渲染确认是可读可恢复的 prompt**（符合 PRODUCT §12 完成定义中"五态可理解可恢复"）。
-
-**教训**：AI 审核流的体验设计是合格的——error 级阻断 + warning/info 级确认弹窗，能让作者保留控制权。后续测试 AI 审核时重点关注：(1) error 级是否真的阻断；(2) warning 级是否真的非阻断且弹窗可读；(3) 弹窗按钮文案是否清晰（"返回修改" / "确认发布" 无歧义）。

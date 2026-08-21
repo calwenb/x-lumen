@@ -35,3 +35,6 @@ Thumbs.db
 # ---- 本地测试与运行残留（logs 含 token，禁止入库） ----
 logs/
 .browser-check.zip
+
+# ---- 测试资产（zip 不入库，报告 md 与截图保持现状，git 历史可回溯） ----
+docs/ai/assets/*.zip

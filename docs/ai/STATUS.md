@@ -9,20 +9,18 @@
 1. **阅读**：开工前先确认仓库路径为项目根目录；通读本文件 → 任务相关规范文档：产品 [PRODUCT](../product/PRODUCT.md)（唯一功能事实源，第 5 节总表）、后端 [BACKEND](../backend/BACKEND.md)、前端 [FRONTEND](../frontend/FRONTEND.md)、页面 [PROTOTYPE](../frontend/PROTOTYPE.md)、运行命令 [GLOBAL](../global/GLOBAL.md)、待修问题 [BUGS](./BUGS.md)（**仅按用户明确要求修复，不自动认领**）、浏览器测试 [QA](./QA.md)（AI 浏览器测试发起前必读）。
 2. **认领**：在第 5 节待办中把任务标为 `已认领（AI 名）`，一次一项；未认领任务可能被其他 AI 同时开始，冲突以先提交者为准。
 3. **实现与验证**：只做任务范围内变更；目录结构与功能范围不得偏离 docs（决策 D7）；跑通相关质量门禁（命令见 GLOBAL.md，后端编译需 JDK 25）。
-4. **收尾**（不得省略）：更新本文件状态与待办；按 [CHANGELOG.md](./CHANGELOG.md) 头部模板追加一条；代码与文档同一提交。
+4. **收尾**（不得省略）：更新本文件状态与待办；按 [CHANGELOG.md](./CHANGELOG.md) 头部模板追加一条（正文中超出归档期限的旧条目顺带移入 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md)）；代码与文档同一提交。
 5. **最高规则**：文档必须与代码实际状态一致，禁止虚构进度；禁止顺手重构、记录密钥。
 
 ## 2. 当前里程碑
 
-**MVP 全部 13 个里程碑已完成**：M01~M03（骨架/身份/公开页）、M04（内容管理）、M05（RAG 索引）、M06+M12（AI 基座）、M07（AI 创作）、M08（AI 对话）、M09（AI 增值）、M10（审核发布）、M11（读者纠错）、M13（管理后台）与 F-1301 缓存均已交付并通过运行时验证。**待环境**：本机 Docker/Milvus 未安装，向量检索以 NoopVectorStore 降级运行（索引元数据正常，向量写入待 Milvus 就绪后自动生效）。
-
-**知识平台化重构（2026-08-14 定稿，KB-1~KB-6 已全部交付）**：产品定位升级为多用户知识平台（决策 D9 改写），知识库->目录->知识三层体系 + 库级可见性 + 文章概念统一改名知识，设计经用户逐项确认（方案已随实施完成删除，可经 git 历史回溯）；阶段 0 文档先行与阶段 1~6 实施均已完成（2026-08-14），交付摘要见第 3 节，明细见 CHANGELOG 对应条目。
+**MVP 全部 13 个里程碑（M01~M13）与知识平台化重构 KB-1~KB-6 均已交付并通过运行时验证**（交付摘要见第 3 节，明细见 CHANGELOG 对应日期条目，2026-08-16 前条目见 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md)）。**待环境**：本机 Docker/Milvus 未安装，向量检索以 NoopVectorStore 降级运行（索引元数据正常，向量写入待 Milvus 就绪后自动生效）。**V2 批次未启动**（范围见第 5 节待办与决策 D19）。
 
 > 里程碑完成标准：代码骨架以 M01 定义为准（目录结构与 docs 一致，决策 D7）；MVP 模块以功能总表对应功能验收（完成定义见 PRODUCT.md 第 12 节）。
 
 ## 3. 已完成（能力基线摘要）
 
-> 本节只保留能力基线与踩坑备忘，供快速了解当前系统形态；各次交付的完整改动与验证记录以 [CHANGELOG.md](./CHANGELOG.md) 对应日期条目为准，不再在此重复展开。
+> 本节只保留能力基线与踩坑备忘，供快速了解当前系统形态；各次交付的完整改动与验证记录以 [CHANGELOG.md](./CHANGELOG.md) 对应日期条目为准（2026-08-16 前条目见 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md)），不再在此重复展开。
 
 | 交付 | 日期 | 摘要 |
 | --- | --- | --- |
@@ -45,7 +43,7 @@
 | 小光 Markdown 渲染 | 2026-08-17 | ChatPage/KnowledgeQaDialog 助手消息改 v-html 渲染 renderMarkdown()（复用 markdown-it + DOMPurify 通道），用户消息保持纯文本插值防 XSS |
 | IDEAS 批次 + BUG-006 | 2026-08-18 | F-0212 知识赞/踩互斥+收藏+B23 收藏页、F-0213 评论赞踩（eng_like 三态化 + eng_favorite/eng_comment_reaction 新表）、F-0214 创作中心主导航、F-0312 目录树右键菜单（B01/B20 共用组件）、F-0808 详情 AI 摘要（发布事件异步生成+aiSummary 透出）；BUG-006 详情页 TOC 空时 grid 单栏回退修复；顺带修复目录 PUT 重命名返回空值契约缺陷 |
 
-踩坑备忘（实现时易复犯，背景详见 CHANGELOG 对应条目）：
+踩坑备忘（实现时易复犯，背景详见 CHANGELOG 对应条目，8-16 前条目见 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md)）：
 
 - **Spring Boot 4 relaxed binding 失效**：.env 经 spring.config.import 导入的大写属性不做宽松绑定，配置属性类（AiProperties/MilvusProperties 等）必须用 @Value 显式占位符绑定。
 - **雪花 ID 精度**：Long 超出 JS Number 安全整数，后端全局序列化为 String（BACKEND §5.3 已约定）。
@@ -59,38 +57,10 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 
 ## 5. 待办
 
-按 MVP 模块拆分；每项依赖的文档章节以 PRODUCT.md 第 5 节功能总表为准，实现时同步完成对应后端模块与初始化 SQL（模块职责见 BACKEND.md，页面见 PROTOTYPE.md）。
+按 MVP 模块拆分；每项依赖的文档章节以 PRODUCT.md 第 5 节功能总表为准，实现时同步完成对应后端模块与初始化 SQL（模块职责见 BACKEND.md，页面见 PROTOTYPE.md）。M01~M13、KB-1~KB-6 与已交付功能（F-0212~F-0215/F-0312/F-0808/F-0907/F-1307 等）的完成记录见第 3 节能力基线，不再重复列出。
 
 | 编号 | 阶段/任务 | 依赖文档 | 状态 | 认领人 |
 | --- | --- | --- | --- | --- |
-| M01 | 代码骨架（backend/xlumen-server 模块划分、frontend 双应用脚手架、SQL 初始化链路） | PRODUCT §5、BACKEND、FRONTEND、GLOBAL §4 | 已完成 | Qoder 代理 |
-| M02 | 身份与多租户（F-0101~F-0104） | PRODUCT §5 模块一 | 已完成 | Qoder 代理 |
-| M03 | 博客前台公开页（F-0201~F-0203） | PRODUCT §5 模块二、PROTOTYPE B01~B04 | 已完成 | Qoder 代理 |
-| M04 | 内容管理与可见性（F-0301~F-0302、F-0307） | PRODUCT §5 模块三、PROTOTYPE B10 | 已完成 | Qoder 代理 |
-| M05 | 文章知识索引 RAG：发布即索引（F-0402~F-0405、F-0407） | PRODUCT §5 模块四、BACKEND §13 | 已完成（Noop 降级，Milvus 待环境） | Qoder 代理 |
-| M06 | AI 核心引擎（F-0501~F-0503） | PRODUCT §5 模块五 | 已完成 | Qoder 代理 |
-| M07 | AI 内容创作（F-0601、F-0604） | PRODUCT §5 模块六、PROTOTYPE B11 | 已完成 | Qoder 代理 |
-| M08 | AI 对话：菜单页与文章级问答（F-0701~F-0702） | PRODUCT §5 模块七、PROTOTYPE B00/D01/D02 | 已完成 | Qoder 代理 |
-| M09 | AI 内容增值（F-0801~F-0802） | PRODUCT §5 模块八 | 已完成 | Qoder 代理 |
-| M10 | 审核与发布（F-0901~F-0905） | PRODUCT §5 模块九、PROTOTYPE B12/B13 | 已完成 | Qoder 代理 |
-| M11 | 互动与反馈闭环（F-1001） | PRODUCT §5 模块十 | 已完成 | Qoder 代理 |
-| M12 | 技术基础设施（F-1301~F-1303） | PRODUCT §5 模块十三 | 已完成（F-1301 缓存；F-1302/F-1303 门禁/备份随工程实践落地） | Qoder 代理 |
-| M13 | 管理后台配置管理（空间/成员/角色 F-1201、审计 F-1202、模型配置 F-0501/F-0502 管理面） | PROTOTYPE A01~A04 | 已完成 | Qoder 代理 |
-| KB-1 | 知识平台化重构·阶段 1：概念改名「文章→知识」（全仓 grep 清单：文档/后端类名接口事件审计常量/前端路由文案组件/测试断言；物理表 cnt_article→cnt_knowledge、路径 /api/v1/articles→/api/v1/knowledge；纯改名零行为变更） | 方案 §3/§12（已随实施完成删除） | 已完成（ZCode，2026-08-14 17:40） | ZCode |
-| KB-2 | 知识平台化重构·阶段 2：数据模型（kb_knowledge_base/kb_directory 新表 DDL、cnt_knowledge 改造 kb_id/directory_id 去 category/visibility、kb_chunk/kb_index_version 加 kb_id、迁移脚本幂等） | 方案 §5/§10、BACKEND §7/§8 | 已完成（ZCode，2026-08-14 18:05） | ZCode |
-| KB-3 | 知识平台化重构·阶段 3：后端能力（库 CRUD/回收站/目录树/排序/可见性过滤/检索按库/发布选库，F-0305/F-0307/F-0308/F-0309/F-0407） | 方案 §7/§9、BACKEND §13 | 已完成（ZCode，2026-08-14 18:30） | ZCode |
-| KB-4 | 知识平台化重构·阶段 4：前端页面（导航头/知识流 B01/库页 B20/发现页 B21/库管理 B22/回收站 B16/发布弹窗/AI 对话范围选择器，F-0208/F-0308） | PROTOTYPE §7 | 已完成（ZCode，2026-08-14 18:50） | ZCode |
-| KB-5 | 知识平台化重构·阶段 5：存量迁移执行与数据校验（默认公开库/默认私有库、category 平铺目录） | 方案 §10 | 已完成（ZCode，2026-08-14 18:55） | ZCode |
-| KB-6 | 知识平台化重构·阶段 6：全量验收（完成定义 PRODUCT §12 + 双前端 E2E + 文档一致性核验） | PRODUCT §12 | 已完成（ZCode，2026-08-14 18:55） | ZCode |
-| BUG-006 | 知识详情页排版错乱修复（TOC 为空时 grid 两栏定义致正文塞进 200px 目录列 + 页头/正文标题重复渲染） | BUGS.md BUG-006 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
-| F-0212 | 知识互动增强：点赞/点踩互斥 + 收藏 toggle + 个人收藏页 B23（前端 blog + 后端 publishing + DB） | PRODUCT §5 模块二、PROTOTYPE B23 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
-| F-0213 | 评论点赞/点踩：互斥切换 + 计数展示（前端 blog + 后端 publishing + DB） | PRODUCT §5 模块二 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
-| F-0214 | 创作中心一级导航：主导航「知识库」右侧新增入口（登录态显示，纯前端） | PRODUCT §5 模块二 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
-| F-0312 | 目录树右键菜单：B01/B20 节点右键 编辑/删除/新增子目录，树根右键新增根目录（仅库主，纯前端复用既有目录 CRUD API） | PRODUCT §5 模块三 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
-| F-0808 | 知识详情 AI 摘要：发布事件异步生成（复用 F-0801）+ 详情页摘要区块（后端 ai/publishing + 前端 blog） | PRODUCT §5 模块八 | 已完成（ZCode，2026-08-18 20:47） | ZCode |
-| F-0215 | 知识列表自动瀑布流：保留服务端分页契约，前端滚动触底累计加载 | PRODUCT §5 模块二、PROTOTYPE B01/B03/B16/B20/B23 | 已完成（Codex，2026-08-20） | Codex |
-| F-0907 | 发布自动 AI 审核：error/失败阻断，warning/info 作者确认后继续；审核中心入口暂时隐藏 | PRODUCT §5 模块九、PROTOTYPE B10/B12/B13 | 已完成（Codex，2026-08-20） | Codex |
-| F-1307 | 开发启动端口守卫：显式开启后检测占用、交互确认并结束进程 | GLOBAL §6.4、BACKEND §18 | 已完成（Codex，2026-08-20） | Codex |
 | OPT-1 | 技术优化：AI 线程模型评估虚拟线程。主项：chatStreamExecutor（SSE 长连接占平台线程、池满 CallerRuns 堵容器线程）改 `Executors.newVirtualThreadPerTaskExecutor()` + Semaphore 并发上限（限流与线程模型解耦）。候选点：aiTaskExecutor（AI 任务，需保留并发上限）、indexExecutor（发布即索引 embedding/Milvus 阻塞 I/O）、OpenAICompatibleProvider/EmbeddingServiceImpl/MilvusVectorStore 的 JDK HttpClient 阻塞调用；SseService 心跳与 PublishJob 为固定间隔单线程调度，不适用 | 2026-08-17 线程模型评估（chatStreamExecutor 结构性短板，详见会话记录） | 待认领 | |
 | V2 | V2 批次（决策 D19，27 项）：首批定版 15 项——总表 F-0204/F-0603/F-0606/F-0607/F-0703/F-0806/F-1103 + 新登记 F-0216~F-0219/F-0706/F-0707/F-0809/F-1005；基建前置：Milvus 安装 + 存量 reindex 补跑（BUG-004 收尾）、F-0504/F-0505/F-1304 | PRODUCT §5（V2 27 项）、PROTOTYPE §7/§8 | 待认领 | |
 
@@ -99,18 +69,15 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 
 ## 6. 文档一致性核验
 
-| 编号 | 核验项 | 状态 |
-| --- | --- | --- |
-| W6 | 文档体系一致性核验 | 2026-08-12 通过（二次核验），会话 #6 前后端职责重组与目录变更后已同步 8 份文档，待代码骨架阶段复验 |
-| W7 | 会话 #6 变更同步核验 | 2026-08-12 完成：功能总表 73 项（MVP 37/V2 24/V3 12）与 PROTOTYPE 页面清单（B00~B19、A01~A07、D01/D02）、GLOBAL/README 命令路径、BACKEND 模块表交叉一致 |
+历史核验记录（W6/W7 等）已随归档移入 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md)；后续一致性核验随每次交付在 CHANGELOG 对应条目记录，不再单独维护本节。
 
 ## 7. 最近变更
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/22 · ZCode：**docs 文档体系整体瘦身**——CHANGELOG 归档机制（8-16 前 19 条移入新增 CHANGELOG-ARCHIVE.md，模板移回头部）、STATUS §2/§5/§6 精简、BUGS 历史简表化、QA §7 并入 §3/§4、README 快速开始/技术栈改链接 GLOBAL、删除重复测试 zip（docs 体积 1.1M→约 380K）。纯文档变更。
 - 2026/8/22 · ZCode：**V2/V3 重新划分（决策 D19）+ 9 项新 AI 功能立项登记**——按用户「个人使用为主 + 简历展示（面试官可能以访客身份浏览 URL）」口径，三轮发散候选经评分（总分 = 自用 P + 访客可见 I×1.2 + 成本低 +1/中 +0，I 系数经用户调参 1.4→1.2、演示冲击维度废除）定稿：V2 27 项（总表 19 + 新登记 8，首批定版 15 项）、V3 25 项（原 V3 2 + 新候选 1 + 自 V2 移入 16 + 暂缓 6）。总表新增 F-0216 问搜一体 / F-0217 语义搜索 / F-0218 术语悬浮解释 / F-0219 图文导读 / F-0220 站点 AI 导游 / F-0706 相关追问推荐 / F-0707 问答转知识草稿 / F-0809 图片 AI 讲解 / F-1005 评论 @小光问答；统计 90→99 项（MVP 47 / V2 27 / V3 25）。其余候选登记 IDEAS.md 待评估（IDEA-009~023）；D13 冲突 3 项待用户裁决。纯文档变更，代码零改动。
 - 2026/8/22（修复批次续） · ZCode：**BUG-015/026 移除 + BUG-030 修复**——按用户逐条指定：「BUG-015、BUG-026 移除」清场（015 建议关闭 65 次复核均 200、026 上批已修复）；「BUG-030 执行修复」：新增公开探测端点 `GET /api/v1/public/knowledge-bases/{kbId}`（公开库 200 返回 name/visibility，私有库/不存在 404「知识库不存在或无权访问」）+ 前端 `/kb/[id]` 加载链改 loadOwnerInfo→probePublicKb 分流（404 渲染「知识库不可访问（F-0307）」+ 返回列表链接，访客公开库头部显示真实库名）。GUI 三态验证通过（访客私有库 404 页 / 访客公开库正常 / OWNER 库主模式不受影响）；curl 公开 200 / 私有 404 / 不存在 404。前端 typecheck 过；后端 JDK25 fat jar 重启。
-- 2026/8/22（修复批次） · ZCode：**BUGS.md 修复批次（10 条已修复并验证）**——按用户「开始修复 bug.md」明确授权。BUG-018 tasks retry 404、BUG-019 ai/enhance OpenAPI enum、BUG-020 PUT 知识同版本同内容幂等 200、BUG-021 回收站二次确认契约确认+不存在条目 404、BUG-022 public view 草稿 404、BUG-023 logout 无 body 精确消息、BUG-024 retrieval-test 缺参 INVALID_PARAM、BUG-026 ReviewController 类级 @PreAuthorize、BUG-029 /register 路由注册（GUI 渲染注册表单验证）、BUG-028 补 boot4 正确前缀 `spring.servlet.encoding` UTF-8（**结论修正：8-22 的 14/14 400 为 Windows console curl 编码假象，GUI/UTF-8 文件 POST 中文均正常**）。全部从 BUGS.md 移除（编号不回收）；BUG-025/027 复核保持待复核（25 无复现、27 代码复查无泄漏路径）；BUG-030/FLOW 契约缺口不动。前端 typecheck 过、lint 0 errors；后端 JDK25 fat jar 重启验证。
 
 ## 8. 关键决策摘要（详见规范文档，勿推翻）
 
