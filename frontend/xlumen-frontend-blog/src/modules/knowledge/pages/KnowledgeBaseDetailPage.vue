@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // 知识库详情页（B20，F-0308/F-0309/F-0201，决策 D16）：库头部 + 多级目录树 + 知识列表。
 // 数据流：route.params.id → kbId；登录态经 fetchKnowledgeBases 匹配自己的库（isOwner），
-// 访客/非本人显示「公开知识库」占位头部，仅展示公开知识列表（卡片带 kbName badge）。
-// 排序由后端处理（未选目录 updated_at DESC、选中目录 created_at ASC），前端只传参。
+// 访客/非本人先公开探测（BUG-030）：公开库显示公开头部，私有库/不存在显示「知识库不可访问」，
+// 不再静默回退到公开占位。排序由后端处理（未选目录 updated_at DESC、选中目录 created_at ASC）。
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -11,8 +11,9 @@ import { ArrowLeft, Collection, Edit, Folder, Lock, Plus, Unlock } from '@elemen
 import { useSessionStore } from '@/stores/session'
 import {
   createDirectory,
-  fetchDirectoryTree,
   fetchKnowledgeBases,
+  fetchPublicKnowledgeBase,
+  fetchDirectoryTree,
   updateKnowledgeBase,
 } from '@/modules/knowledge/api/knowledgeBase'
 import { fetchKnowledges } from '@/modules/publishing/api/public'
@@ -32,6 +33,8 @@ const kbId = computed(() => String(route.params.id))
 
 const kbDetail = ref<KnowledgeBase | null>(null)
 const isOwner = ref(false)
+// BUG-030：私有库/不存在直链不可达态（404 语义，与知识详情「不可访问」一致）
+const notFound = ref(false)
 const directories = ref<DirectoryNode[]>([])
 
 const selectedDirectoryId = ref('')
@@ -90,15 +93,25 @@ const loadError = infinite.error
 /** 登录态下匹配自己的库：命中则加载库详情 + 目录树（库主模式），否则保持访客占位。 */
 async function loadOwnerInfo(): Promise<void> {
   if (!session.loggedIn) return
+  const list = await fetchKnowledgeBases().catch(() => [])
+  const mine = list.find((kb) => kb.id === kbId.value)
+  if (!mine) return
+  kbDetail.value = mine
+  isOwner.value = true
+  directories.value = await fetchDirectoryTree(kbId.value)
+}
+
+/** BUG-030 公开探测：登录态本人库豁免；其余先探测公开可读性，私有不达置不可访问态。 */
+async function probePublicKb(): Promise<void> {
+  if (isOwner.value) return
   try {
-    const list = await fetchKnowledgeBases()
-    const mine = list.find((kb) => kb.id === kbId.value)
-    if (!mine) return
-    kbDetail.value = mine
-    isOwner.value = true
-    directories.value = await fetchDirectoryTree(kbId.value)
+    const kb = await fetchPublicKnowledgeBase(kbId.value)
+    if (!session.loggedIn) {
+      // 访客：公开库展示库名头部（不再显示通用的「公开知识库」占位）
+      kbDetail.value = kb
+    }
   } catch {
-    // 非本人库或接口异常：维持访客占位视图，知识列表仍可公开读取
+    notFound.value = true
   }
 }
 
@@ -174,15 +187,28 @@ function onDirectoryDeleted(ids: string[]): void {
   void infinite.loadFirst()
 }
 
-onMounted(() => {
-  void loadOwnerInfo()
-  void infinite.loadFirst()
+onMounted(async () => {
+  await loadOwnerInfo()
+  // BUG-030：库主命中后直接加载列表；否则先公开探测，私有/不存在则不再请求知识列表
+  if (!isOwner.value) {
+    await probePublicKb()
+  }
+  if (!notFound.value) {
+    void infinite.loadFirst()
+  }
 })
 </script>
 
 <template>
   <main class="kb-detail">
-    <header class="kb-detail__header">
+    <div v-if="notFound" class="kb-detail__state kb-detail__state--block">
+      <el-icon class="kb-detail__state-icon"><Lock /></el-icon>
+      <h1 class="kb-detail__state-title">知识库不可访问</h1>
+      <p class="kb-detail__state-text">知识库不存在或无权访问（F-0307）。</p>
+      <RouterLink class="kb-detail__back-link" to="/knowledge-bases">返回知识库列表</RouterLink>
+    </div>
+    <template v-else>
+      <header class="kb-detail__header">
       <div class="kb-detail__bar">
         <button type="button" class="kb-detail__back" aria-label="返回" @click="router.back()">
           <el-icon><ArrowLeft /></el-icon>
@@ -311,6 +337,7 @@ onMounted(() => {
         </template>
       </section>
     </div>
+    </template>
 
     <el-dialog v-model="editVisible" title="编辑库资料" width="440px">
       <el-form label-position="top">
@@ -545,6 +572,30 @@ onMounted(() => {
 
 .kb-detail__state p {
   margin: 0;
+}
+
+.kb-detail__state--block {
+  padding: var(--xl-space-10) var(--xl-space-4);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+}
+
+.kb-detail__state-title {
+  margin: var(--xl-space-2) 0;
+  color: var(--xl-text-primary);
+  font-size: 20px;
+}
+
+.kb-detail__state-text {
+  margin-bottom: var(--xl-space-4);
+  color: var(--xl-text-secondary);
+}
+
+.kb-detail__back-link {
+  color: var(--xl-color-primary);
+  text-decoration: none;
+  font-size: 14px;
 }
 
 .kb-detail__state-icon {

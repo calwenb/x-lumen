@@ -1,6 +1,7 @@
 package com.calwen.xlumen.publishing.service;
 
 import com.calwen.xlumen.content.api.dto.CategoryCountDTO;
+import com.calwen.xlumen.knowledge.vo.KnowledgeBaseVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeCardVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeDetailVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeQueryDTO;
@@ -33,6 +34,15 @@ public interface PublicKnowledgeService {
      * @return 详情；不存在抛 404
      */
     KnowledgeDetailVO getKnowledge(Long knowledgeId);
+
+    /**
+     * 公开知识库探测（BUG-030）：公开库返回库信息，私有库/不存在统一 404
+     * 「知识库不存在或无权访问」——与知识详情「不可访问」语义一致，避免前端静默回退。
+     *
+     * @param kbId 知识库 ID
+     * @return 公开知识库信息
+     */
+    KnowledgeBaseVO getKnowledgeBase(Long kbId);
 
     /**
      * 阅读量防刷自增（F-0203）：同一访客 24 小时内只计一次（Redis 短期状态，决策 D6）。

@@ -64,6 +64,12 @@ const router = createRouter({
       meta: { guest: true, title: '登录' },
     },
     {
+      path: '/register',
+      name: 'register',
+      component: () => import('@/modules/identity/pages/LoginPage.vue'),
+      meta: { guest: true, title: '注册' },
+    },
+    {
       path: '/studio',
       name: 'workbench',
       component: () => import('@/modules/workbench/pages/WorkbenchPage.vue'),

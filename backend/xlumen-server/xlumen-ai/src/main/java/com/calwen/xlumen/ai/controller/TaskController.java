@@ -74,6 +74,10 @@ public class TaskController {
      */
     @PostMapping("/{taskId}/retry")
     public ApiResponse<Boolean> retry(@PathVariable Long taskId) {
+        AiTaskEntity task = aiTaskService.get(WorkspaceContext.workspaceId(), taskId);
+        if (task == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "任务不存在");
+        }
         return ApiResponse.success(aiTaskService.retry(WorkspaceContext.workspaceId(), taskId));
     }
 

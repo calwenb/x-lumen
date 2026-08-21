@@ -140,6 +140,11 @@ public class RecycleBinFacadeService {
             return;
         }
         if ("knowledge".equals(normalized)) {
+            // 存在性判定与 restore 一致：条目不在回收站 → 404（BUG-021 契约一致性）
+            ContentApi.RecycledKnowledgeItem item = contentApi.getRecycledKnowledge(workspaceId, id);
+            if (item == null) {
+                throw new BizException(ErrorCode.NOT_FOUND, "知识不存在或不在回收站");
+            }
             // 索引清理先行（removeKnowledge 幂等），再物理删除
             try {
                 knowledgeApi.removeKnowledge(workspaceId, id);

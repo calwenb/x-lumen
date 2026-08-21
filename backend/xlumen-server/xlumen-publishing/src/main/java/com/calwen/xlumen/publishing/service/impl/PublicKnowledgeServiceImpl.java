@@ -133,6 +133,17 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
         return vo;
     }
 
+    @Override
+    public KnowledgeBaseVO getKnowledgeBase(Long kbId) {
+        // 公开探测（BUG-030）：私有库/不存在统一 404「知识库不存在或无权访问」，
+        // 与知识详情「不可访问」语义一致，避免前端对私有直链静默回退到公开占位
+        KnowledgeBaseVO kb = knowledgeApi.getKnowledgeBaseById(kbId);
+        if (kb == null || !Integer.valueOf(1).equals(kb.getVisibility())) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识库不存在或无权访问");
+        }
+        return kb;
+    }
+
     /** 组装知识详情（缓存回源）：互动统计批量取回，kbName 由本层填充，liked/favorited 置默认由外层重算。 */
     private KnowledgeDetailVO buildKnowledgeDetail(Long knowledgeId, List<Long> visibleKbIds) {
         // 新签名：可见库集合过滤（content agent 已改，决策 D13）；workspaceId=null 跨空间聚合
@@ -170,12 +181,12 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
 
     @Override
     public boolean recordView(Long knowledgeId, String visitorKey) {
-        if (StrUtil.isBlank(visitorKey)) {
-            return false;
-        }
-        // 跨空间公开读：知识实际归属空间经内容库回查后自增（避免绑定默认空间）
+        // 未公开/不存在的知识不计数（与 GET /knowledge/{id} 一致，BUG-022）
         Long workspaceId = resolveKnowledgeWorkspace(knowledgeId);
         if (workspaceId == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识不存在或未公开");
+        }
+        if (StrUtil.isBlank(visitorKey)) {
             return false;
         }
         // setIfAbsent 原子判定：24 小时窗口内同访客只计一次

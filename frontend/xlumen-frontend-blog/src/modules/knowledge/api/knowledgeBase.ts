@@ -93,6 +93,16 @@ export async function fetchKnowledgeBases(): Promise<KnowledgeBase[]> {
   return unwrap(data).map((kb) => ({ ...kb, knowledgeCount: toNumber(kb.knowledgeCount) }))
 }
 
+/**
+ * 公开知识库探测（BUG-030）：公开库返回库信息；私有库/不存在抛「知识库不存在或无权访问」。
+ * 供 /kb/[id] 页区分「公开可读 / 私有不可达」两种直链场景，避免静默回退。
+ */
+export async function fetchPublicKnowledgeBase(kbId: string): Promise<KnowledgeBase> {
+  const { data } = await http.get<ApiResponse<RawKnowledgeBase>>(`/public/knowledge-bases/${kbId}`)
+  const kb = unwrap(data)
+  return { ...kb, knowledgeCount: toNumber(kb.knowledgeCount) }
+}
+
 /** 创建知识库（F-0308）。 */
 export async function createKnowledgeBase(payload: {
   name: string

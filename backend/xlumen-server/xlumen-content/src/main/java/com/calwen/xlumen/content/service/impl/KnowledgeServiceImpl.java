@@ -92,6 +92,15 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     public KnowledgeVO update(Long knowledgeId, UpdateKnowledgeDTO dto) {
         KnowledgeEntity entity = getOwned(knowledgeId);
         checkEditable(entity);
+        // 幂等（BUG-020）：同版本同正文等字段重发不报 409——先比对版本再比对业务内容，
+        // 内容未变化且版本一致时按成功返回，避免前端自动保存/同内容保存误报冲突
+        if (java.util.Objects.equals(entity.getVersion(), dto.getVersion())
+                && java.util.Objects.equals(entity.getTitle(), dto.getTitle())
+                && java.util.Objects.equals(entity.getContent(), dto.getContent() == null ? "" : dto.getContent())
+                && (dto.getDirectoryId() == null || java.util.Objects.equals(entity.getDirectoryId(), dto.getDirectoryId()))
+                && java.util.Objects.equals(entity.getTags(), dto.getTags())) {
+            return toVO(entity);
+        }
         entity.setTitle(dto.getTitle());
         entity.setContent(dto.getContent() == null ? "" : dto.getContent());
         if (dto.getDirectoryId() != null) {

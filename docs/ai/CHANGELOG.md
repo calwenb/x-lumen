@@ -1,8 +1,191 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/20
+> 更新日期：2026/8/22
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
+
+## 2026/8/22 · ZCode（BUG-030 修复 + BUG-015/026 移除）
+
+> 影响文档：docs/ai/BUGS.md、docs/ai/CHANGELOG.md、docs/ai/STATUS.md · 决策摘要：BUGS.md 记录约定（修复仅在用户明确要求时进行，本次用户逐条指定：移除 015/026、执行修复 030）
+
+接上一修复批次，用户追加三项处理，全部落地并验证：
+
+- **BUG-015 移除（关闭）**：65 次复核均 200 建议关闭，用户明确后从清单移除（编号不回收）——小节+索引+历史说明同步清场
+- **BUG-026 移除（清场）**：上一批次已修复的项，用户明确后将其「已修复」小节与索引一并移除（编号不回收）
+- **BUG-030 修复**：私有 KB 直链对访客静默回退到「公开知识库」占位——新增公开探测端点 + 前端不可访问态：
+  - 后端：`GET /api/v1/public/knowledge-bases/{kbId}`（`PublicKnowledgeService.getKnowledgeBase`，publishing 模块）：公开库返回库信息（name/visibility），私有库/不存在统一 404「知识库不存在或无权访问」；public 白名单 GET 已放行
+  - 前端：`KnowledgeBaseDetailPage.vue` 加载链改为 `loadOwnerInfo → probePublicKb`，登录态本人库走库主模式；非本人探测 404 渲染「知识库不可访问（F-0307）+ 返回知识库列表」；公开库探测成功访客头部显示真实库名（替换固定「公开知识库」占位）
+  - 验证：GUI 三态 ✅——访客私有库=不可访问页、访客公开库=库名+知识列表、OWNER 库主模式（编辑/新建目录）不受影响；curl 公开 200 / 私有 404 / 不存在 404
+  - 门禁：前端 typecheck 通过；后端 JDK25 fat jar 重建重启后 ping 200
+
+**代码变更**：`xlumen-publishing/.../PublicKnowledgeService.java` + `PublicKnowledgeServiceImpl.java` + `PublicKnowledgeController.java`（探测端点）；`frontend/.../knowledgeBase.ts`（fetchPublicKnowledgeBase）+ `KnowledgeBaseDetailPage.vue`（分流+错误态）。
+
+## 2026/8/22 · ZCode（BUGS.md 修复批次：10 条已修复并验证）
+
+> 影响文档：docs/ai/BUGS.md、docs/ai/CHANGELOG.md、docs/ai/STATUS.md · 决策摘要：BUGS.md 记录约定（修复仅在用户明确要求时进行，本次用户「开始修复 bug.md」授权）
+
+按用户「开始修复 bug.md」明确授权，修复 BUGS.md 待修复清单并逐条验证（Java 侧 JDK25 编译 fat jar，重启后 curl/GUI 回归）：
+
+- **BUG-018** `POST /tasks/{id}/retry` 任务不存在返 404：TaskController.retry 补 `get()` 判空抛 NOT_FOUND「任务不存在」✅ 实测 404
+- **BUG-019** `POST /ai/enhance` scene OpenAPI 契约暴露枚举：EnhanceRequestDTO.scene 加 `@Schema(allowableValues={"SUMMARY","SEO"})`（ai 模块补 swagger-annotations-jakarta 编译依赖）✅ v3/api-docs 显示 `enum: [SUMMARY, SEO]`
+- **BUG-020** `PUT /knowledge/{id}` 同版本同内容重发 409：KnowledgeServiceImpl.update 补幂等短路（版本+标题+正文+目录+标签全比对一致即成功返回，乐观锁 409 仅对真实并发冲突保留）✅ 同 version 同 body 重发 200
+- **BUG-021** `DELETE /recycle-bin/{type}/{id}` 二次确认契约：契约确认=query `confirm=CONFIRM`（OpenAPI 自动暴露）；purge 补「条目不在回收站 → 404」与 restore 一致性 ✅ 无 confirm 409 / confirm 后不存在条目 404
+- **BUG-022** `POST /public/knowledge/{id}/view` 对草稿 200：recordView 补存在性/可见性判定，未公开 404 ✅ 公开已发布 200、不存在/私有 404
+- **BUG-023** `POST /auth/logout` 无 body 精确消息：AuthController.logout 改 `@RequestBody(required=false)` + 显式校验「refreshToken 刷新令牌不能为空」✅ 无 body/空 body 均精确
+- **BUG-024** `POST /knowledge/retrieval-test` 缺参 Jackson 错误：RetrievalTestRequestDTO.topK 改 Integer + `resolvedTopK()` 兜底（null→10），IndexController 改用 ✅ `{}` 走 INVALID_PARAM「query 查询文本不能为空」
+- **BUG-026** ReviewController 缺角色注解：类级补 `@PreAuthorize("hasRole('OWNER')")` 与 ReleaseController 对齐 ✅ OWNER submit 可达（业务 404 优先，未误伤）
+- **BUG-029** `/register` 路由空白（前端 blog）：router 注册 `/register`（复用 LoginPage）+ LoginPage `mode` 按 `route.name==='register'` 初始化 ✅ GUI 实测 `/register` 渲染注册表单（用户名/邮箱/密码/注册按钮，注册 tab 默认选中）；`/login` 回归默认登录 tab 不受影响
+- **BUG-028** 全局 UTF-8 P0：**结论修正**——浏览器 SPA 与 UTF-8 文件方式的 POST 中文均正常（Jackson 默认 UTF-8 解码，8-21 GUI 发布链路已验证）；8-22 见「14/14 400」为 Windows console curl 参数编码（GBK）假象。仍补防御配置 `spring.servlet.encoding.charset=UTF-8 + force=true`（Spring Boot 4 前缀从 `server.servlet.encoding` 迁移为 `spring.servlet.encoding`，由 ServletEncodingProperties 绑定；旧键已失效——反编译 Boot 4.1 确认）✅ UTF-8 文件 POST 中文 200（评论/建库落库）
+
+**回滚与排除**：BUG-025 ping 修复批次重启后 5/5 200 未复现（保持待复核）；BUG-027 代码复查 `unsubscribe` 已清理 heartbeat/Set/Map 无残留路径（保持待复核无需改）；BUG-015 建议关闭待用户明确；BUG-030/FLOW-001~005 属契约缺口本次不动。
+
+**验证方式**：后端 mvn package（JDK25）+ fat jar 重启 + curl 各端点断言 + GUI 浏览器 /register 渲染验证；前端 typecheck 通过、lint 0 errors（3587 warning 全为仓库既有 CRLF，非本次改动）。测试数据已清理（幂等草稿、中文验证库已删）。
+
+**代码变更清单**（7 个 Java 文件 + 1 个 xml + 1 个 yml + 2 个前端文件）：
+- `xlumen-ai/.../TaskController.java`（BUG-018）
+- `xlumen-ai/.../dto/EnhanceRequestDTO.java` + `xlumen-ai/pom.xml`（BUG-019）
+- `xlumen-ai/.../dto/EnhanceRequestDTO.java`（BUG-019）
+- `xlumen-content/.../KnowledgeServiceImpl.java`（BUG-020）
+- `xlumen-publishing/.../RecycleBinFacadeService.java`（BUG-021）
+- `xlumen-publishing/.../PublicKnowledgeServiceImpl.java`（BUG-022）
+- `xlumen-identity/.../AuthController.java`（BUG-023）
+- `xlumen-knowledge/.../RetrievalTestRequestDTO.java` + `IndexController.java`（BUG-024）
+- `xlumen-publishing/.../ReviewController.java`（BUG-026）
+- `xlumen-boot/.../application.yml`（BUG-028）
+- `frontend/.../router/index.ts` + `LoginPage.vue`（BUG-029）
+
+---
+
+## 2026/8/22 · ZCode（2026-08-22 单浏览器回归 + BUG-028 路径细分 + BUG-030 私有 KB 静默回退）
+
+> 影响文档：docs/ai/BUGS.md、docs/ai/CHANGELOG.md、docs/ai/STATUS.md · 决策摘要：QA §1 三铁律、STATUS §1 不自动认领
+
+按用户「再做一轮更详细的测试」要求第三轮 GUI 测试，**主代理 browser-use web-gui-tester 单跑**（子代理无法用 browser-use，已向用户确认取消 API smoke + Playwright E2E + docs 审计子代理；纯黑盒、1080p、纯测试不修）。
+
+**测试账号**：`qa_gui_20260821 / Test123456`（OWNER，userId `2090619871503880192` workspace 起）。本轮成果：
+- 新建私有 KB `QA-GUI-TEST-KB`（id 2090619871503880192）
+- 创作并发布知识 `中文测试标题 BUG-028`（id 2090620721416671233）：**全程 GUI 路径成功保存并发布**（POST /knowledge → POST /review → POST /publishing/release 全部 200）
+
+**关键 BUG-028 路径细分（推翻 8-22 「14/14 全失败」结论的适用范围）**：
+- **浏览器 SPA JSON POST 路径（`Content-Type: application/json; charset=UTF-8`）**：全部成功——Jackson 默认按 UTF-8 解码 InputStream，绕开 servlet 默认字符编码
+  - `POST /api/v1/knowledge` 200（保存草稿，跳转编辑页，状态「已保存」）
+  - `POST /api/v1/knowledge/{id}/review` 200（AI 审核返回 2 条非阻断建议：移除"BUG-028"技术编号等）
+  - `POST /api/v1/publishing/release` 200（状态「已发布」）
+  - `POST /api/v1/admin/audit-logs` 同步抓到 `KNOWLEDGE_PUBLISH` 记录（10:15 qa_gui_20260821 / KNOWLEDGE 2090620721416671233）
+- **未在 GUI 路径复现** BUG-028——8-22 用 curl 默认无 `charset=UTF-8` 头部触发 servlet Latin-1 解码，故 14/14 全 400
+- **建议修复后复测范围收敛**到 `application/x-www-form-urlencoded` / `multipart/form-data` / curl 无 charset 头部三路径，才是 BUG-028 真实影响域
+- 已更新 BUGS.md BUG-028 卡片附 8-21 GUI 复检结论
+
+**新增 BUG-030**（私有 KB 直链对访客静默回退）：
+- 复现：登出态访问 `http://localhost:5173/kb/2090619871503880192`（私有 KB）
+- 现象：渲染"公开知识库 / 公开 / 这个视图下还没有知识。"——无 404 / 无权限提示，URL 与页面内容不一致
+- 期望：返回 404「知识库不存在或无权访问」与 `/knowledge/{id}`「知识不可访问」UI 一致
+- 推测根因：`/kb/[id].vue` 对 401/403/404 静默回退到全局"公开知识库"占位组件
+- 影响：用户分享私有 KB URL，对方打开见空白公开页易误判故障
+- 优先级：中
+
+**其他验证项**（主代理 GUI 路径）：
+- /chat AI 小光对话：发问「请用一句话介绍你自己」→ 流式响应正常，含可溯源引用契约文案
+- /studio/releases：空状态渲染「暂无待发布知识 / 暂无发布记录」（已发布知识自动跳过）
+- /studio/knowledge 草稿列表：「中文测试标题 BUG-028 / 草稿 / 2026-08-21 10:03」+ 编辑 + 删除（发布后删除按钮 disabled）
+- /studio dashboard 三卡：知识管理 / AI 写作 / 发布管理入口齐全
+- /knowledge-bases 我的 KB 列表：「QA-GUI-TEST-KB / 私有 / 1 篇」+ 编辑 + 删除
+- /kb/{id} KB 详情：返回 / 编辑库资料 / 新建目录三按钮 + 「全部知识」sidebar tree + 知识卡片 + 标签云
+- 管理后台 /settings /models /audit-logs 三页全部可达；audit-logs 抓拍本次 `KNOWLEDGE_PUBLISH`
+- **BUG-029 复测**：`/register` 路由仍渲染空白（仅 banner），8-22 报告结论成立
+
+**纯文档变更，代码零改动**。
+
+**遗留未决**：
+- 8-19 / 8-21 / 本轮 qa_ 账号数据均未自动清理（QA §3.8 22:00 调度未落实），历史公开列表/评论仍可见——治理问题待用户决策
+- 本轮未清理 qa_gui_20260821 + 已发布的 `中文测试标题 BUG-028`（私有 KB 下，外部不可见），如需清理走管理后台或直接 SQL
+
+**报告归档**：`docs/ai/assets/gui-test-2026-08-21/` + `gui-test-screenshots/2026-08-21/`（6 张截图）
+
+---
+
+## 2026/8/22 · ZCode（2026-08-22 全功能测试：浏览器渲染 + 复测 + 发现 P0 全局 UTF-8 缺陷）
+
+> 影响文档：docs/ai/BUGS.md、docs/ai/CHANGELOG.md、docs/ai/STATUS.md · 决策摘要：QA §1 三铁律、STATUS §1 不自动认领
+
+按用户「用 browser-use 模拟客户进行全功能测试」要求再跑一轮（距上次测试不足 24 小时、代码无新提交）。**主代理 browser-use 单跑**（不再启子代理，避免重复 8-21 已完成的 API smoke + Playwright E2E + 文档审计）：
+
+- **浏览器渲染验证（11 个入口全部通过）**：博客 `/`、`/knowledge/{id}`（详情/评论/点赞/收藏/小光）、`/search`、`/knowledge-bases`、`/chat`、`/login`、`/register`；管理后台 `/`。SPA 路由、表单元素、列表卡片、目录/筛选器均正常渲染。**IAB 真实点击仍超时**（与 8-21 一致），按 QA §3.4 走 DOM 代替。
+- **API 客户旅程**：ASCII 数据下登录→建库→建目录→建草稿→提交审核→列表分页→评论全通；进入中文 content 即触发 **P0 全局 UTF-8 解码失败**。
+- **复测昨天 BUG（代码无变更）**：BUG-018/H1（tasks retry fake id 误返 200）、BUG-019/H2（ai/enhance scene=clarity 拒）、BUG-022/M4（public view 对草稿 200）**全部仍存在**；BUG-025/L5（system/ping 首测 401 冷启动）**今天未复现**（冷启动已过）。
+- **GET 读路径不受 UTF-8 影响**：数据库已有中文知识详情/列表/评论可正常 GET 读取。
+
+**新增 P0 缺陷 BUG-028（14/14 写接口含中文全失败）**：
+- 现象：任意 POST/PUT body 字段含中文 → `{"code":"INVALID_PARAM","message":"请求参数格式错误：Invalid UTF-8 middle byte 0xd0"}` HTTP 400
+- 影响：/auth/register（displayName）、/knowledge-bases POST/PUT（name）、/knowledge-bases/{id}/directories POST（name）、/knowledge POST/PUT/autosave（title/content）、/public/knowledge/{id}/comments POST（content）、/ai/writing|review|enhance（content）、/chat/conversations POST（title）共 14 端点全部阻塞中文用户
+- 根因推测：Spring Boot 4 / Tomcat Servlet 容器字符编码未设为 UTF-8（应在 `application.yml` 加 `server.servlet.encoding.charset=UTF-8` + `force=true`），请求 body 被 servlet 用 Latin-1 解码再交给 Jackson 导致 UTF-8 多字节序列错位
+- 历史背景：8-19 / 8-21 批次均未测中文 content（测试数据 ASCII），本 BUG 长期存在但未暴露；GET/boolean payload 不受影响
+- 优先级：**P0**——核心功能完全阻塞中文用户，须最优先修复
+
+**其他发现**：
+- `qa_alpha_20260819` / `qa_fulltest_20260821` 等历史 qa_ 账号数据仍出现在公开列表与评论中，QA §3.8 22:00 自动清理机制实际未实现（数据库未发现清理调度）——治理问题待用户决策
+
+**纯文档变更，代码零改动**。
+
+## 2026/8/21 · ZCode（2026-08-21 全功能测试批次：4 路并行 + 11 模块覆盖 + 10 新 BUG 候选）
+
+> 影响文档：docs/ai/BUGS.md、docs/ai/CHANGELOG.md、docs/ai/STATUS.md、docs/ai/assets/browser-test-2026-08-21/* · 决策摘要：QA §1 三铁律、STATUS §1 不自动认领
+
+按用户「做一轮全功能测试」按 QA.md 规范发起，4 路并行：主代理 browser-use 访客视角 + 3 子代理（API 冒烟 / Playwright E2E / BUG 根因 + docs 审计），耗时 ~32 分钟。
+
+**测试账号**：`qa_fulltest_20260821 / Test123456`（OWNER，userId `2090488188213489664`，workspaceId `2090488188544839680`）；跨用户账号 `qa_smoke_b_20260821 / Test123456`。已建公开库 `QA-public-test` (2090488328710090752)、私有库 `QA-private-test` (2090488329049829376)、目录 + 草稿。两账号按 QA §3.8 于 8-21 22:00 自动清理。
+
+**通过项（11 模块覆盖）**：
+- 身份与多租户：注册即建空间绑 OWNER（决策 D9）、JWT 鉴权、refresh 轮换、跨用户 404 隔离生效
+- 博客公开阅读：首页 11 篇瀑布流、知识库发现页去登录引导、库页列表、详情页目录+Markdown+评论+互动按钮（访客提示）
+- 搜索：RAG 关键词命中 11 篇 + 三筛选器（KB/目录/标签）
+- 互动与反馈：详情页赞/踩/收藏/问小光/纠错按钮齐全（访客受限），评论列表时间显示「N 天前」（BUG-010 已修复）
+- 内容管理：知识 CRUD（草稿/已发布状态机）、版本乐观锁、自动保存幂等
+- 知识库体系：公开/私有库 CRUD、目录树 CRUD、子目录挂载
+- 审核与发布：8 状态机、Reviewer AI 阻断与确认（IDEA-007 8-20 已落地）、release/unpublish/version 校验
+- AI 对话：小光访客受限预览（输入框可用、发送 disabled）、SSE 流式 `chunk/citation/done` 全链路
+- AI 写作/审校/增值：真实模型调用 200（SUMMARY/SEO 两 scene），结构化输出
+- RAG 索引：发布即索引、Noop 降级（Milvus 未装）
+- 管理后台：admin 四页登录入口、模型配置必填校验精确
+- 多用户可见性（D9）：A 的私有库对 B 404（设计取舍，非 403）
+
+**新发现 BUG 候选（10 条，登记 BUGS.md BUG-018~027，全部仅记录未修）**：
+- BUG-018（H）`POST /tasks/{fake}/retry` 对不存在 task 误返 200
+- BUG-019（H）`POST /ai/enhance` scene 枚举与 OpenAPI DTO 不一致
+- BUG-020（中）`PUT /knowledge/{id}` 同 version 重发仍 409（非幂等，待草稿数据复测）
+- BUG-021（中）`DELETE /recycle-bin/{type}/{id}` 二次确认契约不明
+- BUG-022（中）`POST /public/knowledge/{id}/view` 对草稿也 200（虚增浏览量）
+- BUG-023（低）`POST /auth/logout` 无 body 错误消息不指字段
+- BUG-024（低）`POST /knowledge/retrieval-test` 缺参 Jackson 反序列化错
+- BUG-025（低）`GET /system/ping` 首测偶发 401 冷启动
+- BUG-026（中）`ReviewController` 缺类级 `@PreAuthorize` 与 F-0903 职责分离契约冲突
+- BUG-027（低）`SseService.publish` 单 emitter 失败内存泄漏可能
+
+**BUG-015 第三次复核**：65 次 create→submit→get（5 完整循环 + 30 并发 + 20 顺序）全部 200，**建议关闭**（按 STATUS §1 不自动移除，待用户明确要求时操作）。
+
+**Playwright E2E**：6 套件 11 用例 100% 通过，无失败截图。
+**API 冒烟**：71 端点全覆盖，0 个 5xx；必填校验精确；跨空间隔离生效；AI 真实模型调用成功。
+
+**降级与排除**：
+- Milvus 未装，RAG 检索走 NoopVectorStore（索引元数据正常，引用溯源能力降级）—— 预期
+- AI 真实调用走百炼 API（qwen-plus / qwen-max / text-embedding-v4），有真实耗时与费用 —— 测试账号限定
+- `/public/*` 写操作（like/dislike/favorite/comment）需 token——设计意图，非 BUG
+- 不存在路由 `/xyz-does-not-exist` 主区域为空（路由兜底缺失）—— 体验小瑕疵，未登记 BUGS
+
+**报告路径**：
+- API 冒烟：`docs/ai/assets/browser-test-2026-08-21/api-smoke.md`（124 次请求落盘 `C:/temp/results.json`）
+- E2E 重放：`docs/ai/assets/browser-test-2026-08-21/e2e-baseline.md`
+- BUG 根因 + docs 审计：`docs/ai/assets/browser-test-2026-08-21/bug-and-docs-audit.md`
+
+**docs 一致性审计结论**：
+- PRODUCT §5 总表 90 项（MVP 47 / V2 41 / V3 2）在 README/GLOBAL/BACKEND/PRODUCT/STATUS §7/CHANGELOG 六处**完全一致**（D18 调整已同步）
+- PROTOTYPE §7 MVP 页面范围 B00~B04/B08~B13/B16/B20~B23/A01~A04/D01/D02 与 STATUS 待办交付项**对齐**（B12 审核中心代码保留·导航隐藏）
+- STATUS §3 能力基线摘要覆盖 8-12~8-20 所有交付**一致**
+- STATUS §5 待办 OPT-1 / V2-AI 仍标「待认领」，其余已完成项标注日期与 AI 名**一致**
+- **STATUS §6 W6/W7 行自身过期**（仍记 73 项 / MVP 37 / V2 24 / V3 12 与 8 份文档，与现行 90 / MVP 47、11 份文档不一致）—— 已记入 STATUS §7 待 STATUS 维护批次刷新，不在本次自动范围内
+- **CHANGELOG 8-19 11:50 段落 D1 仍记旧值 82 项 / MVP 39**——同上待 STATUS 维护刷新
+
+**遵守 QA §1 三铁律**（不替代质量门禁 / 缺陷不自动修 / 环境假缺陷先排除），**遵守 STATUS §1**（代码零改动，仅文档更新；BUGS 登记 + 报告落盘）。
 
 ## 2026/8/20 · ZCode（AI 相关功能优先级提升：V3 的 AI 并入 V2，V2 内 AI 优先）
 

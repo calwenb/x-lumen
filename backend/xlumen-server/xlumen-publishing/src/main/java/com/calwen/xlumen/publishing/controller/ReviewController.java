@@ -11,6 +11,7 @@ import com.calwen.xlumen.publishing.service.ReviewService;
 import com.calwen.xlumen.publishing.vo.ReviewVO;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController("publishingReviewController")
 @RequestMapping("/api/v1/reviews")
+@PreAuthorize("hasRole('OWNER')")
 public class ReviewController {
 
     @Resource

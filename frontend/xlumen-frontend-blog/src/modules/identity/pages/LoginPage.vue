@@ -14,7 +14,7 @@ const router = useRouter()
 const route = useRoute()
 const session = useSessionStore()
 
-const mode = ref<'login' | 'register'>('login')
+const mode = ref<'login' | 'register'>(route.name === 'register' ? 'register' : 'login')
 const username = ref('')
 const password = ref('')
 const email = ref('')

@@ -1,5 +1,6 @@
 package com.calwen.xlumen.ai.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,7 +21,8 @@ public class EnhanceRequestDTO {
     /** 知识 ID（可空，供独立增强）。 */
     private Long knowledgeId;
 
-    /** 场景：SUMMARY|SEO。 */
+    /** 场景：SUMMARY|SEO（OpenAPI 契约暴露枚举，BUG-019）。 */
+    @Schema(description = "增强场景", allowableValues = {"SUMMARY", "SEO"})
     private String scene;
 
     /** 待处理内容。 */

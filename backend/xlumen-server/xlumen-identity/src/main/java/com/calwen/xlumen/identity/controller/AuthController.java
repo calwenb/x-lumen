@@ -1,6 +1,8 @@
 package com.calwen.xlumen.identity.controller;
 
 import com.calwen.xlumen.common.web.ApiResponse;
+import com.calwen.xlumen.common.exception.BizException;
+import com.calwen.xlumen.common.web.ErrorCode;
 import com.calwen.xlumen.identity.dto.LoginDTO;
 import com.calwen.xlumen.identity.dto.RefreshTokenDTO;
 import com.calwen.xlumen.identity.dto.RegisterDTO;
@@ -60,13 +62,16 @@ public class AuthController {
     }
 
     /**
-     * 登出：撤销刷新令牌。
+     * 登出：撤销刷新令牌。body 可选——缺 body/空 body 统一提示 refreshToken 字段（BUG-023）。
      *
-     * @param dto 刷新令牌
+     * @param dto 刷新令牌（可空）
      * @return 统一响应
      */
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@Valid @RequestBody RefreshTokenDTO dto) {
+    public ApiResponse<Void> logout(@RequestBody(required = false) @Valid RefreshTokenDTO dto) {
+        if (dto == null || dto.refreshToken() == null || dto.refreshToken().isBlank()) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "refreshToken 刷新令牌不能为空");
+        }
         authService.logout(dto.refreshToken());
         return ApiResponse.success(null);
     }

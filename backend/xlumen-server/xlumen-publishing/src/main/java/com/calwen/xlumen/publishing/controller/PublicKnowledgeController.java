@@ -2,6 +2,7 @@ package com.calwen.xlumen.publishing.controller;
 
 import com.calwen.xlumen.common.web.ApiResponse;
 import com.calwen.xlumen.content.api.dto.CategoryCountDTO;
+import com.calwen.xlumen.knowledge.vo.KnowledgeBaseVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeCardVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeDetailVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeQueryDTO;
@@ -46,6 +47,15 @@ public class PublicKnowledgeController {
     @GetMapping("/knowledge/{id}")
     public ApiResponse<KnowledgeDetailVO> getKnowledge(@PathVariable Long id) {
         return ApiResponse.success(publicKnowledgeService.getKnowledge(id));
+    }
+
+    /**
+     * 公开知识库探测（BUG-030，B20）：公开库返回库信息；私有库/不存在统一 404
+     * 「知识库不存在或无权访问」，与知识详情不可访问语义一致。
+     */
+    @GetMapping("/knowledge-bases/{kbId}")
+    public ApiResponse<KnowledgeBaseVO> getKnowledgeBase(@PathVariable Long kbId) {
+        return ApiResponse.success(publicKnowledgeService.getKnowledgeBase(kbId));
     }
 
     /**

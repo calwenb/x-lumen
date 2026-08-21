@@ -55,7 +55,7 @@ public class IndexController {
                 .query(request.getQuery())
                 // 检索范围：当前用户全部可见库（公开库 + 自己私有库，决策 D13）
                 .kbIds(knowledgeApi.resolveVisibleKbIds(userId))
-                .topK(request.getTopK())
+                .topK(request.resolvedTopK())
                 .build();
         return ApiResponse.success(retrievalService.search(searchRequest));
     }

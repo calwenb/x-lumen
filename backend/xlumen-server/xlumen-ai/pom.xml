@@ -67,6 +67,14 @@
             <artifactId>hutool-json</artifactId>
         </dependency>
 
+        <!-- OpenAPI 注解（决策 D4 契约唯一来源）：boot 装配模块已引 springdoc，此处仅编译期用 @Schema -->
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+            <version>2.2.52</version>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
