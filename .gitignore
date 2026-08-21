@@ -31,3 +31,7 @@ Thumbs.db
 
 # ---- ZCode 会话内部数据 ----
 .zcode/
+
+# ---- 本地测试与运行残留（logs 含 token，禁止入库） ----
+logs/
+.browser-check.zip
