@@ -84,13 +84,13 @@ blog 应用前端模块与后端 Maven 模块对应关系（后端模块职责�
 | --- | --- | --- | --- |
 | `identity` | xlumen-identity（iam_） | MVP | 登录/注册/登出（F-0101），博主与读者均在 blog 登录 |
 | `blog` | xlumen-publishing（pub_，公开读） | MVP | 首页知识列表、详情、搜索目录标签、知识库页/发现页、关于（F-0201/0202/0208） |
-| `content` | xlumen-content（cnt_） | MVP | 知识 CRUD 与编辑器（F-0301）、自动保存（F-0302）、库/目录归属（F-0307/F-0309）、版本/定时/图片（F-0303/0304/0306，V2） |
-| `ai` | xlumen-ai（ai_，gateway/writing 域） | MVP/V2 | AI 写作（F-0601）/审校（F-0604）MVP；大纲确认/增强写作/任务恢复/辅助编辑/代码解读（F-0602/F-0603/F-0605~F-0607，V2） |
+| `content` | xlumen-content（cnt_） | MVP | 知识 CRUD 与编辑器（F-0301）、自动保存（F-0302）、库/目录归属（F-0307/F-0309）、版本/定时（F-0303/0304，V2）；图片附件（F-0306，V3） |
+| `ai` | xlumen-ai（ai_，gateway/writing 域） | MVP/V2 | AI 写作（F-0601）/审校（F-0604）MVP；增强写作/任务恢复/辅助编辑/代码解读（F-0603/F-0605~F-0607，V2）；大纲确认（F-0602，V3） |
 | `knowledge` | xlumen-knowledge（kb_） | MVP | 知识库管理/目录管理/回收站（F-0308/0309/F-0305）、知识索引状态与重建（F-0402/0403）、检索测试（F-0404）、引用溯源展示（F-0405） |
 | `publishing` | xlumen-publishing（pub_，review/release 域） | MVP | 发布前自动 AI 审核（F-0907）、状态机与发布（F-0901/0905）、旧审核中心接口保留回退（F-0902~0904）、下架回滚（F-0906，V2） |
-| `chat` | xlumen-ai（chat_，chat 域） | MVP | AI小光对话菜单页 B00（F-0701）、知识级问答（F-0702）；访客助手/多文档对比/知识库洞察（F-0703~F-0705，V2） |
-| `engagement` | xlumen-publishing（eng_，engagement 域） | MVP/V2 | 评论点赞阅读量（F-0203）、读者纠错（F-1001）、通知中心（F-1004，V2） |
-| `ai-enhance` | xlumen-ai（ai_enhance_，enhance 域） | MVP/V2 | 摘要/SEO（F-0801/0802）MVP；翻译/配图/标签/语音/分享卡片（F-0803~F-0807，V2） |
+| `chat` | xlumen-ai（chat_，chat 域） | MVP | AI小光对话菜单页 B00（F-0701）、知识级问答（F-0702）；访客助手/多文档对比（F-0703/F-0704，V2）；知识库洞察（F-0705，V3） |
+| `engagement` | xlumen-publishing（eng_，engagement 域） | MVP/V2 | 评论点赞阅读量（F-0203）、读者纠错（F-1001）；通知中心（F-1004，V3）；评论 @小光问答（F-1005，V2） |
+| `ai-enhance` | xlumen-ai（ai_enhance_，enhance 域） | MVP/V2 | 摘要/SEO（F-0801/0802）MVP；语音（F-0806，V2）；翻译/配图/标签/分享卡片（F-0803~F-0805/F-0807，V3）；图片 AI 讲解（F-0809，V2） |
 | `workbench` | —（聚合） | MVP | 创作工作台 B09：指标、快捷操作、任务入口 |
 
 admin 应用前端模块：
@@ -101,7 +101,7 @@ admin 应用前端模块：
 | `workspace` | xlumen-identity（iam_ + plt_，platform 域） | MVP | 空间设置（F-1201）、成员与角色（F-0102/0103，成员邀请 V2） |
 | `model` | xlumen-ai（ai_，gateway 域） | MVP | 供应商密钥与场景模型配置（F-0501/0502） |
 | `audit` | xlumen-identity（plt_，platform 域） | MVP | 审计日志（F-1202） |
-| `analytics` | xlumen-content（analytics_，analytics 域）/ xlumen-ai | V2 | 配额（F-0504）、数据看板（F-1101）、时效检测/知识缺口/更新建议（F-1102~F-1104）、AI Trace 与运行监控（F-0505/F-1203）、敏感内容检测（F-1204） |
+| `analytics` | xlumen-content（analytics_，analytics 域）/ xlumen-ai | V2 | 配额与 AI Trace（F-0504/F-0505，V2）、时效检测/知识缺口（F-1102/F-1103，V2）；数据看板/更新建议（F-1101/F-1104，V3）、AI 运行监控与敏感内容检测（F-1203/F-1204，V3 暂缓） |
 
 业务模块内部统一采用（两应用同一规则）：
 

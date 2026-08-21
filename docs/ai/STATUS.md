@@ -55,7 +55,7 @@
 
 ## 4. 进行中
 
-IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾已完成；V2 规划经决策 D18 调整为 AI 优先（原 V3 的 AI 功能并入 V2，V2 内 24 项标「AI 优先」，见 PRODUCT §5 阶段标记说明）。待办为 OPT-1（AI 线程模型虚拟线程评估，待认领）与 V2-AI 优先批次（见 §5 待办）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
+IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾已完成；V2/V3 范围经决策 D19（2026-08-22）按「个人使用 × 访客/面试官浏览可见」评分重划：V2 27 项（首批 15 项定版优先实施）、V3 25 项（含 6 项多用户/治理向「暂缓」）；9 项对话期新候选已登记总表（F-0216~F-0220/F-0706/F-0707/F-0809/F-1005），其余候选在 IDEAS.md 待评估（决策 D18 保留历史记录）。待办为 OPT-1（AI 线程模型虚拟线程评估，待认领）与 V2 批次（见 §5 待办）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
 
 ## 5. 待办
 
@@ -92,9 +92,9 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 | F-0907 | 发布自动 AI 审核：error/失败阻断，warning/info 作者确认后继续；审核中心入口暂时隐藏 | PRODUCT §5 模块九、PROTOTYPE B10/B12/B13 | 已完成（Codex，2026-08-20） | Codex |
 | F-1307 | 开发启动端口守卫：显式开启后检测占用、交互确认并结束进程 | GLOBAL §6.4、BACKEND §18 | 已完成（Codex，2026-08-20） | Codex |
 | OPT-1 | 技术优化：AI 线程模型评估虚拟线程。主项：chatStreamExecutor（SSE 长连接占平台线程、池满 CallerRuns 堵容器线程）改 `Executors.newVirtualThreadPerTaskExecutor()` + Semaphore 并发上限（限流与线程模型解耦）。候选点：aiTaskExecutor（AI 任务，需保留并发上限）、indexExecutor（发布即索引 embedding/Milvus 阻塞 I/O）、OpenAICompatibleProvider/EmbeddingServiceImpl/MilvusVectorStore 的 JDK HttpClient 阻塞调用；SseService 心跳与 PublishJob 为固定间隔单线程调度，不适用 | 2026-08-17 线程模型评估（chatStreamExecutor 结构性短板，详见会话记录） | 待认领 | |
-| V2-AI | V2 AI 优先批次：按 PRODUCT §5 标记「AI 优先」的 24 项分批实施（决策 D18；建议先 AI 对话/创作增值，后保鲜/治理），V3 仅剩 F-0207/F-1305 | PRODUCT §5 模块五~八及 AI 标注项、PROTOTYPE §7/§8 | 待认领 | |
+| V2 | V2 批次（决策 D19，27 项）：首批定版 15 项——总表 F-0204/F-0603/F-0606/F-0607/F-0703/F-0806/F-1103 + 新登记 F-0216~F-0219/F-0706/F-0707/F-0809/F-1005；基建前置：Milvus 安装 + 存量 reindex 补跑（BUG-004 收尾）、F-0504/F-0505/F-1304 | PRODUCT §5（V2 27 项）、PROTOTYPE §7/§8 | 待认领 | |
 
-> 说明：数据分析与知识保鲜（模块十一）经决策 D18 全部并入 V2（含原 V3 的知识缺口分析 F-1103）；平台治理（模块十二）MVP 部分（空间设置/审计）已随 M13 落地，F-1203/F-1204 经 D18 并入 V2（AI 优先）；V2 内按「AI 优先」顺序实施；阶段调整须经 CHANGELOG 记录（决策 D10）。
+> 说明：V2/V3 范围经决策 D19（2026-08-22）按「个人使用效率 × 访客/面试官浏览可见」评分重划：V2 27 项 / V3 25 项（其中 F-0106/F-0211/F-1002/F-1003/F-1203/F-1204 共 6 项多用户/治理向标「暂缓」）；原 D18「AI 优先」标注停用（历史决策保留于 §8 与 CHANGELOG）；V3 其余 19 项保持规划不排期；阶段调整须经 CHANGELOG 记录（决策 D10）。
 > KB-1~KB-6 已全部交付验收；实施细则方案（`knowledge-redesign-proposal.md` / `code-implementation-plan.md`）已随实施完成删除，需要时经 git 历史回溯。
 
 ## 6. 文档一致性核验
@@ -108,13 +108,9 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/22 · ZCode：**V2/V3 重新划分（决策 D19）+ 9 项新 AI 功能立项登记**——按用户「个人使用为主 + 简历展示（面试官可能以访客身份浏览 URL）」口径，三轮发散候选经评分（总分 = 自用 P + 访客可见 I×1.2 + 成本低 +1/中 +0，I 系数经用户调参 1.4→1.2、演示冲击维度废除）定稿：V2 27 项（总表 19 + 新登记 8，首批定版 15 项）、V3 25 项（原 V3 2 + 新候选 1 + 自 V2 移入 16 + 暂缓 6）。总表新增 F-0216 问搜一体 / F-0217 语义搜索 / F-0218 术语悬浮解释 / F-0219 图文导读 / F-0220 站点 AI 导游 / F-0706 相关追问推荐 / F-0707 问答转知识草稿 / F-0809 图片 AI 讲解 / F-1005 评论 @小光问答；统计 90→99 项（MVP 47 / V2 27 / V3 25）。其余候选登记 IDEAS.md 待评估（IDEA-009~023）；D13 冲突 3 项待用户裁决。纯文档变更，代码零改动。
 - 2026/8/22（修复批次续） · ZCode：**BUG-015/026 移除 + BUG-030 修复**——按用户逐条指定：「BUG-015、BUG-026 移除」清场（015 建议关闭 65 次复核均 200、026 上批已修复）；「BUG-030 执行修复」：新增公开探测端点 `GET /api/v1/public/knowledge-bases/{kbId}`（公开库 200 返回 name/visibility，私有库/不存在 404「知识库不存在或无权访问」）+ 前端 `/kb/[id]` 加载链改 loadOwnerInfo→probePublicKb 分流（404 渲染「知识库不可访问（F-0307）」+ 返回列表链接，访客公开库头部显示真实库名）。GUI 三态验证通过（访客私有库 404 页 / 访客公开库正常 / OWNER 库主模式不受影响）；curl 公开 200 / 私有 404 / 不存在 404。前端 typecheck 过；后端 JDK25 fat jar 重启。
 - 2026/8/22（修复批次） · ZCode：**BUGS.md 修复批次（10 条已修复并验证）**——按用户「开始修复 bug.md」明确授权。BUG-018 tasks retry 404、BUG-019 ai/enhance OpenAPI enum、BUG-020 PUT 知识同版本同内容幂等 200、BUG-021 回收站二次确认契约确认+不存在条目 404、BUG-022 public view 草稿 404、BUG-023 logout 无 body 精确消息、BUG-024 retrieval-test 缺参 INVALID_PARAM、BUG-026 ReviewController 类级 @PreAuthorize、BUG-029 /register 路由注册（GUI 渲染注册表单验证）、BUG-028 补 boot4 正确前缀 `spring.servlet.encoding` UTF-8（**结论修正：8-22 的 14/14 400 为 Windows console curl 编码假象，GUI/UTF-8 文件 POST 中文均正常**）。全部从 BUGS.md 移除（编号不回收）；BUG-025/027 复核保持待复核（25 无复现、27 代码复查无泄漏路径）；BUG-030/FLOW 契约缺口不动。前端 typecheck 过、lint 0 errors；后端 JDK25 fat jar 重启验证。
-- 2026/8/21（第三轮 GUI） · ZCode：**2026-08-21 单浏览器回归 + BUG-028 路径细分 + BUG-030 私有 KB 静默回退**——主代理 web-gui-tester 单跑纯黑盒 1080p（子代理无法用 browser-use 已确认取消）。全程 GUI 发布中文知识成功（POST /knowledge→review→publishing/release 全 200，audit-log 抓到）；**BUG-028 在浏览器 SPA JSON POST 路径下未复现**（Jackson 默认 UTF-8 解码）；8-22 「14/14 全失败」为 curl 无 charset 头部/console 编码假象。新发现 **BUG-030**（私有 KB 直链静默回退公开库空页，中优先级，2026/8/22 已修复）；BUG-029 复测仍成立（/register 空白，2026/8/22 已修复）。/chat AI 流式、/studio releases/知识管理、管理后台三页验证通过。IAB click 限制按 QA §3.4 走 DOM ref。纯文档变更。
-- 2026/8/22 · ZCode：**2026-08-22 全功能测试批次（主代理单跑·浏览器+API 复测）**--距上次测试不足 24 小时、代码无新提交，不重复 8-21 子代理 API smoke / Playwright E2E / 文档审计，仅做浏览器渲染验证 + 复测昨天 BUG + 客户旅程。**浏览器渲染 11 个入口全部通过**（博客 / / knowledge / search / knowledge-bases / chat / login / register + 管理后台 /，SPA 路由/表单/列表/筛选器齐全）；IAB 真实点击仍超时（与 8-21 一致），按 QA §3.4 走 DOM 代替。**新增 P0 BUG-028 全局 UTF-8 解码失败**（14/14 写接口含中文全 400——Servlet 字符编码未设为 UTF-8 致 Latin-1 解码错位；GET/boolean payload 不受影响；8-19 / 8-21 均未测中文 content 故长期未暴露），影响所有中文用户创建/更新知识、评论、目录、知识库、AI 调用、聊天会话、注册。复测昨天 BUG：BUG-018/H1（tasks retry fake id 误 200）、BUG-019/H2（ai/enhance scene=clarity 拒）、BUG-022/M4（public view 对草稿 200）**全部仍存在**（代码无变更符合预期）；BUG-025/L5（system/ping 首测 401 冷启动）今天未复现。GET 读路径不受 UTF-8 影响（中文知识/评论能正常读）。qa_ 账号治理观察：qa_alpha_20260819 / qa_fulltest_20260821 历史数据仍出现在公开列表与评论中，QA §3.8 自动清理机制实际未实现——治理问题待用户决策。qa_fulltest_20260822 / qa_smoke_b_20260822 按 QA §3.8 于 8-22 22:00 清理（若清理机制后续落地）。**纯文档变更，代码零改动**。
-- 2026/8/20 · ZCode：**AI 相关功能优先级提升（决策 D18）**--按用户「提升 AI 相关功能优先级」将 V3 的 10 项 AI 功能并入 V2（F-0505/F-0607/F-0704/F-0705/F-0806/F-0807/F-1003/F-1103/F-1203/F-1204），V2 内 24 项 AI 功能标「V2（AI 优先）」优先实施；总表统计更新为 90 项（MVP 47 / V2 41 / V3 2），V3 仅剩非 AI 的 F-0207/F-1305；待办新增 V2-AI 优先批次。纯文档变更，代码零改动。
-- 2026/8/20 · Codex：**IDEA-006~008 落地**——知识列表改为 IntersectionObserver 自动瀑布流；发布链路新增自动 AI 审核与 warning/info 确认，审核中心入口暂时隐藏且保留旧接口；开发环境新增可选端口冲突交互守卫。双前端 lint/stylelint/typecheck/test/build、后端 JDK25 package、内置浏览器回归均已完成。
-- 2026/8/19 12:05 · ZCode：**BUGS.md 修复批次（9 条修复 + 1 条复核关闭）**--按用户「执行修复 BUGS.md」修复 8-19 全功能测试缺陷：BUG-014 版本历史补全（cnt_knowledge_version 建表 + 快照写入 + GET /knowledge/{id}/versions）、BUG-013 update/autosave 越界目录 400、BUG-016 unpublish 端点 + 已下架可删除、BUG-010 评论/AI 增值 createdAt 回填、BUG-012 纠错限流 1/分钟、BUG-007 审核中心「发布」按钮 + ReleaseController 授权 + release 移除版本强校验（approve 后版本 +1）、BUG-008 HomePage「我的公开库」文案、BUG-009 登录提示 v-if、BUG-017 编辑器文案对齐；BUG-015 复核未复现保留 SUSPECT。验证：mvn package + 单测全绿、前端门禁干净、E2E 9/9、curl 全链路（v0/v1 快照、429、approve→发布→公开可见、下架→隐藏→可删除）。环境注意：8080 有守护自动拉起 java -jar，spring-boot:run 不带 -am 会取 .m2 旧依赖，须 package 后 java -jar。
 
 ## 8. 关键决策摘要（详见规范文档，勿推翻）
 
@@ -138,6 +134,7 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 | D16 | **知识库体系**：知识=文章（概念统一）；空间→知识库→多级目录→知识三层；单库单目录；可见性库级决定（公开/私有/授权名单 V2），删除文章级可见性；目录树替代分类（标签保留）；删库连带回收站（默认 30 天）；知识不可跨库移动（仅复制或重新发布）（PRODUCT §4/§5/§6，BACKEND §13） |
 | D17 | **概念统一（文章→知识）**：全项目「文章」统一改名「知识」——文档措辞、后端类名/接口/事件/审计常量、前端路由/文案/组件、测试断言全量替换；物理表名 `cnt_article`→`cnt_knowledge`、接口路径 `/api/v1/articles`→`/api/v1/knowledge` 同步全改，**不保留兼容期**（前后端同仓同 PR 切换）（BACKEND §10） |
 | D18 | **AI 相关功能优先级提升（2026/8/20）**：V3 的 AI 功能并入 V2（F-0505、F-0607、F-0704/F-0705、F-0806/F-0807、F-1003、F-1103、F-1203/F-1204），V2 内 24 项 AI 相关功能标「AI 优先」优先实施（AI 范围定义见 PRODUCT §5 阶段标记说明）；V3 仅剩非 AI 的 F-0207/F-1305 |
+| D19 | **V2/V3 重新划分（2026/8/22）**：按「个人使用效率 × 访客/面试官浏览可见」评分（总分 = 自用 P + 可见 I×1.2 + 成本低 +1/中 +0）重划——V2 27 项（首批定版 15 项）、V3 25 项（含 6 项多用户/治理向「暂缓」：F-0106/F-0211/F-1002/F-1003/F-1203/F-1204）；新增总表登记 F-0216~F-0220/F-0706/F-0707/F-0809/F-1005 共 9 项；D18 的「AI 优先」标注停用（PRODUCT §5 阶段标记说明）；未采纳候选入 IDEAS.md 待评估 |
 
 ## 9. 环境速查
 

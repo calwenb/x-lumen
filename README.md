@@ -16,12 +16,12 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 
 文档体系 11 份（产品/全局/后端/前端/原型 + AI 协作五件套 STATUS/CHANGELOG/BUGS/IDEAS/QA），各文档职责与权威范围见 [全局文档](docs/global/GLOBAL.md) 第 2 节。
 
-- [产品设计文档](docs/product/PRODUCT.md)：产品定位、13 模块 90 项功能总表（唯一功能事实源，MVP 47 / V2 41 / V3 2）、行为规则与完成定义
+- [产品设计文档](docs/product/PRODUCT.md)：产品定位、13 模块 99 项功能总表（唯一功能事实源，MVP 47 / V2 27 / V3 25，V3 含 6 项暂缓）、行为规则与完成定义
 - [全局文档](docs/global/GLOBAL.md)：总体架构、仓库结构、技术基线、本地运行与质量门禁命令
 - [后端开发文档](docs/backend/BACKEND.md)：7 个 Maven 模块、SQL 编号契约（00~95）、MVC 规则与编码规范
 - [前端开发文档](docs/frontend/FRONTEND.md)：blog/admin 双应用工程结构、状态管理、接口与视觉规范
 - [前端原型文档](docs/frontend/PROTOTYPE.md)：B/A/D 页面清单、线框与交互流程
-- [开发状态与交接文档](docs/ai/STATUS.md)：强制工作流、能力基线、待办认领、决策 D1~D18
+- [开发状态与交接文档](docs/ai/STATUS.md)：强制工作流、能力基线、待办认领、决策 D1~D19
 - [AI 变更日志](docs/ai/CHANGELOG.md)：按会话倒序的变更记录
 - [待修问题清单](docs/ai/BUGS.md)：用户自测缺陷记录（仅按明确要求修复）
 - [功能想法池](docs/ai/IDEAS.md)：用户功能想法收集与评估状态（采纳须登记 PRODUCT 功能总表）
