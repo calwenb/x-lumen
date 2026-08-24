@@ -16,7 +16,7 @@ import { fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import CitationCard from '@/modules/chat/components/CitationCard.vue'
 
-import type { ChatMessage, Citation, Conversation } from '@/modules/chat/api/chat'
+import type { ChatMessage, Citation, Conversation, ToolCallRecord, ToolEvent } from '@/modules/chat/api/chat'
 import type { KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
 
 interface ChatItem {
@@ -24,7 +24,22 @@ interface ChatItem {
   role: 'user' | 'assistant'
   content: string
   citations: Citation[]
+  /** 本次流式过程中的工具过程事件（IDEA-025：start/done 时序渲染）。 */
+  tools: ToolEvent[]
+  /** 历史回放的工具调用记录（来源 toolCallsJson）。 */
+  toolCalls: ToolCallRecord[]
   streaming: boolean
+}
+
+/** 已完成（done）的工具事件，按 seq 升序。 */
+function doneTools(tools: ToolEvent[]): ToolEvent[] {
+  return tools.filter((t) => t.phase === 'done').sort((a, b) => a.seq - b.seq)
+}
+
+/** 进行中的工具事件（start 未配对 done）。 */
+function activeTools(tools: ToolEvent[]): ToolEvent[] {
+  const doneSeqs = new Set(tools.filter((t) => t.phase === 'done').map((t) => t.seq))
+  return tools.filter((t) => t.phase === 'start' && !doneSeqs.has(t.seq))
 }
 
 const session = useSessionStore()
@@ -50,6 +65,8 @@ function toChatItem(message: ChatMessage): ChatItem {
     role: message.role,
     content: message.content,
     citations: message.citations,
+    tools: [],
+    toolCalls: message.toolCalls,
     streaming: false,
   }
 }
@@ -123,6 +140,8 @@ async function send(): Promise<void> {
     role: 'user',
     content: query,
     citations: [],
+    tools: [],
+    toolCalls: [],
     streaming: false,
   })
   // BUG-002：须用 reactive 代理后再入列，onChunk 持有的引用才能触发流式重渲染
@@ -131,6 +150,8 @@ async function send(): Promise<void> {
     role: 'assistant',
     content: '',
     citations: [],
+    tools: [],
+    toolCalls: [],
     streaming: true,
   })
   messages.value.push(assistant)
@@ -150,6 +171,10 @@ async function send(): Promise<void> {
       {
         onChunk: (text) => {
           assistant.content += text
+          scrollToBottom()
+        },
+        onTool: (event) => {
+          assistant.tools.push(event)
           scrollToBottom()
         },
         onCitations: (citations) => {
@@ -264,6 +289,57 @@ onMounted(() => {
               aria-hidden="true"
               >▍</span
             >
+            <!-- IDEA-025 工具过程：进行中状态行（正在检索） -->
+            <div
+              v-if="message.role === 'assistant' && activeTools(message.tools).length > 0"
+              class="chat-message__active-tools"
+            >
+              <span
+                v-for="tool in activeTools(message.tools)"
+                :key="`active-${tool.seq}`"
+                class="chat-message__tool-line"
+              >
+                {{ tool.name === 'knowledge.search' ? '正在检索知识库…' : `正在调用 ${tool.name}…` }}
+              </span>
+            </div>
+            <!-- IDEA-025 工具轨迹：done 面板（流式过程）+ 历史回放 -->
+            <details
+              v-if="message.role === 'assistant' && doneTools(message.tools).length > 0"
+              class="chat-message__tools"
+            >
+              <summary class="chat-message__tools-summary">
+                调用了 {{ doneTools(message.tools).length }} 个工具
+              </summary>
+              <ul class="chat-message__tools-list">
+                <li
+                  v-for="tool in doneTools(message.tools)"
+                  :key="`done-${tool.seq}`"
+                  class="chat-message__tool"
+                  :class="{ 'chat-message__tool--fail': tool.ok === false }"
+                >
+                  <span class="chat-message__tool-name">{{ tool.name }}</span>
+                  <span v-if="tool.ok === false" class="chat-message__tool-status">失败</span>
+                  <span v-else class="chat-message__tool-status">完成</span>
+                  <span v-if="tool.summary" class="chat-message__tool-summary">{{ tool.summary }}</span>
+                  <span v-if="tool.durationMs != null" class="chat-message__tool-duration">
+                    {{ tool.durationMs }}ms
+                  </span>
+                </li>
+              </ul>
+            </details>
+            <details
+              v-else-if="message.role === 'assistant' && message.toolCalls.length > 0"
+              class="chat-message__tools"
+            >
+              <summary class="chat-message__tools-summary">
+                调用了 {{ message.toolCalls.length }} 个工具（历史）
+              </summary>
+              <ul class="chat-message__tools-list">
+                <li v-for="call in message.toolCalls" :key="call.id" class="chat-message__tool">
+                  <span class="chat-message__tool-name">{{ call.name || 'knowledge.search' }}</span>
+                </li>
+              </ul>
+            </details>
             <div v-if="message.citations.length > 0" class="chat-message__citations">
               <CitationCard
                 v-for="(citation, index) in message.citations"
@@ -578,6 +654,102 @@ onMounted(() => {
 
 .chat-message__cursor {
   color: var(--xl-color-ai);
+}
+
+/* IDEA-025 工具过程展示：进行中状态行 + done/历史折叠面板 */
+.chat-message__active-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.chat-message__tool-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--xl-text-muted);
+  font-size: 12px;
+}
+
+.chat-message__tool-line::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--xl-color-ai);
+  animation: chat-pulse 1s ease-in-out infinite;
+}
+
+@keyframes chat-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.chat-message__tools {
+  margin-top: 8px;
+  border: 1px solid var(--xl-border);
+  border-radius: 8px;
+  background: var(--xl-bg-surface);
+  padding: 6px 10px;
+}
+
+.chat-message__tools-summary {
+  color: var(--xl-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chat-message__tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-message__tool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--xl-text-secondary);
+  font-size: 12px;
+}
+
+.chat-message__tool-name {
+  font-family: var(--xl-font-mono);
+  font-size: 11px;
+}
+
+.chat-message__tool-status {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--xl-color-success) 14%, transparent);
+  color: var(--xl-color-success);
+  font-size: 11px;
+}
+
+.chat-message__tool--fail .chat-message__tool-status {
+  background: color-mix(in srgb, var(--xl-color-danger) 14%, transparent);
+  color: var(--xl-color-danger);
+}
+
+.chat-message__tool-summary {
+  color: var(--xl-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.chat-message__tool-duration {
+  margin-left: auto;
+  color: var(--xl-text-muted);
+  font-size: 11px;
 }
 
 .chat-message__citations {

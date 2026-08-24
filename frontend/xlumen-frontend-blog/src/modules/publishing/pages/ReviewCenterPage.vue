@@ -336,6 +336,16 @@ onMounted(() => {
               <span v-if="issue.position" class="review-issue__position">{{ issue.position }}</span>
             </div>
             <p v-if="issue.evidence" class="review-issue__evidence">原文：{{ issue.evidence }}</p>
+            <!-- IDEA-025 事实核对：库内证据引用（有证据字段才显示） -->
+            <p v-if="issue.evidenceQuote" class="review-issue__evidence">
+              库内证据：{{ issue.evidenceQuote }}
+              <RouterLink
+                v-if="issue.evidenceKnowledgeId"
+                class="review-issue__evidence-link"
+                :to="`/knowledge/${issue.evidenceKnowledgeId}`"
+                >查看原文 →</RouterLink
+              >
+            </p>
             <p v-if="issue.suggestion" class="review-issue__suggestion">
               建议：{{ issue.suggestion }}
             </p>
@@ -603,6 +613,13 @@ onMounted(() => {
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: break-word;
+}
+
+.review-issue__evidence-link {
+  margin-left: 6px;
+  color: var(--xl-color-primary);
+  font-size: 12px;
+  text-decoration: none;
 }
 
 .review-issue__suggestion {

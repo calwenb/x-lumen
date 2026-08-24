@@ -11,6 +11,7 @@ import com.calwen.xlumen.ai.service.EnhanceService;
 import com.calwen.xlumen.ai.service.ModelGateway;
 import com.calwen.xlumen.ai.service.provider.ChatMessage;
 import com.calwen.xlumen.ai.service.provider.ProviderChatRequest;
+import com.calwen.xlumen.ai.service.provider.ProviderChatResult;
 import com.calwen.xlumen.ai.vo.EnhanceResultVO;
 import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
@@ -120,7 +121,8 @@ public class EnhanceServiceImpl implements EnhanceService {
                 .maxTokens(1024)
                 .stream(false)
                 .build();
-        String raw = modelGateway.chat(workspaceId, scene, request);
+        ProviderChatResult result = modelGateway.chat(workspaceId, scene, request);
+        String raw = result.getContent();
         JSONObject obj = parseJson(raw);
         validate(scene, obj);
         return obj.toString();

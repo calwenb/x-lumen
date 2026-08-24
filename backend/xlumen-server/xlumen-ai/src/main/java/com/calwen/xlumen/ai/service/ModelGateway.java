@@ -2,12 +2,15 @@ package com.calwen.xlumen.ai.service;
 
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.service.provider.ProviderChatRequest;
+import com.calwen.xlumen.ai.service.provider.ProviderChatResult;
+import com.calwen.xlumen.ai.service.provider.StreamCallback;
 
 import java.util.List;
 import java.util.function.Consumer;
 
 /**
  * 模型网关（F-0501/F-0502）：场景→(供应商,模型) 解析 + 对话/向量化编排 + 简单熔断。
+ * 对话统一返回 ProviderChatResult（IDEA-025 F-0708），tools 随 request 透传，场景解析/回退/熔断不变。
  *
  * @author calwen
  * @date 2026/8/13
@@ -29,9 +32,9 @@ public interface ModelGateway {
      * @param workspaceId 工作空间 ID
      * @param scene       场景
      * @param request     对话请求
-     * @return 回复文本
+     * @return 统一结果（内容 + 工具调用 + 结束原因）
      */
-    String chat(Long workspaceId, AiScene scene, ProviderChatRequest request);
+    ProviderChatResult chat(Long workspaceId, AiScene scene, ProviderChatRequest request);
 
     /**
      * 流式对话。
@@ -39,11 +42,11 @@ public interface ModelGateway {
      * @param workspaceId 工作空间 ID
      * @param scene       场景
      * @param request     对话请求
-     * @param onChunk     增量回调
+     * @param callback    增量与终态回调
      * @param onError     异常回调
      */
     void chatStream(Long workspaceId, AiScene scene, ProviderChatRequest request,
-                    Consumer<String> onChunk, Consumer<Throwable> onError);
+                    StreamCallback callback, Consumer<Throwable> onError);
 
     /**
      * 文本向量化。

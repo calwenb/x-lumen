@@ -82,18 +82,18 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ReviewVO submitReview(Long knowledgeId) {
-        return submitReview(knowledgeId, false);
+        return submitReview(knowledgeId, false, null);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ReviewVO submitAutoReview(Long knowledgeId) {
-        ReviewVO review = submitReview(knowledgeId, true);
+    public ReviewVO submitAutoReview(Long knowledgeId, LocalDateTime publishAt) {
+        ReviewVO review = submitReview(knowledgeId, true, publishAt);
         return getReview(review.getId());
     }
 
     @Transactional(rollbackFor = Exception.class)
-    private ReviewVO submitReview(Long knowledgeId, boolean forceAi) {
+    private ReviewVO submitReview(Long knowledgeId, boolean forceAi, LocalDateTime publishAt) {
         Long workspaceId = WorkspaceContext.workspaceId();
         Long userId = WorkspaceContext.userId();
         EditorKnowledgeDTO knowledge = contentApi.getEditorKnowledge(workspaceId, knowledgeId);
@@ -126,10 +126,13 @@ public class ReviewServiceImpl implements ReviewService {
         review.setVersion(knowledge.getVersion());
         review.setReviewerId(userId);
         review.setStatus(STATUS_PENDING);
+        review.setAutoMode(forceAi ? 1 : 0);
+        review.setAutoPublishAt(forceAi ? publishAt : null);
         review.setCreatedAt(LocalDateTime.now());
         reviewMapper.insert(review);
 
-        // 强制审核关闭 → 直接通过；否则提交 AI 审校任务（场景 REVIEWER，幂等键 review-{id}）
+        // 强制审核关闭 → 直接通过；否则提交 AI 审校任务（场景 REVIEWER，幂等键 review-{id}）。
+        // 自动模式（forceAi）恒提交 AI 任务：审核完成由事件监听 finalizeAutoReview 自动发布+通知。
         boolean forced = forceAi || !Boolean.FALSE.equals(workspaceApi.forceReviewEnabled(workspaceId));
         if (!forced) {
             review.setStatus(STATUS_APPROVED);
@@ -152,6 +155,44 @@ public class ReviewServiceImpl implements ReviewService {
             throw new BizException(ErrorCode.CONFLICT, "知识状态迁移失败，版本冲突");
         }
         return toVO(review);
+    }
+
+    /**
+     * AI 审核任务完结回调（事件驱动，发布后异步审核——IDEA-024）：COMPLETED 无 error →
+     * 审核通过并自动发布（立即/按 autoPublishAt 定时）；COMPLETED 含 error / FAILED → 驳回并回草稿。
+     * 仅处理 auto_mode=1（发布按钮提交）的 PENDING 记录；审核中心人工提交的审核不受影响。
+     * 调用方（ReviewAutoPublishListener）已建立 WorkspaceContext；异常由调用方兜底不抛出。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void finalizeAutoReview(Long reviewId, String aiStatus, String resultJson, String errorMsg) {
+        ReviewEntity review = getOwnedReview(reviewId);
+        if (!STATUS_PENDING.equals(review.getStatus()) || !Integer.valueOf(1).equals(review.getAutoMode())) {
+            return;
+        }
+        if (AiTaskStatus.COMPLETED.name().equals(aiStatus)) {
+            try {
+                if (containsError(resultJson)) {
+                    finalizeBlocked(review, "AI 审核发现高风险问题", "请查看 AI 审核问题", "修复 error 问题后重新发布");
+                    return;
+                }
+            } catch (BizException e) {
+                finalizeBlocked(review, "AI 审核结果无效", "AI 结果", "请重新发起审核");
+                return;
+            }
+            review.setAiResultJson(resultJson);
+            review.setStatus(STATUS_APPROVED);
+            review.setUpdatedAt(LocalDateTime.now());
+            reviewMapper.updateById(review);
+            migrateKnowledge(review.getKnowledgeId(), KnowledgeStatus.APPROVED.getValue());
+            releaseService.release(CreateReleaseDTO.builder()
+                    .knowledgeId(review.getKnowledgeId())
+                    .version(review.getVersion())
+                    .publishAt(review.getAutoPublishAt())
+                    .build());
+        } else if (AiTaskStatus.FAILED.name().equals(aiStatus)) {
+            finalizeBlocked(review, "AI 审核执行失败", "AI 任务", errorMsg);
+        }
     }
 
     @Override

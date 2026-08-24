@@ -40,10 +40,10 @@ public class ReviewController {
         return ApiResponse.success(reviewService.submitReview(dto.getKnowledgeId()));
     }
 
-    /** 自动发布链路：始终执行 Reviewer AI 任务。 */
+    /** 自动发布链路：始终执行 Reviewer AI 任务；publishAt 为审核通过后的定时发布时间（可空）。 */
     @PostMapping("/auto")
     public ApiResponse<ReviewVO> submitAutoReview(@Valid @RequestBody CreateReviewDTO dto) {
-        return ApiResponse.success(reviewService.submitAutoReview(dto.getKnowledgeId()));
+        return ApiResponse.success(reviewService.submitAutoReview(dto.getKnowledgeId(), dto.getPublishAt()));
     }
 
     /** 审核列表（F-0902）：按状态筛选 + 分页（查询参数由 ReviewQueryDTO 自动绑定）。 */

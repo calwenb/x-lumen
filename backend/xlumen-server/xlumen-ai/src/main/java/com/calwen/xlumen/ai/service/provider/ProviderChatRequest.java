@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 供应商对话请求：model 由网关按场景配置填充，temperature/maxTokens 可空。
+ * tools 为空时行为与升级前完全一致（向后兼容，IDEA-025 F-0708）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -33,4 +34,7 @@ public class ProviderChatRequest {
 
     /** 是否流式。 */
     private boolean stream;
+
+    /** 工具定义列表（可空；空则行为与现状一致）。 */
+    private List<ToolSpec> tools;
 }

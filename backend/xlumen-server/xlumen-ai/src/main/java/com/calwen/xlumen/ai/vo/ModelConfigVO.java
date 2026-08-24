@@ -28,4 +28,7 @@ public class ModelConfigVO {
 
     /** 场景参数（JSON 文本，可空）。 */
     private String paramsJson;
+
+    /** 是否启用 Agent 模式（IDEA-025 F-0708）。 */
+    private Boolean agentEnabled;
 }

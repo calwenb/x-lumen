@@ -25,15 +25,20 @@ CREATE TABLE IF NOT EXISTS `ai_task` (
 ) ENGINE = InnoDB COMMENT ='AI 任务（F-1302 异步底座）';
 
 -- 场景模型配置（F-0502）：按场景分配供应商与模型；密钥不入表（决策 D8），连通性测试读 .env
+-- IDEA-025 F-0708 加列 agent_enabled：场景级 Agent 模式开关（默认全关，逐场景独立回退）。
 CREATE TABLE IF NOT EXISTS `ai_scene_config` (
-    `id`           BIGINT      NOT NULL COMMENT '主键（雪花 ID）',
-    `workspace_id` BIGINT      NOT NULL COMMENT '工作空间 ID',
-    `scene`        VARCHAR(32) NOT NULL COMMENT '场景（AiScene）',
-    `provider`     VARCHAR(32) NOT NULL COMMENT '供应商（BAILIAN/DEEPSEEK/MOCK）',
-    `model`        VARCHAR(64) NOT NULL COMMENT '模型名（如 qwen-plus/deepseek-chat）',
-    `params_json`  JSON        NULL COMMENT '场景参数（temperature/max_tokens 等，可空）',
-    `created_at`   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at`   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `id`            BIGINT      NOT NULL COMMENT '主键（雪花 ID）',
+    `workspace_id`  BIGINT      NOT NULL COMMENT '工作空间 ID',
+    `scene`         VARCHAR(32) NOT NULL COMMENT '场景（AiScene）',
+    `provider`      VARCHAR(32) NOT NULL COMMENT '供应商（BAILIAN/DEEPSEEK/MOCK）',
+    `model`         VARCHAR(64) NOT NULL COMMENT '模型名（如 qwen-plus/deepseek-chat）',
+    `params_json`   JSON        NULL COMMENT '场景参数（temperature/max_tokens 等，可空）',
+    `agent_enabled` TINYINT     NOT NULL DEFAULT 0 COMMENT '是否启用 Agent 模式（QA=工具循环/WRITING=多步工作流/REVIEWER=事实核对/其余预留，默认全关）',
+    `created_at`    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_scene_config_ws_scene` (`workspace_id`, `scene`)
 ) ENGINE = InnoDB COMMENT ='场景模型配置（F-0502）';
+
+-- 存量库执行（新装库无需，建表已含）：
+--   ALTER TABLE ai_scene_config ADD COLUMN agent_enabled TINYINT NOT NULL DEFAULT 0 COMMENT '是否启用 Agent 模式（QA=工具循环/WRITING=多步工作流/REVIEWER=事实核对/其余预留，默认全关）' AFTER params_json;

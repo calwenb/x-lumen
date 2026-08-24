@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 /**
  * AI 审校问题视图（F-0604）：严重度/原文位置/证据/修改建议。
+ * IDEA-025 事实核对模式：可选字段 evidenceKnowledgeId/evidenceQuote 携带库内证据引用
+ * （旧结果无证据字段依旧合法，Schema 兼容）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -28,4 +30,10 @@ public class ReviewIssueVO {
 
     /** 修改建议。 */
     private String suggestion;
+
+    /** 库内证据知识 ID（事实核对模式可选）。 */
+    private String evidenceKnowledgeId;
+
+    /** 库内证据原文引用（事实核对模式可选）。 */
+    private String evidenceQuote;
 }

@@ -10,10 +10,12 @@ import com.calwen.xlumen.ai.mapper.AiTaskMapper;
 import com.calwen.xlumen.ai.service.AiTaskDispatcher;
 import com.calwen.xlumen.ai.service.AiTaskService;
 import com.calwen.xlumen.common.exception.BizException;
+import com.calwen.xlumen.common.event.AiTaskCompletedEvent;
 import com.calwen.xlumen.common.web.ErrorCode;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -42,13 +44,16 @@ public class AiTaskServiceImpl implements AiTaskService {
     private final AiTaskMapper aiTaskMapper;
     private final StringRedisTemplate redisTemplate;
     private final AiTaskDispatcher dispatcher;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AiTaskServiceImpl(AiTaskMapper aiTaskMapper,
                              StringRedisTemplate redisTemplate,
-                             @Lazy AiTaskDispatcher dispatcher) {
+                             @Lazy AiTaskDispatcher dispatcher,
+                             ApplicationEventPublisher eventPublisher) {
         this.aiTaskMapper = aiTaskMapper;
         this.redisTemplate = redisTemplate;
         this.dispatcher = dispatcher;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -104,6 +109,7 @@ public class AiTaskServiceImpl implements AiTaskService {
         task.setResultJson(resultJson);
         task.setErrorMsg("");
         aiTaskMapper.updateById(task);
+        publishCompleted(task);
     }
 
     @Override
@@ -115,6 +121,25 @@ public class AiTaskServiceImpl implements AiTaskService {
         task.setStatus(AiTaskStatus.FAILED.name());
         task.setErrorMsg(errorMsg == null ? "" : errorMsg);
         aiTaskMapper.updateById(task);
+        publishCompleted(task);
+    }
+
+    /** 发布任务完结事件（IDEA-024）：通知模块等跨模块监听消费；监听器异常不影响任务完结。 */
+    private void publishCompleted(AiTaskEntity task) {
+        try {
+            eventPublisher.publishEvent(AiTaskCompletedEvent.builder()
+                    .taskId(task.getId())
+                    .workspaceId(task.getWorkspaceId())
+                    .userId(task.getUserId())
+                    .scene(task.getScene())
+                    .status(task.getStatus())
+                    .resultJson(task.getResultJson())
+                    .errorMsg(task.getErrorMsg())
+                    .inputJson(task.getInputJson())
+                    .build());
+        } catch (Exception e) {
+            log.warn("AI 任务完结事件发布失败 taskId={}", task.getId(), e);
+        }
     }
 
     @Override

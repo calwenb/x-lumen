@@ -10,9 +10,6 @@ import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api
 import { fetchReleases } from '@/modules/publishing/api/release'
 import {
   createAutoReview,
-  fetchReview,
-  parseReviewIssues,
-  publishAfterAutoReview,
 } from '@/modules/publishing/api/review'
 import { useInfinitePage } from '@/composables/useInfinitePage'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
@@ -154,12 +151,12 @@ async function releaseNow(row: ReleaseRow): Promise<void> {
   if (row.releasing) return
   try {
     await ElMessageBox.confirm(
-      `确认发布「${row.knowledge.title}」吗？确认后系统会先自动进行 AI 审核，审核通过后才会正式发布。`,
+      `确认发布「${row.knowledge.title}」吗？提交后将进入 AI 审核，审核通过即自动发布，结果会通过消息中心通知你。`,
       '确认发布',
       {
-        confirmButtonText: '立即发布',
+        confirmButtonText: '提交审核',
         cancelButtonText: '取消',
-        type: 'warning',
+        type: 'info',
       },
     )
   } catch {
@@ -177,12 +174,12 @@ async function releaseScheduled(row: ReleaseRow): Promise<void> {
   }
   try {
     await ElMessageBox.confirm(
-      `确认于 ${row.publishAt.replace('T', ' ')} 发布「${row.knowledge.title}」吗？确认后系统会先自动进行 AI 审核，审核通过后才会进入定时发布。`,
+      `确认于 ${row.publishAt.replace('T', ' ')} 发布「${row.knowledge.title}」吗？提交后将进入 AI 审核，审核通过即进入定时发布，结果会通过消息中心通知你。`,
       '确认发布',
       {
-        confirmButtonText: '定时发布',
+        confirmButtonText: '提交审核',
         cancelButtonText: '取消',
-        type: 'warning',
+        type: 'info',
       },
     )
   } catch {
@@ -192,44 +189,23 @@ async function releaseScheduled(row: ReleaseRow): Promise<void> {
   await doRelease(row, normalizePublishAt(row.publishAt))
 }
 
+/** 异步发布（IDEA-024）：提交审核即返回，不轮询不弹审核意见——审核通过自动发布，完成站内通知。 */
 async function doRelease(row: ReleaseRow, publishAt?: string): Promise<void> {
   row.releasing = true
   try {
-    const review = await createAutoReview(row.knowledge.id)
-    let latest = review
-    for (let attempt = 0; attempt < 90; attempt += 1) {
-      if (latest.autoDecision !== 'REVIEWING') break
-      await new Promise((resolve) => window.setTimeout(resolve, 2000))
-      latest = await fetchReview(review.id)
+    const review = await createAutoReview(row.knowledge.id, publishAt)
+    if (review.status === 'APPROVED') {
+      // 强制审核关闭：无 AI 任务，提交即通过
+      ElMessage.success(publishAt ? '已提交定时发布' : '已发布，公开可见')
+    } else {
+      ElMessage.success(publishAt
+        ? `已提交 AI 审核，审核通过后将按计划于 ${publishAt.replace('T', ' ')} 发布，结果通过消息中心通知你`
+        : '已提交 AI 审核，审核通过后自动发布，结果通过消息中心通知你')
     }
-    if (latest.autoDecision === 'BLOCKED' || latest.autoDecision === 'FAILED') {
-      const issues = parseReviewIssues(latest.aiResultJson).filter(
-        (issue) => issue.severity === 'error',
-      )
-      const details = issues
-        .map((issue, index) => {
-          const location = issue.position ? `位置：${issue.position}` : ''
-          const evidence = issue.evidence ? `依据：${issue.evidence}` : ''
-          const suggestion = issue.suggestion ? `建议：${issue.suggestion}` : ''
-          return `${index + 1}. ${[location, evidence, suggestion].filter(Boolean).join('；')}`
-        })
-        .join('\n')
-      await ElMessageBox.alert(
-        details || latest.aiErrorMessage || 'AI 审核发现高风险问题，请修改后重试。',
-        'AI 审核未通过',
-        { confirmButtonText: '知道了', type: 'error' },
-      )
-      return
-    }
-    if (latest.autoDecision !== 'READY' && latest.autoDecision !== 'PUBLISHED') {
-      throw new Error('AI 审核仍在处理中，请稍后从编辑器重试')
-    }
-    await publishAfterAutoReview(review.id, publishAt)
-    ElMessage.success('发布成功，已建立 RAG 索引')
     await Promise.all([approvedInfinite.loadFirst(), loadReleases(1)])
   } catch (error) {
     ElMessage.error(
-      error instanceof Error && error.message ? error.message : '发布失败，请稍后重试',
+      error instanceof Error && error.message ? error.message : '提交审核失败，请稍后重试',
     )
   } finally {
     row.releasing = false
@@ -247,8 +223,8 @@ onMounted(() => {
     <header class="release-page__header">
       <h1 class="release-page__title">发布管理</h1>
       <p class="release-page__intro">
-        对已通过审核的知识执行立即/定时发布，发布成功自动建立 RAG
-        索引；发布目标取自知识所属知识库/目录。
+        对已通过审核的知识提交发布：进入 AI 审核后异步进行，审核通过即自动发布（立即/定时），
+        结果通过消息中心通知；发布成功自动建立 RAG 索引。
       </p>
     </header>
 

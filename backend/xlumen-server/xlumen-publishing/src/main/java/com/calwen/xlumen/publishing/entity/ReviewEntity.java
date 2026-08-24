@@ -48,6 +48,12 @@ public class ReviewEntity {
     /** 状态：PENDING 待审核/APPROVED 通过/REJECTED 驳回。 */
     private String status;
 
+    /** 自动审核发布模式（1=发布按钮提交，审核通过后自动发布；0=审核中心人工提交）。 */
+    private Integer autoMode;
+
+    /** 定时发布时间（自动模式生效，NULL=立即发布）。 */
+    private LocalDateTime autoPublishAt;
+
     /** 驳回原因。 */
     private String rejectReason;
 

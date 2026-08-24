@@ -1,6 +1,7 @@
 // chat 模块 API：AI 助理对话（F-0701，B00/D01）+ 知识级问答（F-0702，D02）。
 // 流式对话复用 ai/utils/sse.ts 的 fetch 解析（需 Authorization 头）；REST 走统一 http 客户端。
 // ID 为 string（雪花 ID 后端 Long 序列化为 String，BACKEND.md §5.3）。
+// IDEA-025 F-0708：SSE 新增 tool 事件（工具调用过程），历史消息透传工具轨迹（toolCalls）。
 import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
@@ -14,12 +15,31 @@ export interface Conversation {
   updatedAt: string
 }
 
-/** 消息（citations 已由 citationsJson 解析）。 */
+/** 工具过程事件（SSE tool 事件负载，IDEA-025）。 */
+export interface ToolEvent {
+  seq: number
+  name: string
+  phase: 'start' | 'done'
+  argsSummary?: string
+  ok?: boolean
+  durationMs?: number
+  summary?: string
+}
+
+/** 历史消息中的工具调用记录（toolCallsJson 解析后，IDEA-025 轨迹回放）。 */
+export interface ToolCallRecord {
+  id: string
+  name: string
+  arguments: string
+}
+
+/** 消息（citations 已由 citationsJson 解析；toolCalls 为历史工具调用回放）。 */
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   citations: Citation[]
+  toolCalls: ToolCallRecord[]
 }
 
 /** 引用溯源。 */
@@ -35,6 +55,7 @@ export interface Citation {
 /** 流式对话回调。 */
 export interface ChatStreamCallbacks {
   onChunk: (text: string) => void
+  onTool: (event: ToolEvent) => void
   onCitations: (citations: Citation[]) => void
   onDone: (result: { conversationId: string; messageId: string }) => void
 }
@@ -50,6 +71,7 @@ interface RawMessage {
   role: string
   content: string
   citationsJson: string | null
+  toolCallsJson?: string | null
 }
 
 /** 会话列表（登录可见，F-0701）。 */
@@ -62,15 +84,18 @@ export async function fetchConversations(): Promise<Conversation[]> {
   }))
 }
 
-/** 会话消息历史（F-0701）。 */
+/** 会话消息历史（F-0701）：TOOL 行不单独占消息位（按 tool_call_id 归并进 assistant 的工具面板）。 */
 export async function fetchMessages(conversationId: string): Promise<ChatMessage[]> {
   const { data } = await http.get<ApiResponse<RawMessage[]>>(`/chat/conversations/${conversationId}/messages`)
-  return unwrap(data).map((message) => ({
-    id: String(message.id),
-    role: message.role === 'user' ? 'user' : 'assistant',
-    content: message.content ?? '',
-    citations: parseCitations(message.citationsJson ?? ''),
-  }))
+  return unwrap(data)
+    .filter((message) => message.role !== 'TOOL')
+    .map((message) => ({
+      id: String(message.id),
+      role: message.role === 'user' ? 'user' : 'assistant',
+      content: message.content ?? '',
+      citations: parseCitations(message.citationsJson ?? ''),
+      toolCalls: parseToolCalls(message.toolCallsJson ?? ''),
+    }))
 }
 
 /** 新建会话（F-0701）：后端 data 直接返回 id 字符串（Long 全局序列化为 String）。 */
@@ -87,7 +112,7 @@ export interface ChatScope {
   allVisible?: boolean
 }
 
-/** 流式对话（F-0701）：chunk 文本增量 / citation 引用 / done 会话归属。 */
+/** 流式对话（F-0701）：chunk 文本增量 / tool 工具过程 / citation 引用 / done 会话归属。 */
 export function streamChat(
   body: { query: string; conversationId?: string } & ChatScope,
   callbacks: ChatStreamCallbacks,
@@ -145,6 +170,44 @@ export function parseCitations(json: string): Citation[] {
   }
 }
 
+/** 解析工具调用 JSON 字符串（容错：非法 JSON 或空返回空数组）。 */
+export function parseToolCalls(json: string): ToolCallRecord[] {
+  try {
+    const parsed: unknown = JSON.parse(json)
+    if (!Array.isArray(parsed)) return []
+    const calls: ToolCallRecord[] = []
+    for (const raw of parsed) {
+      const item = raw as Record<string, unknown>
+      calls.push({
+        id: typeof item.id === 'string' ? item.id : '',
+        name: typeof item.name === 'string' ? item.name : '',
+        arguments: typeof item.arguments === 'string' ? item.arguments : '',
+      })
+    }
+    return calls
+  } catch {
+    return []
+  }
+}
+
+/** 解析工具过程事件（SSE tool 事件负载）。 */
+export function parseToolEvent(data: string): ToolEvent {
+  try {
+    const parsed = JSON.parse(data) as Record<string, unknown>
+    return {
+      seq: Number(parsed.seq ?? 0),
+      name: typeof parsed.name === 'string' ? parsed.name : '',
+      phase: parsed.phase === 'done' ? 'done' : 'start',
+      ...(typeof parsed.argsSummary === 'string' ? { argsSummary: parsed.argsSummary } : {}),
+      ...(typeof parsed.ok === 'boolean' ? { ok: parsed.ok } : {}),
+      ...(typeof parsed.durationMs === 'number' ? { durationMs: parsed.durationMs } : {}),
+      ...(typeof parsed.summary === 'string' ? { summary: parsed.summary } : {}),
+    }
+  } catch {
+    return { seq: 0, name: '', phase: 'start' }
+  }
+}
+
 async function runChatStream(
   path: string,
   body: Record<string, unknown>,
@@ -158,6 +221,9 @@ async function runChatStream(
       switch (event.event) {
         case 'chunk':
           callbacks.onChunk(event.data)
+          break
+        case 'tool':
+          callbacks.onTool(parseToolEvent(event.data))
           break
         case 'citation':
           callbacks.onCitations(parseCitations(event.data))

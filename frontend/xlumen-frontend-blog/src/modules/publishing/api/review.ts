@@ -9,12 +9,16 @@ import type { PageResult } from '@/modules/publishing/api/public'
 /** 审核状态。 */
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
-/** AI 审校问题（aiResultJson 解析后）。 */
+/** AI 审校问题（aiResultJson 解析后）。IDEA-025 事实核对模式附可选库内证据字段。 */
 export interface ReviewIssue {
   severity: 'error' | 'warning' | 'info'
   position: string
   evidence: string
   suggestion: string
+  /** 库内证据知识 ID（事实核对模式可选）。 */
+  evidenceKnowledgeId?: string
+  /** 库内证据原文引用（事实核对模式可选）。 */
+  evidenceQuote?: string
 }
 
 /** 审核视图。 */
@@ -96,9 +100,12 @@ export async function createReview(knowledgeId: string): Promise<ReviewVO> {
   return normalizeReview(unwrap(data))
 }
 
-/** 新发布链路：始终执行 AI 审核。 */
-export async function createAutoReview(knowledgeId: string): Promise<ReviewVO> {
-  const { data } = await http.post<ApiResponse<RawReview>>('/reviews/auto', { knowledgeId })
+/** 新发布链路：提交 AI 审核后异步发布——通过后自动发布（立即/按 publishAt 定时），完成站内通知（IDEA-024）。 */
+export async function createAutoReview(knowledgeId: string, publishAt?: string): Promise<ReviewVO> {
+  const { data } = await http.post<ApiResponse<RawReview>>(
+    '/reviews/auto',
+    publishAt ? { knowledgeId, publishAt } : { knowledgeId },
+  )
   return normalizeReview(unwrap(data))
 }
 
@@ -157,6 +164,10 @@ export function parseReviewIssues(aiResultJson: string): ReviewIssue[] {
         position: typeof item.position === 'string' ? item.position : '',
         evidence: typeof item.evidence === 'string' ? item.evidence : '',
         suggestion: typeof item.suggestion === 'string' ? item.suggestion : '',
+        ...(typeof item.evidenceKnowledgeId === 'string'
+          ? { evidenceKnowledgeId: item.evidenceKnowledgeId }
+          : {}),
+        ...(typeof item.evidenceQuote === 'string' ? { evidenceQuote: item.evidenceQuote } : {}),
       })
     }
     return issues

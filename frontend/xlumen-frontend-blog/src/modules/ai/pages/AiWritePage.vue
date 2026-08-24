@@ -40,6 +40,8 @@ const resultContent = ref('')
 const errorMsg = ref('')
 const saving = ref(false)
 const saveMessage = ref('')
+/** 多步工作流进度（IDEA-025 F-0608：SSE progress 事件，0~100）。 */
+const taskProgress = ref(0)
 
 /** 保存为新知识的目标库（决策 D16：单库单目录，创建后不可更换）。 */
 const knowledgeBases = ref<KnowledgeBase[]>([])
@@ -64,6 +66,16 @@ const canSubmit = computed(() => {
 const renderedResult = computed(() =>
   resultContent.value ? renderMarkdown(resultContent.value) : '',
 )
+
+/** 多步工作流阶段文案（IDEA-025 F-0608；单次生成模式进度同样走 10→90）。 */
+const stepLabel = computed(() => {
+  const p = taskProgress.value
+  if (p < 20) return '正在准备提纲…'
+  if (p < 85) return '正在分章生成…'
+  if (p < 90) return '正在自审…'
+  if (p < 100) return '正在修订…'
+  return '已完成'
+})
 
 function buildPayload(): WritingRequest {
   if (mode.value === 'topic') return { topic: topic.value.trim() }
@@ -94,6 +106,7 @@ async function startStreaming(id: string): Promise<void> {
   streamText.value = ''
   resultTitle.value = ''
   resultContent.value = ''
+  taskProgress.value = 0
   controller = new AbortController()
   try {
     await streamSse(
@@ -115,6 +128,15 @@ async function startStreaming(id: string): Promise<void> {
 }
 
 function handleEvent(id: string, event: SseEvent): void {
+  if (event.event === 'progress') {
+    try {
+      const parsed = JSON.parse(event.data) as { progress?: number }
+      if (typeof parsed.progress === 'number') taskProgress.value = parsed.progress
+    } catch {
+      // 进度解析失败忽略
+    }
+    return
+  }
   if (event.event === 'chunk') {
     streamText.value += event.data
     return
@@ -181,6 +203,7 @@ function reset(): void {
   resultContent.value = ''
   errorMsg.value = ''
   saveMessage.value = ''
+  taskProgress.value = 0
 }
 
 async function saveAsKnowledge(): Promise<void> {
@@ -287,6 +310,13 @@ onBeforeUnmount(() => {
 
     <div v-if="phase === 'submitting' || phase === 'streaming'" class="ai-write__progress">
       <AiTaskProgress :status="phase === 'submitting' ? 'submitting' : 'streaming'" />
+      <div v-if="phase === 'streaming'" class="ai-write__steps">
+        <el-progress
+          :percentage="taskProgress"
+          :stroke-width="6"
+          :format="() => stepLabel"
+        />
+      </div>
       <pre
         v-if="phase === 'streaming'"
         class="ai-write__stream">{{ streamText }}<span class="ai-write__cursor" aria-hidden="true">▍</span></pre>

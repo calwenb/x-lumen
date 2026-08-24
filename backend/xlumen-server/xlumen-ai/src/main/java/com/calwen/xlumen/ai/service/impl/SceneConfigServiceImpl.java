@@ -45,6 +45,7 @@ public class SceneConfigServiceImpl implements SceneConfigService {
                         .providerName(config.getProvider())
                         .model(config.getModel())
                         .paramsJson(config.getParamsJson())
+                        .agentEnabled(Boolean.TRUE.equals(config.getAgentEnabled()))
                         .build();
             }
         }
@@ -65,12 +66,14 @@ public class SceneConfigServiceImpl implements SceneConfigService {
                         .provider(e.getProvider())
                         .model(e.getModel())
                         .paramsJson(e.getParamsJson())
+                        .agentEnabled(Boolean.TRUE.equals(e.getAgentEnabled()))
                         .build())
                 .toList();
     }
 
     @Override
-    public void update(Long workspaceId, AiScene scene, String provider, String model, String paramsJson) {
+    public void update(Long workspaceId, AiScene scene, String provider, String model,
+                       String paramsJson, Boolean agentEnabled) {
         AiSceneConfigEntity existing = sceneConfigMapper.selectOne(new LambdaQueryWrapper<AiSceneConfigEntity>()
                 .eq(AiSceneConfigEntity::getWorkspaceId, workspaceId)
                 .eq(AiSceneConfigEntity::getScene, scene.name())
@@ -81,6 +84,7 @@ public class SceneConfigServiceImpl implements SceneConfigService {
         entity.setProvider(provider.toUpperCase());
         entity.setModel(model);
         entity.setParamsJson(paramsJson);
+        entity.setAgentEnabled(Boolean.TRUE.equals(agentEnabled));
         if (entity.getId() == null) {
             sceneConfigMapper.insert(entity);
         } else {

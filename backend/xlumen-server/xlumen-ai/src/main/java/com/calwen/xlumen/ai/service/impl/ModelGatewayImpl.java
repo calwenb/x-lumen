@@ -8,6 +8,8 @@ import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.service.provider.ChatMessage;
 import com.calwen.xlumen.ai.service.provider.ModelProvider;
 import com.calwen.xlumen.ai.service.provider.ProviderChatRequest;
+import com.calwen.xlumen.ai.service.provider.ProviderChatResult;
+import com.calwen.xlumen.ai.service.provider.StreamCallback;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
 import org.slf4j.Logger;
@@ -55,14 +57,14 @@ public class ModelGatewayImpl implements ModelGateway {
     }
 
     @Override
-    public String chat(Long workspaceId, AiScene scene, ProviderChatRequest request) {
+    public ProviderChatResult chat(Long workspaceId, AiScene scene, ProviderChatRequest request) {
         SceneModel sm = resolveScene(workspaceId, scene);
         ModelProvider provider = resolveProvider(sm.getProviderName());
         String key = circuitKey(sm);
         checkCircuit(key);
         request.setModel(sm.getModel());
         try {
-            String result = provider.chat(request);
+            ProviderChatResult result = provider.chat(request);
             recordSuccess(key);
             return result;
         } catch (Exception e) {
@@ -73,7 +75,7 @@ public class ModelGatewayImpl implements ModelGateway {
 
     @Override
     public void chatStream(Long workspaceId, AiScene scene, ProviderChatRequest request,
-                           Consumer<String> onChunk, Consumer<Throwable> onError) {
+                           StreamCallback callback, Consumer<Throwable> onError) {
         SceneModel sm = resolveScene(workspaceId, scene);
         ModelProvider provider = resolveProvider(sm.getProviderName());
         String key = circuitKey(sm);
@@ -85,7 +87,7 @@ public class ModelGatewayImpl implements ModelGateway {
         }
         request.setModel(sm.getModel());
         AtomicBoolean errored = new AtomicBoolean(false);
-        provider.chatStream(request, onChunk, err -> {
+        provider.chatStream(request, callback, err -> {
             errored.set(true);
             recordFailure(key);
             onError.accept(err);
@@ -122,8 +124,8 @@ public class ModelGatewayImpl implements ModelGateway {
                 .stream(false)
                 .build();
         try {
-            String resp = provider.chat(request);
-            return StrUtil.isNotBlank(resp);
+            ProviderChatResult resp = provider.chat(request);
+            return StrUtil.isNotBlank(resp.getContent());
         } catch (Exception e) {
             log.warn("模型连通性测试失败 provider={} model={}", providerName, model, e);
             throw new BizException(ErrorCode.SERVICE_UNAVAILABLE, "连接失败：" + safeMessage(e));

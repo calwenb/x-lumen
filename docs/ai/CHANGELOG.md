@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/22
+> 更新日期：2026/8/24
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 > 归档规则：正文只保留最近约 14 天条目；更早条目按原样移入 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md) 顶部，git 历史始终可回溯。
@@ -31,6 +31,49 @@
 - **GLOBAL 导航同步**：§2 导航表与 §4 结构树补 CHANGELOG-ARCHIVE.md 行、文档计数 11→12
 
 验证：改动文件相对链接 grep 复核无悬空；纯文档变更，不跑代码门禁。
+
+## 2026/8/24 晚 · ZCode（发布链路异步化：发布后异步 AI 审核 + 站内通知，去掉轮询与阻塞弹窗）
+
+> 影响文档：docs/product/PRODUCT.md、docs/backend/BACKEND.md、docs/ai/CHANGELOG.md、docs/ai/STATUS.md、sql/init/50_publishing.sql · 决策摘要：无（用户反馈发布确认弹窗样式差、期望「发布后异步审核+审核完通知」，据此改 F-0907 异步语义）
+
+按用户反馈「点击发布应进入异步 AI 审核、审核完站内通知，而非阻塞等待弹窗」改造发布链路（IDEA-024 落地续）：
+
+- **后端**：`pub_review` 加两列——`auto_mode TINYINT NOT NULL DEFAULT 0`（1=发布按钮提交，审核通过自动发布；0=审核中心人工）与 `auto_publish_at DATETIME NULL`（定时发布时间），`ReviewEntity`/`CreateReviewDTO`（+publishAt）/`ReviewController /auto` 同步；新增 `ReviewServiceImpl.finalizeAutoReview`（事件驱动最终化：COMPLETED 无 error→通过+自动发布（携带 auto_publish_at）；含 error/FAILED→驳回回草稿）与 `job/ReviewAutoPublishListener`（监听 `AiTaskCompletedEvent`，仅 auto_mode=1 且 PENDING，显式建立 WorkspaceContext、异常只记日志不抛出——不中断站内信监听）；`publishAfterAutoReview` 保留供审核中心人工路径。
+- **前端**：编辑器与发布管理两处发布入口去掉轮询（fetchReview 循环）、高危 alert、软问题确认弹窗——提交审核即返回，提示「已提交 AI 审核，审核完成后将通过消息中心通知你」（强制审核关闭时提交即通过直接提示已发布）；`createAutoReview(knowledgeId, publishAt?)` 携带定时时间。
+- **通知文案**：站内信「通过/未通过」文案中性化（自动模式已自动发布，不再提示「可前往发布」；未通过明确「已回退为草稿」）。
+- **测试**：新增 `ReviewAutoPublishListenerTest`（5 条：筛选/忽略/异常不抛）与 `ReviewServiceImplAutoFinalizeTest`（4 条：通过自动发布（带 scheduledAt）/error 驳回回草稿/FAILED 驳回/非自动模式不动）；后端全量 89 测试全绿；blog typecheck/lint 0 errors。
+- 存量库 DDL（`auto_mode`/`auto_publish_at` 两列）已在 xlumen_dev 本地执行（skill 确认流程）。
+- **实时推送（续）**：按用户要求「后端主动推送 + 右上角弹窗提醒」（el-notification），新增用户级 SSE 端点 `GET /api/v1/notifications/stream`（`UserSseRegistry`：按 userId 注册、30s 心跳、30min 超时），通知创建后即时推送 `notification` 事件；前端 NotificationBell 建立 SSE 长连接（断线 5s 自动重连）、收到事件即 `ElNotification` 右上角弹窗（未通过/失败=error、通过=success、其余 info，点击跳转链接），未读数同步 +1，30s 轮询保留为兜底。**单向服务端推送用 SSE 即可，不引入 WebSocket**（项目无 WS 依赖，SSE 基建现成）。
+
+## 2026/8/24 · ZCode（IDEA-025 AI Agent 工具调用 + IDEA-024 审核中心恢复/通用消息）
+
+> 影响文档：docs/product/PRODUCT.md、docs/backend/BACKEND.md、docs/ai/STATUS.md、docs/ai/CHANGELOG.md、docs/ai/IDEAS.md、docs/ai/BUGS.md、sql/init/30_ai.sql、sql/init/70_chat.sql、sql/init/90_notification.sql（新增） · 决策摘要：无（IDEA-024/025 立项实施，SEO 批次按方案红线裁决砍掉）
+
+### IDEA-025 · F-0708/F-0608 Agent 全链路改造（按方案实施完成，方案文档已删）
+
+**协议层（xlumen-ai/service/provider）**：新增 `ToolSpec`/`ToolCall`/`ProviderChatResult`/`StreamCallback`；`ChatMessage` 加 toolCalls/toolCallId/name（role 扩 tool）；`ProviderChatRequest` 加 tools（空则行为与旧版一致）；`ModelProvider.chat()` 返回类型 String→ProviderChatResult、`chatStream()` 改 StreamCallback，`ModelGateway(+Impl)` 签名跟随；`OpenAICompatibleProvider` 四处改动（buildChatBody 序列化 tools/assistant.tool_calls/tool 消息；chat 解析 message.tool_calls+finish_reason；流式 delta.tool_calls 按 index 归并、finish_reason 暂存、流尾回调 onResult；parseDelta/mergeToolCallDelta 提为包级方法）；`MockProvider` 脚本化（Deque 出队，无脚本保持现状）；4 调用方适配（ReviewExecutor/EnhanceServiceImpl/WritingExecutor/ChatServiceImpl）。
+
+**场景开关**：`ai_scene_config` 加 `agent_enabled TINYINT NOT NULL DEFAULT 0`（附存量 ALTER 注释）；`SceneModel`/`AiSceneConfigEntity`/`ModelConfigVO`/`ModelConfigUpdateDTO`/`SceneConfigService.update` 全链路加字段；admin 模型配置页「Agent 模式」开关（ModelConfigPage.vue + model.ts）。
+
+**工具层（service/tool）**：`AgentTool`/`ToolContext`（workspaceId/userId/conversationId/kbId/citationCollector）/`ToolRegistry`（Bean 自动收集、specsFor(scene)、白名单/超时/截断/异常兜底全部返回错误信封）；3 个只读工具 knowledge.search（kbId 越权拦截、缺省按可见库全集、命中上报 citationCollector、ctx.kbId 锁定语义）/ knowledge.list / knowledge.getDirectoryTree；参数上限走 `XLUMEN_AGENT_*` 六项 .env 配置（AiProperties + .env.example）。
+
+**编排与对话**：`AgentRunnerImpl` 多轮工具循环（流式/非流式双模式；每轮独立模型调用，符合「流式开始后不切换模型」约束；轮数用尽追加强制收尾轮去掉 tools；工具总次数截断给错误信封；citation 去重聚合）；`ChatServiceImpl` 双路径（agent_enabled=true 去预检索、Agent 版 system prompt、SSE 新增 `tool` 事件、中间轮 assistant/tool 行落库；false 原样保留）；`chat_message` 加 `tool_calls_json`/`tool_call_id`/`tool_name` 三列、`ChatMessageEntity/VO` 同步、HISTORY_LIMIT 10→30、历史重放配对修剪（孤儿 tool 剔除、toolCalls 无响应降级纯文本）。
+
+**写作多步（F-0608）**：WritingExecutor agent 模式「大纲→分章流式（chunk 打章标）→REVIEWER 异源自审→修订」，中间产物（大纲/意见快照）随 resultJson 落库；大纲解析失败/章节超限（默认 8）/单章失败重试后仍失败/自审失败共四条降级路径全部回退单次生成；前端写作任务页加进度条 + 阶段文案（SSE progress 事件）。
+
+**审校事实核对（F-0604 增强）**：REVIEWER 开关开时挂 knowledge.search 走 AgentRunner 非流式，独立轮数上限 `XLUMEN_REVIEWER_AGENT_MAX_ROUNDS=2`；`ReviewIssueVO` 加可选 evidenceKnowledgeId/evidenceQuote（Schema 兼容，旧结果合法）；工具失败 ≠ 任务失败（闸门语义回归）；前端发布确认弹窗/审核中心展示库内证据引用（有字段才显示）。
+
+**测试**：新增 38 条单测（协议快照断言/流式分片归并/MockProvider 脚本、工具层越权与截断、AgentRunner 全循环/轮数上限/次数截断/工具失败不阻断、写作四条降级路径、审校 Schema 兼容与重试）；后端全量 `clean verify` 79 测试全绿；前端 typecheck 通过、lint 0 errors（CRLF 存量警告不计）。
+
+### IDEA-024 · 审核中心恢复 + 通用消息
+
+**新模块 xlumen-notification**（父 POM modules、dependencyManagement、boot POM 三处登记）：`noti_notification` 表（90_notification.sql，id/workspace_id/user_id/type/title/content/link/read_flag/created_at）；`NotificationEntity/Mapper/Service/Controller`（`GET /api/v1/notifications` 分页含未读数、`GET /unread-count`、`POST /{id}/read`、`POST /read-all`；归属校验 404、分页上限 100）；`AiTaskCompletedEvent`（xlumen-common/event）由 `AiTaskServiceImpl.complete/fail` 发布，`AiTaskCompletedListener` 监听 REVIEWER 场景生成站内信（COMPLETED 按 severity 汇总：存在 error→「AI 审核未通过」+高危条数，否则「AI 审核通过」+建议条数；FAILED→「AI 审核失败」+重试提示），链接指向审核中心。
+
+**前端 blog**：新模块 `modules/notification`（api + NotificationBell：顶栏铃铛、未读角标 30s 轮询、下拉消息列表、单条/全部已读、点消息跳转 link）；App.vue 登录态挂铃铛；`/studio/review` redirect 改为 ReviewCenterPage 路由（审核中心 B12 恢复，FLOW-003 关闭）；工作台加「审核中心」卡片（第 4 入口）。
+
+### 文档
+
+PRODUCT 总表登记 F-0708/F-0608（统计 99→101，MVP 47→49）、F-0502 补 Agent 开关、F-0604 补事实核对说明；BACKEND §14 增「Agent 模式」与「通用站内消息」小节；STATUS §3/§4/§7 同步；IDEAS.md IDEA-024/025 标已实施；BUGS.md FLOW-003 标已解决；方案文档 `docs/design/agent-function-call.md` 随实施完成删除（git 历史可回溯）。
 
 ## 2026/8/22 · ZCode（V2/V3 重新划分·决策 D19 + 9 项新 AI 功能立项登记）
 

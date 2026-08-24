@@ -17,16 +17,25 @@ CREATE TABLE IF NOT EXISTS `chat_conversation` (
     KEY `idx_chat_conv_ws_user` (`workspace_id`, `user_id`, `updated_at`)
 ) ENGINE = InnoDB COMMENT ='AI 对话会话（F-0701）';
 
--- AI 对话消息（F-0701/F-0702）：role=USER|ASSISTANT；citations_json 为引用证据快照。
+-- AI 对话消息（F-0701/F-0702）：role=USER|ASSISTANT|TOOL；citations_json 为引用证据快照。
+-- IDEA-025 F-0708 加工具轨迹三列：assistant 行存 tool_calls_json（ToolCall 数组快照），tool 行存 tool_call_id/tool_name。
 CREATE TABLE IF NOT EXISTS `chat_message` (
     `id`              BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
     `conversation_id` BIGINT       NOT NULL COMMENT '会话 ID（逻辑外键 chat_conversation.id）',
     `workspace_id`    BIGINT       NOT NULL COMMENT '工作空间 ID',
     `user_id`         BIGINT       NULL COMMENT '用户 ID（访客消息为 NULL）',
-    `role`            VARCHAR(16)  NOT NULL COMMENT '角色：USER|ASSISTANT',
+    `role`            VARCHAR(16)  NOT NULL COMMENT '角色：USER|ASSISTANT|TOOL',
     `content`         MEDIUMTEXT   NOT NULL COMMENT '消息内容',
     `citations_json`  JSON         NULL COMMENT '引用证据（SearchResultDTO 数组快照，可空）',
+    `tool_calls_json` JSON         NULL COMMENT 'assistant 消息的工具调用记录（ToolCall 数组快照，可空）',
+    `tool_call_id`    VARCHAR(64)  NULL COMMENT 'tool 角色消息对应的调用 ID',
+    `tool_name`       VARCHAR(64)  NULL COMMENT 'tool 角色消息的工具名（渲染免 JSON 关联）',
     `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
     KEY `idx_chat_msg_conv` (`conversation_id`, `created_at`)
 ) ENGINE = InnoDB COMMENT ='AI 对话消息（F-0701/F-0702）';
+
+-- 存量库执行（新装库无需，建表已含）：
+--   ALTER TABLE chat_message ADD COLUMN tool_calls_json JSON NULL COMMENT 'assistant 消息的工具调用记录（ToolCall 数组快照，可空）' AFTER citations_json;
+--   ALTER TABLE chat_message ADD COLUMN tool_call_id VARCHAR(64) NULL COMMENT 'tool 角色消息对应的调用 ID' AFTER tool_calls_json;
+--   ALTER TABLE chat_message ADD COLUMN tool_name VARCHAR(64) NULL COMMENT 'tool 角色消息的工具名（渲染免 JSON 关联）' AFTER tool_call_id;

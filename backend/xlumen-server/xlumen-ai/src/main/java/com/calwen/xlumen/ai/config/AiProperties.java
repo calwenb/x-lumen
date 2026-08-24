@@ -67,4 +67,28 @@ public class AiProperties {
     /** DeepSeek 默认模型：摘要。 */
     @Value("${XLUMEN_DEEPSEEK_MODEL_SUMMARY:deepseek-chat}")
     private String deepseekModelSummary;
+
+    /** Agent 最大循环轮数（IDEA-025 F-0708）：对话工具循环上限，用尽后最后一轮禁工具强制作答。 */
+    @Value("${XLUMEN_AGENT_MAX_ROUNDS:5}")
+    private int agentMaxRounds;
+
+    /** 单工具执行超时（毫秒，IDEA-025）：超时返回错误信封，孤儿 future 结果丢弃。 */
+    @Value("${XLUMEN_AGENT_TOOL_TIMEOUT_MILLIS:10000}")
+    private long agentToolTimeoutMillis;
+
+    /** 单请求工具调用总次数上限（IDEA-025）：超出部分截断并给错误信封。 */
+    @Value("${XLUMEN_AGENT_MAX_TOOL_CALLS:8}")
+    private int agentMaxToolCalls;
+
+    /** 单工具结果截断长度（IDEA-025）：超长截断并附 truncated:true。 */
+    @Value("${XLUMEN_AGENT_TOOL_RESULT_MAX_CHARS:8000}")
+    private int agentToolResultMaxChars;
+
+    /** 审校事实核对轮数上限（IDEA-025 F-0604）：发布闸门路径总耗时应可控。 */
+    @Value("${XLUMEN_REVIEWER_AGENT_MAX_ROUNDS:2}")
+    private int reviewerAgentMaxRounds;
+
+    /** 多步写作章节上限（IDEA-025 F-0608）：大纲超过则回退单次生成模式。 */
+    @Value("${XLUMEN_WRITING_MAX_CHAPTERS:8}")
+    private int writingMaxChapters;
 }

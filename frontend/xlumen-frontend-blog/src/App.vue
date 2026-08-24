@@ -9,6 +9,7 @@ import { ChatDotRound, Collection, EditPen, HomeFilled, Monitor, Search } from '
 import { useSessionStore } from '@/stores/session'
 
 import { logoutApi } from '@/modules/identity/api/auth'
+import NotificationBell from '@/modules/notification/components/NotificationBell.vue'
 
 const router = useRouter()
 const session = useSessionStore()
@@ -126,6 +127,8 @@ function handleNavCommand(command: string): void {
           >登录 / 注册</RouterLink
         >
         <template v-else>
+          <!-- IDEA-024 通用消息：AI 审核完成等站内提醒（仅登录态） -->
+          <NotificationBell />
           <RouterLink class="app-header__write" :to="{ name: 'knowledge-new' }">
             <el-icon class="app-header__write-icon"><EditPen /></el-icon>
             写知识

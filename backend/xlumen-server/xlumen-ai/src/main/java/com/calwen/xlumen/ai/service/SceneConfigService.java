@@ -31,13 +31,14 @@ public interface SceneConfigService {
     List<ModelConfigVO> list(Long workspaceId);
 
     /**
-     * 新增或更新场景配置（provider/model/paramsJson，密钥不入表）。
+     * 新增或更新场景配置（provider/model/paramsJson/agentEnabled，密钥不入表）。
      *
-     * @param workspaceId 工作空间 ID
-     * @param scene       场景
-     * @param provider    供应商名
-     * @param model       模型名
-     * @param paramsJson  场景参数（可空）
+     * @param workspaceId  工作空间 ID
+     * @param scene        场景
+     * @param provider     供应商名
+     * @param model        模型名
+     * @param paramsJson   场景参数（可空）
+     * @param agentEnabled Agent 模式开关（可空，空视为 false）
      */
-    void update(Long workspaceId, AiScene scene, String provider, String model, String paramsJson);
+    void update(Long workspaceId, AiScene scene, String provider, String model, String paramsJson, Boolean agentEnabled);
 }

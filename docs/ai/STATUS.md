@@ -1,6 +1,6 @@
 # xLumen 开发状态与交接文档（AI 必读）
 
-> 更新日期：2026/8/22
+> 更新日期：2026/8/24
 > **本仓库专属**。
 > 本仓库由多个 AI 工具协作开发，**本文件是唯一的上下文交接中心**：开始工作前通读，结束时更新。变更历史另见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -42,6 +42,8 @@
 | BUG-002~005 修复 | 2026-08-17 | chat 流式整段渲染（占位消息改 reactive 代理）、审核 AI 结果懒回填（backfillAiResult）、RAG 检索恒空（Milvus 探测改 REST v2 collections/has + reindex 强制重建 + 补跑端点）、提交审核后跳转 |
 | 小光 Markdown 渲染 | 2026-08-17 | ChatPage/KnowledgeQaDialog 助手消息改 v-html 渲染 renderMarkdown()（复用 markdown-it + DOMPurify 通道），用户消息保持纯文本插值防 XSS |
 | IDEAS 批次 + BUG-006 | 2026-08-18 | F-0212 知识赞/踩互斥+收藏+B23 收藏页、F-0213 评论赞踩（eng_like 三态化 + eng_favorite/eng_comment_reaction 新表）、F-0214 创作中心主导航、F-0312 目录树右键菜单（B01/B20 共用组件）、F-0808 详情 AI 摘要（发布事件异步生成+aiSummary 透出）；BUG-006 详情页 TOC 空时 grid 单栏回退修复；顺带修复目录 PUT 重命名返回空值契约缺陷 |
+| F-0708/F-0608 Agent 改造（IDEA-025） | 2026-08-24 | OpenAI 兼容 tools 协议（ProviderChatResult/StreamCallback/ToolSpec/ToolCall）、场景级开关 ai_scene_config.agent_enabled（默认全关）、工具层知识搬运（knowledge.search/list/getDirectoryTree，只读+可见库强制过滤）、AgentRunner 多轮工具循环（对话 SSE tool 事件+chat_message 轨迹三列+历史配对修剪）、写作「大纲→分章→自审→修订」多步工作流（四条降级路径回退单次）、审校事实核对（输出 Schema 不变+可选库内证据引用）；MockProvider 脚本化离线全链路测试 |
+| 审核中心恢复+通用消息（IDEA-024） | 2026-08-24 | 新模块 xlumen-notification（noti_notification + /api/v1/notifications + AiTaskCompletedEvent 事件钩子，REVIEWER 完结→通过/未通过/失败站内信）；blog 顶栏铃铛（未读角标+下拉+全部已读）；/studio/review 恢复审核中心路由、工作台加「审核中心」卡片（FLOW-003 关闭）；admin 模型配置页「Agent 模式」开关 |
 
 踩坑备忘（实现时易复犯，背景详见 CHANGELOG 对应条目，8-16 前条目见 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md)）：
 
@@ -53,7 +55,7 @@
 
 ## 4. 进行中
 
-IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾已完成；V2/V3 范围经决策 D19（2026-08-22）按「个人使用 × 访客/面试官浏览可见」评分重划：V2 27 项（首批 15 项定版优先实施）、V3 25 项（含 6 项多用户/治理向「暂缓」）；9 项对话期新候选已登记总表（F-0216~F-0220/F-0706/F-0707/F-0809/F-1005），其余候选在 IDEAS.md 待评估（决策 D18 保留历史记录）。待办为 OPT-1（AI 线程模型虚拟线程评估，待认领）与 V2 批次（见 §5 待办）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
+IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾已完成；**IDEA-024/025 已于 2026-08-24 立项实施完成**（F-0708/F-0608 登记总表，见 §3 能力基线与本日 CHANGELOG）；V2/V3 范围经决策 D19（2026-08-22）按「个人使用 × 访客/面试官浏览可见」评分重划：V2 27 项（首批 15 项定版优先实施）、V3 25 项（含 6 项多用户/治理向「暂缓」）；9 项对话期新候选已登记总表（F-0216~F-0220/F-0706/F-0707/F-0809/F-1005），其余候选在 IDEAS.md 待评估（决策 D18 保留历史记录）。待办为 OPT-1（AI 线程模型虚拟线程评估，待认领）与 V2 批次（见 §5 待办）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
 
 ## 5. 待办
 
@@ -75,8 +77,9 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/24 晚 · ZCode：**发布链路异步化（IDEA-024 续）**——按用户反馈「点击发布应进入异步 AI 审核、审核完站内通知，而非阻塞等待弹窗」：发布入口去掉轮询与高危/软问题确认弹窗，提交审核即返回；`pub_review` 加 auto_mode/auto_publish_at 两列 + `finalizeAutoReview` + `ReviewAutoPublishListener`（事件驱动：通过→自动发布（立即/定时），error/失败→驳回回草稿+站内通知）；站内信文案中性化；新增 9 条单测（后端 89 全绿）。
+- 2026/8/24 · ZCode：**IDEA-025 AI Agent 工具调用全链路 + IDEA-024 审核中心恢复/通用消息（同批交付）**——①协议层：ToolSpec/ToolCall/ProviderChatResult/StreamCallback 新类型，ModelProvider/ModelGateway 契约升级（chat 返回结果对象、chatStream 改 StreamCallback），OpenAICompatibleProvider 支持 tools/assistant.tool_calls/tool 消息与流式 tool_calls 按 index 归并，MockProvider 脚本化；②场景级开关 ai_scene_config.agent_enabled（默认全关、行为零变化）；③工具层 3 个只读工具（knowledge.search/list/getDirectoryTree，包装 KnowledgeApi + resolveVisibleKbIds 强制过滤 + ToolRegistry 白名单/超时/截断）；④对话 AgentRunner 多轮工具循环（SSE 新增 tool 事件、chat_message 加 tool_calls_json/tool_call_id/tool_name 三列、历史回放配对修剪、HISTORY_LIMIT 10→30）；⑤写作多步工作流（大纲→分章→自审→修订，四条降级路径回退单次）；⑥审校事实核对（Schema 兼容 + 可选 evidenceKnowledgeId/evidenceQuote，轮数上限 2）；⑦SEO 批次按红线裁决砍掉（标签在 content 模块）；⑧新模块 xlumen-notification（noti_notification + /api/v1/notifications + AiTaskCompletedEvent 钩子，REVIEWER 完结→通过/未通过/失败站内信）；⑨前端：blog chat 工具过程渲染 + 写作分步进度条 + 顶栏铃铛（未读角标+下拉+全部已读）+ /studio/review 恢复审核中心 + 工作台「审核中心」卡片 + 发布确认弹窗/审核中心库内证据链接；admin 模型配置页「Agent 模式」开关。总表登记 F-0708/F-0608（99→101 项，MVP 47→49）；完成后删除方案文档 design/agent-function-call.md（git 历史回溯）。验证：后端 clean verify 全绿（79 测试，其中新增 38 条）、blog/admin typecheck 通过、lint 0 errors（CRLF 存量警告不计）。
 - 2026/8/22 · ZCode：**docs 文档体系整体瘦身**——CHANGELOG 归档机制（8-16 前 19 条移入新增 CHANGELOG-ARCHIVE.md，模板移回头部）、STATUS §2/§5/§6 精简、BUGS 历史简表化、QA §7 并入 §3/§4、README 快速开始/技术栈改链接 GLOBAL、删除重复测试 zip（docs 体积 1.1M→约 380K）。纯文档变更。
-- 2026/8/22 · ZCode：**V2/V3 重新划分（决策 D19）+ 9 项新 AI 功能立项登记**——按用户「个人使用为主 + 简历展示（面试官可能以访客身份浏览 URL）」口径，三轮发散候选经评分（总分 = 自用 P + 访客可见 I×1.2 + 成本低 +1/中 +0，I 系数经用户调参 1.4→1.2、演示冲击维度废除）定稿：V2 27 项（总表 19 + 新登记 8，首批定版 15 项）、V3 25 项（原 V3 2 + 新候选 1 + 自 V2 移入 16 + 暂缓 6）。总表新增 F-0216 问搜一体 / F-0217 语义搜索 / F-0218 术语悬浮解释 / F-0219 图文导读 / F-0220 站点 AI 导游 / F-0706 相关追问推荐 / F-0707 问答转知识草稿 / F-0809 图片 AI 讲解 / F-1005 评论 @小光问答；统计 90→99 项（MVP 47 / V2 27 / V3 25）。其余候选登记 IDEAS.md 待评估（IDEA-009~023）；D13 冲突 3 项待用户裁决。纯文档变更，代码零改动。
 - 2026/8/22（修复批次续） · ZCode：**BUG-015/026 移除 + BUG-030 修复**——按用户逐条指定：「BUG-015、BUG-026 移除」清场（015 建议关闭 65 次复核均 200、026 上批已修复）；「BUG-030 执行修复」：新增公开探测端点 `GET /api/v1/public/knowledge-bases/{kbId}`（公开库 200 返回 name/visibility，私有库/不存在 404「知识库不存在或无权访问」）+ 前端 `/kb/[id]` 加载链改 loadOwnerInfo→probePublicKb 分流（404 渲染「知识库不可访问（F-0307）」+ 返回列表链接，访客公开库头部显示真实库名）。GUI 三态验证通过（访客私有库 404 页 / 访客公开库正常 / OWNER 库主模式不受影响）；curl 公开 200 / 私有 404 / 不存在 404。前端 typecheck 过；后端 JDK25 fat jar 重启。
 
 ## 8. 关键决策摘要（详见规范文档，勿推翻）

@@ -4,6 +4,7 @@ import com.calwen.xlumen.ai.entity.AiEnhanceResultEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.mapper.AiEnhanceResultMapper;
 import com.calwen.xlumen.ai.service.ModelGateway;
+import com.calwen.xlumen.ai.service.provider.ProviderChatResult;
 import com.calwen.xlumen.ai.vo.EnhanceResultVO;
 import com.calwen.xlumen.common.exception.BizException;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +46,7 @@ class EnhanceServiceImplTest {
     void generateAndStoreSummary_storesSceneSummaryWithKnowledgeId() {
         // mock 模型输出（带代码围栏，覆盖解析路径）
         when(modelGateway.chat(any(), eq(AiScene.SUMMARY), any()))
-                .thenReturn("```json\n{\"summary\":\"这是一篇关于向量检索的摘要\"}\n```");
+                .thenReturn(ProviderChatResult.builder().content("```json\n{\"summary\":\"这是一篇关于向量检索的摘要\"}\n```").build());
 
         EnhanceResultVO vo = enhanceService.generateAndStoreSummary(100L, 200L, "向量检索入门", "正文正文正文");
 
@@ -69,7 +70,8 @@ class EnhanceServiceImplTest {
 
     @Test
     void generateAndStoreSummary_modelOutputInvalid_throwsServiceUnavailable() {
-        when(modelGateway.chat(any(), eq(AiScene.SUMMARY), any())).thenReturn("不是 JSON 的输出");
+        when(modelGateway.chat(any(), eq(AiScene.SUMMARY), any()))
+                .thenReturn(ProviderChatResult.builder().content("不是 JSON 的输出").build());
 
         // 模型调用失败/输出不合法由调用方决定降级：这里断言直接抛出
         assertThatThrownBy(() -> enhanceService.generateAndStoreSummary(100L, 200L, "标题", "正文"))

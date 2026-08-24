@@ -8,6 +8,8 @@ import com.calwen.xlumen.publishing.dto.ReviewQueryDTO;
 import com.calwen.xlumen.publishing.vo.ReviewVO;
 import com.calwen.xlumen.publishing.vo.ReleaseVO;
 
+import java.time.LocalDateTime;
+
 /**
  * 审核服务（F-0902/F-0903）：提交审核/列表/详情/通过/驳回，状态流转规则集中本服务。
  * 工作空间与用户上下文从 WorkspaceContext 读取；知识状态经 ContentApi.publishKnowledge 迁移（乐观锁）。
@@ -25,8 +27,19 @@ public interface ReviewService {
      */
     ReviewVO submitReview(Long knowledgeId);
 
-    /** 新发布链路：始终提交 AI 审核，不受旧 forceReview 设置影响。 */
-    ReviewVO submitAutoReview(Long knowledgeId);
+    /** 新发布链路：始终提交 AI 审核；审核通过后自动发布（立即/按 publishAt 定时）。 */
+    ReviewVO submitAutoReview(Long knowledgeId, LocalDateTime publishAt);
+
+    /**
+     * AI 审核任务完结回调（事件驱动自动发布）：COMPLETED 无 error → 通过并自动发布；
+     * COMPLETED 含 error / FAILED → 驳回并回草稿（F-0907 闸门语义，异步化后由事件触发而非轮询）。
+     *
+     * @param reviewId   审核记录 ID
+     * @param aiStatus   AI 任务终态（COMPLETED/FAILED）
+     * @param resultJson 审校结果（JSON 文本，可空）
+     * @param errorMsg   失败原因（可空）
+     */
+    void finalizeAutoReview(Long reviewId, String aiStatus, String resultJson, String errorMsg);
 
     /** AI 审核无 error 后自动通过并立即/定时发布。 */
     ReleaseVO publishAfterAutoReview(Long reviewId, AutoPublishDTO dto);

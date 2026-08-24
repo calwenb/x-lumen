@@ -1,6 +1,6 @@
 # xLumen 功能想法池（IDEAS Backlog）
 
-> 更新日期：2026/8/22
+> 更新日期：2026/8/24
 > **本仓库专属**。
 > 记录用户日常使用中产生的、尚未评估的新功能想法。**本清单只做收集，不代表进入产品范围**：想法被采纳立项时，须先在 [PRODUCT.md](../product/PRODUCT.md) 第 5 节功能总表登记 `F-xxxx`、在 [STATUS.md](./STATUS.md) 第 5 节待办加任务行，并经 [CHANGELOG.md](./CHANGELOG.md) 记录，随后从本清单移除。
 > 截图等附件存放于 `assets/`（bug 相关在 `assets/bugs/`），正文填相对路径。
@@ -148,3 +148,47 @@
 - 状态：待评估
 - 动机：对话引用的网络内容无法沉淀为素材
 - 初步设想：AI 对话中网络引用一键暂存并强制标「未验证网络证据」，人工核实后可转创作素材（不违背 D13「网络内容不可信」原则）
+
+### IDEA-024 · 恢复审核中心 + 通用消息提醒
+
+- 日期：2026-08-22
+- 提出人：用户
+- 状态：✅ **2026-08-24 已实施**：①`/studio/review` 恢复审核中心路由（ReviewCenterPage，工作台加「审核中心」卡片，FLOW-003 关闭）②AI 审核完成站内消息提醒（通过/未通过/失败 + 摘要）③新后端模块 xlumen-notification（noti_notification 表 + /api/v1/notifications + AiTaskCompletedEvent 事件钩子）+ blog 顶栏铃铛（未读角标 30s 轮询 + 下拉列表 + 全部已读）
+- 动机：发布知识会进入 AI 审核（F-0907），等待期间接口长时间无响应，作者既看不到审核进度，完成时也没有任何通知
+- 初步设想：
+  1. 恢复原「审核中心」入口与页面——当前 `/studio/review` 被重定向至发布管理、B12 隐藏（流程缺口 FLOW-003 同源），作者可随时查看人工/AI 审核中与已完成项
+  2. AI 审核完成后产生一条站内消息提醒（通过/驳回/需修改 + 结论摘要），从消息可直接跳转审核中心或该知识详情
+  3. 消息提醒独立成一个通用模块（后端新模块如 `notification` + 前端消息中心），与审核业务解耦，评论回复、@小光回答完成（F-1005）等事件均可复用同一套站内信能力
+- 补充：涉及模块——后端新模块 notification / 前端 admin；「恢复审核中心」部分与 BUGS.md 流程缺口 FLOW-003 合并决策为佳
+
+### IDEA-025 · AI Agent 工具调用（Function Call）全链路改造
+
+- 日期：2026-08-24
+- 提出人：用户
+- 状态：✅ **2026-08-24 已实施**（立项拆两项：F-0708 Agent 基座与对话工具调用（模块七）、F-0608 AI 写作多步工作流（模块六），已登记 PRODUCT 总表；审校事实核对作为 F-0604 行为增强；**SEO 轻量批次按方案裁决砍掉**——标签在 content 模块撞「AI 不反向依赖 Content」红线）
+- 动机：现有 AI 能力均为「单次调用固定流水线」——对话场景 RAG 检索在生成前硬编码执行一次，模型无法自主决定检索时机、多轮取材或组合多库信息；写作单次生成全文、无自检环节；审校只做文本层检查、无法核对与库内已有知识是否矛盾；全链路无 tool_calls 协议支持
+- 初步设想：**范围仅限 MVP 已交付功能改造，V2/V3 功能只预留接入点不实现**。①协议层补全 OpenAI tools 协议（含流式 tool_calls 增量归并）；②场景级开关 ai_scene_config.agent_enabled（默认全关、行为零变化、逐场景独立回退）；③工具层注册 knowledge.search / list / getDirectoryTree（仅包装 KnowledgeApi 现有方法，强制可见库权限过滤，遵守「AI 不反向依赖 Content」红线）；④对话升级为 AgentRunner 多轮工具循环（SSE 新增 tool 事件展示检索过程）；⑤写作升级为「大纲→分章→异源自审→修订」多步工作流（四条降级路径兜底回退单次生成）；⑥审校升级为可检索库内证据的事实核对（输出 Schema 不变、闸门语义不变）；⑦SEO 轻量增强（可选批次，涉标签跨模块读取待裁决）
+- 补充：详细改造方案（接口签名、DDL、SSE 事件、配置项、测试与回退、V2/V3 预留接入路径）见 [docs/design/agent-function-call.md](../design/agent-function-call.md)（方案文档已随实施完成删除，git 历史可回溯）；建议立项拆两项——F-0708 Agent 基座与对话工具调用（模块七）、F-0608 AI 写作多步工作流（模块六），审校/SEO 作为 F-0604/F-0802 行为增强不占新编号；明确排除：摘要/索引流水线（单次即正确形态）、搜索改造（=V2 F-0216）、正文读取与写操作工具（红线与确认对话设计，V2 裁决）；涉及模块：后端 xlumen-ai（协议/网关/工具/编排/持久化）+ 前端 blog chat 与写作任务页 + admin 模型配置页
+
+### IDEA-026 · Prompt 后台动态管理（替换代码硬编码）
+
+- 日期：2026-08-24
+- 提出人：用户
+- 状态：待评估
+- 动机：全部 AI prompt 目前写死在 Java 常量里——WritingExecutor 5 条（系统/大纲/分章/自审/修订）、ReviewExecutor 2 条、ChatServiceImpl 2 条、EnhanceServiceImpl 2 条（摘要/SEO），共 11 条。调整语气、输出格式约束必须改代码重新发版，且同一场景无法按工作空间差异化定制
+- 初步设想：
+  1. 后端：复用现有 `ai_scene_config` 表（workspace_id + scene 唯一键、已有 params_json），新增 prompt 字段或 `prompt_json`（写作/审校类多槽位场景按槽位存多条，如写作的 system/outline/chapter/self_review/revise）；场景解析时缺省回退当前代码内常量（默认值兜底 → 行为零变化），保留 {{MAX}}/{{TITLE}} 等运行时变量替换
+  2. 前端：admin 模型配置页按场景提供 prompt 编辑与保存（多行文本、槽位分组），保存后即时生效或热更新
+  3. 可选项：prompt 版本化与回滚、生效前后对比预览
+- 补充：涉及模块——后端 xlumen-ai（SceneConfigService / SceneModel / 各 Executor 与 Service 由 `static final` 改为场景配置读取）+ 前端 admin 模型配置页；与当前工作区未提交的「模型配置后台化」改造同域，实施时与该批次衔接；注册/审校等下游行为不变
+
+### IDEA-027 · 代码注释去除功能编号（IDEA-/F-/BUG-）
+
+- 日期：2026-08-24
+- 提出人：用户
+- 状态：待评估
+- 动机：注释里夹带功能编号（如 `Agent 最大循环轮数（IDEA-025 F-0708）`、`Agent 编排器实现（IDEA-025 F-0708）`）——立项目标/裁剪/更名后编号即失真，对代码读者是噪音；编号追溯职责已由 git 提交历史与 STATUS/CHANGELOG 承担，注释内重复无收益
+- 初步设想：
+  1. 规范：代码注释（Javadoc 与行内）一律不写 `IDEA-xxx` / `F-xxxx` / `BUG-xxx`，只保留语义描述（如「审校事实核对轮数上限」）；需要追溯时经 git 提交与 docs 定位
+  2. 存量处理：全仓 Java 注释约 600 行命中（F-xxxx 513 行 / IDEA-xxx 57 行 / BUG-xxx 30 行，跨 294 个文件），前端 TS/Vue 另有 66 个文件——是否一次性批量清理（脚本替换 + git diff 复核，走 [[bulk-doc-edit-script-first|批量脚本约定]]）或仅新代码起执行，待用户裁决
+- 补充：涉及模块——全仓（后端 xlumen-ai 为主 + 前端 blog/admin）；不影响文档体系（STATUS/CHANGELOG/PRODUCT 内编号仍是必要链接机制，不在本想法范围）

@@ -7,7 +7,7 @@ import { streamKnowledgeAsk } from '@/modules/chat/api/chat'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import CitationCard from '@/modules/chat/components/CitationCard.vue'
 
-import type { Citation } from '@/modules/chat/api/chat'
+import type { Citation, ToolEvent } from '@/modules/chat/api/chat'
 
 const props = defineProps<{
   knowledgeId: string
@@ -27,7 +27,20 @@ interface QaMessage {
   role: 'user' | 'assistant'
   content: string
   citations: Citation[]
+  /** 工具过程事件（IDEA-025）。 */
+  tools: ToolEvent[]
   streaming: boolean
+}
+
+/** 进行中的工具事件（start 未配对 done）。 */
+function activeTools(tools: ToolEvent[]): ToolEvent[] {
+  const doneSeqs = new Set(tools.filter((t) => t.phase === 'done').map((t) => t.seq))
+  return tools.filter((t) => t.phase === 'start' && !doneSeqs.has(t.seq))
+}
+
+/** 已完成的工具事件（seq 升序）。 */
+function doneTools(tools: ToolEvent[]): ToolEvent[] {
+  return tools.filter((t) => t.phase === 'done').sort((a, b) => a.seq - b.seq)
 }
 
 /** 检索范围：kb=锁定当前库（默认）；all=全部可见库。 */
@@ -53,6 +66,7 @@ async function send(): Promise<void> {
     role: 'user',
     content: query,
     citations: [],
+    tools: [],
     streaming: false,
   })
   // BUG-002：须用 reactive 代理后再入列，onChunk 持有的引用才能触发流式重渲染
@@ -61,6 +75,7 @@ async function send(): Promise<void> {
     role: 'assistant',
     content: '',
     citations: [],
+    tools: [],
     streaming: true,
   })
   messages.value.push(assistant)
@@ -75,6 +90,10 @@ async function send(): Promise<void> {
       {
         onChunk: (text) => {
           assistant.content += text
+          scrollToBottom()
+        },
+        onTool: (event) => {
+          assistant.tools.push(event)
           scrollToBottom()
         },
         onCitations: (citations) => {
@@ -151,6 +170,21 @@ async function send(): Promise<void> {
               aria-hidden="true"
               >▍</span
             >
+            <!-- IDEA-025 工具过程：进行中状态行 -->
+            <div
+              v-if="message.role === 'assistant' && activeTools(message.tools).length > 0"
+              class="qa-message__tool-line"
+            >
+              正在检索知识库…
+            </div>
+            <!-- IDEA-025 工具轨迹：done 摘要单行 -->
+            <p
+              v-if="message.role === 'assistant' && doneTools(message.tools).length > 0"
+              class="qa-message__tools"
+            >
+              共调用 {{ doneTools(message.tools).length }} 个工具
+              <span v-if="doneTools(message.tools).some((t) => t.ok === false)">（部分失败）</span>
+            </p>
             <div v-if="message.citations.length > 0" class="qa-message__citations">
               <CitationCard
                 v-for="(citation, index) in message.citations"
@@ -351,6 +385,24 @@ async function send(): Promise<void> {
 
 .qa-message__cursor {
   color: var(--xl-color-ai);
+}
+
+/* IDEA-025 工具过程展示 */
+.qa-message__tool-line {
+  margin: 6px 0 0;
+  color: var(--xl-text-muted);
+  font-size: 12px;
+}
+
+.qa-message__tool-line::before {
+  content: '● ';
+  color: var(--xl-color-ai);
+}
+
+.qa-message__tools {
+  margin: 6px 0 0;
+  color: var(--xl-text-muted);
+  font-size: 12px;
 }
 
 .qa-message__citations {

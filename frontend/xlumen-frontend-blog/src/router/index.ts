@@ -119,8 +119,9 @@ const router = createRouter({
     },
     {
       path: '/studio/review',
-      redirect: { name: 'release-list' },
-      meta: { authenticated: true, title: '发布管理' },
+      name: 'review-center',
+      component: () => import('@/modules/publishing/pages/ReviewCenterPage.vue'),
+      meta: { authenticated: true, title: '审核中心' },
     },
     {
       path: '/studio/releases',

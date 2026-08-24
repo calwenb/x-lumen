@@ -19,9 +19,6 @@ import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api
 import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
 import {
   createAutoReview,
-  fetchReview,
-  parseReviewIssues,
-  publishAfterAutoReview,
 } from '@/modules/publishing/api/review'
 
 const route = useRoute()
@@ -59,17 +56,6 @@ const tags = computed(() =>
     .map((t) => t.trim())
     .filter(Boolean),
 )
-
-function formatReviewIssues(issues: ReturnType<typeof parseReviewIssues>): string {
-  return issues
-    .map((issue, index) => {
-      const location = issue.position ? `位置：${issue.position}` : ''
-      const evidence = issue.evidence ? `依据：${issue.evidence}` : ''
-      const suggestion = issue.suggestion ? `建议：${issue.suggestion}` : ''
-      return `${index + 1}. ${[location, evidence, suggestion].filter(Boolean).join('；')}`
-    })
-    .join('\n')
-}
 
 /** 内容是否有未保存变更（对比最后一次落库内容）。 */
 const lastSaved = ref('')
@@ -249,7 +235,7 @@ async function handleSave(): Promise<boolean> {
   }
 }
 
-/** 发布前自动 AI 审核（F-0907）：error/失败阻断，warning/info 由作者确认后继续。 */
+/** 发布（F-0907 异步化，IDEA-024）：提交 AI 审核后立即返回，审核通过自动发布（立即/定时），完成站内通知。 */
 async function handleAutoPublish(): Promise<void> {
   if (!title.value.trim()) {
     saveMessage.value = '请先填写标题'
@@ -263,15 +249,15 @@ async function handleAutoPublish(): Promise<void> {
     saveMessage.value = '定时发布时间必须晚于当前时间'
     return
   }
+  const publishPlan = publishAt.value
+    ? `AI 审核通过后，将于 ${publishAt.value.replace('T', ' ')} 定时发布，结果将通过消息中心通知你。`
+    : '审核通过后将自动发布，结果将通过消息中心通知你。'
   try {
-    const publishPlan = publishAt.value
-      ? `AI 审核通过后，将于 ${publishAt.value.replace('T', ' ')} 定时发布。`
-      : 'AI 审核通过后，知识将立即发布并公开可见。'
-    await ElMessageBox.confirm(
-      `点击确认后，系统会先自动进行 AI 审核。${publishPlan}若发现高风险问题，发布会被阻止并展示具体问题。`,
-      '确认发布',
-      { confirmButtonText: '确认并开始审核', cancelButtonText: '返回修改', type: 'warning' },
-    )
+    await ElMessageBox.confirm(`点击确认后进入 AI 审核。${publishPlan}`, '确认发布', {
+      confirmButtonText: '提交审核',
+      cancelButtonText: '返回修改',
+      type: 'info',
+    })
   } catch {
     return
   }
@@ -282,60 +268,16 @@ async function handleAutoPublish(): Promise<void> {
       if (!saved) return
     }
     if (!knowledgeId.value) return
-    const review = await createAutoReview(knowledgeId.value)
-    let latest = review
-    for (let attempt = 0; attempt < 90 && latest.autoDecision === 'REVIEWING'; attempt += 1) {
-      await new Promise((resolve) => window.setTimeout(resolve, 2000))
-      latest = await fetchReview(review.id)
+    const review = await createAutoReview(knowledgeId.value, publishAt.value || undefined)
+    if (review.status === 'APPROVED') {
+      // 强制审核关闭：无 AI 任务，提交即通过（既有审核记录也可能直接 APPROVED）
+      ElMessage.success(publishAt.value ? '已提交定时发布' : '已发布，公开可见')
+    } else {
+      ElMessage.success('已提交 AI 审核，审核完成后将通过消息中心通知你')
     }
-    if (latest.autoDecision === 'BLOCKED' || latest.autoDecision === 'FAILED') {
-      const highRiskIssues = parseReviewIssues(latest.aiResultJson).filter(
-        (issue) => issue.severity === 'error',
-      )
-      const details = formatReviewIssues(highRiskIssues)
-      await ElMessageBox.alert(
-        details || latest.aiErrorMessage || 'AI 审核发现高风险问题，请修改后重试。',
-        'AI 审核未通过',
-        { confirmButtonText: '知道了', type: 'error' },
-      )
-      try {
-        const refreshed = await fetchKnowledge(knowledgeId.value)
-        version.value = refreshed.version
-        status.value = refreshed.status
-        content.value = refreshed.content
-        title.value = refreshed.title
-        kbId.value = refreshed.kbId ?? ''
-        directoryId.value = refreshed.directoryId ?? '0'
-        tagsInput.value = refreshed.tags.join(', ')
-        markSavedSnapshot()
-      } catch {
-        // 审核问题已经展示；刷新失败不覆盖用户当前内容。
-      }
-      return
-    }
-    if (latest.autoDecision === 'REVIEWING') {
-      ElMessage.warning('AI 审核仍在进行，请稍后回到编辑页继续发布')
-      return
-    }
-    const issues = parseReviewIssues(latest.aiResultJson)
-    const softIssues = issues.filter((issue) => issue.severity !== 'error')
-    if (softIssues.length > 0) {
-      try {
-        await ElMessageBox.confirm(
-          `AI 审核提示 ${softIssues.length} 条建议：\n\n${formatReviewIssues(softIssues)}\n\n确认忽略这些建议并继续发布吗？`,
-          '发布前提示',
-          { confirmButtonText: '确认发布', cancelButtonText: '返回修改', type: 'warning' },
-        )
-      } catch {
-        return
-      }
-    }
-    await publishAfterAutoReview(latest.id, publishAt.value || undefined)
-    status.value = publishAt.value ? 5 : 6
-    ElMessage.success(publishAt.value ? '已提交定时发布' : '已发布，公开可见')
     await router.push({ name: 'knowledge-list' })
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : 'AI 审核发布失败')
+    ElMessage.error(error instanceof Error ? error.message : '提交审核失败')
   } finally {
     submitting.value = false
   }

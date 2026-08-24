@@ -26,6 +26,7 @@ export interface ModelConfig {
   provider: string
   model: string
   paramsJson?: string
+  agentEnabled?: boolean
   updatedAt: string
 }
 
@@ -34,6 +35,7 @@ export interface ModelConfigUpdate {
   provider: string
   model: string
   paramsJson?: string
+  agentEnabled?: boolean
 }
 
 /** 连通性测试结果。 */

@@ -16,14 +16,22 @@ CREATE TABLE IF NOT EXISTS `pub_review` (
     `ai_task_id`         BIGINT       NULL COMMENT 'AI 审校任务 ID（逻辑外键 ai_task.id，可空）',
     `ai_result_json`     TEXT         NULL COMMENT 'AI 审校结果快照（JSON 文本，可空）',
     `status`             VARCHAR(16)  NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING 待审核/APPROVED 通过/REJECTED 驳回',
+    `auto_mode`          TINYINT      NOT NULL DEFAULT 0 COMMENT '自动审核发布模式（1=发布按钮提交，审核通过后自动发布；0=审核中心人工提交）',
+    `auto_publish_at`    DATETIME     NULL COMMENT '定时发布时间（自动模式生效，NULL=立即发布）',
     `reject_reason`      VARCHAR(500) NULL COMMENT '驳回原因',
     `reject_position`    VARCHAR(200) NULL COMMENT '驳回位置',
     `reject_expectation` VARCHAR(500) NULL COMMENT '驳回期望',
     `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    KEY `idx_review_ws_status_created` (`workspace_id`, `status`, `created_at`)
+    KEY `idx_review_ws_status_created` (`workspace_id`, `status`, `created_at`),
+    KEY `idx_review_ai_task` (`ai_task_id`)
 ) ENGINE = InnoDB COMMENT ='知识审核记录（F-0902/F-0903）';
+
+-- 存量库执行（新装库无需，建表已含）：
+--   ALTER TABLE pub_review ADD COLUMN auto_mode TINYINT NOT NULL DEFAULT 0 COMMENT '自动审核发布模式（1=发布按钮提交，审核通过后自动发布；0=审核中心人工提交）' AFTER status;
+--   ALTER TABLE pub_review ADD COLUMN auto_publish_at DATETIME NULL COMMENT '定时发布时间（自动模式生效，NULL=立即发布）' AFTER auto_mode;
+--   ALTER TABLE pub_review ADD INDEX idx_review_ai_task (ai_task_id);
 
 -- 知识发布记录（F-0904/F-0905）：唯一键 uk_release_ws_knowledge_version 幂等；定时发布幂等执行
 CREATE TABLE IF NOT EXISTS `pub_release` (

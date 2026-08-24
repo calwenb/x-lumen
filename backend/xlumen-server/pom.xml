@@ -29,6 +29,7 @@
         <module>xlumen-publishing</module>
         <module>xlumen-knowledge</module>
         <module>xlumen-ai</module>
+        <module>xlumen-notification</module>
         <module>xlumen-boot</module>
     </modules>
 
@@ -72,6 +73,11 @@
             <dependency>
                 <groupId>com.calwen.xlumen</groupId>
                 <artifactId>xlumen-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.calwen.xlumen</groupId>
+                <artifactId>xlumen-notification</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
