@@ -52,7 +52,7 @@ public class KnowledgeListTool implements AgentTool {
     }
 
     @Override
-    public String execute(ToolContext ctx, JSONObject args) {
+    public String execute(AgentToolContext ctx, JSONObject args) {
         try {
             List<Long> visible = knowledgeApi.resolveVisibleKbIds(ctx.getUserId());
             JSONArray data = new JSONArray();
@@ -68,10 +68,10 @@ public class KnowledgeListTool implements AgentTool {
                             .set("visibility", Integer.valueOf(1).equals(kb.getVisibility()) ? "PUBLIC" : "PRIVATE"));
                 }
             }
-            return ToolRegistry.okEnvelope(data);
+            return ToolEventPayload.okEnvelope(data);
         } catch (Exception e) {
             log.warn("knowledge.list 执行失败", e);
-            return ToolRegistry.errorEnvelope("列知识库失败：" + e.getClass().getSimpleName());
+            return ToolEventPayload.errorEnvelope("列知识库失败：" + e.getClass().getSimpleName());
         }
     }
 }

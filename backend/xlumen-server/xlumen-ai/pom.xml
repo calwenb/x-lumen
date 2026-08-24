@@ -56,6 +56,20 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- 全量迁移后的 AI 模型客户端（OPT-2/D20）：ChatModel/ChatClient/ToolCallback，版本随父 BOM
+             （自动配置由装配层 spring.ai.model.*: none 关闭，双供应商手动装配） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+            <exclusions>
+                <!-- openai-java-core 传递的非 jakarta 注解与 springdoc 同包冲突（/v3/api-docs 500），对应 jakarta 版由父 BOM 钉 2.2.52 -->
+                <exclusion>
+                    <groupId>io.swagger.core.v3</groupId>
+                    <artifactId>swagger-annotations</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-core</artifactId>

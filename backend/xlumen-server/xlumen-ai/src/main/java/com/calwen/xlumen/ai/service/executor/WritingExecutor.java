@@ -4,29 +4,29 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.calwen.xlumen.ai.config.AiProperties;
 import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.service.AiTaskExecutor;
-import com.calwen.xlumen.ai.service.ModelGateway;
-import com.calwen.xlumen.ai.service.SceneModel;
+import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.TaskContext;
-import com.calwen.xlumen.ai.service.provider.ChatMessage;
-import com.calwen.xlumen.ai.service.provider.ProviderChatRequest;
-import com.calwen.xlumen.ai.service.provider.ProviderChatResult;
-import com.calwen.xlumen.ai.service.provider.StreamCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * AI 写作执行器（F-0601）：单次流式调用网关，chunk 推 SSE，完成后解析标题与正文写入 resultJson。
+ * AI 写作执行器（F-0601）：单次流式调用运行时，chunk 推 SSE，完成后解析标题与正文写入 resultJson。
  * IDEA-025 F-0608 多步工作流（agent_enabled=1）：大纲 → 分章流式 → 异源自审（REVIEWER）→ 修订，
  * 全程无人工确认断点；四条降级路径全部回退单次生成（大纲解析失败/章节超限/单章失败/自审失败跳过修订）——
- * 写作功能永不因新模式不可用。
+ * 写作功能永不因新模式不可用。OPT-2/D20 全量迁移：链路改走 ChatRuntime（Spring AI 消息类型），业务语义不变。
  *
  * @author calwen
  * @date 2026/8/13
@@ -63,11 +63,11 @@ public class WritingExecutor implements AiTaskExecutor {
             + "下面是全文初稿与审校意见，请根据意见修订全文，输出修订后的完整 Markdown 文章，"
             + "第一行必须是 # 标题。不要输出其他内容。";
 
-    private final ModelGateway modelGateway;
-    private final com.calwen.xlumen.ai.config.AiProperties aiProperties;
+    private final ChatRuntime chatRuntime;
+    private final AiProperties aiProperties;
 
-    public WritingExecutor(ModelGateway modelGateway, com.calwen.xlumen.ai.config.AiProperties aiProperties) {
-        this.modelGateway = modelGateway;
+    public WritingExecutor(ChatRuntime chatRuntime, AiProperties aiProperties) {
+        this.chatRuntime = chatRuntime;
         this.aiProperties = aiProperties;
     }
 
@@ -80,7 +80,7 @@ public class WritingExecutor implements AiTaskExecutor {
     public void execute(AiTaskEntity task, TaskContext ctx) {
         JSONObject input = parseInput(task.getInputJson());
         boolean agentMode = Boolean.TRUE.equals(
-                modelGateway.resolveScene(task.getWorkspaceId(), AiScene.WRITING).getAgentEnabled());
+                chatRuntime.resolveScene(task.getWorkspaceId(), AiScene.WRITING).getAgentEnabled());
         if (agentMode) {
             executeAgentWorkflow(task, ctx, input);
         } else {
@@ -98,26 +98,14 @@ public class WritingExecutor implements AiTaskExecutor {
         ctx.publishProgress(10);
         StringBuilder sb = new StringBuilder();
         AtomicReference<String> error = new AtomicReference<>();
-        ProviderChatRequest request = ProviderChatRequest.builder()
-                .messages(List.of(
-                        ChatMessage.builder().role("system").content(SYSTEM_PROMPT).build(),
-                        ChatMessage.builder().role("user").content(buildUserPrompt(topic, draft, content, title)).build()))
-                .temperature(0.7)
-                .maxTokens(2048)
-                .stream(true)
-                .build();
-        modelGateway.chatStream(task.getWorkspaceId(), AiScene.WRITING, request,
-                new StreamCallback() {
-                    @Override
-                    public void onContent(String delta) {
-                        sb.append(delta);
-                        ctx.publishChunk(delta);
-                    }
-
-                    @Override
-                    public void onResult(ProviderChatResult result) {
-                        // 单次生成模式终态无额外处理
-                    }
+        chatRuntime.chatStream(task.getWorkspaceId(), AiScene.WRITING,
+                List.of(
+                        new SystemMessage(SYSTEM_PROMPT),
+                        new UserMessage(buildUserPrompt(topic, draft, content, title))),
+                0.7, 2048,
+                delta -> {
+                    sb.append(delta);
+                    ctx.publishChunk(delta);
                 },
                 err -> error.set(err == null ? "AI 服务不可用" : err.getMessage()));
         if (error.get() != null) {
@@ -202,19 +190,14 @@ public class WritingExecutor implements AiTaskExecutor {
     /** 步1：大纲；解析失败或章节超限返回 null（回退单次）。 */
     private List<JSONObject> outline(AiTaskEntity task, JSONObject input) {
         String prompt = OUTLINE_PROMPT.replace("{{MAX}}", String.valueOf(maxChapters()));
-        ProviderChatRequest request = ProviderChatRequest.builder()
-                .messages(List.of(
-                        ChatMessage.builder().role("system").content(prompt).build(),
-                        ChatMessage.builder().role("user").content(
-                                buildUserPrompt(input.getStr("topic"), input.getStr("draft"),
-                                        input.getStr("content"), input.getStr("title"))).build()))
-                .temperature(0.4)
-                .maxTokens(1024)
-                .stream(false)
-                .build();
         try {
-            ProviderChatResult result = modelGateway.chat(task.getWorkspaceId(), AiScene.WRITING, request);
-            JSONObject obj = extractJsonObject(result.getContent());
+            String content = chatRuntime.chat(task.getWorkspaceId(), AiScene.WRITING,
+                    List.of(
+                            new SystemMessage(prompt),
+                            new UserMessage(buildUserPrompt(input.getStr("topic"), input.getStr("draft"),
+                                    input.getStr("content"), input.getStr("title")))),
+                    0.4, 1024);
+            JSONObject obj = extractJsonObject(content);
             if (obj == null) {
                 return null;
             }
@@ -242,32 +225,20 @@ public class WritingExecutor implements AiTaskExecutor {
         StringBuilder sb = new StringBuilder();
         for (int attempt = 0; attempt < 2; attempt++) {
             StringBuilder content = new StringBuilder();
-            AtomicReference<String> error = new AtomicReference<>();
+            AtomicBoolean errored = new AtomicBoolean(false);
             String user = "全文大纲：" + outlineText + (StrUtil.isNotBlank(userContext) ? "\n" + userContext : "")
                     + "\n当前章节：" + chapterTitle;
-            ProviderChatRequest request = ProviderChatRequest.builder()
-                    .messages(List.of(
-                            ChatMessage.builder().role("system").content(chapterPrompt).build(),
-                            ChatMessage.builder().role("user").content(user).build()))
-                    .temperature(0.7)
-                    .maxTokens(2048)
-                    .stream(true)
-                    .build();
-            modelGateway.chatStream(task.getWorkspaceId(), AiScene.WRITING, request,
-                    new StreamCallback() {
-                        @Override
-                        public void onContent(String delta) {
-                            content.append(delta);
-                            ctx.publishChunk(delta);
-                        }
-
-                        @Override
-                        public void onResult(ProviderChatResult result) {
-                            // 章节流式终态无额外处理
-                        }
+            chatRuntime.chatStream(task.getWorkspaceId(), AiScene.WRITING,
+                    List.of(
+                            new SystemMessage(chapterPrompt),
+                            new UserMessage(user)),
+                    0.7, 2048,
+                    delta -> {
+                        content.append(delta);
+                        ctx.publishChunk(delta);
                     },
-                    err -> error.set(err == null ? "AI 服务不可用" : err.getMessage()));
-            if (error.get() == null && content.length() > 0) {
+                    err -> errored.set(true));
+            if (!errored.get() && content.length() > 0) {
                 sb.append(content);
                 return sb.toString();
             }
@@ -277,17 +248,13 @@ public class WritingExecutor implements AiTaskExecutor {
 
     /** 步3：自审（REVIEWER 异源）；失败/解析失败返回 null（跳过修订）。 */
     private String selfReview(AiTaskEntity task, String fullText) {
-        ProviderChatRequest request = ProviderChatRequest.builder()
-                .messages(List.of(
-                        ChatMessage.builder().role("system").content(SELF_REVIEW_PROMPT).build(),
-                        ChatMessage.builder().role("user").content(fullText).build()))
-                .temperature(0.2)
-                .maxTokens(2048)
-                .stream(false)
-                .build();
         try {
-            ProviderChatResult result = modelGateway.chat(task.getWorkspaceId(), AiScene.REVIEWER, request);
-            String json = extractJsonArray(result.getContent());
+            String content = chatRuntime.chat(task.getWorkspaceId(), AiScene.REVIEWER,
+                    List.of(
+                            new SystemMessage(SELF_REVIEW_PROMPT),
+                            new UserMessage(fullText)),
+                    0.2, 2048);
+            String json = extractJsonArray(content);
             if (StrUtil.isBlank(json)) {
                 return null;
             }
@@ -303,26 +270,14 @@ public class WritingExecutor implements AiTaskExecutor {
     private String revise(AiTaskEntity task, TaskContext ctx, String fullText, String reviewJson) {
         StringBuilder sb = new StringBuilder();
         AtomicReference<String> error = new AtomicReference<>();
-        ProviderChatRequest request = ProviderChatRequest.builder()
-                .messages(List.of(
-                        ChatMessage.builder().role("system").content(REVISE_PROMPT).build(),
-                        ChatMessage.builder().role("user").content("审校意见：\n" + reviewJson + "\n\n全文初稿：\n" + fullText).build()))
-                .temperature(0.5)
-                .maxTokens(4096)
-                .stream(true)
-                .build();
-        modelGateway.chatStream(task.getWorkspaceId(), AiScene.WRITING, request,
-                new StreamCallback() {
-                    @Override
-                    public void onContent(String delta) {
-                        sb.append(delta);
-                        ctx.publishChunk(delta);
-                    }
-
-                    @Override
-                    public void onResult(ProviderChatResult result) {
-                        // 修订流式终态无额外处理
-                    }
+        chatRuntime.chatStream(task.getWorkspaceId(), AiScene.WRITING,
+                List.of(
+                        new SystemMessage(REVISE_PROMPT),
+                        new UserMessage("审校意见：\n" + reviewJson + "\n\n全文初稿：\n" + fullText)),
+                0.5, 4096,
+                delta -> {
+                    sb.append(delta);
+                    ctx.publishChunk(delta);
                 },
                 err -> error.set(err == null ? "AI 服务不可用" : err.getMessage()));
         if (error.get() != null) {

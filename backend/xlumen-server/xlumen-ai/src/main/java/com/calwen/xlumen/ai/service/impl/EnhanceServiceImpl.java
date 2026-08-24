@@ -7,15 +7,14 @@ import com.calwen.xlumen.ai.dto.EnhanceRequestDTO;
 import com.calwen.xlumen.ai.entity.AiEnhanceResultEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.mapper.AiEnhanceResultMapper;
+import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.EnhanceService;
-import com.calwen.xlumen.ai.service.ModelGateway;
-import com.calwen.xlumen.ai.service.provider.ChatMessage;
-import com.calwen.xlumen.ai.service.provider.ProviderChatRequest;
-import com.calwen.xlumen.ai.service.provider.ProviderChatResult;
 import com.calwen.xlumen.ai.vo.EnhanceResultVO;
 import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -39,11 +38,11 @@ public class EnhanceServiceImpl implements EnhanceService {
             + "只输出一个 JSON 对象，格式为 {\"title\": \"标题\", \"keywords\": \"关键词\", \"description\": \"描述\"}，"
             + "不要输出其他内容。";
 
-    private final ModelGateway modelGateway;
+    private final ChatRuntime chatRuntime;
     private final AiEnhanceResultMapper enhanceResultMapper;
 
-    public EnhanceServiceImpl(ModelGateway modelGateway, AiEnhanceResultMapper enhanceResultMapper) {
-        this.modelGateway = modelGateway;
+    public EnhanceServiceImpl(ChatRuntime chatRuntime, AiEnhanceResultMapper enhanceResultMapper) {
+        this.chatRuntime = chatRuntime;
         this.enhanceResultMapper = enhanceResultMapper;
     }
 
@@ -110,19 +109,14 @@ public class EnhanceServiceImpl implements EnhanceService {
         throw new BizException(ErrorCode.INVALID_PARAM, "场景仅支持 SUMMARY|SEO");
     }
 
-    /** 调用网关生成并校验结构化结果，返回紧凑 JSON 文本。 */
+    /** 调用运行时生成并校验结构化结果，返回紧凑 JSON 文本。 */
     private String generate(Long workspaceId, AiScene scene, String content) {
         String system = scene == AiScene.SUMMARY ? SUMMARY_PROMPT : SEO_PROMPT;
-        ProviderChatRequest request = ProviderChatRequest.builder()
-                .messages(List.of(
-                        ChatMessage.builder().role("system").content(system).build(),
-                        ChatMessage.builder().role("user").content(content).build()))
-                .temperature(0.3)
-                .maxTokens(1024)
-                .stream(false)
-                .build();
-        ProviderChatResult result = modelGateway.chat(workspaceId, scene, request);
-        String raw = result.getContent();
+        String raw = chatRuntime.chat(workspaceId, scene,
+                List.of(
+                        new SystemMessage(system),
+                        new UserMessage(content)),
+                0.3, 1024);
         JSONObject obj = parseJson(raw);
         validate(scene, obj);
         return obj.toString();

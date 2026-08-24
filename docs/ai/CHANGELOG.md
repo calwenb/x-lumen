@@ -16,6 +16,19 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/8/24 · ZCode（Spring AI 2.0.1 全量迁移交付·OPT-2/D20）
+
+> 影响文档：docs/design/spring-ai-migration.md（已随实施删除）、docs/ai/STATUS.md（OPT-2 完成，D20 入 §8） · 决策摘要：D20
+
+用户拍板「不分批、直接全量替换」，AI 实现方式整体迁移 Spring AI 2.0.1（不引 Alibaba、不降 Boot/JDK）；api-docs/聊天/健康冒烟全通，后端 75 测试全绿。
+
+- **依赖与版本**：父 POM import `spring-ai-bom:2.0.1`（与 Boot 4.1.0 同版）；xlumen-ai/xlumen-knowledge 引 `spring-ai-starter-model-openai` 并排除 openai-java-core 传递的非 jakarta `swagger-annotations`；父 BOM 钉 `swagger-annotations-jakarta:2.2.52`（修复 /v3/api-docs NoSuchMethodError：openai sdk 传入 2.2.31 与 springdoc swagger-core 2.2.52 同包冲突）；application.yml 六个 `spring.ai.model.*: none` 全关自动配置（全部 @ConditionalOnProperty matchIfMissing）。
+- **新架构（Spring AI 形态）**：`ChatRuntime`（替代 ModelGateway/AgentRunner：场景解析/熔断/缺密钥回退 ScriptedChatModel；ChatClient + ToolCallingAdvisor 自动多轮工具循环；逐请求 options 设 model/temperature/maxTokens/toolCallbacks/toolContext）；`ScriptedChatModel`（替代 MockProvider，脚本队列 ChatResponse）；`ToolCallbackAdapter`（AgentTool→ToolCallback，预算上限/超时/截断/信封 + 向 ToolEventSink 实时推 SSE 事件与落库配对）；`ToolEventSink/ToolRun/ToolPair/ToolEventPayload`（轨迹收集）；knowledge `EmbeddingServiceImpl` 换 `OpenAiEmbeddingModel`（builder 依 options 自建 SDK 客户端，32 片/批语义不变）。
+- **删除手写实现**：provider 包（OpenAICompatibleProvider 等 11 类）、agent 包（AgentRunnerImpl 等 6 类）、ToolRegistry、ModelGateway/Impl、`ModelGateway.embed` 死代码——合计约 1600 行；同步删 3 个旧协议/循环/工具测试（636 行）。
+- **业务语义等价**：SSE 事件序列实测 chunk→citation→done 与迁移前一致；chat_message 逐调用配对（合成 tc-序号 tool_call_id，前端按 id 归并工具面板，历史回放配对修剪不变）；事件格式/表结构/.env/前端/SQL 零变化。
+- **完整性复核（收尾）**：源码 grep 零旧类型残留；BACKEND.md §14 与 STATUS §3 能力基线同步为 Spring AI 形态描述（原 ModelGateway/MockProvider/AgentRunner 描述已替换）；业务 `ToolContext` 更名 `AgentToolContext` 消除与 Spring AI 同名遮蔽（Lombok 访问器链 11 文件机械替换，24 测试复绿）。
+- **验证**：`mvn -T 1C clean verify` 全绿（75 测试，xlumen-ai 24 项含 ChatRuntime 工具循环集成测试与 ToolCallbackAdapter 单测）；fat jar（JDK25）启动 health UP / ping 200 / api-docs 200；Mock 模式注册→登录→`/chat/stream` 实测 SSE chunk×21→citation→done 全链路；真实供应商冒烟（chat/chatStream/Agent 循环/审校核对/连通性）待有密钥后执行。
+
 ## 2026/8/22 · ZCode（docs 文档体系整体瘦身）
 
 > 影响文档：docs/ai/CHANGELOG.md、docs/ai/CHANGELOG-ARCHIVE.md（新增）、docs/ai/STATUS.md、docs/ai/BUGS.md、docs/ai/QA.md、docs/global/GLOBAL.md、README.md、.gitignore · 决策摘要：无

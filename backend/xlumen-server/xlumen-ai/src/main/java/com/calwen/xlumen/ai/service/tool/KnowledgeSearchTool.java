@@ -66,11 +66,11 @@ public class KnowledgeSearchTool implements AgentTool {
     }
 
     @Override
-    public String execute(ToolContext ctx, JSONObject args) {
+    public String execute(AgentToolContext ctx, JSONObject args) {
         try {
             String query = args.getStr("query");
             if (StrUtil.isBlank(query)) {
-                return ToolRegistry.errorEnvelope("knowledge.search 缺少必填参数 query");
+                return ToolEventPayload.errorEnvelope("knowledge.search 缺少必填参数 query");
             }
             int topK = clampTopK(args.getInt("topK", TOP_K_DEFAULT));
             List<Long> visible = knowledgeApi.resolveVisibleKbIds(ctx.getUserId());
@@ -79,13 +79,13 @@ public class KnowledgeSearchTool implements AgentTool {
             if (StrUtil.isNotBlank(kbIdStr)) {
                 Long kbId = parseId(kbIdStr);
                 if (kbId == null || visible == null || !visible.contains(kbId)) {
-                    return ToolRegistry.errorEnvelope("无权访问该知识库（kbId=" + kbIdStr + "）");
+                    return ToolEventPayload.errorEnvelope("无权访问该知识库（kbId=" + kbIdStr + "）");
                 }
                 kbIds = List.of(kbId);
             } else if (ctx.getKbId() != null) {
                 // 会话锁定知识库（F-0702 单篇问答场景）：未显式指定时默认限定锁定的库
                 if (visible == null || !visible.contains(ctx.getKbId())) {
-                    return ToolRegistry.errorEnvelope("无权访问该知识库（kbId=" + ctx.getKbId() + "）");
+                    return ToolEventPayload.errorEnvelope("无权访问该知识库（kbId=" + ctx.getKbId() + "）");
                 }
                 kbIds = List.of(ctx.getKbId());
             } else {
@@ -110,10 +110,10 @@ public class KnowledgeSearchTool implements AgentTool {
             if (ctx.getCitationCollector() != null && !results.isEmpty()) {
                 ctx.getCitationCollector().accept(results);
             }
-            return ToolRegistry.okEnvelope(data);
+            return ToolEventPayload.okEnvelope(data);
         } catch (Exception e) {
             log.warn("knowledge.search 执行失败", e);
-            return ToolRegistry.errorEnvelope("检索失败：" + e.getClass().getSimpleName());
+            return ToolEventPayload.errorEnvelope("检索失败：" + e.getClass().getSimpleName());
         }
     }
 

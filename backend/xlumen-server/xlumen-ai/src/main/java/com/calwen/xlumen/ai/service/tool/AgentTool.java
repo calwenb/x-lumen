@@ -28,5 +28,5 @@ public interface AgentTool {
     Set<AiScene> scenes();
 
     /** 执行并返回结果信封文本；异常由实现自行兜底为错误信封。 */
-    String execute(ToolContext ctx, JSONObject args);
+    String execute(AgentToolContext ctx, JSONObject args);
 }

@@ -3,7 +3,7 @@ package com.calwen.xlumen.ai.controller;
 import com.calwen.xlumen.ai.dto.ModelConfigTestDTO;
 import com.calwen.xlumen.ai.dto.ModelConfigUpdateDTO;
 import com.calwen.xlumen.ai.enums.AiScene;
-import com.calwen.xlumen.ai.service.ModelGateway;
+import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.SceneConfigService;
 import com.calwen.xlumen.ai.vo.ModelConfigVO;
 import com.calwen.xlumen.ai.vo.TestResultVO;
@@ -35,11 +35,11 @@ import java.util.List;
 public class ModelConfigController {
 
     private final SceneConfigService sceneConfigService;
-    private final ModelGateway modelGateway;
+    private final ChatRuntime chatRuntime;
 
-    public ModelConfigController(SceneConfigService sceneConfigService, ModelGateway modelGateway) {
+    public ModelConfigController(SceneConfigService sceneConfigService, ChatRuntime chatRuntime) {
         this.sceneConfigService = sceneConfigService;
-        this.modelGateway = modelGateway;
+        this.chatRuntime = chatRuntime;
     }
 
     /**
@@ -67,7 +67,7 @@ public class ModelConfigController {
     @PostMapping("/test")
     public ApiResponse<TestResultVO> test(@Valid @RequestBody ModelConfigTestDTO dto) {
         try {
-            boolean ok = modelGateway.test(dto.getProvider(), dto.getModel());
+            boolean ok = chatRuntime.test(dto.getProvider(), dto.getModel());
             return ApiResponse.success(TestResultVO.builder().ok(ok).message("连接成功").build());
         } catch (BizException e) {
             return ApiResponse.success(TestResultVO.builder().ok(false).message(e.getMessage()).build());

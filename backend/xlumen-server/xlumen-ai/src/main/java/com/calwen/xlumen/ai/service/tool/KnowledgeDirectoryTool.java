@@ -55,26 +55,26 @@ public class KnowledgeDirectoryTool implements AgentTool {
     }
 
     @Override
-    public String execute(ToolContext ctx, JSONObject args) {
+    public String execute(AgentToolContext ctx, JSONObject args) {
         try {
             String kbIdStr = args.getStr("kbId");
             if (StrUtil.isBlank(kbIdStr)) {
-                return ToolRegistry.errorEnvelope("knowledge.getDirectoryTree 缺少必填参数 kbId");
+                return ToolEventPayload.errorEnvelope("knowledge.getDirectoryTree 缺少必填参数 kbId");
             }
             Long kbId = parseId(kbIdStr);
             List<Long> visible = knowledgeApi.resolveVisibleKbIds(ctx.getUserId());
             if (kbId == null || visible == null || !visible.contains(kbId)) {
-                return ToolRegistry.errorEnvelope("无权访问该知识库（kbId=" + kbIdStr + "）");
+                return ToolEventPayload.errorEnvelope("无权访问该知识库（kbId=" + kbIdStr + "）");
             }
             List<DirectoryVO> tree = knowledgeApi.getDirectoryTree(kbId);
             JSONArray data = new JSONArray();
             for (DirectoryVO node : tree) {
                 data.add(toJson(node));
             }
-            return ToolRegistry.okEnvelope(data);
+            return ToolEventPayload.okEnvelope(data);
         } catch (Exception e) {
             log.warn("knowledge.getDirectoryTree 执行失败", e);
-            return ToolRegistry.errorEnvelope("获取目录树失败：" + e.getClass().getSimpleName());
+            return ToolEventPayload.errorEnvelope("获取目录树失败：" + e.getClass().getSimpleName());
         }
     }
 

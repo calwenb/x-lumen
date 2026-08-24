@@ -2,14 +2,11 @@ package com.calwen.xlumen.ai.service.executor;
 
 import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
-import com.calwen.xlumen.ai.service.ModelGateway;
+import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.service.TaskContext;
-import com.calwen.xlumen.ai.service.agent.AgentEvents;
-import com.calwen.xlumen.ai.service.agent.AgentRequest;
-import com.calwen.xlumen.ai.service.agent.AgentResult;
-import com.calwen.xlumen.ai.service.agent.AgentRunner;
-import com.calwen.xlumen.ai.service.provider.ProviderChatResult;
+import com.calwen.xlumen.common.exception.BizException;
+import com.calwen.xlumen.common.web.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -19,14 +16,16 @@ import org.mockito.MockitoAnnotations;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 审校执行器单测（IDEA-025 F-0604）：普通模式 Schema 兼容（旧结果无证据字段合法）、
- * 事实核对模式（agent_enabled=1 走 AgentRunner 非流式 + 可选证据字段）、重试、模型失败阻断。
+ * 审校执行器单测（IDEA-025 F-0604，OPT-2/D20 全量迁移）：mock ChatRuntime——普通模式 Schema 兼容
+ * （旧结果无证据字段合法）、事实核对模式（agent_enabled=1 走 chatWithTools + 可选证据字段）、重试、模型失败阻断。
  *
  * @author calwen
  * @date 2026/8/24
@@ -34,10 +33,7 @@ import static org.mockito.Mockito.when;
 class ReviewExecutorTest {
 
     @Mock
-    private ModelGateway modelGateway;
-
-    @Mock
-    private AgentRunner agentRunner;
+    private ChatRuntime chatRuntime;
 
     @Mock
     private TaskContext ctx;
@@ -48,7 +44,7 @@ class ReviewExecutorTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        executor = new ReviewExecutor(modelGateway, agentRunner);
+        executor = new ReviewExecutor(chatRuntime);
         task = new AiTaskEntity();
         task.setId(1L);
         task.setWorkspaceId(1L);
@@ -66,10 +62,10 @@ class ReviewExecutorTest {
 
     @Test
     void nonAgent_schemaCompat_legacyResultWithoutEvidenceIsValid() {
-        when(modelGateway.resolveScene(1L, AiScene.REVIEWER))
+        when(chatRuntime.resolveScene(1L, AiScene.REVIEWER))
                 .thenReturn(SceneModel.builder().agentEnabled(false).build());
-        when(modelGateway.chat(any(), eq(AiScene.REVIEWER), any()))
-                .thenReturn(ProviderChatResult.builder().content(issueArray(false)).build());
+        when(chatRuntime.chat(eq(1L), eq(AiScene.REVIEWER), any(), any(), any()))
+                .thenReturn(issueArray(false));
 
         executor.execute(task, ctx);
 
@@ -82,13 +78,11 @@ class ReviewExecutorTest {
     }
 
     @Test
-    void agentMode_runsAgentRunner_withEvidenceFields() {
-        when(modelGateway.resolveScene(1L, AiScene.REVIEWER))
+    void agentMode_runsChatWithTools_withEvidenceFields() {
+        when(chatRuntime.resolveScene(1L, AiScene.REVIEWER))
                 .thenReturn(SceneModel.builder().agentEnabled(true).build());
-        when(agentRunner.run(any(AgentRequest.class), any(AgentEvents.class)))
-                .thenReturn(AgentResult.builder()
-                        .content("```json\n" + issueArray(true) + "\n```")
-                        .build());
+        when(chatRuntime.chatWithTools(eq(1L), eq(AiScene.REVIEWER), any(), any(), any(), any()))
+                .thenReturn("```json\n" + issueArray(true) + "\n```");
 
         executor.execute(task, ctx);
 
@@ -100,10 +94,10 @@ class ReviewExecutorTest {
 
     @Test
     void agentMode_modelFailure_failsTask() {
-        when(modelGateway.resolveScene(1L, AiScene.REVIEWER))
+        when(chatRuntime.resolveScene(1L, AiScene.REVIEWER))
                 .thenReturn(SceneModel.builder().agentEnabled(true).build());
-        when(agentRunner.run(any(AgentRequest.class), any(AgentEvents.class)))
-                .thenReturn(AgentResult.builder().error("模型调用失败").build());
+        when(chatRuntime.chatWithTools(eq(1L), eq(AiScene.REVIEWER), any(), any(), any(), any()))
+                .thenThrow(new BizException(ErrorCode.SERVICE_UNAVAILABLE, "AI 服务暂时不可用，请稍后重试"));
 
         assertThatThrownBy(() -> executor.execute(task, ctx))
                 .isInstanceOf(IllegalStateException.class)
@@ -112,15 +106,15 @@ class ReviewExecutorTest {
 
     @Test
     void parseFailure_retriesOnce_thenFails() {
-        when(modelGateway.resolveScene(1L, AiScene.REVIEWER))
+        when(chatRuntime.resolveScene(1L, AiScene.REVIEWER))
                 .thenReturn(SceneModel.builder().agentEnabled(false).build());
-        when(modelGateway.chat(any(), eq(AiScene.REVIEWER), any()))
-                .thenReturn(ProviderChatResult.builder().content("不是 JSON").build());
+        when(chatRuntime.chat(eq(1L), eq(AiScene.REVIEWER), any(), any(), any()))
+                .thenReturn("不是 JSON");
 
         executor.execute(task, ctx);
 
         // 解析失败重试一次（共 2 次 chat），仍失败则任务 FAILED（F-0907 闸门）
-        verify(modelGateway, times(2)).chat(any(), eq(AiScene.REVIEWER), any());
+        verify(chatRuntime, times(2)).chat(eq(1L), eq(AiScene.REVIEWER), any(), any(), any());
         verify(ctx).fail("审校输出必须是 JSON 数组");
     }
 }

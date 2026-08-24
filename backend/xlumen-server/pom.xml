@@ -40,6 +40,7 @@
         <hutool.version>5.8.38</hutool.version>
         <springdoc.version>3.1.0</springdoc.version>
         <lombok.version>1.18.46</lombok.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
     </properties>
 
     <dependencyManagement>
@@ -110,6 +111,22 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+            <!-- 与 springdoc 的 swagger-core-jakarta 2.2.52 对齐：openai-java-core 传递引入 2.2.31/2.2.38 同包类，
+                 类加载命中旧 Schema 导致 /v3/api-docs NoSuchMethodError，统一钉 2.2.52 -->
+            <dependency>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-annotations-jakarta</artifactId>
+                <version>2.2.52</version>
+            </dependency>
+
+            <!-- Spring AI BOM：AI 供应商层全量迁移（OPT-2/D20），2.0.1 对齐 Boot 4.1.0（v2.0.0 官方声明） -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

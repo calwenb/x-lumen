@@ -11,19 +11,14 @@ import com.calwen.xlumen.ai.entity.ChatMessageEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.mapper.ChatConversationMapper;
 import com.calwen.xlumen.ai.mapper.ChatMessageMapper;
+import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.ChatService;
-import com.calwen.xlumen.ai.service.ModelGateway;
 import com.calwen.xlumen.ai.service.SceneModel;
-import com.calwen.xlumen.ai.service.agent.AgentEvents;
-import com.calwen.xlumen.ai.service.agent.AgentRequest;
-import com.calwen.xlumen.ai.service.agent.AgentResult;
-import com.calwen.xlumen.ai.service.agent.AgentRunner;
-import com.calwen.xlumen.ai.service.agent.ToolEvent;
-import com.calwen.xlumen.ai.service.provider.ChatMessage;
-import com.calwen.xlumen.ai.service.provider.ProviderChatRequest;
-import com.calwen.xlumen.ai.service.provider.ProviderChatResult;
-import com.calwen.xlumen.ai.service.provider.StreamCallback;
-import com.calwen.xlumen.ai.service.provider.ToolCall;
+import com.calwen.xlumen.ai.service.tool.AgentToolContext;
+import com.calwen.xlumen.ai.service.tool.ToolEvent;
+import com.calwen.xlumen.ai.service.tool.ToolEventSink;
+import com.calwen.xlumen.ai.service.tool.ToolPair;
+import com.calwen.xlumen.ai.service.tool.ToolRun;
 import com.calwen.xlumen.ai.vo.ChatMessageVO;
 import com.calwen.xlumen.ai.vo.ConversationVO;
 import com.calwen.xlumen.common.context.WorkspaceContext;
@@ -35,6 +30,11 @@ import com.calwen.xlumen.knowledge.api.dto.SearchRequestDTO;
 import com.calwen.xlumen.knowledge.api.dto.SearchResultDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.ToolResponseMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
@@ -43,14 +43,17 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * AI 对话服务实现（F-0701/F-0702）：双路径——agent_enabled=0 走固定 RAG（知识库检索 → System prompt 组装 →
- * QA 流式 → citations），agent_enabled=1 走 AgentRunner 工具循环（模型自主检索，SSE 新增 tool 事件）；
- * SSE 返回 chunk/citation/tool/done/error 事件；会话/消息持久化含工具轨迹（IDEA-025 F-0708）。
+ * QA 流式 → citations），agent_enabled=1 走 ChatRuntime 工具化流式（ChatClient 自动多轮工具循环，
+ * SSE 新增 tool 事件）；SSE 返回 chunk/citation/tool/done/error 事件；会话/消息持久化含工具轨迹（IDEA-025 F-0708）。
+ * OPT-2/D20 全量迁移：链路改走 Spring AI 消息类型与 ChatRuntime，业务语义与对外事件格式不变。
  *
  * @author calwen
  * @date 2026/8/13
@@ -82,23 +85,20 @@ public class ChatServiceImpl implements ChatService {
 
     private final KnowledgeApi knowledgeApi;
     private final WorkspaceApi workspaceApi;
-    private final ModelGateway modelGateway;
-    private final AgentRunner agentRunner;
+    private final ChatRuntime chatRuntime;
     private final ChatConversationMapper conversationMapper;
     private final ChatMessageMapper messageMapper;
     private final ThreadPoolTaskExecutor chatStreamExecutor;
 
     public ChatServiceImpl(KnowledgeApi knowledgeApi,
                            WorkspaceApi workspaceApi,
-                           ModelGateway modelGateway,
-                           AgentRunner agentRunner,
+                           ChatRuntime chatRuntime,
                            ChatConversationMapper conversationMapper,
                            ChatMessageMapper messageMapper,
                            @Qualifier("chatStreamExecutor") ThreadPoolTaskExecutor chatStreamExecutor) {
         this.knowledgeApi = knowledgeApi;
         this.workspaceApi = workspaceApi;
-        this.modelGateway = modelGateway;
-        this.agentRunner = agentRunner;
+        this.chatRuntime = chatRuntime;
         this.conversationMapper = conversationMapper;
         this.messageMapper = messageMapper;
         this.chatStreamExecutor = chatStreamExecutor;
@@ -140,7 +140,7 @@ public class ChatServiceImpl implements ChatService {
             List<ChatMessageEntity> history = loadHistory(conversation.getId());
             saveMessage(conversation.getId(), workspaceId, userId, "USER", dto.getQuery(), null, null, null, null);
 
-            SceneModel sceneModel = modelGateway.resolveScene(workspaceId, AiScene.QA);
+            SceneModel sceneModel = chatRuntime.resolveScene(workspaceId, AiScene.QA);
             boolean agentMode = Boolean.TRUE.equals(sceneModel.getAgentEnabled());
             if (agentMode) {
                 runAgent(conversation, workspaceId, userId, dto, knowledgeId, history, emitter);
@@ -164,31 +164,17 @@ public class ChatServiceImpl implements ChatService {
                              ChatRequestDTO dto, Long knowledgeId, List<ChatMessageEntity> history,
                              SseEmitter emitter) {
         List<SearchResultDTO> evidences = retrieve(workspaceId, userId, dto, knowledgeId);
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(ChatMessage.builder().role("system").content(buildSystemPrompt(evidences)).build());
+        List<Message> messages = new ArrayList<>();
+        messages.add(new SystemMessage(buildSystemPrompt(evidences)));
         messages.addAll(replayHistory(history));
-        messages.add(ChatMessage.builder().role("user").content(dto.getQuery()).build());
+        messages.add(new UserMessage(dto.getQuery()));
 
         StringBuilder sb = new StringBuilder();
         AtomicBoolean errored = new AtomicBoolean(false);
-        ProviderChatRequest request = ProviderChatRequest.builder()
-                .messages(messages)
-                .temperature(0.7)
-                .maxTokens(1024)
-                .stream(true)
-                .build();
-        modelGateway.chatStream(workspaceId, AiScene.QA, request,
-                new StreamCallback() {
-                    @Override
-                    public void onContent(String delta) {
-                        sb.append(delta);
-                        send(emitter, "chunk", delta);
-                    }
-
-                    @Override
-                    public void onResult(ProviderChatResult result) {
-                        // 固定路径终态无额外处理（Agent 路径由 AgentRunner 承接）
-                    }
+        chatRuntime.chatStream(workspaceId, AiScene.QA, messages, 0.7, 1024,
+                delta -> {
+                    sb.append(delta);
+                    send(emitter, "chunk", delta);
                 },
                 err -> {
                     errored.set(true);
@@ -205,71 +191,79 @@ public class ChatServiceImpl implements ChatService {
         sendDone(emitter, conversation, assistant);
     }
 
-    /** Agent 路径（agent_enabled=true）：AgentRunner 工具循环，SSE 新增 tool 事件。 */
+    /** Agent 路径（agent_enabled=true）：ChatRuntime 工具化流式，SSE 新增 tool 事件。 */
     private void runAgent(ChatConversationEntity conversation, Long workspaceId, Long userId,
                           ChatRequestDTO dto, Long knowledgeId, List<ChatMessageEntity> history,
                           SseEmitter emitter) {
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(ChatMessage.builder().role("system").content(AGENT_SYSTEM_PROMPT).build());
+        List<Message> messages = new ArrayList<>();
+        messages.add(new SystemMessage(AGENT_SYSTEM_PROMPT));
         messages.addAll(replayHistory(history));
-        messages.add(ChatMessage.builder().role("user").content(dto.getQuery()).build());
+        messages.add(new UserMessage(dto.getQuery()));
 
         AtomicBoolean errored = new AtomicBoolean(false);
-        AgentRequest request = AgentRequest.builder()
+        ToolEventSink sink = new ToolEventSink(event -> send(emitter, "tool", JSONUtil.toJsonStr(event)));
+        Map<String, SearchResultDTO> citationIndex = new LinkedHashMap<>();
+        AgentToolContext toolContext = AgentToolContext.builder()
                 .workspaceId(workspaceId)
                 .userId(userId)
                 .conversationId(conversation.getId())
                 .kbId(dto.getKbId())
-                .messages(messages)
-                .scene(AiScene.QA)
-                .stream(true)
-                .temperature(0.7)
-                .maxTokens(1024)
+                .citationCollector(results -> {
+                    for (SearchResultDTO r : results) {
+                        if (r != null && r.getKnowledgeId() != null) {
+                            citationIndex.putIfAbsent(r.getKnowledgeId() + ":" + r.getChunkSeq(), r);
+                        }
+                    }
+                })
                 .build();
-        AgentResult result = agentRunner.run(request, new AgentEvents() {
-            @Override
-            public void onContent(String delta) {
-                send(emitter, "chunk", delta);
-            }
-
-            @Override
-            public void onTool(ToolEvent event) {
-                send(emitter, "tool", JSONUtil.toJsonStr(event));
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                errored.set(true);
-                send(emitter, "error", safeMessage(error));
-            }
-        });
+        ToolRun run = ToolRun.builder()
+                .scene(AiScene.QA)
+                .toolContext(toolContext)
+                .sink(sink)
+                .build();
+        StringBuilder sb = new StringBuilder();
+        chatRuntime.chatStreamWithTools(workspaceId, AiScene.QA, messages, 0.7, 1024, run,
+                delta -> {
+                    sb.append(delta);
+                    send(emitter, "chunk", delta);
+                },
+                err -> {
+                    errored.set(true);
+                    send(emitter, "error", safeMessage(err));
+                });
         if (errored.get()) {
             return;
         }
-        if (StrUtil.isNotBlank(result.getError())) {
-            // runner 层模型调用错误（onError 已发送）：不落最终行
-            return;
-        }
-        // 中间轮轨迹落库：assistant 工具调用行 + tool 行
-        if (result.getAuxMessages() != null) {
-            for (ChatMessage aux : result.getAuxMessages()) {
-                if ("assistant".equals(aux.getRole())) {
-                    saveMessage(conversation.getId(), workspaceId, userId, "ASSISTANT",
-                            aux.getContent() == null ? "" : aux.getContent(), null,
-                            toToolCallsJson(aux.getToolCalls()), null, null);
-                } else if ("tool".equals(aux.getRole())) {
-                    saveMessage(conversation.getId(), workspaceId, userId, "TOOL",
-                            aux.getContent() == null ? "" : aux.getContent(), null,
-                            null, aux.getToolCallId(), aux.getName());
-                }
-            }
-        }
-        String citationsJson = toCitationsJson(result.getCitations());
+        // 中间轮轨迹落库：assistant 工具调用行 + tool 行（逐调用配对，合成 tool_call_id）
+        persistToolPairs(conversation, workspaceId, userId, sink);
+        String citationsJson = toCitationsJson(List.copyOf(citationIndex.values()));
         send(emitter, "citation", citationsJson);
         ChatMessageEntity assistant = saveMessage(conversation.getId(), workspaceId, userId,
-                "ASSISTANT", result.getContent() == null ? "" : result.getContent(), citationsJson,
-                null, null, null);
+                "ASSISTANT", sb.toString(), citationsJson, null, null, null);
         sendDone(emitter, conversation, assistant);
+    }
+
+    /** 工具轨迹落库：每个工具调用一条 assistant 行（tool_calls_json 单调用）+ 一条 tool 行。 */
+    private void persistToolPairs(ChatConversationEntity conversation, Long workspaceId, Long userId,
+                                  ToolEventSink sink) {
+        List<ToolPair> pairs = sink.getPairs();
+        for (ToolPair pair : pairs) {
+            String toolCallsJson = singleToolCallJson(pair);
+            saveMessage(conversation.getId(), workspaceId, userId, "ASSISTANT",
+                    "", null, toolCallsJson, null, null);
+            saveMessage(conversation.getId(), workspaceId, userId, "TOOL",
+                    pair.getContent() == null ? "" : pair.getContent(), null,
+                    null, pair.getToolCallId(), pair.getName());
+        }
+    }
+
+    /** 单调用 tool_calls_json（与 TOOL 行 tool_call_id 配对，前端按 id 归并工具面板）。 */
+    private String singleToolCallJson(ToolPair pair) {
+        return JSONUtil.createObj().set("id", pair.getToolCallId())
+                .set("index", 0)
+                .set("name", pair.getName())
+                .set("arguments", pair.getArguments() == null ? "" : pair.getArguments())
+                .toString();
     }
 
     @Override
@@ -372,8 +366,8 @@ public class ChatServiceImpl implements ChatService {
      * 历史重放（IDEA-025 F-0708 配对修剪）：TOOL 行转 tool 角色消息；窗口截断可能剪坏
      * assistant.tool_calls 与 tool 响应的配对——孤儿 tool 行剔除、toolCalls 无对应响应的 assistant 行降级为纯文本。
      */
-    private List<ChatMessage> replayHistory(List<ChatMessageEntity> history) {
-        List<ChatMessage> out = new ArrayList<>();
+    private List<Message> replayHistory(List<ChatMessageEntity> history) {
+        List<Message> out = new ArrayList<>();
         if (history == null || history.isEmpty()) {
             return out;
         }
@@ -385,27 +379,21 @@ public class ChatServiceImpl implements ChatService {
         }
         for (ChatMessageEntity m : history) {
             if ("USER".equals(m.getRole())) {
-                out.add(ChatMessage.builder().role("user").content(m.getContent()).build());
+                out.add(new UserMessage(m.getContent()));
             } else if ("ASSISTANT".equals(m.getRole())) {
-                List<ToolCall> toolCalls = parseToolCalls(m.getToolCallsJson());
+                List<AssistantMessage.ToolCall> toolCalls = parseToolCalls(m.getToolCallsJson());
                 if (toolCalls != null) {
                     // 无对应 tool 响应的调用剔除（窗口截断导致响应缺失 → 降级纯文本）
-                    toolCalls.removeIf(c -> c.getId() == null || !responded.contains(c.getId()));
+                    toolCalls.removeIf(c -> c.id() == null || !responded.contains(c.id()));
                 }
-                out.add(ChatMessage.builder()
-                        .role("assistant")
-                        .content(m.getContent())
-                        .toolCalls(toolCalls)
-                        .build());
+                out.add(AssistantMessage.builder().content(m.getContent()).toolCalls(toolCalls).build());
             } else if ("TOOL".equals(m.getRole())) {
                 if (m.getToolCallId() == null || !responded.contains(m.getToolCallId())) {
                     continue; // 孤儿 tool 行剔除
                 }
-                out.add(ChatMessage.builder()
-                        .role("tool")
-                        .toolCallId(m.getToolCallId())
-                        .name(m.getToolName())
-                        .content(m.getContent())
+                out.add(ToolResponseMessage.builder()
+                        .responses(List.of(new ToolResponseMessage.ToolResponse(
+                                m.getToolCallId(), m.getToolName(), m.getContent())))
                         .build());
             }
         }
@@ -413,43 +401,26 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /** 解析 tool_calls_json 为 ToolCall 列表；非法/空返回 null（assistant 行降级纯文本）。 */
-    private List<ToolCall> parseToolCalls(String toolCallsJson) {
+    private List<AssistantMessage.ToolCall> parseToolCalls(String toolCallsJson) {
         if (StrUtil.isBlank(toolCallsJson)) {
             return null;
         }
         try {
             JSONArray arr = JSONUtil.parseArray(toolCallsJson);
-            List<ToolCall> calls = new ArrayList<>();
+            List<AssistantMessage.ToolCall> calls = new ArrayList<>();
             for (Object o : arr) {
                 cn.hutool.json.JSONObject item = (cn.hutool.json.JSONObject) o;
-                calls.add(ToolCall.builder()
-                        .id(item.getStr("id"))
-                        .index(item.getInt("index"))
-                        .name(item.getStr("name"))
-                        .arguments(item.getStr("arguments"))
-                        .build());
+                calls.add(new AssistantMessage.ToolCall(
+                        item.getStr("id"),
+                        "function",
+                        item.getStr("name"),
+                        item.getStr("arguments")));
             }
             return calls;
         } catch (Exception e) {
             log.warn("tool_calls_json 解析失败，降级纯文本", e);
             return null;
         }
-    }
-
-    /** 序列化 ToolCall 列表为 JSON 文本。 */
-    private String toToolCallsJson(List<ToolCall> toolCalls) {
-        if (toolCalls == null || toolCalls.isEmpty()) {
-            return null;
-        }
-        JSONArray arr = new JSONArray();
-        for (ToolCall c : toolCalls) {
-            arr.add(JSONUtil.createObj()
-                    .set("id", c.getId())
-                    .set("index", c.getIndex())
-                    .set("name", c.getName())
-                    .set("arguments", c.getArguments()));
-        }
-        return arr.toString();
     }
 
     /** RAG 检索（决策 D13）：检索范围=kbId 限定单库（知识级问答锁定当前库时前端传 kbId）>

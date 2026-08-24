@@ -2,6 +2,16 @@
 spring:
   application:
     name: xlumen
+  # Spring AI：关闭全部六个 OpenAI 自动配置（OPT-2/D20，双供应商与向量化手动装配于 ChatModelFactory/EmbeddingServiceImpl）
+  ai:
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
   # 加载 .env（UTF-8 无 BOM）：依次回退 config/、../config/、backend/xlumen-server/config/（GLOBAL.md §6.2）
   config:
     import:

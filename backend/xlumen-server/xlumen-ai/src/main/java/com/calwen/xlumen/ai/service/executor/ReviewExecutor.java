@@ -7,18 +7,15 @@ import cn.hutool.json.JSONUtil;
 import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.service.AiTaskExecutor;
-import com.calwen.xlumen.ai.service.ModelGateway;
-import com.calwen.xlumen.ai.service.SceneModel;
+import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.TaskContext;
-import com.calwen.xlumen.ai.service.agent.AgentEvents;
-import com.calwen.xlumen.ai.service.agent.AgentRequest;
-import com.calwen.xlumen.ai.service.agent.AgentResult;
-import com.calwen.xlumen.ai.service.agent.AgentRunner;
-import com.calwen.xlumen.ai.service.agent.ToolEvent;
-import com.calwen.xlumen.ai.service.provider.ChatMessage;
-import com.calwen.xlumen.ai.service.provider.ProviderChatRequest;
-import com.calwen.xlumen.ai.service.provider.ProviderChatResult;
+import com.calwen.xlumen.ai.service.tool.AgentToolContext;
+import com.calwen.xlumen.ai.service.tool.ToolEventSink;
+import com.calwen.xlumen.ai.service.tool.ToolRun;
 import com.calwen.xlumen.ai.vo.ReviewIssueVO;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -27,9 +24,10 @@ import java.util.List;
 /**
  * AI 审校执行器（F-0604）：非流式输出严格 JSON 数组，Hutool JSONUtil 校验字段；
  * 校验失败重试一次，仍失败则任务 FAILED。
- * IDEA-025 F-0604 事实核对模式（agent_enabled=1）：挂 knowledge.search 工具走 AgentRunner 非流式，
- * 独立轮数上限（reviewerAgentMaxRounds=2），输出 Schema 不变 + 可选证据字段；闸门语义不变——
+ * IDEA-025 F-0604 事实核对模式（agent_enabled=1）：挂 knowledge.search 工具走 ChatRuntime 工具化非流式
+ * （ChatClient 自动循环，独立轮数上限 reviewerAgentMaxRounds），输出 Schema 不变 + 可选证据字段；闸门语义不变——
  * 工具检索失败 ≠ 任务失败（错误信封给模型，模型继续文本层检查），仅任务本身失败才阻断发布（F-0907）。
+ * OPT-2/D20 全量迁移：链路改走 ChatRuntime（Spring AI 消息类型），业务语义不变。
  *
  * @author calwen
  * @date 2026/8/13
@@ -54,12 +52,10 @@ public class ReviewExecutor implements AiTaskExecutor {
     /** 重试追加提示。 */
     private static final String RETRY_HINT = "\n\n请重新输出，必须是 JSON 数组，每个元素含 severity/position/evidence/suggestion 四个字段。";
 
-    private final ModelGateway modelGateway;
-    private final AgentRunner agentRunner;
+    private final ChatRuntime chatRuntime;
 
-    public ReviewExecutor(ModelGateway modelGateway, AgentRunner agentRunner) {
-        this.modelGateway = modelGateway;
-        this.agentRunner = agentRunner;
+    public ReviewExecutor(ChatRuntime chatRuntime) {
+        this.chatRuntime = chatRuntime;
     }
 
     @Override
@@ -79,7 +75,7 @@ public class ReviewExecutor implements AiTaskExecutor {
         ctx.publishProgress(20);
         String userPrompt = buildUserPrompt(title, content);
         boolean agentMode = Boolean.TRUE.equals(
-                modelGateway.resolveScene(task.getWorkspaceId(), AiScene.REVIEWER).getAgentEnabled());
+                chatRuntime.resolveScene(task.getWorkspaceId(), AiScene.REVIEWER).getAgentEnabled());
         String raw;
         if (agentMode) {
             raw = chatWithTools(task, userPrompt);
@@ -101,51 +97,33 @@ public class ReviewExecutor implements AiTaskExecutor {
 
     /** 普通模式：单次非流式 chat。 */
     private String chat(AiTaskEntity task, String userPrompt) {
-        ProviderChatRequest request = ProviderChatRequest.builder()
-                .messages(List.of(
-                        ChatMessage.builder().role("system").content(SYSTEM_PROMPT).build(),
-                        ChatMessage.builder().role("user").content(userPrompt).build()))
-                .temperature(0.2)
-                .maxTokens(2048)
-                .stream(false)
-                .build();
-        ProviderChatResult result = modelGateway.chat(task.getWorkspaceId(), AiScene.REVIEWER, request);
-        return result.getContent();
+        return chatRuntime.chat(task.getWorkspaceId(), AiScene.REVIEWER,
+                List.of(
+                        new SystemMessage(SYSTEM_PROMPT),
+                        new UserMessage(userPrompt)),
+                0.2, 2048);
     }
 
-    /** 事实核对模式：AgentRunner 非流式工具循环（轮数上限 reviewerAgentMaxRounds）。 */
+    /** 事实核对模式：ChatRuntime 非流式工具循环（轮数上限在 ToolCallbackAdapter 内收紧）。 */
     private String chatWithTools(AiTaskEntity task, String userPrompt) {
-        AgentRequest request = AgentRequest.builder()
+        List<Message> messages = List.of(
+                new SystemMessage(SYSTEM_PROMPT_AGENT),
+                new UserMessage(userPrompt));
+        AgentToolContext toolContext = AgentToolContext.builder()
                 .workspaceId(task.getWorkspaceId())
                 .userId(task.getUserId())
-                .messages(List.of(
-                        ChatMessage.builder().role("system").content(SYSTEM_PROMPT_AGENT).build(),
-                        ChatMessage.builder().role("user").content(userPrompt).build()))
-                .scene(AiScene.REVIEWER)
-                .stream(false)
-                .temperature(0.2)
-                .maxTokens(2048)
                 .build();
-        AgentResult result = agentRunner.run(request, new AgentEvents() {
-            @Override
-            public void onContent(String delta) {
-                // 审校为非流式，整段终态即 raw
-            }
-
-            @Override
-            public void onTool(ToolEvent event) {
-                // 工具过程不向任务 SSE 广播（发布等待期体验由 IDEA-024 通知中心解决）
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                // 错误已收敛进 result.error
-            }
-        });
-        if (StrUtil.isNotBlank(result.getError())) {
-            throw new IllegalStateException("AI 服务不可用");
+        ToolRun run = ToolRun.builder()
+                .scene(AiScene.REVIEWER)
+                .toolContext(toolContext)
+                .sink(new ToolEventSink())
+                .build();
+        try {
+            return chatRuntime.chatWithTools(task.getWorkspaceId(), AiScene.REVIEWER,
+                    messages, 0.2, 2048, run);
+        } catch (Exception e) {
+            throw new IllegalStateException("AI 服务不可用", e);
         }
-        return result.getContent();
     }
 
     private JSONObject parseInput(String inputJson) {

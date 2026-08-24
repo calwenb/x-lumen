@@ -29,7 +29,7 @@
 | M03 博客公开页 | 2026-08-12 | 公开列表/详情（markdown-it + DOMPurify XSS 清洗、标题目录导航）、搜索/标签 JSON_TABLE 聚合、评论/点赞幂等切换、阅读量 Redis 24h 防刷 |
 | M04 内容管理 | 2026-08-13 | 知识 CRUD + 自动保存幂等 + version 乐观锁（冲突 409）；8 状态机一次定版（构思->草稿->待审核->已通过->定时发布->已发布->更新中->已下架） |
 | M05 RAG 索引 | 2026-08-13 | 发布即索引流水线：事件->清洗->切片->Embedding（百炼 text-embedding-v4，32 片/批）->Milvus/Noop 写向量->kb_chunk 元数据 + kb_index_version 版本管理 |
-| M06+M12 AI 基座 | 2026-08-13 | ModelGateway（供应商解析 + 熔断 + 连通性测试）、AiTask 任务底座（幂等键 + Redis 进度 + SSE 事件）、场景模型配置（ai_scene_config 优先、.env 回退） |
+| M06+M12 AI 基座 | 2026-08-13（Spring AI 2.0.1 全量迁移 2026-08-24） | ChatRuntime（Spring AI 供应商解析 + 熔断 + 连通性测试，双选项装配 ChatModel/ChatClient）、AiTask 任务底座（幂等键 + Redis 进度 + SSE 事件）、场景模型配置（ai_scene_config 优先、.env 回退） |
 | M07 AI 创作 | 2026-08-13 | AI 写作（topic/draft/content 至少一项 -> 结构化 title+content）、审校异源校验（写作/审校模型不同源，结构化 severity/position/evidence/suggestion） |
 | M08 AI 对话 | 2026-08-13 | 小光（D14）SSE 流式问答（chunk/citation/done 协议）、会话/消息落库、知识级问答、引用溯源 |
 | M09 AI 增值 | 2026-08-13 | 摘要/SEO 结构化输出（Schema 校验）落库 ai_enhance_result |
@@ -42,7 +42,7 @@
 | BUG-002~005 修复 | 2026-08-17 | chat 流式整段渲染（占位消息改 reactive 代理）、审核 AI 结果懒回填（backfillAiResult）、RAG 检索恒空（Milvus 探测改 REST v2 collections/has + reindex 强制重建 + 补跑端点）、提交审核后跳转 |
 | 小光 Markdown 渲染 | 2026-08-17 | ChatPage/KnowledgeQaDialog 助手消息改 v-html 渲染 renderMarkdown()（复用 markdown-it + DOMPurify 通道），用户消息保持纯文本插值防 XSS |
 | IDEAS 批次 + BUG-006 | 2026-08-18 | F-0212 知识赞/踩互斥+收藏+B23 收藏页、F-0213 评论赞踩（eng_like 三态化 + eng_favorite/eng_comment_reaction 新表）、F-0214 创作中心主导航、F-0312 目录树右键菜单（B01/B20 共用组件）、F-0808 详情 AI 摘要（发布事件异步生成+aiSummary 透出）；BUG-006 详情页 TOC 空时 grid 单栏回退修复；顺带修复目录 PUT 重命名返回空值契约缺陷 |
-| F-0708/F-0608 Agent 改造（IDEA-025） | 2026-08-24 | OpenAI 兼容 tools 协议（ProviderChatResult/StreamCallback/ToolSpec/ToolCall）、场景级开关 ai_scene_config.agent_enabled（默认全关）、工具层知识搬运（knowledge.search/list/getDirectoryTree，只读+可见库强制过滤）、AgentRunner 多轮工具循环（对话 SSE tool 事件+chat_message 轨迹三列+历史配对修剪）、写作「大纲→分章→自审→修订」多步工作流（四条降级路径回退单次）、审校事实核对（输出 Schema 不变+可选库内证据引用）；MockProvider 脚本化离线全链路测试 |
+| F-0708/F-0608 Agent 改造（IDEA-025，Spring AI 形态） | 2026-08-24（2026-08-24 全量迁移后形态） | 场景级开关 ai_scene_config.agent_enabled（默认全关）、工具层知识搬运（knowledge.search/list/getDirectoryTree，只读+可见库强制过滤，注册为 Spring AI ToolCallback）、ChatClient + ToolCallingAdvisor 自动多轮工具循环（对话 SSE tool 事件+chat_message 轨迹三列+历史配对修剪，事件/配对经 ToolEventSink 收集）、写作「大纲→分章→自审→修订」多步工作流（四条降级路径回退单次）、审校事实核对（输出 Schema 不变+可选库内证据引用）；ScriptedChatModel 脚本化离线全链路测试 |
 | 审核中心恢复+通用消息（IDEA-024） | 2026-08-24 | 新模块 xlumen-notification（noti_notification + /api/v1/notifications + AiTaskCompletedEvent 事件钩子，REVIEWER 完结→通过/未通过/失败站内信）；blog 顶栏铃铛（未读角标+下拉+全部已读）；/studio/review 恢复审核中心路由、工作台加「审核中心」卡片（FLOW-003 关闭）；admin 模型配置页「Agent 模式」开关 |
 
 踩坑备忘（实现时易复犯，背景详见 CHANGELOG 对应条目，8-16 前条目见 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md)）：
@@ -55,7 +55,7 @@
 
 ## 4. 进行中
 
-IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾已完成；**IDEA-024/025 已于 2026-08-24 立项实施完成**（F-0708/F-0608 登记总表，见 §3 能力基线与本日 CHANGELOG）；V2/V3 范围经决策 D19（2026-08-22）按「个人使用 × 访客/面试官浏览可见」评分重划：V2 27 项（首批 15 项定版优先实施）、V3 25 项（含 6 项多用户/治理向「暂缓」）；9 项对话期新候选已登记总表（F-0216~F-0220/F-0706/F-0707/F-0809/F-1005），其余候选在 IDEAS.md 待评估（决策 D18 保留历史记录）。待办为 OPT-1（AI 线程模型虚拟线程评估，待认领）与 V2 批次（见 §5 待办）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
+IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾已完成；**IDEA-024/025 已于 2026-08-24 立项实施完成**（F-0708/F-0608 登记总表，见 §3 能力基线与本日 CHANGELOG）；**OPT-2 AI 实现方式全量迁移 Spring AI 2.0.1 已于 2026-08-24 交付**（决策 D20，见本日 CHANGELOG）；V2/V3 范围经决策 D19（2026-08-22）按「个人使用 × 访客/面试官浏览可见」评分重划：V2 27 项（首批 15 项定版优先实施）、V3 25 项（含 6 项多用户/治理向「暂缓」）；9 项对话期新候选已登记总表（F-0216~F-0220/F-0706/F-0707/F-0809/F-1005），其余候选在 IDEAS.md 待评估（决策 D18 保留历史记录）。待办为 OPT-1（AI 线程模型虚拟线程评估，待认领）与 V2 批次（见 §5 待办）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
 
 ## 5. 待办
 
@@ -63,7 +63,7 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 
 | 编号 | 阶段/任务 | 依赖文档 | 状态 | 认领人 |
 | --- | --- | --- | --- | --- |
-| OPT-1 | 技术优化：AI 线程模型评估虚拟线程。主项：chatStreamExecutor（SSE 长连接占平台线程、池满 CallerRuns 堵容器线程）改 `Executors.newVirtualThreadPerTaskExecutor()` + Semaphore 并发上限（限流与线程模型解耦）。候选点：aiTaskExecutor（AI 任务，需保留并发上限）、indexExecutor（发布即索引 embedding/Milvus 阻塞 I/O）、OpenAICompatibleProvider/EmbeddingServiceImpl/MilvusVectorStore 的 JDK HttpClient 阻塞调用；SseService 心跳与 PublishJob 为固定间隔单线程调度，不适用 | 2026-08-17 线程模型评估（chatStreamExecutor 结构性短板，详见会话记录） | 待认领 | |
+| OPT-1 | 技术优化：AI 线程模型评估虚拟线程。主项：chatStreamExecutor（SSE 长连接占平台线程、池满 CallerRuns 堵容器线程）改 `Executors.newVirtualThreadPerTaskExecutor()` + Semaphore 并发上限（限流与线程模型解耦）。候选点：aiTaskExecutor（AI 任务，需保留并发上限）、indexExecutor（发布即索引 embedding/Milvus 阻塞 I/O）、OpenAiChatModel/EmbeddingServiceImpl/MilvusVectorStore 的同步阻塞调用；SseService 心跳与 PublishJob 为固定间隔单线程调度，不适用 | 2026-08-17 线程模型评估（chatStreamExecutor 结构性短板，详见会话记录） | 待认领 | |
 | V2 | V2 批次（决策 D19，27 项）：首批定版 15 项——总表 F-0204/F-0603/F-0606/F-0607/F-0703/F-0806/F-1103 + 新登记 F-0216~F-0219/F-0706/F-0707/F-0809/F-1005；基建前置：Milvus 安装 + 存量 reindex 补跑（BUG-004 收尾）、F-0504/F-0505/F-1304 | PRODUCT §5（V2 27 项）、PROTOTYPE §7/§8 | 待认领 | |
 
 > 说明：V2/V3 范围经决策 D19（2026-08-22）按「个人使用效率 × 访客/面试官浏览可见」评分重划：V2 27 项 / V3 25 项（其中 F-0106/F-0211/F-1002/F-1003/F-1203/F-1204 共 6 项多用户/治理向标「暂缓」）；原 D18「AI 优先」标注停用（历史决策保留于 §8 与 CHANGELOG）；V3 其余 19 项保持规划不排期；阶段调整须经 CHANGELOG 记录（决策 D10）。
@@ -77,6 +77,7 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/24 · ZCode：**AI 实现方式全量迁移 Spring AI 2.0.1（OPT-2/D20 交付）**——手写 AI 层（provider/agent/tool/ModelGateway 约 1600 行）全部替换为 Spring AI 形态：ChatRuntime（场景解析/熔断/缺密钥回退 ScriptedChatModel + ChatClient 自动多轮工具循环）+ ToolCallbackAdapter（AgentTool→ToolCallback，SSE 事件与落库配对经 ToolEventSink 收集）+ ScriptedChatModel（替代 MockProvider）+ knowledge 向量化换 OpenAiEmbeddingModel；对外事件格式/表结构/.env/前端零变化；排除 openai-java-core 传递 swagger 冲突并钉 2.2.52（api-docs 修复）。验证：clean verify 全绿（75 测试）、fat jar health/ping/api-docs 200、Mock 对话 SSE chunk→citation→done 实测通过。
 - 2026/8/24 晚 · ZCode：**发布链路异步化（IDEA-024 续）**——按用户反馈「点击发布应进入异步 AI 审核、审核完站内通知，而非阻塞等待弹窗」：发布入口去掉轮询与高危/软问题确认弹窗，提交审核即返回；`pub_review` 加 auto_mode/auto_publish_at 两列 + `finalizeAutoReview` + `ReviewAutoPublishListener`（事件驱动：通过→自动发布（立即/定时），error/失败→驳回回草稿+站内通知）；站内信文案中性化；新增 9 条单测（后端 89 全绿）。
 - 2026/8/24 · ZCode：**IDEA-025 AI Agent 工具调用全链路 + IDEA-024 审核中心恢复/通用消息（同批交付）**——①协议层：ToolSpec/ToolCall/ProviderChatResult/StreamCallback 新类型，ModelProvider/ModelGateway 契约升级（chat 返回结果对象、chatStream 改 StreamCallback），OpenAICompatibleProvider 支持 tools/assistant.tool_calls/tool 消息与流式 tool_calls 按 index 归并，MockProvider 脚本化；②场景级开关 ai_scene_config.agent_enabled（默认全关、行为零变化）；③工具层 3 个只读工具（knowledge.search/list/getDirectoryTree，包装 KnowledgeApi + resolveVisibleKbIds 强制过滤 + ToolRegistry 白名单/超时/截断）；④对话 AgentRunner 多轮工具循环（SSE 新增 tool 事件、chat_message 加 tool_calls_json/tool_call_id/tool_name 三列、历史回放配对修剪、HISTORY_LIMIT 10→30）；⑤写作多步工作流（大纲→分章→自审→修订，四条降级路径回退单次）；⑥审校事实核对（Schema 兼容 + 可选 evidenceKnowledgeId/evidenceQuote，轮数上限 2）；⑦SEO 批次按红线裁决砍掉（标签在 content 模块）；⑧新模块 xlumen-notification（noti_notification + /api/v1/notifications + AiTaskCompletedEvent 钩子，REVIEWER 完结→通过/未通过/失败站内信）；⑨前端：blog chat 工具过程渲染 + 写作分步进度条 + 顶栏铃铛（未读角标+下拉+全部已读）+ /studio/review 恢复审核中心 + 工作台「审核中心」卡片 + 发布确认弹窗/审核中心库内证据链接；admin 模型配置页「Agent 模式」开关。总表登记 F-0708/F-0608（99→101 项，MVP 47→49）；完成后删除方案文档 design/agent-function-call.md（git 历史回溯）。验证：后端 clean verify 全绿（79 测试，其中新增 38 条）、blog/admin typecheck 通过、lint 0 errors（CRLF 存量警告不计）。
 - 2026/8/22 · ZCode：**docs 文档体系整体瘦身**——CHANGELOG 归档机制（8-16 前 19 条移入新增 CHANGELOG-ARCHIVE.md，模板移回头部）、STATUS §2/§5/§6 精简、BUGS 历史简表化、QA §7 并入 §3/§4、README 快速开始/技术栈改链接 GLOBAL、删除重复测试 zip（docs 体积 1.1M→约 380K）。纯文档变更。
@@ -105,6 +106,7 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 | D17 | **概念统一（文章→知识）**：全项目「文章」统一改名「知识」——文档措辞、后端类名/接口/事件/审计常量、前端路由/文案/组件、测试断言全量替换；物理表名 `cnt_article`→`cnt_knowledge`、接口路径 `/api/v1/articles`→`/api/v1/knowledge` 同步全改，**不保留兼容期**（前后端同仓同 PR 切换）（BACKEND §10） |
 | D18 | **AI 相关功能优先级提升（2026/8/20）**：V3 的 AI 功能并入 V2（F-0505、F-0607、F-0704/F-0705、F-0806/F-0807、F-1003、F-1103、F-1203/F-1204），V2 内 24 项 AI 相关功能标「AI 优先」优先实施（AI 范围定义见 PRODUCT §5 阶段标记说明）；V3 仅剩非 AI 的 F-0207/F-1305 |
 | D19 | **V2/V3 重新划分（2026/8/22）**：按「个人使用效率 × 访客/面试官浏览可见」评分（总分 = 自用 P + 可见 I×1.2 + 成本低 +1/中 +0）重划——V2 27 项（首批定版 15 项）、V3 25 项（含 6 项多用户/治理向「暂缓」：F-0106/F-0211/F-1002/F-1003/F-1203/F-1204）；新增总表登记 F-0216~F-0220/F-0706/F-0707/F-0809/F-1005 共 9 项；D18 的「AI 优先」标注停用（PRODUCT §5 阶段标记说明）；未采纳候选入 IDEAS.md 待评估 |
+| D20 | **AI 实现方式全量迁移 Spring AI 2.0.1（2026/8/24，OPT-2）**：不再手写 OpenAI 兼容协议/工具循环，统一为 Spring AI 形态——ChatRuntime + ChatClient（ToolCallingAdvisor 自动多轮工具循环）+ ToolCallbackAdapter + ScriptedChatModel（Mock 兜底）+ OpenAiEmbeddingModel（向量化）；不引 Spring AI Alibaba、不降 Boot（4.1.0）/JDK（25）；模型名仍按 ai_scene_config 逐请求解析；对外契约（REST/SSE/chat_message/.env/前端）零变化 |
 
 ## 9. 环境速查
 
