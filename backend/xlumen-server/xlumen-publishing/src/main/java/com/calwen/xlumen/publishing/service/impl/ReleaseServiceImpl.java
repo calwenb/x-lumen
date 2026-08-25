@@ -82,15 +82,9 @@ public class ReleaseServiceImpl implements ReleaseService {
         if (knowledge == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
         }
-        if (KnowledgeStatus.of(knowledge.getStatus()) != KnowledgeStatus.APPROVED) {
-            throw new BizException(ErrorCode.CONFLICT, "仅审核通过的知识可发布");
-        }
-        // 归属兜底（决策 D16）：发布必须归属有效知识库，拦截历史孤儿数据（BUG-4 防线）
-        if (knowledge.getKbId() == null
-                || knowledgeApi.getKnowledgeBase(workspaceId, knowledge.getKbId()) == null) {
-            throw new BizException(ErrorCode.CONFLICT, "知识未归属有效知识库，无法发布");
-        }
-        // 幂等兜底：同一知识同一提交版本只允许一次发布记录（F-0905）。
+        // 幂等兜底：同一知识同一提交版本只允许一次发布记录（F-0905）。放在状态检查之前——
+        // 自动审核发布链路（finalizeAutoReview）已建立记录后审核中心重复点「发布」直接返回既有记录，
+        // 不再被「仅审核通过的知识可发布」误拦 409。
         // BUG-007 配套：发布入参版本是审核通过时的快照版本，approve 状态迁移经 @Version 乐观锁
         // 会把知识版本号 +1，故不在此强校验 dto.version 与知识当前版本相等；真正迁移的
         // expectedVersion 在 doRelease 内取知识当前版本（防覆盖并发），幂等由本查询保证。
@@ -101,8 +95,18 @@ public class ReleaseServiceImpl implements ReleaseService {
         if (existing != null) {
             return toVO(existing);
         }
-        if (!hasPassedAutoReview(workspaceId, dto.getKnowledgeId(), dto.getVersion())) {
-            throw new BizException(ErrorCode.CONFLICT, "发布前必须完成自动 AI 审核");
+        if (KnowledgeStatus.of(knowledge.getStatus()) != KnowledgeStatus.APPROVED) {
+            throw new BizException(ErrorCode.CONFLICT, "仅审核通过的知识可发布");
+        }
+        // 归属兜底（决策 D16）：发布必须归属有效知识库，拦截历史孤儿数据（BUG-4 防线）
+        if (knowledge.getKbId() == null
+                || knowledgeApi.getKnowledgeBase(workspaceId, knowledge.getKbId()) == null) {
+            throw new BizException(ErrorCode.CONFLICT, "知识未归属有效知识库，无法发布");
+        }
+        // BUG 修复（2026-08-24）：发布门禁同时认人工审核（审核中心通过）与 AI 审核；
+        // 原实现强制 ai_task_id 非空导致人工审核通过的知识无法从审核中心发布（409）。
+        if (!hasApprovedReview(workspaceId, dto.getKnowledgeId(), dto.getVersion())) {
+            throw new BizException(ErrorCode.CONFLICT, "发布前必须通过审核");
         }
         ReleaseEntity release = new ReleaseEntity();
         release.setWorkspaceId(workspaceId);
@@ -124,17 +128,26 @@ public class ReleaseServiceImpl implements ReleaseService {
         return toVO(release);
     }
 
-    /** 新发布链路的最后一道服务端门禁，防止旧审核接口或直调发布接口绕过 Reviewer。 */
-    private boolean hasPassedAutoReview(Long workspaceId, Long knowledgeId, Long version) {
+    /**
+     * 发布门禁：必须存在该版本的已完成审核（APPROVED）记录——人工审核（审核中心通过，无 AI 任务，
+     * 人在环即门禁）或 AI 审核均可放行；AI 结果含 error 级问题仍拦（自动链路由 finalizeAutoReview
+     * 前置过滤，此处兜底防直调发布接口绕过）。
+     */
+    private boolean hasApprovedReview(Long workspaceId, Long knowledgeId, Long version) {
         ReviewEntity review = reviewMapper.selectOne(Wrappers.<ReviewEntity>lambdaQuery()
                 .eq(ReviewEntity::getWorkspaceId, workspaceId)
                 .eq(ReviewEntity::getKnowledgeId, knowledgeId)
                 .eq(ReviewEntity::getVersion, version)
                 .eq(ReviewEntity::getStatus, "APPROVED")
-                .isNotNull(ReviewEntity::getAiTaskId)
                 .orderByDesc(ReviewEntity::getUpdatedAt)
                 .last("LIMIT 1"));
-        if (review == null || StrUtil.isBlank(review.getAiResultJson())) return false;
+        if (review == null) {
+            return false;
+        }
+        if (StrUtil.isBlank(review.getAiResultJson())) {
+            // 人工通过（无 AI 结果）：人在环通过即为门禁
+            return true;
+        }
         try {
             JSONArray issues = JSONUtil.parseArray(review.getAiResultJson());
             return issues.stream().noneMatch(item ->

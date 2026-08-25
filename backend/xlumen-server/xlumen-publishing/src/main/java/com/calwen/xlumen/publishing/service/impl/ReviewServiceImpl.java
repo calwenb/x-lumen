@@ -93,7 +93,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    private ReviewVO submitReview(Long knowledgeId, boolean forceAi, LocalDateTime publishAt) {
+    public ReviewVO submitReview(Long knowledgeId, boolean forceAi, LocalDateTime publishAt) {
         Long workspaceId = WorkspaceContext.workspaceId();
         Long userId = WorkspaceContext.userId();
         EditorKnowledgeDTO knowledge = contentApi.getEditorKnowledge(workspaceId, knowledgeId);

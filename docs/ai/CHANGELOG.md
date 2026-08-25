@@ -16,7 +16,23 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
-## 2026/8/24 · ZCode（Spring AI 2.0.1 全量迁移交付·OPT-2/D20）
+## 2026/8/24 · ZCode（审核中心「发布」409 修复：发布门禁人工/AI 双轨 + 幂等前置）
+
+> 影响文档：docs/ai/CHANGELOG.md、docs/ai/BUGS.md（清单历史） · 决策摘要：无
+
+用户审核中心点「发布」报 409（POST /api/v1/releases）。根因两条：
+
+- **人工审核路径被 AI 门禁误杀**：ReleaseServiceImpl.hasPassedAutoReview 强制 `pub_review.ai_task_id` 非空且 `ai_result_json` 非空——审核中心人工提交（auto_mode=0，无 AI 任务）通过后点「发布」必 409「发布前必须完成自动 AI 审核」；人工通过（approve）本就是有效门禁。
+- **自动路径重复点击**：auto 审核发布链路已建发布记录后，再点「发布」在幂等返回前先被「仅审核通过的知识可发布」拦截（状态 PUBLISHED），同样 409。
+
+修复（ReleaseServiceImpl）：
+
+- 发布门禁放宽为「存在该版本 APPROVED 审核记录」：人工通过（无 AI 结果）即放行；AI 结果非空仍校验无 error 级问题（防直调绕过兜底）。
+- 幂等返回（同 ws/knowledgeId/version 已有发布记录）提前到状态检查之前：已发布重复点「发布」直接返回既有记录，不再 409。
+- 新增 ReleaseServiceImplTest 4 条（人工审核可发布 / 已发布幂等返回 / 无审核拒绝 / AI error 拦截）。
+
+验证：全仓 `mvn -T 1C clean verify` 全绿（79 测试，publishing 模块 44 含新增 4 条）。
+
 
 > 影响文档：docs/design/spring-ai-migration.md（已随实施删除）、docs/ai/STATUS.md（OPT-2 完成，D20 入 §8） · 决策摘要：D20
 
