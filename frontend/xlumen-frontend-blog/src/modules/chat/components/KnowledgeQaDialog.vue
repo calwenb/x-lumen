@@ -6,6 +6,7 @@ import { nextTick, reactive, ref } from 'vue'
 import { streamKnowledgeAsk } from '@/modules/chat/api/chat'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import CitationCard from '@/modules/chat/components/CitationCard.vue'
+import { activeTools, doneTools } from '@/modules/chat/utils/toolPanel'
 
 import type { Citation, ToolEvent } from '@/modules/chat/api/chat'
 
@@ -30,17 +31,6 @@ interface QaMessage {
   /** 工具过程事件（IDEA-025）。 */
   tools: ToolEvent[]
   streaming: boolean
-}
-
-/** 进行中的工具事件（start 未配对 done）。 */
-function activeTools(tools: ToolEvent[]): ToolEvent[] {
-  const doneSeqs = new Set(tools.filter((t) => t.phase === 'done').map((t) => t.seq))
-  return tools.filter((t) => t.phase === 'start' && !doneSeqs.has(t.seq))
-}
-
-/** 已完成的工具事件（seq 升序）。 */
-function doneTools(tools: ToolEvent[]): ToolEvent[] {
-  return tools.filter((t) => t.phase === 'done').sort((a, b) => a.seq - b.seq)
 }
 
 /** 检索范围：kb=锁定当前库（默认）；all=全部可见库。 */

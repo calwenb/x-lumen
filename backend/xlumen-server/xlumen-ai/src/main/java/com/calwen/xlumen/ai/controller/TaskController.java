@@ -1,11 +1,12 @@
 package com.calwen.xlumen.ai.controller;
 
 import cn.hutool.json.JSONUtil;
+import com.calwen.xlumen.ai.api.vo.TaskResultVO;
 import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiTaskStatus;
 import com.calwen.xlumen.ai.service.AiTaskService;
 import com.calwen.xlumen.ai.service.SseService;
-import com.calwen.xlumen.ai.vo.TaskVO;
+import com.calwen.xlumen.ai.util.SseEventName;
 import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ApiResponse;
@@ -39,13 +40,13 @@ public class TaskController {
      * 任务状态与结果查询（按工作空间隔离）。
      */
     @GetMapping("/{taskId}")
-    public ApiResponse<TaskVO> get(@PathVariable Long taskId) {
+    public ApiResponse<TaskResultVO> get(@PathVariable Long taskId) {
         AiTaskEntity task = aiTaskService.get(WorkspaceContext.workspaceId(), taskId);
         if (task == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "任务不存在");
         }
-        return ApiResponse.success(TaskVO.builder()
-                .id(task.getId())
+        return ApiResponse.success(TaskResultVO.builder()
+                .taskId(task.getId())
                 .scene(task.getScene())
                 .status(task.getStatus())
                 .resultJson(task.getResultJson())
@@ -87,17 +88,17 @@ public class TaskController {
         String data;
         String event;
         if (AiTaskStatus.COMPLETED.name().equals(task.getStatus())) {
-            event = "done";
+            event = SseEventName.DONE;
             data = JSONUtil.toJsonStr(JSONUtil.createObj()
                     .set("taskId", String.valueOf(taskId))
                     .set("resultJson", task.getResultJson()));
         } else if (AiTaskStatus.FAILED.name().equals(task.getStatus())) {
-            event = "error";
+            event = SseEventName.ERROR;
             data = JSONUtil.toJsonStr(JSONUtil.createObj()
                     .set("taskId", String.valueOf(taskId))
                     .set("message", task.getErrorMsg()));
         } else {
-            event = "done";
+            event = SseEventName.DONE;
             data = JSONUtil.toJsonStr(JSONUtil.createObj().set("taskId", String.valueOf(taskId)));
         }
         try {

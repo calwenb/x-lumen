@@ -27,9 +27,9 @@ export interface AiWritingTask {
   errorMsg: string
 }
 
-/** 后端原始任务形态。 */
+/** 后端原始任务形态（B 批去重后字段与跨模块 TaskResultVO 一致：taskId）。 */
 interface RawTask {
-  id: string
+  taskId: string
   scene: string
   status: string
   resultJson: string | null
@@ -48,7 +48,7 @@ export async function fetchWritingTask(taskId: string): Promise<AiWritingTask> {
   const { data } = await http.get<ApiResponse<RawTask>>(`/ai/tasks/${taskId}`)
   const task = unwrap(data)
   return {
-    id: String(task.id),
+    id: String(task.taskId),
     scene: task.scene,
     status: task.status,
     resultJson: task.resultJson ?? '',

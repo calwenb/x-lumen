@@ -40,10 +40,6 @@ public class AiProperties {
     @Value("${XLUMEN_BAILIAN_MODEL_SUMMARY:qwen-plus}")
     private String bailianModelSummary;
 
-    /** 百炼默认模型：Embedding。 */
-    @Value("${XLUMEN_BAILIAN_MODEL_EMBEDDING:text-embedding-v4}")
-    private String bailianModelEmbedding;
-
     /** DeepSeek API Key（不入日志/响应）。 */
     @Value("${XLUMEN_DEEPSEEK_API_KEY:}")
     private String deepseekApiKey;

@@ -42,9 +42,6 @@ public class AiSceneConfigEntity {
     @TableField(typeHandler = JacksonTypeHandler.class)
     private String paramsJson;
 
-    /** 是否启用 Agent 模式（IDEA-025 F-0708：QA=工具循环/WRITING=多步工作流/REVIEWER=事实核对/其余预留，默认关）。 */
-    private Boolean agentEnabled;
-
     /** 创建时间。 */
     private LocalDateTime createdAt;
 

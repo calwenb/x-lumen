@@ -62,7 +62,6 @@ async function save(item: ModelConfig): Promise<void> {
       provider: item.provider,
       model: item.model,
       ...(item.paramsJson ? { paramsJson: item.paramsJson } : {}),
-      agentEnabled: item.agentEnabled ?? false,
     })
     Object.assign(item, updated)
     ElMessage.success('已保存')
@@ -130,16 +129,6 @@ onMounted(() => {
         <el-table-column label="模型" min-width="160">
           <template #default="{ row }">
             <el-input v-model="row.model" class="models__model-input" placeholder="模型名称" />
-          </template>
-        </el-table-column>
-        <el-table-column label="Agent 模式" min-width="100">
-          <template #default="{ row }">
-            <el-switch
-              :model-value="row.agentEnabled ?? false"
-              :disabled="savingScenes.has(row.scene)"
-              aria-label="Agent 模式"
-              @update:model-value="(val: boolean | string | number) => (row.agentEnabled = val === true)"
-            />
           </template>
         </el-table-column>
         <el-table-column label="更新时间" min-width="140">

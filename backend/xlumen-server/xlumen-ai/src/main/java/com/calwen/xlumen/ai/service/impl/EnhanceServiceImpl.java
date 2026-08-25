@@ -2,13 +2,14 @@ package com.calwen.xlumen.ai.service.impl;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
 import com.calwen.xlumen.ai.dto.EnhanceRequestDTO;
 import com.calwen.xlumen.ai.entity.AiEnhanceResultEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.mapper.AiEnhanceResultMapper;
+import com.calwen.xlumen.ai.prompt.PromptTemplates;
 import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.EnhanceService;
+import com.calwen.xlumen.ai.util.AiJson;
 import com.calwen.xlumen.ai.vo.EnhanceResultVO;
 import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
@@ -28,15 +29,6 @@ import java.util.List;
  */
 @Service
 public class EnhanceServiceImpl implements EnhanceService {
-
-    /** 摘要 System 提示词：输出严格 JSON。 */
-    private static final String SUMMARY_PROMPT = "你是小光，一名内容摘要助手。请为给定内容生成简洁摘要，"
-            + "只输出一个 JSON 对象，格式为 {\"summary\": \"摘要文本\"}，不要输出其他内容。";
-
-    /** SEO System 提示词：输出标题/关键词/描述。 */
-    private static final String SEO_PROMPT = "你是小光，一名 SEO 优化助手。请为给定内容生成 SEO 元数据，"
-            + "只输出一个 JSON 对象，格式为 {\"title\": \"标题\", \"keywords\": \"关键词\", \"description\": \"描述\"}，"
-            + "不要输出其他内容。";
 
     private final ChatRuntime chatRuntime;
     private final AiEnhanceResultMapper enhanceResultMapper;
@@ -111,7 +103,7 @@ public class EnhanceServiceImpl implements EnhanceService {
 
     /** 调用运行时生成并校验结构化结果，返回紧凑 JSON 文本。 */
     private String generate(Long workspaceId, AiScene scene, String content) {
-        String system = scene == AiScene.SUMMARY ? SUMMARY_PROMPT : SEO_PROMPT;
+        String system = scene == AiScene.SUMMARY ? PromptTemplates.SUMMARY : PromptTemplates.SEO;
         String raw = chatRuntime.chat(workspaceId, scene,
                 List.of(
                         new SystemMessage(system),
@@ -136,26 +128,12 @@ public class EnhanceServiceImpl implements EnhanceService {
         }
     }
 
-    /** 提取 JSON 对象：去除代码围栏并截取首尾花括号。 */
+    /** 提取 JSON 对象：解析失败视为 AI 输出异常（区别于写作/审校的容错语义）。 */
     private JSONObject parseJson(String raw) {
-        String s = raw == null ? "" : raw.trim();
-        if (s.startsWith("```")) {
-            int idx = s.indexOf('\n');
-            s = idx >= 0 ? s.substring(idx + 1) : s;
-            if (s.endsWith("```")) {
-                s = s.substring(0, s.length() - 3);
-            }
-            s = s.trim();
-        }
-        int start = s.indexOf('{');
-        int end = s.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            s = s.substring(start, end + 1);
-        }
-        try {
-            return JSONUtil.parseObj(s);
-        } catch (Exception e) {
+        JSONObject obj = AiJson.extractObject(raw);
+        if (obj == null) {
             throw new BizException(ErrorCode.SERVICE_UNAVAILABLE, "AI 输出不是合法 JSON，请重试");
         }
+        return obj;
     }
 }

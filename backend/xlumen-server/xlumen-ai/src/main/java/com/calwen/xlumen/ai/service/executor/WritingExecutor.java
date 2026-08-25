@@ -7,9 +7,11 @@ import cn.hutool.json.JSONUtil;
 import com.calwen.xlumen.ai.config.AiProperties;
 import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
+import com.calwen.xlumen.ai.prompt.PromptTemplates;
 import com.calwen.xlumen.ai.service.AiTaskExecutor;
 import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.TaskContext;
+import com.calwen.xlumen.ai.util.AiJson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.Message;
@@ -23,10 +25,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * AI 写作执行器（F-0601）：单次流式调用运行时，chunk 推 SSE，完成后解析标题与正文写入 resultJson。
- * IDEA-025 F-0608 多步工作流（agent_enabled=1）：大纲 → 分章流式 → 异源自审（REVIEWER）→ 修订，
- * 全程无人工确认断点；四条降级路径全部回退单次生成（大纲解析失败/章节超限/单章失败/自审失败跳过修订）——
- * 写作功能永不因新模式不可用。OPT-2/D20 全量迁移：链路改走 ChatRuntime（Spring AI 消息类型），业务语义不变。
+ * AI 写作执行器（F-0601，双轨合并后单轨）：统一走多步工作流 —— 大纲 → 分章流式 → 异源自审（REVIEWER）→ 修订，
+ * 全程无人工确认断点。降级语义：主链路失败（大纲解析失败/章节超限/单章生成失败）→ 任务 FAILED；
+ * 增强步骤失败（自审失败/修订失败）→ 跳过修订交付初稿。OPT-2/D20 全量迁移：链路改走 ChatRuntime（Spring AI 消息类型）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -35,33 +36,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public class WritingExecutor implements AiTaskExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(WritingExecutor.class);
-
-    /** 写作 System 提示词：明确角色与输出格式。 */
-    private static final String SYSTEM_PROMPT = "你是小光，一名专业的中文内容创作助手。"
-            + "请根据用户提供的主题、草稿或素材，输出一篇结构完整、带标题的完整 Markdown 文章。"
-            + "第一行必须是 # 标题，其余为正文内容。";
-
-    /** 大纲 System 提示词：输出章节标题+要点 JSON。 */
-    private static final String OUTLINE_PROMPT = "你是小光，一名专业的中文内容创作助手。"
-            + "请为给定主题/草稿规划文章大纲，只输出一个 JSON 对象，格式为："
-            + "{\"chapters\":[{\"title\":\"章节标题\",\"points\":[\"要点1\",\"要点2\"]}]}，"
-            + "章节数量不超过 {{MAX}} 章，不要输出任何其他内容。";
-
-    /** 分章 System 提示词：只输出指定章节内容。 */
-    private static final String CHAPTER_PROMPT = "你是小光，一名专业的中文内容创作助手。"
-            + "你正在撰写一篇结构化长文，请只输出「{{TITLE}}」这一章的 Markdown 正文；"
-            + "不要输出章节标题行，不要重复整篇文章标题，不要输出文章结尾总结。";
-
-    /** 自审 System 提示词：与审校模型异源（F-0604）。 */
-    private static final String SELF_REVIEW_PROMPT = "你是严格的审校助手（与写作模型异源）。"
-            + "请审校下列长文，输出一个严格的 JSON 数组，每个元素含四个字段："
-            + "severity（error|warning|info）、position（位置）、evidence（证据）、suggestion（修改建议）。"
-            + "只输出 JSON 数组，不要输出其他内容。";
-
-    /** 修订 System 提示词：按意见修订全文。 */
-    private static final String REVISE_PROMPT = "你是小光，一名专业的中文内容创作助手。"
-            + "下面是全文初稿与审校意见，请根据意见修订全文，输出修订后的完整 Markdown 文章，"
-            + "第一行必须是 # 标题。不要输出其他内容。";
 
     private final ChatRuntime chatRuntime;
     private final AiProperties aiProperties;
@@ -79,48 +53,11 @@ public class WritingExecutor implements AiTaskExecutor {
     @Override
     public void execute(AiTaskEntity task, TaskContext ctx) {
         JSONObject input = parseInput(task.getInputJson());
-        boolean agentMode = Boolean.TRUE.equals(
-                chatRuntime.resolveScene(task.getWorkspaceId(), AiScene.WRITING).getAgentEnabled());
-        if (agentMode) {
-            executeAgentWorkflow(task, ctx, input);
-        } else {
-            singlePass(task, ctx, input);
-        }
+        // 双轨合并：写作一律走多步工作流，不再保留单次生成路径
+        executeAgentWorkflow(task, ctx, input);
     }
 
-    /** 现状单次流式生成（兜底路径，agent 模式任何步骤失败均回退此处）。 */
-    private void singlePass(AiTaskEntity task, TaskContext ctx, JSONObject input) {
-        String topic = input.getStr("topic");
-        String draft = input.getStr("draft");
-        String content = input.getStr("content");
-        String title = input.getStr("title");
-
-        ctx.publishProgress(10);
-        StringBuilder sb = new StringBuilder();
-        AtomicReference<String> error = new AtomicReference<>();
-        chatRuntime.chatStream(task.getWorkspaceId(), AiScene.WRITING,
-                List.of(
-                        new SystemMessage(SYSTEM_PROMPT),
-                        new UserMessage(buildUserPrompt(topic, draft, content, title))),
-                0.7, 2048,
-                delta -> {
-                    sb.append(delta);
-                    ctx.publishChunk(delta);
-                },
-                err -> error.set(err == null ? "AI 服务不可用" : err.getMessage()));
-        if (error.get() != null) {
-            ctx.fail(error.get());
-            return;
-        }
-        ctx.publishProgress(90);
-        String[] parts = splitTitle(sb.toString(), title);
-        String resultJson = JSONUtil.toJsonStr(JSONUtil.createObj()
-                .set("title", parts[0])
-                .set("content", parts[1]));
-        ctx.complete(resultJson);
-    }
-
-    /** 多步工作流：大纲 → 分章 → 自审 → 修订（四条降级路径回退单次生成）。 */
+    /** 多步工作流：大纲 → 分章 → 自审 → 修订（主链路失败任务 FAILED，增强失败跳过修订交付）。 */
     private void executeAgentWorkflow(AiTaskEntity task, TaskContext ctx, JSONObject input) {
         String topic = input.getStr("topic");
         String draft = input.getStr("draft");
@@ -131,8 +68,8 @@ public class WritingExecutor implements AiTaskExecutor {
         ctx.publishProgress(10);
         List<JSONObject> chapters = outline(task, input);
         if (chapters == null || chapters.isEmpty()) {
-            log.info("写作多步：大纲解析失败，回退单次生成 taskId={}", task.getId());
-            singlePass(task, ctx, input);
+            log.info("写作多步：大纲解析失败，任务失败 taskId={}", task.getId());
+            ctx.fail("大纲生成失败，请重试");
             return;
         }
         ctx.publishProgress(20);
@@ -153,8 +90,8 @@ public class WritingExecutor implements AiTaskExecutor {
             ctx.publishChunk("\n\n--- 第 " + (i + 1) + "/" + chapters.size() + " 章：" + chapterTitle + " ---\n");
             String chapterText = generateChapter(task, ctx, userContext, outlineText.toString(), chapterTitle);
             if (chapterText == null) {
-                log.info("写作多步：第 {} 章生成失败，回退单次生成 taskId={}", i + 1, task.getId());
-                singlePass(task, ctx, input);
+                log.info("写作多步：第 {} 章生成失败，任务失败 taskId={}", i + 1, task.getId());
+                ctx.fail("第 " + (i + 1) + " 章生成失败，请重试");
                 return;
             }
             full.append(chapterText).append("\n\n");
@@ -189,7 +126,7 @@ public class WritingExecutor implements AiTaskExecutor {
 
     /** 步1：大纲；解析失败或章节超限返回 null（回退单次）。 */
     private List<JSONObject> outline(AiTaskEntity task, JSONObject input) {
-        String prompt = OUTLINE_PROMPT.replace("{{MAX}}", String.valueOf(maxChapters()));
+        String prompt = PromptTemplates.WRITING_OUTLINE.replace("{{MAX}}", String.valueOf(maxChapters()));
         try {
             String content = chatRuntime.chat(task.getWorkspaceId(), AiScene.WRITING,
                     List.of(
@@ -197,7 +134,7 @@ public class WritingExecutor implements AiTaskExecutor {
                             new UserMessage(buildUserPrompt(input.getStr("topic"), input.getStr("draft"),
                                     input.getStr("content"), input.getStr("title")))),
                     0.4, 1024);
-            JSONObject obj = extractJsonObject(content);
+            JSONObject obj = AiJson.extractObject(content);
             if (obj == null) {
                 return null;
             }
@@ -221,7 +158,7 @@ public class WritingExecutor implements AiTaskExecutor {
     /** 步2：单章流式生成；失败重试 1 次，仍失败返回 null（触发降级）。 */
     private String generateChapter(AiTaskEntity task, TaskContext ctx, String userContext,
                                    String outlineText, String chapterTitle) {
-        String chapterPrompt = CHAPTER_PROMPT.replace("{{TITLE}}", chapterTitle);
+        String chapterPrompt = PromptTemplates.WRITING_CHAPTER.replace("{{TITLE}}", chapterTitle);
         StringBuilder sb = new StringBuilder();
         for (int attempt = 0; attempt < 2; attempt++) {
             StringBuilder content = new StringBuilder();
@@ -251,14 +188,13 @@ public class WritingExecutor implements AiTaskExecutor {
         try {
             String content = chatRuntime.chat(task.getWorkspaceId(), AiScene.REVIEWER,
                     List.of(
-                            new SystemMessage(SELF_REVIEW_PROMPT),
+                            new SystemMessage(PromptTemplates.WRITING_SELF_REVIEW),
                             new UserMessage(fullText)),
                     0.2, 2048);
-            String json = extractJsonArray(content);
-            if (StrUtil.isBlank(json)) {
+            JSONArray arr = AiJson.extractArray(content);
+            if (arr == null) {
                 return null;
             }
-            JSONArray arr = JSONUtil.parseArray(json);
             return arr.isEmpty() ? "[]" : arr.toString();
         } catch (Exception e) {
             log.warn("写作多步：自审失败，跳过修订", e);
@@ -272,7 +208,7 @@ public class WritingExecutor implements AiTaskExecutor {
         AtomicReference<String> error = new AtomicReference<>();
         chatRuntime.chatStream(task.getWorkspaceId(), AiScene.WRITING,
                 List.of(
-                        new SystemMessage(REVISE_PROMPT),
+                        new SystemMessage(PromptTemplates.WRITING_REVISE),
                         new UserMessage("审校意见：\n" + reviewJson + "\n\n全文初稿：\n" + fullText)),
                 0.5, 4096,
                 delta -> {
@@ -336,45 +272,4 @@ public class WritingExecutor implements AiTaskExecutor {
         return new String[]{t, text};
     }
 
-    /** 提取 JSON 对象：去除代码围栏并截取首尾花括号。 */
-    private JSONObject extractJsonObject(String raw) {
-        String s = raw == null ? "" : raw.trim();
-        if (s.startsWith("```")) {
-            int idx = s.indexOf('\n');
-            s = idx >= 0 ? s.substring(idx + 1) : s;
-            if (s.endsWith("```")) {
-                s = s.substring(0, s.length() - 3);
-            }
-            s = s.trim();
-        }
-        int start = s.indexOf('{');
-        int end = s.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            s = s.substring(start, end + 1);
-        }
-        try {
-            return JSONUtil.parseObj(s);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /** 提取 JSON 数组：去除代码围栏并截取首尾方括号。 */
-    private String extractJsonArray(String raw) {
-        String s = raw == null ? "" : raw.trim();
-        if (s.startsWith("```")) {
-            int firstNewline = s.indexOf('\n');
-            s = firstNewline >= 0 ? s.substring(firstNewline + 1) : s;
-            if (s.endsWith("```")) {
-                s = s.substring(0, s.length() - 3);
-            }
-            s = s.trim();
-        }
-        int start = s.indexOf('[');
-        int end = s.lastIndexOf(']');
-        if (start >= 0 && end > start) {
-            return s.substring(start, end + 1);
-        }
-        return s;
-    }
 }

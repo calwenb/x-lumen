@@ -8,6 +8,8 @@ import type { ApiResponse } from '@/api/types'
 import type { SseEvent } from '@/modules/ai/utils/sse'
 import { streamSse } from '@/modules/ai/utils/sse'
 
+import { SseEventName } from '@/modules/ai/utils/sseEvent'
+
 /** 会话。 */
 export interface Conversation {
   id: string
@@ -219,16 +221,16 @@ async function runChatStream(
     { method: 'POST', body, ...(signal ? { signal } : {}) },
     (event: SseEvent) => {
       switch (event.event) {
-        case 'chunk':
+        case SseEventName.chunk:
           callbacks.onChunk(event.data)
           break
-        case 'tool':
+        case SseEventName.tool:
           callbacks.onTool(parseToolEvent(event.data))
           break
-        case 'citation':
+        case SseEventName.citation:
           callbacks.onCitations(parseCitations(event.data))
           break
-        case 'done': {
+        case SseEventName.done: {
           const parsed = JSON.parse(event.data) as { conversationId?: string; messageId?: string }
           callbacks.onDone({
             conversationId: parsed.conversationId ?? '',
@@ -236,7 +238,7 @@ async function runChatStream(
           })
           break
         }
-        case 'error':
+        case SseEventName.error:
           throw new Error(event.data)
       }
     },

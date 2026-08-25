@@ -84,7 +84,7 @@ class ChatRuntimeImplTest {
     void setUp() {
         SceneConfigService sceneConfigService = mock(SceneConfigService.class);
         when(sceneConfigService.resolve(anyLong(), eq(AiScene.QA)))
-                .thenReturn(SceneModel.builder().providerName(null).model("mock").agentEnabled(true).build());
+                .thenReturn(SceneModel.builder().providerName(null).model("mock").build());
         AiProperties aiProperties = new AiProperties();
         aiProperties.setAgentMaxToolCalls(8);
         aiProperties.setReviewerAgentMaxRounds(2);

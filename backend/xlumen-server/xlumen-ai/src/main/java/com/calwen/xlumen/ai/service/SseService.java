@@ -1,6 +1,7 @@
 package com.calwen.xlumen.ai.service;
 
 import cn.hutool.json.JSONUtil;
+import com.calwen.xlumen.ai.util.SseEventName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -63,7 +64,7 @@ public class SseService {
 
     /** 发布 chunk 事件。 */
     public void publishChunk(Long taskId, long sequence, String content) {
-        publish(taskId, "chunk", JSONUtil.toJsonStr(JSONUtil.createObj()
+        publish(taskId, SseEventName.CHUNK, JSONUtil.toJsonStr(JSONUtil.createObj()
                 .set("taskId", String.valueOf(taskId))
                 .set("sequence", sequence)
                 .set("content", content)));
@@ -71,7 +72,7 @@ public class SseService {
 
     /** 发布 progress 事件。 */
     public void publishProgress(Long taskId, long sequence, int progress) {
-        publish(taskId, "progress", JSONUtil.toJsonStr(JSONUtil.createObj()
+        publish(taskId, SseEventName.PROGRESS, JSONUtil.toJsonStr(JSONUtil.createObj()
                 .set("taskId", String.valueOf(taskId))
                 .set("sequence", sequence)
                 .set("progress", progress)));
@@ -79,7 +80,7 @@ public class SseService {
 
     /** 发布 done 事件。 */
     public void publishDone(Long taskId, long sequence, String resultJson) {
-        publish(taskId, "done", JSONUtil.toJsonStr(JSONUtil.createObj()
+        publish(taskId, SseEventName.DONE, JSONUtil.toJsonStr(JSONUtil.createObj()
                 .set("taskId", String.valueOf(taskId))
                 .set("sequence", sequence)
                 .set("resultJson", resultJson)));
@@ -87,7 +88,7 @@ public class SseService {
 
     /** 发布 error 事件。 */
     public void publishError(Long taskId, long sequence, String message) {
-        publish(taskId, "error", JSONUtil.toJsonStr(JSONUtil.createObj()
+        publish(taskId, SseEventName.ERROR, JSONUtil.toJsonStr(JSONUtil.createObj()
                 .set("taskId", String.valueOf(taskId))
                 .set("sequence", sequence)
                 .set("message", message)));

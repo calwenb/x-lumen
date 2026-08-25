@@ -18,7 +18,6 @@ export const SCENE_LABELS: Record<string, string> = {
   REVIEWER: '审核',
   QA: '问答',
   SUMMARY: '摘要',
-  EMBEDDING: 'Embedding',
 }
 
 export interface ModelConfig {
@@ -26,7 +25,6 @@ export interface ModelConfig {
   provider: string
   model: string
   paramsJson?: string
-  agentEnabled?: boolean
   updatedAt: string
 }
 
@@ -35,7 +33,6 @@ export interface ModelConfigUpdate {
   provider: string
   model: string
   paramsJson?: string
-  agentEnabled?: boolean
 }
 
 /** 连通性测试结果。 */

@@ -3,7 +3,6 @@ package com.calwen.xlumen.ai.service.executor;
 import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.service.ChatRuntime;
-import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.service.TaskContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
@@ -16,16 +15,14 @@ import org.mockito.MockitoAnnotations;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 审校执行器单测（IDEA-025 F-0604，OPT-2/D20 全量迁移）：mock ChatRuntime——普通模式 Schema 兼容
- * （旧结果无证据字段合法）、事实核对模式（agent_enabled=1 走 chatWithTools + 可选证据字段）、重试、模型失败阻断。
+ * 审校执行器单测（F-0604，双轨合并后单轨）：统一走 ChatRuntime 工具化非流式（chatWithTools）——
+ * Schema 兼容（旧结果无证据字段合法）、事实核对（可选证据字段）、模型失败阻断、解析失败重试。
  *
  * @author calwen
  * @date 2026/8/24
@@ -61,10 +58,8 @@ class ReviewExecutorTest {
     }
 
     @Test
-    void nonAgent_schemaCompat_legacyResultWithoutEvidenceIsValid() {
-        when(chatRuntime.resolveScene(1L, AiScene.REVIEWER))
-                .thenReturn(SceneModel.builder().agentEnabled(false).build());
-        when(chatRuntime.chat(eq(1L), eq(AiScene.REVIEWER), any(), any(), any()))
+    void resultWithoutEvidenceFields_isValid() {
+        when(chatRuntime.chatWithTools(eq(1L), eq(AiScene.REVIEWER), any(), any(), any(), any()))
                 .thenReturn(issueArray(false));
 
         executor.execute(task, ctx);
@@ -78,9 +73,7 @@ class ReviewExecutorTest {
     }
 
     @Test
-    void agentMode_runsChatWithTools_withEvidenceFields() {
-        when(chatRuntime.resolveScene(1L, AiScene.REVIEWER))
-                .thenReturn(SceneModel.builder().agentEnabled(true).build());
+    void chatWithTools_resultWithEvidenceFields() {
         when(chatRuntime.chatWithTools(eq(1L), eq(AiScene.REVIEWER), any(), any(), any(), any()))
                 .thenReturn("```json\n" + issueArray(true) + "\n```");
 
@@ -93,9 +86,7 @@ class ReviewExecutorTest {
     }
 
     @Test
-    void agentMode_modelFailure_failsTask() {
-        when(chatRuntime.resolveScene(1L, AiScene.REVIEWER))
-                .thenReturn(SceneModel.builder().agentEnabled(true).build());
+    void modelFailure_failsTask() {
         when(chatRuntime.chatWithTools(eq(1L), eq(AiScene.REVIEWER), any(), any(), any(), any()))
                 .thenThrow(new BizException(ErrorCode.SERVICE_UNAVAILABLE, "AI 服务暂时不可用，请稍后重试"));
 
@@ -106,15 +97,13 @@ class ReviewExecutorTest {
 
     @Test
     void parseFailure_retriesOnce_thenFails() {
-        when(chatRuntime.resolveScene(1L, AiScene.REVIEWER))
-                .thenReturn(SceneModel.builder().agentEnabled(false).build());
-        when(chatRuntime.chat(eq(1L), eq(AiScene.REVIEWER), any(), any(), any()))
+        when(chatRuntime.chatWithTools(eq(1L), eq(AiScene.REVIEWER), any(), any(), any(), any()))
                 .thenReturn("不是 JSON");
 
         executor.execute(task, ctx);
 
-        // 解析失败重试一次（共 2 次 chat），仍失败则任务 FAILED（F-0907 闸门）
-        verify(chatRuntime, times(2)).chat(eq(1L), eq(AiScene.REVIEWER), any(), any(), any());
+        // 解析失败重试一次（共 2 次 chatWithTools），仍失败则任务 FAILED（F-0907 闸门）
+        verify(chatRuntime, times(2)).chatWithTools(eq(1L), eq(AiScene.REVIEWER), any(), any(), any(), any());
         verify(ctx).fail("审校输出必须是 JSON 数组");
     }
 }

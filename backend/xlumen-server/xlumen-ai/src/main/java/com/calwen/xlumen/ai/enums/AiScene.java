@@ -1,8 +1,9 @@
 package com.calwen.xlumen.ai.enums;
 
 /**
- * AI 场景（F-0502）：Writing/Reviewer/问答/摘要/Embedding 各自独立配置模型与参数（BACKEND.md §14）。
- * Writing 与 Reviewer 必须模型异源（F-0604 审校独立性）；Embedding 供 knowledge 索引流水线调用。
+ * AI 场景（F-0502）：Writing/Reviewer/问答/摘要/SEO 各自独立配置模型与参数（BACKEND.md §14）。
+ * Writing 与 Reviewer 必须模型异源（F-0604 审校独立性）。向量化（Embedding）不属于场景配置，
+ * 由 knowledge 模块直接读 .env 的 XLUMEN_BAILIAN_MODEL_EMBEDDING（见 EmbeddingServiceImpl），不在本枚举。
  *
  * @author calwen
  * @date 2026/8/13
@@ -18,7 +19,5 @@ public enum AiScene {
     /** 摘要生成（F-0801）。 */
     SUMMARY,
     /** SEO 优化（F-0802）：标题/关键词/描述。 */
-    SEO,
-    /** 向量化（F-0402 索引流水线）。 */
-    EMBEDDING
+    SEO
 }

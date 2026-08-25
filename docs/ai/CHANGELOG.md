@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/24
+> 更新日期：2026/8/25
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 > 归档规则：正文只保留最近约 14 天条目；更早条目按原样移入 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md) 顶部，git 历史始终可回溯。
@@ -15,6 +15,45 @@
 
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
+
+## 2026/8/25 17:30 · ZCode（AI 代码级去重 A-F 批：Prompt/JSON/任务VO/SSE 事件/前端工具轨迹）
+
+> 影响文档：docs/ai/STATUS.md（§7 最近变更）、docs/ai/CHANGELOG.md · 决策摘要：无（承接上一批「AI 架构收敛」后的机械去重，REST/SSE 对外协议形状不变）
+
+按用户「统一处理上面的改动」对扫描出的 A~F 六项落地的代码级去重（G 统一 SSE 底座属结构性改造，另行评审）。
+
+**F. Prompt 集中成常量类**：新增 `xlumen-ai .../prompt/PromptTemplates`，9 条 System 提示词从 4 文件收口（WritingExecutor 4 / ReviewExecutor 2 / EnhanceServiceImpl 2 / ChatServiceImpl 1），按 AiScene 场景命名，含 `{{MAX}}`/`{{TITLE}}` 占位符模板保留由使用方替换；IDEA-026（Prompt 后台动态管理）后续落点为场景配置化时默认值来源。
+
+**A. JSON 提取统一**：新增 `.../util/AiJson`（extractObject/extractArrayText/extractArray：围栏剥离 + 花/方括号截取），WritingExecutor（extractJsonObject/extractJsonArray）/ReviewExecutor（extractJsonArray）/EnhanceServiceImpl（parseJson）三份近似实现收敛；Enhance「非法 JSON 抛 SERVICE_UNAVAILABLE」语义保留（其余按容错返回 null）。
+
+**B. 任务 VO 去重**：删除 `TaskVO`，`GET /api/v1/tasks/{taskId}` 改返跨模块稳定类型 `TaskResultVO`（REST 字段 `id`→`taskId`）；blog `writing.ts` RawTask/fetchWritingTask 同步读取 taskId（对外归一化接口 `AiWritingTask` 不变）。
+
+**C. SSE 事件名单一**：后端新增 `.../util/SseEventName`（chunk/progress/done/error/citation/tool），SseService/ChatServiceImpl/TaskController 字面量全替换；前端新增 `blog/.../ai/utils/sseEvent.ts` 同名常量，chat.ts switch 与 AiWritePage.handleEvent 改用。
+
+**D. 前端工具轨迹去重**：ChatPage 与 KnowledgeQaDialog 逐字重复的 `activeTools`/`doneTools` 收口到 `blog/.../chat/utils/toolPanel.ts`（新增 2 条单测锁定）。
+
+**E. parse* 源核结论**：chat.parseCitations/parseToolCalls/parseToolEvent 与 review.parseReviewIssues 各自解析不同数据形态、本已单源，无跨文件复制，无可独立去重点；并入 C/D 落地。
+
+验证：`mvn -pl xlumen-boot -am test` BUILD SUCCESS（8 模块，ai 24 / publishing 44 等全绿）；blog typecheck 过、vitest 3 文件 6 测试过（含新增 toolPanel 2 条）、eslint 0 errors（存量 CRLF 警告不计）。
+
+## 2026/8/25 16:51 · ZCode（AI 架构收敛：双轨合单轨 + EMBEDDING 删虚 + 删 EnhancePanel）
+
+> 影响文档：docs/ai/STATUS.md（§3 能力基线/§7 最近变更）、docs/ai/CHANGELOG.md、docs/backend/BACKEND.md（§14 Agent 段落）、docs/product/PRODUCT.md（F-0502/F-0604/F-0608/F-0708）、backend/xlumen-server/sql/init/30_ai.sql、sql/migration/89_ai_scene_single_track.sql · 决策摘要：无（承接 IDEA-025/D20 落地形态收敛）
+
+按用户拍板的三项执行（无需迁移成本，主代理亲改核心 + 子代理并行删前端孤儿模块）。
+
+**① 双轨合单轨（QA/写作/审校一律走 Agent 路径）**：
+
+- QA（ChatServiceImpl）：删除固定 RAG 路径 `runFixedRag`/`retrieve`/`buildSystemPrompt`/`SYSTEM_PROMPT` 与 `RETRIEVAL_TOP_K`、未用的 `KnowledgeApi` 注入；RAG 检索收敛到 `knowledge.search` 工具（引用只聚合模型实际命中，`citationCollector`）；`runStream` 去掉 agent 分支直接 `runAgent`。
+- 写作（WritingExecutor）：删除 `singlePass` 单次生成；主链路失败（大纲解析失败/章节超限/单章生成失败）→ `ctx.fail` 任务 FAILED；增强失败（自审失败/修订失败）→ 跳过修订交付初稿。
+- 审校（ReviewExecutor）：删除普通 `chat()` 与旧 `SYSTEM_PROMPT`（并入工具核对版提示词）；统一走 `chatWithTools` 事实核对（知识库证据引用，Schema 不变）。
+- 移除场景级开关 `ai_scene_config.agent_enabled`：`SceneModel`/`SceneConfigService`/`SceneConfigServiceImpl`/`AiSceneConfigEntity`/`ModelConfigVO`/`ModelConfigUpdateDTO`/`ModelConfigController` 全删 agentEnabled；admin 模型配置页删除「Agent 模式」列与 `model.ts` agentEnabled 字段；存量库列清理见新 migration `89_ai_scene_single_track.sql`（删列 + 清 EMBEDDING 行，幂等），30_ai.sql 同步删列。
+
+**② EMBEDDING 删虚**：移除 `AiScene.EMBEDDING` 枚举、`AiProperties.bailianModelEmbedding`、`SceneConfigServiceImpl` 的 EMBEDDING case；向量化统一由 knowledge 模块 `KnowledgeAiProperties` 读 `.env` 的 `XLUMEN_BAILIAN_MODEL_EMBEDDING`（本就生效，未动）；admin 模型配置页移除 Embedding 行。
+
+**③ 删 EnhancePanel 孤儿模块**（子代理并行，blog `src/modules/ai-enhance/` 261 行）：`EnhancePanel.vue`/`enhance.ts`/`index.ts` + 空 `__tests__`；确认无任何页面引用，blog typecheck 通过；后端 `/ai/enhance` 端点与 `EnhanceServiceImpl.generateAndStoreSummary`（F-0808 自动摘要复用）保留。
+
+验证：后端 `xlumen-ai` 24 测试全绿（WritingExecutorTest 5 / ReviewExecutorTest 4 / ChatRuntimeImplTest 3 等）、`mvn -pl xlumen-ai -am test` BUILD SUCCESS、admin typecheck 通过、代码零 EMBEDDING·agentEnabled·singlePass 残留（grep 核验）。
 
 ## 2026/8/24 · ZCode（审核中心「发布」409 修复：发布门禁人工/AI 双轨 + 幂等前置）
 

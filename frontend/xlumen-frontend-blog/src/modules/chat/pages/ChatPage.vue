@@ -15,6 +15,7 @@ import {
 import { fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import CitationCard from '@/modules/chat/components/CitationCard.vue'
+import { activeTools, doneTools } from '@/modules/chat/utils/toolPanel'
 
 import type { ChatMessage, Citation, Conversation, ToolCallRecord, ToolEvent } from '@/modules/chat/api/chat'
 import type { KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
@@ -29,17 +30,6 @@ interface ChatItem {
   /** 历史回放的工具调用记录（来源 toolCallsJson）。 */
   toolCalls: ToolCallRecord[]
   streaming: boolean
-}
-
-/** 已完成（done）的工具事件，按 seq 升序。 */
-function doneTools(tools: ToolEvent[]): ToolEvent[] {
-  return tools.filter((t) => t.phase === 'done').sort((a, b) => a.seq - b.seq)
-}
-
-/** 进行中的工具事件（start 未配对 done）。 */
-function activeTools(tools: ToolEvent[]): ToolEvent[] {
-  const doneSeqs = new Set(tools.filter((t) => t.phase === 'done').map((t) => t.seq))
-  return tools.filter((t) => t.phase === 'start' && !doneSeqs.has(t.seq))
 }
 
 const session = useSessionStore()

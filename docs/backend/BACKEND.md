@@ -1,6 +1,6 @@
 # xLumen 后端开发文档
 
-> 更新日期：2026/8/22
+> 更新日期：2026/8/25
 > **本仓库专属**。
 > 架构形态：多 Maven 模块的 Spring Boot 模块化单体；包结构：传统 MVC。
 > 适用范围：后端技术基线、模块划分、编码规范、数据规则、配置与性能约束。
@@ -318,18 +318,18 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 ## 14. AI 与外部服务
 
 - **AI 运行时（F-0501，Spring AI 2.0.1）**：`spring-ai-starter-model-openai` 统一接入 OpenAI 兼容供应商（百炼 compatible-mode / DeepSeek），多供应商隔离、独立配置；`ChatRuntime` 承担场景解析（ai_scene_config 表优先、.env 回退）、供应商 ChatModel 懒装配（options 内嵌 baseUrl/apiKey/maxRetries=2/timeout）、简单熔断与缺密钥回退 `ScriptedChatModel`（脚本队列，离线可测）。六个 `spring.ai.model.*` 自动配置在装配层全部关闭，双供应商手动装配；`spring-ai-bom:2.0.1` 与 Boot 4.1.0 同代（不降级）。
-- **场景级模型配置（F-0502）**：Writing、Reviewer、问答、摘要、Embedding 各自独立配置模型与参数；Research/Outline 为 V2 可选场景。
+- **场景级模型配置（F-0502）**：Writing、Reviewer、问答、摘要、SEO 各自独立配置模型与参数；向量化 Embedding **不属于**场景配置（由 knowledge 模块直接读 `.env` 的 `XLUMEN_BAILIAN_MODEL_EMBEDDING`，见 EmbeddingServiceImpl）；Research/Outline 为 V2 可选场景。
 - **SSE 流式（F-0503）**：AI 输出分章节流式推送；流式输出开始后不得自动切换模型续写（PRODUCT 第 8 节）；断线后由用户明确发起新任务或按 sequence 续传（见第 18 节）。
 - **AI 任务异步（F-1302）**：AI 长任务必须异步执行并展示进度；任务状态机 `QUEUED → RUNNING → WAITING_APPROVAL（V2 大纲可选确认 F-0602）→ COMPLETED`，失败分支 `FAILED`，人工可 `CANCELLED`；支持有限重试、检查点、取消、死信与人工补偿；任务事实以 MySQL 为准，Redis 只存短期进度。
 - **知识增强写作（F-0603，V2 可选）**：启用时写作阶段 RAG 检索结果必须携带证据（页码/标题/段落 + 不可变快照），AI 输出引用必须关联证据；无法溯源的内容必须明确标注为模型生成而非事实（F-0405、PRODUCT 第 8 节）。
 - **AI 审校（F-0604）**：Reviewer 与 Writing 使用不同供应商/模型，保证审校独立性（模型异源）；审校输出结构化（严重度/位置/证据/建议）并经 Schema 校验。
 - **发布后异步审核（IDEA-024 异步化）**：发布按钮提交审核（`submitAutoReview`）即返回，不再轮询阻塞。REVIEWER 任务完结时 publishing 模块 `ReviewAutoPublishListener` 监听进程内 `AiTaskCompletedEvent`，对 `auto_mode=1`（发布按钮提交）且 PENDING 的审核记录执行 `finalizeAutoReview`：COMPLETED 无 error → 审核通过并自动发布（立即/按 `auto_publish_at` 定时，F-0905 幂等）；COMPLETED 含 error / FAILED → 驳回并回草稿（F-0907 闸门）。监听器在 AI 异步线程运行、无请求上下文，显式建立 WorkspaceContext（try/finally 清理）且异常只记日志不抛出（不中断同事件的其他监听，如站内信）。审核中心人工提交（`auto_mode=0`）不受影响，仍走人工通过/驳回/发布。
-- **Agent 模式（F-0708/F-0608，IDEA-025）**：场景级开关 `ai_scene_config.agent_enabled`（默认全关，QA=模型自主工具循环、WRITING=多步工作流、REVIEWER=事实核对；开关未开时各场景行为与升级前完全一致，DB 单列可逐场景即时回退）。工具循环由 Spring AI `ChatClient` + `ToolCallingAdvisor` 自动承担：
+- **Agent（F-0708/F-0608，IDEA-025，2026-08-25 双轨合并后单轨）**：QA/写作/审校一律走 Agent 路径，不再存在普通（非 Agent）双轨；`ai_scene_config.agent_enabled` 开关已移除（存量列见 `sql/migration/89_ai_scene_single_track.sql` 清理）。工具循环由 Spring AI `ChatClient` + `ToolCallingAdvisor` 自动承担：
   - 模型契约：`ChatRuntime` 统一走 Spring AI `ChatModel`/`ChatClient`（消息用 `Message` 类型，options 逐请求设 model/temperature/maxTokens/toolCallbacks/toolContext）；工具定义走标准 `ToolDefinition`，执行侧用 Spring AI `ToolContext` 传输业务上下文。
   - 工具层只包装 `KnowledgeApi` 现有方法（红线：AI 不反向依赖 Content，不做读知识正文工具）；工具执行强制 `resolveVisibleKbIds` 可见集过滤（决策 D13），越权返回错误信封而非执行；`ToolCallbackAdapter` 把业务 `AgentTool` 注册为 Spring AI `ToolCallback`（经 options.toolCallbacks 注入，ChatClient 自动多轮循环；运行业务上下文 `AgentToolContext` 经 Spring AI ToolContext 透传），预算上限/超时/结果截断统一在适配器内，工具错误以结构化信封回给模型（模型换库/改关键词或声明无法获取后作答），不上抛。
   - 对话 Agent（F-0708）：`ChatRuntime.chatStreamWithTools` 流式——SSE 事件在 chunk/citation/done/error 基础上新增 `tool`（start/done，`ToolEventSink` 实时收集）；中间轮助手工具调用行与 tool 行落 `chat_message`（tool_calls_json/tool_call_id/tool_name 三列，逐调用配对、tool_call_id 为本地合成 tc-序号，前端按 id 归并工具面板），历史窗口截断按「孤儿 tool 行剔除、toolCalls 无对应响应降级纯文本」修剪配对。
-  - 写作 Agent（F-0608）：大纲→分章流式→异源自审（REVIEWER）→修订；大纲失败/章节超限/单章失败/自审失败四条降级路径全部回退单次生成，写作功能不因新模式不可用。
-  - 审校事实核对：REVIEWER 开关开启时挂 knowledge.search 走 `ChatRuntime.chatWithTools` 非流式，工具调用预算在适配器内按场景收紧（默认 2）；输出 Schema 不变，问题条目可选附 evidenceKnowledgeId/evidenceQuote；工具检索失败 ≠ 任务失败，仅任务本身失败才按 F-0907 阻断发布。
+  - 写作 Agent（F-0608，单轨）：大纲→分章流式→异源自审（REVIEWER）→修订；主链路失败（大纲解析失败/章节超限/单章生成失败）→ 任务 FAILED；增强失败（自审/修订失败）→ 跳过修订交付初稿，写作不因增强步骤不可用而中断。
+  - 审校事实核对：审校统一挂 knowledge.search 走 `ChatRuntime.chatWithTools` 非流式，工具调用预算在适配器内收紧（默认 2）；输出 Schema 不变，问题条目可选附 evidenceKnowledgeId/evidenceQuote；工具检索失败 ≠ 任务失败，仅任务本身失败才按 F-0907 阻断发布。
   - Agent 参数上限：`XLUMEN_AGENT_MAX_ROUNDS`（默认 5）、`XLUMEN_AGENT_TOOL_TIMEOUT_MILLIS`（10000）、`XLUMEN_AGENT_MAX_TOOL_CALLS`（8）、`XLUMEN_AGENT_TOOL_RESULT_MAX_CHARS`（8000）、`XLUMEN_REVIEWER_AGENT_MAX_ROUNDS`（2）、`XLUMEN_WRITING_MAX_CHAPTERS`（8），全部经 `.env`（决策 D8）。
 - **通用站内消息（IDEA-024）**：`xlumen-notification` 模块（`noti_notification` 表）与审核业务解耦；AI 任务完结发布进程内事件 `AiTaskCompletedEvent`（xlumen-common/event），通知模块监听 REVIEWER 场景事件生成审核结果提醒（通过/未通过/失败 + 摘要），链接跳转审核中心；评论回复、@小光（F-1005）等事件可复用同一套站内信。**实时推送**：`GET /api/v1/notifications/stream` 为用户级 SSE 长连接（`UserSseRegistry` 按 userId 注册、30s 心跳、30 分钟超时），通知创建后即时推送 `notification` 事件，前端右上角 ElNotification 弹窗（单向服务端推送用 SSE，不引入 WebSocket）；断线期间由前端 30s 未读数轮询兜底。
 - 结构化输出必须通过 Schema 校验和有限修复；权限、参数和内容安全错误不能通过切换模型绕过；降级与熔断按场景策略执行（如 Reviewer 切换备用模型），降级原因进入 AI Trace（F-0505，V3）。

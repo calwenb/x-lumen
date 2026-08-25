@@ -10,6 +10,7 @@ import { fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import type { KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import { streamSse } from '@/modules/ai/utils/sse'
+import { SseEventName } from '@/modules/ai/utils/sseEvent'
 import AiTaskProgress from '@/modules/ai/components/AiTaskProgress.vue'
 
 import type { WritingRequest } from '@/modules/ai/api/writing'
@@ -128,7 +129,7 @@ async function startStreaming(id: string): Promise<void> {
 }
 
 function handleEvent(id: string, event: SseEvent): void {
-  if (event.event === 'progress') {
+  if (event.event === SseEventName.progress) {
     try {
       const parsed = JSON.parse(event.data) as { progress?: number }
       if (typeof parsed.progress === 'number') taskProgress.value = parsed.progress
@@ -137,17 +138,17 @@ function handleEvent(id: string, event: SseEvent): void {
     }
     return
   }
-  if (event.event === 'chunk') {
+  if (event.event === SseEventName.chunk) {
     streamText.value += event.data
     return
   }
-  if (event.event === 'error') {
+  if (event.event === SseEventName.error) {
     errorMsg.value = event.data
     phase.value = 'error'
     controller?.abort()
     return
   }
-  if (event.event === 'done') {
+  if (event.event === SseEventName.done) {
     void handleDone(id, event.data)
   }
 }

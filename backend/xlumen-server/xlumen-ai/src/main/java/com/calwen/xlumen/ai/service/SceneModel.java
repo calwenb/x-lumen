@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 场景模型解析结果（F-0502）：供应商名 + 模型名（+ 场景参数 + Agent 模式开关）。
+ * 场景模型解析结果（F-0502）：供应商名 + 模型名（+ 场景参数）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -25,8 +25,4 @@ public class SceneModel {
 
     /** 场景参数（JSON 文本，可空）。 */
     private String paramsJson;
-
-    /** 是否启用 Agent 模式（IDEA-025 F-0708，默认 false）。 */
-    @Builder.Default
-    private Boolean agentEnabled = false;
 }

@@ -4,7 +4,6 @@ import com.calwen.xlumen.ai.config.AiProperties;
 import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.service.ChatRuntime;
-import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.service.TaskContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,18 +13,16 @@ import org.mockito.MockitoAnnotations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 写作多步工作流降级路径单测（IDEA-025 F-0608，OPT-2/D20 全量迁移）：mock ChatRuntime——大纲解析失败/
- * 章节超限/单章失败/自审失败四条降级路径全部回退单次生成；普通模式行为不变。
+ * 写作多步工作流单测（F-0608，双轨合并后单轨）：mock ChatRuntime——多步主链路成功，
+ * 主链路失败（大纲解析失败/章节超限/单章失败）→ 任务 FAILED；增强失败（自审失败）→ 跳过修订交付初稿。
  *
  * @author calwen
  * @date 2026/8/24
@@ -65,7 +62,10 @@ class WritingExecutorTest {
         return sb.append("]}").toString();
     }
 
-    /** 流式脚本：每次调用推一段文本且不触发 onError。 */
+    private static final String REVIEW_JSON =
+            "[{\"severity\":\"info\",\"position\":\"L1\",\"evidence\":\"证据\",\"suggestion\":\"建议\"}]";
+
+    /** 流式脚本：每次调用推一段文本且不触发 onError（分章与修订共走 chatStream/WRITING）。 */
     private void scriptStream(String text) {
         doAnswer(inv -> {
             java.util.function.Consumer<String> onChunk = inv.getArgument(5);
@@ -75,60 +75,54 @@ class WritingExecutorTest {
     }
 
     @Test
-    void nonAgent_singlePass_unchanged() {
-        when(chatRuntime.resolveScene(1L, AiScene.WRITING))
-                .thenReturn(SceneModel.builder().agentEnabled(false).build());
-        scriptStream("# 模拟文章标题\n\n正文内容");
-
-        executor.execute(task, ctx);
-
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-        verify(ctx).complete(captor.capture());
-        assertThat(captor.getValue()).contains("模拟文章标题").contains("正文内容");
-        verify(ctx, never()).fail(any());
-    }
-
-    @Test
-    void agent_outlineParseFailure_fallsBackToSinglePass() {
-        when(chatRuntime.resolveScene(1L, AiScene.WRITING))
-                .thenReturn(SceneModel.builder().agentEnabled(true).build());
-        // 大纲输出不是 JSON → 降级
-        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
-                .thenReturn("这不是 JSON");
-        scriptStream("单次生成内容");
-
-        executor.execute(task, ctx);
-
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-        verify(ctx).complete(captor.capture());
-        assertThat(captor.getValue()).contains("单次生成内容");
-        // 大纲失败路径未分章：至少一次 chatStream（单次生成）
-        verify(chatRuntime, atLeastOnce()).chatStream(eq(1L), eq(AiScene.WRITING), any(), any(), any(), any(), any());
-    }
-
-    @Test
-    void agent_chaptersOverLimit_fallsBackToSinglePass() {
-        when(chatRuntime.resolveScene(1L, AiScene.WRITING))
-                .thenReturn(SceneModel.builder().agentEnabled(true).build());
-        // 大纲 10 章 > 上限 8 → 回退
-        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
-                .thenReturn(outlineJson(10));
-        scriptStream("单次生成内容");
-
-        executor.execute(task, ctx);
-
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-        verify(ctx).complete(captor.capture());
-        assertThat(captor.getValue()).contains("单次生成内容");
-    }
-
-    @Test
-    void agent_selfReviewFailure_skipsRevision() {
-        when(chatRuntime.resolveScene(1L, AiScene.WRITING))
-                .thenReturn(SceneModel.builder().agentEnabled(true).build());
-        // 第 1 次 chat=大纲（WRITING）；第 2 次 chat=自审（REVIEWER）输出非 JSON → 跳过修订
+    void multiStep_happyPath_outline_chapters_review_revise() {
+        // 大纲（WRITING）+ 自审（REVIEWER）各自按场景 stubbing
         when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
                 .thenReturn(outlineJson(2));
+        when(chatRuntime.chat(eq(1L), eq(AiScene.REVIEWER), any(), any(), any()))
+                .thenReturn(REVIEW_JSON);
+        scriptStream("第 N 章正文");
+
+        executor.execute(task, ctx);
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(ctx).complete(captor.capture());
+        // 分章文本拼接进正文
+        assertThat(captor.getValue()).contains("第 N 章正文");
+        // 大纲快照与审校意见入库
+        assertThat(captor.getValue()).contains("\"outline\"");
+        assertThat(captor.getValue()).contains("\"reviewIssues\"");
+        verify(ctx, never()).fail(anyString());
+    }
+
+    @Test
+    void outlineParseFailure_failsTask() {
+        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
+                .thenReturn("这不是 JSON");
+
+        executor.execute(task, ctx);
+
+        verify(ctx).fail("大纲生成失败，请重试");
+        verify(ctx, never()).complete(anyString());
+    }
+
+    @Test
+    void chaptersOverLimit_failsTask() {
+        // 大纲 10 章 > 上限 8 → outline() 返回 null → 任务失败
+        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
+                .thenReturn(outlineJson(10));
+
+        executor.execute(task, ctx);
+
+        verify(ctx).fail("大纲生成失败，请重试");
+        verify(ctx, never()).complete(anyString());
+    }
+
+    @Test
+    void selfReviewFailure_skipsRevisionAndCompletes() {
+        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
+                .thenReturn(outlineJson(2));
+        // 自审（REVIEWER）输出非 JSON → 跳过修订，直接交付初稿
         when(chatRuntime.chat(eq(1L), eq(AiScene.REVIEWER), any(), any(), any()))
                 .thenReturn("审校失败输出");
         scriptStream("第 1 章内容");
@@ -138,17 +132,15 @@ class WritingExecutorTest {
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
         verify(ctx).complete(captor.capture());
         assertThat(captor.getValue()).contains("第 1 章内容");
-        // 自审失败 → 意见快照为空数组
+        // 自审失败 → 意见快照为空数组，不阻断交付
         assertThat(captor.getValue()).contains("\"reviewIssues\":\"[]\"");
     }
 
     @Test
-    void agent_chapterFailureRetriesThenFallsBackToSinglePass() {
-        when(chatRuntime.resolveScene(1L, AiScene.WRITING))
-                .thenReturn(SceneModel.builder().agentEnabled(true).build());
+    void chapterFailure_failsTask() {
         when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
                 .thenReturn(outlineJson(1));
-        // 章节流式失败（每次 onError）
+        // 分章流式每次 onError → 重试 2 次仍失败 → 任务失败
         doAnswer(inv -> {
             java.util.function.Consumer<Throwable> onError = inv.getArgument(6);
             onError.accept(new RuntimeException("AI 服务不可用"));
@@ -157,7 +149,7 @@ class WritingExecutorTest {
 
         executor.execute(task, ctx);
 
-        // 章节重试 2 次失败 → 降级单次生成（第 3 次 chatStream 仍失败 → 任务 fail）
-        verify(ctx, atLeastOnce()).fail(any());
+        verify(ctx).fail(anyString());
+        verify(ctx, never()).complete(anyString());
     }
 }

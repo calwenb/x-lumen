@@ -11,6 +11,7 @@ import com.calwen.xlumen.ai.entity.ChatMessageEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.mapper.ChatConversationMapper;
 import com.calwen.xlumen.ai.mapper.ChatMessageMapper;
+import com.calwen.xlumen.ai.prompt.PromptTemplates;
 import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.ChatService;
 import com.calwen.xlumen.ai.service.SceneModel;
@@ -19,14 +20,13 @@ import com.calwen.xlumen.ai.service.tool.ToolEvent;
 import com.calwen.xlumen.ai.service.tool.ToolEventSink;
 import com.calwen.xlumen.ai.service.tool.ToolPair;
 import com.calwen.xlumen.ai.service.tool.ToolRun;
+import com.calwen.xlumen.ai.util.SseEventName;
 import com.calwen.xlumen.ai.vo.ChatMessageVO;
 import com.calwen.xlumen.ai.vo.ConversationVO;
 import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
 import com.calwen.xlumen.identity.api.WorkspaceApi;
-import com.calwen.xlumen.knowledge.api.KnowledgeApi;
-import com.calwen.xlumen.knowledge.api.dto.SearchRequestDTO;
 import com.calwen.xlumen.knowledge.api.dto.SearchResultDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,9 +50,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * AI 对话服务实现（F-0701/F-0702）：双路径——agent_enabled=0 走固定 RAG（知识库检索 → System prompt 组装 →
- * QA 流式 → citations），agent_enabled=1 走 ChatRuntime 工具化流式（ChatClient 自动多轮工具循环，
- * SSE 新增 tool 事件）；SSE 返回 chunk/citation/tool/done/error 事件；会话/消息持久化含工具轨迹（IDEA-025 F-0708）。
+ * AI 对话服务实现（F-0701/F-0702，双轨合并后单轨）：统一走 ChatRuntime 工具化流式（ChatClient 自动多轮工具循环，
+ * knowledge.search 工具即 RAG 检索），SSE 返回 chunk/citation/tool/done/error 事件；会话/消息持久化含工具轨迹。
  * OPT-2/D20 全量迁移：链路改走 Spring AI 消息类型与 ChatRuntime，业务语义与对外事件格式不变。
  *
  * @author calwen
@@ -65,38 +64,20 @@ public class ChatServiceImpl implements ChatService {
 
     /** SSE 超时 30 分钟。 */
     private static final long EMITTER_TIMEOUT_MILLIS = 30 * 60 * 1000L;
-    /** 检索返回条数。 */
-    private static final int RETRIEVAL_TOP_K = 5;
-    /** 上下文历史消息条数（IDEA-025：由 10 调大到 30，配对修剪兜底）。 */
+    /** 上下文历史消息条数（配对修剪兜底）。 */
     private static final int HISTORY_LIMIT = 30;
 
-    /** QA System 提示词：引用 [n] 标注、明确模型生成边界、无证据说明。 */
-    private static final String SYSTEM_PROMPT = "你是小光，一名基于知识库的问答助手。"
-            + "请基于以下检索证据回答，引用原文时用 [1][2] 标注对应证据编号；"
-            + "无法溯源的内容请明确说明是模型生成而非事实；"
-            + "若没有任何检索证据，请明确说明没有相关知识依据。";
-
-    /** Agent 模式 System 提示词（IDEA-025 F-0708）：工具检索优先、标注编号、可溯源与不可溯源边界。 */
-    private static final String AGENT_SYSTEM_PROMPT = "你是小光，一名基于知识库的问答助手。"
-            + "你可以调用知识库工具（knowledge.search 等）自主检索证据：先检索再回答，检索不足时可换关键词、"
-            + "换知识库多次检索；引用检索到的原文时用 [n] 标注对应证据编号；"
-            + "无法溯源的内容请明确说明是模型生成而非事实；"
-            + "工具失败时说明原因，并基于已有信息作答；若没有任何检索证据，请明确说明没有相关知识依据。";
-
-    private final KnowledgeApi knowledgeApi;
     private final WorkspaceApi workspaceApi;
     private final ChatRuntime chatRuntime;
     private final ChatConversationMapper conversationMapper;
     private final ChatMessageMapper messageMapper;
     private final ThreadPoolTaskExecutor chatStreamExecutor;
 
-    public ChatServiceImpl(KnowledgeApi knowledgeApi,
-                           WorkspaceApi workspaceApi,
+    public ChatServiceImpl(WorkspaceApi workspaceApi,
                            ChatRuntime chatRuntime,
                            ChatConversationMapper conversationMapper,
                            ChatMessageMapper messageMapper,
                            @Qualifier("chatStreamExecutor") ThreadPoolTaskExecutor chatStreamExecutor) {
-        this.knowledgeApi = knowledgeApi;
         this.workspaceApi = workspaceApi;
         this.chatRuntime = chatRuntime;
         this.conversationMapper = conversationMapper;
@@ -140,16 +121,11 @@ public class ChatServiceImpl implements ChatService {
             List<ChatMessageEntity> history = loadHistory(conversation.getId());
             saveMessage(conversation.getId(), workspaceId, userId, "USER", dto.getQuery(), null, null, null, null);
 
-            SceneModel sceneModel = chatRuntime.resolveScene(workspaceId, AiScene.QA);
-            boolean agentMode = Boolean.TRUE.equals(sceneModel.getAgentEnabled());
-            if (agentMode) {
-                runAgent(conversation, workspaceId, userId, dto, knowledgeId, history, emitter);
-            } else {
-                runFixedRag(conversation, workspaceId, userId, dto, knowledgeId, history, emitter);
-            }
+            // 双轨合并：QA 一律走 Agent 工具循环（knowledge.search 工具即 RAG 检索），不再保留固定预检索路径
+            runAgent(conversation, workspaceId, userId, dto, knowledgeId, history, emitter);
         } catch (Exception e) {
             log.error("AI 对话流式处理异常", e);
-            send(emitter, "error", safeMessage(e));
+            send(emitter, SseEventName.ERROR, safeMessage(e));
         } finally {
             try {
                 emitter.complete();
@@ -159,49 +135,17 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
-    /** 固定 RAG 路径（agent_enabled=false）：现状行为原样保留。 */
-    private void runFixedRag(ChatConversationEntity conversation, Long workspaceId, Long userId,
-                             ChatRequestDTO dto, Long knowledgeId, List<ChatMessageEntity> history,
-                             SseEmitter emitter) {
-        List<SearchResultDTO> evidences = retrieve(workspaceId, userId, dto, knowledgeId);
-        List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(buildSystemPrompt(evidences)));
-        messages.addAll(replayHistory(history));
-        messages.add(new UserMessage(dto.getQuery()));
-
-        StringBuilder sb = new StringBuilder();
-        AtomicBoolean errored = new AtomicBoolean(false);
-        chatRuntime.chatStream(workspaceId, AiScene.QA, messages, 0.7, 1024,
-                delta -> {
-                    sb.append(delta);
-                    send(emitter, "chunk", delta);
-                },
-                err -> {
-                    errored.set(true);
-                    send(emitter, "error", safeMessage(err));
-                });
-        if (errored.get()) {
-            return;
-        }
-
-        String citationsJson = toCitationsJson(evidences);
-        send(emitter, "citation", citationsJson);
-        ChatMessageEntity assistant = saveMessage(conversation.getId(), workspaceId, userId,
-                "ASSISTANT", sb.toString(), citationsJson, null, null, null);
-        sendDone(emitter, conversation, assistant);
-    }
-
-    /** Agent 路径（agent_enabled=true）：ChatRuntime 工具化流式，SSE 新增 tool 事件。 */
+    /** Agent 路径（双轨合并后唯一路径）：ChatRuntime 工具化流式，SSE 推送 tool 事件。 */
     private void runAgent(ChatConversationEntity conversation, Long workspaceId, Long userId,
                           ChatRequestDTO dto, Long knowledgeId, List<ChatMessageEntity> history,
                           SseEmitter emitter) {
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(AGENT_SYSTEM_PROMPT));
+        messages.add(new SystemMessage(PromptTemplates.QA_AGENT));
         messages.addAll(replayHistory(history));
         messages.add(new UserMessage(dto.getQuery()));
 
         AtomicBoolean errored = new AtomicBoolean(false);
-        ToolEventSink sink = new ToolEventSink(event -> send(emitter, "tool", JSONUtil.toJsonStr(event)));
+        ToolEventSink sink = new ToolEventSink(event -> send(emitter, SseEventName.TOOL, JSONUtil.toJsonStr(event)));
         Map<String, SearchResultDTO> citationIndex = new LinkedHashMap<>();
         AgentToolContext toolContext = AgentToolContext.builder()
                 .workspaceId(workspaceId)
@@ -225,11 +169,11 @@ public class ChatServiceImpl implements ChatService {
         chatRuntime.chatStreamWithTools(workspaceId, AiScene.QA, messages, 0.7, 1024, run,
                 delta -> {
                     sb.append(delta);
-                    send(emitter, "chunk", delta);
+                    send(emitter, SseEventName.CHUNK, delta);
                 },
                 err -> {
                     errored.set(true);
-                    send(emitter, "error", safeMessage(err));
+                    send(emitter, SseEventName.ERROR, safeMessage(err));
                 });
         if (errored.get()) {
             return;
@@ -237,7 +181,7 @@ public class ChatServiceImpl implements ChatService {
         // 中间轮轨迹落库：assistant 工具调用行 + tool 行（逐调用配对，合成 tool_call_id）
         persistToolPairs(conversation, workspaceId, userId, sink);
         String citationsJson = toCitationsJson(List.copyOf(citationIndex.values()));
-        send(emitter, "citation", citationsJson);
+        send(emitter, SseEventName.CITATION, citationsJson);
         ChatMessageEntity assistant = saveMessage(conversation.getId(), workspaceId, userId,
                 "ASSISTANT", sb.toString(), citationsJson, null, null, null);
         sendDone(emitter, conversation, assistant);
@@ -423,51 +367,6 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
-    /** RAG 检索（决策 D13）：检索范围=kbId 限定单库（知识级问答锁定当前库时前端传 kbId）>
-     * allVisible=false 不检索 > 默认全部可见库（resolveVisibleKbIds 按身份推导）；
-     * 检索异常降级为空证据。 */
-    private List<SearchResultDTO> retrieve(Long workspaceId, Long userId, ChatRequestDTO dto, Long knowledgeId) {
-        List<Long> kbIds;
-        if (dto.getKbId() != null) {
-            kbIds = List.of(dto.getKbId());
-        } else if (Boolean.FALSE.equals(dto.getAllVisible())) {
-            kbIds = List.of();
-        } else {
-            List<Long> visible = knowledgeApi.resolveVisibleKbIds(userId);
-            kbIds = visible == null ? List.of() : visible;
-        }
-        SearchRequestDTO request = SearchRequestDTO.builder()
-                .workspaceId(workspaceId)
-                .query(dto.getQuery())
-                .kbIds(kbIds)
-                .topK(RETRIEVAL_TOP_K)
-                .knowledgeId(knowledgeId)
-                .build();
-        try {
-            return knowledgeApi.search(request);
-        } catch (Exception e) {
-            log.warn("RAG 检索失败，降级为无证据问答", e);
-            return List.of();
-        }
-    }
-
-    /** 组装 System prompt：证据编号 + 原文片段，无证据显式说明。 */
-    private String buildSystemPrompt(List<SearchResultDTO> evidences) {
-        if (evidences == null || evidences.isEmpty()) {
-            return SYSTEM_PROMPT + "（本次未检索到任何相关知识证据。）";
-        }
-        StringBuilder sb = new StringBuilder(SYSTEM_PROMPT).append("\n\n检索证据：\n");
-        for (int i = 0; i < evidences.size(); i++) {
-            SearchResultDTO e = evidences.get(i);
-            sb.append('[').append(i + 1).append("] 《").append(e.getTitle() == null ? "" : e.getTitle()).append("》");
-            if (StrUtil.isNotBlank(e.getHeadingAnchor())) {
-                sb.append(" #").append(e.getHeadingAnchor());
-            }
-            sb.append("：").append(e.getChunkText() == null ? "" : e.getChunkText()).append('\n');
-        }
-        return sb.toString();
-    }
-
     /** 组装引用证据 JSON 数组（knowledgeId 转 String 保 Long 精度）。 */
     private String toCitationsJson(List<SearchResultDTO> evidences) {
         JSONArray arr = new JSONArray();
@@ -503,7 +402,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private void sendDone(SseEmitter emitter, ChatConversationEntity conversation, ChatMessageEntity assistant) {
-        send(emitter, "done", JSONUtil.toJsonStr(JSONUtil.createObj()
+        send(emitter, SseEventName.DONE, JSONUtil.toJsonStr(JSONUtil.createObj()
                 .set("conversationId", String.valueOf(conversation.getId()))
                 .set("messageId", String.valueOf(assistant.getId()))));
     }
