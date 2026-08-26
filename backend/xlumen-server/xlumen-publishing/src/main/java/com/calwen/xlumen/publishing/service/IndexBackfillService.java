@@ -1,6 +1,7 @@
 package com.calwen.xlumen.publishing.service;
 
 import com.calwen.xlumen.knowledge.vo.IndexStatusVO;
+import com.calwen.xlumen.publishing.dto.ReindexAllVO;
 
 /**
  * 索引补跑编排：knowledge 模块依赖方向受限无法自取正文，
@@ -18,4 +19,11 @@ public interface IndexBackfillService {
      * @return 重建后的索引状态
      */
     IndexStatusVO reindex(Long knowledgeId);
+
+    /**
+     * 全量重建当前空间已发布知识索引（逐条补跑，单条失败不中断），返回汇总。
+     *
+     * @return 重建汇总
+     */
+    ReindexAllVO reindexAll();
 }

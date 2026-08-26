@@ -11,6 +11,8 @@ import com.calwen.xlumen.content.api.dto.CategoryCountDTO;
 import com.calwen.xlumen.content.api.dto.ContentPageResult;
 import com.calwen.xlumen.content.api.dto.PublishedKnowledgeDTO;
 import com.calwen.xlumen.knowledge.api.KnowledgeApi;
+import com.calwen.xlumen.knowledge.api.dto.SearchRequestDTO;
+import com.calwen.xlumen.knowledge.api.dto.SearchResultDTO;
 import com.calwen.xlumen.knowledge.vo.KnowledgeBaseVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeCardVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeDetailVO;
@@ -22,13 +24,17 @@ import com.calwen.xlumen.publishing.service.HotKnowledgeCacheService;
 import com.calwen.xlumen.publishing.service.LikeService;
 import com.calwen.xlumen.publishing.service.PublicKnowledgeService;
 import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 博客前台公开读服务实现：公开读编排 + 阅读量 Redis 防刷。
@@ -41,6 +47,8 @@ import java.util.Map;
  */
 @Service
 public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
+
+    private static final Logger log = LoggerFactory.getLogger(PublicKnowledgeServiceImpl.class);
 
     /** 阅读量防刷窗口（小时）。 */
     private static final Duration VIEW_DEDUP_TTL = Duration.ofHours(24);
@@ -79,6 +87,13 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
             // 无可见库：直接返回空页，不查询内容库
             return PageResult.<KnowledgeCardVO>builder()
                     .total(0L).pageNo(query.getPageNo()).pageSize(query.getPageSize()).records(List.of()).build();
+        }
+        // 语义检索（mode=semantic，登录可用）：向量召回 → 段落聚合；不可用/无命中自动回退关键词
+        if ("semantic".equalsIgnoreCase(query.getMode())) {
+            PageResult<KnowledgeCardVO> semantic = semanticSearch(query, visibleKbIds);
+            if (semantic != null) {
+                return semantic;
+            }
         }
         // 入参封装为跨模块稳定类型（BACKEND.md §5.2）：category 已废弃（决策 D16 改目录树），
         // 改传 kbId/directoryId 库级筛选 + visibleKbIds 可见库集合；workspaceId 传 null=跨空间聚合
@@ -202,6 +217,48 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
     public List<CategoryCountDTO> listTags() {
         // 标签聚合跨空间（D9 改写）：content 侧全量统计已发布且不在回收站的知识标签
         return hotKnowledgeCacheService.getTags(() -> contentApi.listTags(null));
+    }
+
+    /** 语义检索（登录可用）：query→Embedding→Milvus 可见库过滤→按知识段落聚合；任一环节失败/无命中返回 null 触发关键词回退。 */
+    private PageResult<KnowledgeCardVO> semanticSearch(KnowledgeQueryDTO query, List<Long> visibleKbIds) {
+        try {
+            List<SearchResultDTO> results = knowledgeApi.search(SearchRequestDTO.builder()
+                    .query(query.getKeyword())
+                    .kbIds(visibleKbIds)
+                    .topK(50)
+                    .build());
+            if (results == null || results.isEmpty()) {
+                return null;
+            }
+            List<KnowledgeCardVO> records = aggregateSemantic(results);
+            return PageResult.<KnowledgeCardVO>builder()
+                    .total(records.size()).pageNo(1).pageSize(50).records(records).build();
+        } catch (Exception e) {
+            log.warn("语义检索不可用，回退关键词检索 query={}", query.getKeyword(), e);
+            return null;
+        }
+    }
+
+    /** 语义命中按知识聚合：片段拼接为摘要（附标题锚点）、相关度取最高分、记录首个锚点定位。 */
+    static List<KnowledgeCardVO> aggregateSemantic(List<SearchResultDTO> results) {
+        LinkedHashMap<Long, KnowledgeCardVO> byKnowledge = new LinkedHashMap<>();
+        for (SearchResultDTO r : results) {
+            if (r.getKnowledgeId() == null) {
+                continue;
+            }
+            KnowledgeCardVO card = byKnowledge.computeIfAbsent(r.getKnowledgeId(), id -> KnowledgeCardVO.builder()
+                    .id(id).title(r.getTitle()).summary("").semanticScore(0f).chunkCount(0).build());
+            String part = StrUtil.isNotBlank(r.getHeadingAnchor())
+                    ? "【" + r.getHeadingAnchor() + "】" + StrUtil.blankToDefault(r.getChunkText(), "")
+                    : StrUtil.blankToDefault(r.getChunkText(), "");
+            card.setSummary(StrUtil.isBlank(card.getSummary()) ? part : card.getSummary() + "\n\n" + part);
+            card.setChunkCount(card.getChunkCount() + 1);
+            card.setSemanticScore(Math.max(card.getSemanticScore(), r.getScore()));
+            if (card.getFirstAnchor() == null) {
+                card.setFirstAnchor(r.getHeadingAnchor());
+            }
+        }
+        return new ArrayList<>(byKnowledge.values());
     }
 
     /** 库名批量查询（跨空间只读）：只对去重后的 kbId 逐个查知识库详情（getKnowledgeBaseById），

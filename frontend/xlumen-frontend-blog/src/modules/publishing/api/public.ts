@@ -22,6 +22,12 @@ export interface KnowledgeCard {
   commentCount: number
   likeCount: number
   publishedAt: string
+  /** 语义检索相关度（0~1；仅 mode=semantic 返回，缺失为 null）。 */
+  semanticScore?: number | null
+  /** 语义检索命中段落数（仅 mode=semantic 返回，缺失为 null）。 */
+  chunkCount?: number | null
+  /** 语义检索首个命中段落锚点（仅 mode=semantic 返回，缺失为 null）。 */
+  firstAnchor?: string | null
 }
 
 /** 知识详情（B02；起携带点踩/收藏统计与收藏态， AI 摘要）。 */
@@ -54,6 +60,8 @@ export interface KnowledgeQuery {
   kbId?: string
   directoryId?: string
   tag?: string
+  /** 检索模式：keyword=MySQL 关键词（默认）；semantic=向量语义（仅登录可用）。 */
+  mode?: 'keyword' | 'semantic'
   pageNo?: number
   pageSize?: number
 }
@@ -79,6 +87,9 @@ export async function fetchKnowledges(query: KnowledgeQuery): Promise<PageResult
       commentCount: toNumber(card.commentCount),
       likeCount: toNumber(card.likeCount),
       readMinutes: toNumber(card.readMinutes),
+      // 语义字段后端同为 Long/数值：缺失时保留 null，避免把「无相关度」显示成 0
+      semanticScore: card.semanticScore == null ? null : toNumber(card.semanticScore),
+      chunkCount: card.chunkCount == null ? null : toNumber(card.chunkCount),
     })),
   }
 }
@@ -95,6 +106,8 @@ export async function fetchKnowledge(id: string): Promise<KnowledgeDetail> {
     readMinutes: toNumber(knowledge.readMinutes),
     dislikeCount: toNumber(knowledge.dislikeCount),
     favoriteCount: toNumber(knowledge.favoriteCount),
+    semanticScore: knowledge.semanticScore == null ? null : toNumber(knowledge.semanticScore),
+    chunkCount: knowledge.chunkCount == null ? null : toNumber(knowledge.chunkCount),
   }
 }
 
@@ -125,6 +138,9 @@ interface RawCard {
   commentCount: string
   likeCount: string
   publishedAt: string
+  semanticScore?: string | null
+  chunkCount?: string | null
+  firstAnchor?: string | null
 }
 
 interface RawKnowledgeDetail extends RawCard {

@@ -65,13 +65,17 @@ public class MilvusVectorStore implements VectorStore {
         List<Map<String, Object>> rows = new ArrayList<>(chunks.size());
         for (Chunk chunk : chunks) {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put(PRIMARY_FIELD, vectorId(request.getKnowledgeId(), request.getVersion(), chunk.getSeq()));
+            // 主键：字符串向量 ID 的 52 位哈希（本环境 REST 为 Int64 主键且 JSON 数值按 float64 处理，
+            // 超过 2^53 会失真；52 位主键精确无碰撞风险）
+            row.put(PRIMARY_FIELD, pkValue(vectorId(request.getKnowledgeId(), request.getVersion(), chunk.getSeq())));
             row.put(VECTOR_FIELD, chunk.getEmbedding() == null ? List.of() : chunk.getEmbedding());
-            row.put("workspace_id", request.getWorkspaceId());
-            row.put("article_id", request.getKnowledgeId());
+            // 大整数（雪花 ID）一律以字符串写入动态字段：本环境 JSON 数值经 float64 会破坏 >2^53 精度，
+            // 字符串形式精确无损；过滤器同步用字符串字面量（buildFilter）
+            row.put("workspace_id", String.valueOf(request.getWorkspaceId()));
+            row.put("article_id", String.valueOf(request.getKnowledgeId()));
             // 决策 D13 检索按库过滤（kb_id in [...]）；legacy visibility 字段不再写入
             //（KB-1 遗留 schema，Milvus 就绪后同步移除）
-            row.put("kb_id", request.getKbId());
+            row.put("kb_id", String.valueOf(request.getKbId()));
             row.put("version", request.getVersion());
             row.put("chunk_seq", chunk.getSeq());
             row.put("heading_anchor", StrUtil.blankToDefault(chunk.getHeadingAnchor(), ""));
@@ -91,7 +95,7 @@ public class MilvusVectorStore implements VectorStore {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("collectionName", COLLECTION_NAME);
         body.put("dbName", properties.getMilvusDatabase());
-        body.put("filter", "workspace_id == " + workspaceId + " && article_id == " + knowledgeId);
+        body.put("filter", "workspace_id == \"" + workspaceId + "\" && article_id == \"" + knowledgeId + "\"");
         postJson("/v2/vectordb/entities/delete", body);
     }
 
@@ -117,26 +121,30 @@ public class MilvusVectorStore implements VectorStore {
         return parseSearchResponse(response);
     }
 
-    /** 构建检索过滤表达式：空间隔离 + 可见库集合（kb_id in [...]，决策 D13）+ 可选知识级过滤。 */
-    private String buildFilter(Long workspaceId, List<Long> kbIds, Long knowledgeId) {
+    /** 构建检索过滤表达式：空间隔离（workspaceId 为空时省略，用于跨空间可见库聚合检索）+ 可见库集合（kb_id in [...]，决策 D13）+ 可选知识级过滤。
+     *  大整数 ID 以字符串字面量参与比较（写入端已字符串化，规避本环境 float64 精度失真）。 */
+    static String buildFilter(Long workspaceId, List<Long> kbIds, Long knowledgeId) {
         List<String> conditions = new ArrayList<>();
-        conditions.add("workspace_id == " + workspaceId);
-        String kbIdsExpr = kbIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(", "));
+        if (workspaceId != null) {
+            conditions.add("workspace_id == \"" + workspaceId + "\"");
+        }
+        String kbIdsExpr = kbIds.stream().map(id -> "\"" + id + "\"").collect(java.util.stream.Collectors.joining(", "));
         conditions.add("kb_id in [" + kbIdsExpr + "]");
         if (knowledgeId != null) {
-            conditions.add("article_id == " + knowledgeId);
+            conditions.add("article_id == \"" + knowledgeId + "\"");
         }
         return String.join(" && ", conditions);
     }
 
-    /** 解析 search 响应：data[0] 为命中列表，逐条映射为 SearchResultDTO（含溯源字段与分数）。 */
+    /** 解析 search 响应：兼容扁平（data=[命中...]）与嵌套（data[0]=[命中...]）两种返回形态，
+     *  命中元素字段直接平铺或包在 entity 内；逐条映射为 SearchResultDTO（含溯源字段与分数）。 */
     private List<SearchResultDTO> parseSearchResponse(JsonNode response) {
         JsonNode data = response.get("data");
         if (data == null || !data.isArray() || data.isEmpty()) {
             return List.of();
         }
-        JsonNode hits = data.get(0);
-        if (hits == null || !hits.isArray()) {
+        JsonNode hits = data.get(0).isArray() ? data.get(0) : data;
+        if (hits == null || !hits.isArray() || hits.isEmpty()) {
             return List.of();
         }
         List<SearchResultDTO> results = new ArrayList<>();
@@ -159,7 +167,8 @@ public class MilvusVectorStore implements VectorStore {
         return results;
     }
 
-    /** 确保集合存在：创建集合 → 建近似索引 → 加载集合（幂等，失败仅告警降级）。 */
+    /** 确保集合存在（幂等）：本环境 REST 仅支持快速建集（dimension 驱动，自动建索引并加载），
+     *  业务元数据以动态字段承载（enableDynamicField 默认开启）。 */
     private void ensureCollection(int dimension) {
         if (dimension <= 0) {
             return;
@@ -168,28 +177,21 @@ public class MilvusVectorStore implements VectorStore {
         createBody.put("collectionName", COLLECTION_NAME);
         createBody.put("dbName", properties.getMilvusDatabase());
         createBody.put("dimension", dimension);
-        createBody.put("primaryFieldName", PRIMARY_FIELD);
-        createBody.put("idType", "VarChar");
-        createBody.put("vectorFieldName", VECTOR_FIELD);
         createBody.put("metricType", METRIC_COSINE);
-        createBody.put("autoID", false);
-        createBody.put("enableDynamicField", true);
         postJson("/v2/vectordb/collections/create", createBody);
-
-        Map<String, Object> indexBody = new LinkedHashMap<>();
-        indexBody.put("collectionName", COLLECTION_NAME);
-        indexBody.put("dbName", properties.getMilvusDatabase());
-        indexBody.put("indexParams", List.of(Map.of("fieldName", VECTOR_FIELD, "indexName", "vector_idx",
-                "metricType", METRIC_COSINE, "indexType", "AUTOINDEX")));
-        postJson("/v2/vectordb/indexes/create", indexBody);
-
-        Map<String, Object> loadBody = new LinkedHashMap<>();
-        loadBody.put("collectionName", COLLECTION_NAME);
-        loadBody.put("dbName", properties.getMilvusDatabase());
-        postJson("/v2/vectordb/collections/load", loadBody);
     }
 
-    /** POST JSON 到 Milvus REST v2 端点；失败记录 warn 并返回 null（触发降级）。 */
+    /** 字符串向量 ID 的确定性主键（FNV-1a 低 52 位，精确区间内）：兼容 REST 快速建集的 Int64 主键约束。 */
+    private static long pkValue(String vectorId) {
+        long hash = 0xcbf29ce484222325L;
+        for (int i = 0; i < vectorId.length(); i++) {
+            hash ^= vectorId.charAt(i);
+            hash *= 0x100000001b3L;
+        }
+        return hash & 0xFFFFFFFFFFFFFL;
+    }
+
+    /** POST JSON 到 Milvus REST v2 端点；HTTP 非 2xx 或响应体 code 非 0 时记录 warn 并返回 null（触发降级）。 */
     private JsonNode postJson(String path, Map<String, Object> body) {
         try {
             String json = JSON_MAPPER.writeValueAsString(body);
@@ -201,7 +203,14 @@ public class MilvusVectorStore implements VectorStore {
                     .build();
             HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return JSON_MAPPER.readTree(response.body());
+                JsonNode parsed = JSON_MAPPER.readTree(response.body());
+                if (parsed.has("code") && parsed.get("code").asInt() != 0) {
+                    log.warn("Milvus REST 返回错误：path={}, code={}, message={}", path,
+                            parsed.get("code").asInt(),
+                            parsed.has("message") ? parsed.get("message").asText() : "");
+                    return null;
+                }
+                return parsed;
             }
             log.warn("Milvus REST 调用失败：path={}, HTTP={}", path, response.statusCode());
         } catch (Exception e) {

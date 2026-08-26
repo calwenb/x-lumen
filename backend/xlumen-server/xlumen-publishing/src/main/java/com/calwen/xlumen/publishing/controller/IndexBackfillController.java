@@ -2,6 +2,7 @@ package com.calwen.xlumen.publishing.controller;
 
 import com.calwen.xlumen.common.web.ApiResponse;
 import com.calwen.xlumen.knowledge.vo.IndexStatusVO;
+import com.calwen.xlumen.publishing.dto.ReindexAllVO;
 import com.calwen.xlumen.publishing.service.IndexBackfillService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,5 +34,15 @@ public class IndexBackfillController {
     @PostMapping("/{knowledgeId}/reindex")
     public ApiResponse<IndexStatusVO> reindex(@PathVariable Long knowledgeId) {
         return ApiResponse.success(indexBackfillService.reindex(knowledgeId));
+    }
+
+    /**
+     * 全量重建当前空间已发布知识索引（运维补跑：逐条执行、单条失败不中断）。
+     *
+     * @return 重建汇总
+     */
+    @PostMapping("/reindex-all")
+    public ApiResponse<ReindexAllVO> reindexAll() {
+        return ApiResponse.success(indexBackfillService.reindexAll());
     }
 }

@@ -33,4 +33,7 @@ public class KnowledgeQueryDTO extends PageQueryDTO {
 
     /** 标签（JSON_CONTAINS 精确匹配，可空）。 */
     private String tag;
+
+    /** 检索模式：keyword=关键词 LIKE（默认）/ semantic=向量语义（登录可用，Milvus 不可用时自动回退 keyword）。 */
+    private String mode;
 }

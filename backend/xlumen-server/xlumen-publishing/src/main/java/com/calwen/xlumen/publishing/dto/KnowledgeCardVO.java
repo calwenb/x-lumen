@@ -62,4 +62,13 @@ public class KnowledgeCardVO {
 
     /** 收藏时间（我的收藏列表专用字段，公开列表为 null）。 */
     private LocalDateTime favoritedAt;
+
+    /** 语义相关度（semantic 模式：命中片段最高余弦相似度，keyword 模式为 null）。 */
+    private Float semanticScore;
+
+    /** 命中片段数（semantic 模式：该知识聚合的段落数，keyword 模式为 null）。 */
+    private Integer chunkCount;
+
+    /** 首个命中段落锚点（semantic 模式：跳转详情定位用，可为空）。 */
+    private String firstAnchor;
 }
