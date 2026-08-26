@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// 应用根组件：左侧边栏（品牌 + 菜单：空间设置/模型配置/审计日志 + 用户名 + 登出）+ 路由出口。
+// 应用根组件：左侧边栏（品牌 + 菜单：空间设置/模型配置/AI 调用追踪/审计日志 + 用户名 + 登出）+ 路由出口。
 // 登录页（guest）不渲染侧边栏，仅路由出口。侧栏基于 Element Plus el-menu（EP 接入后统一视觉）。
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Operation, Setting, User, View } from '@element-plus/icons-vue'
+import { Monitor, Operation, Setting, User, View } from '@element-plus/icons-vue'
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import { useSessionStore } from '@/stores/session'
@@ -38,6 +38,10 @@ async function handleLogout(): Promise<void> {
         <el-menu-item index="/models">
           <el-icon><Operation /></el-icon>
           <span>模型配置</span>
+        </el-menu-item>
+        <el-menu-item index="/ai-traces">
+          <el-icon><Monitor /></el-icon>
+          <span>AI 调用追踪</span>
         </el-menu-item>
         <el-menu-item index="/audit-logs">
           <el-icon><View /></el-icon>

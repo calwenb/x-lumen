@@ -9,6 +9,7 @@ import com.calwen.xlumen.ai.mapper.AiEnhanceResultMapper;
 import com.calwen.xlumen.ai.prompt.PromptTemplates;
 import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.EnhanceService;
+import com.calwen.xlumen.ai.service.PromptResolver;
 import com.calwen.xlumen.ai.util.AiJson;
 import com.calwen.xlumen.ai.vo.EnhanceResultVO;
 import com.calwen.xlumen.common.context.WorkspaceContext;
@@ -32,10 +33,13 @@ public class EnhanceServiceImpl implements EnhanceService {
 
     private final ChatRuntime chatRuntime;
     private final AiEnhanceResultMapper enhanceResultMapper;
+    private final PromptResolver promptResolver;
 
-    public EnhanceServiceImpl(ChatRuntime chatRuntime, AiEnhanceResultMapper enhanceResultMapper) {
+    public EnhanceServiceImpl(ChatRuntime chatRuntime, AiEnhanceResultMapper enhanceResultMapper,
+                              PromptResolver promptResolver) {
         this.chatRuntime = chatRuntime;
         this.enhanceResultMapper = enhanceResultMapper;
+        this.promptResolver = promptResolver;
     }
 
     @Override
@@ -103,7 +107,7 @@ public class EnhanceServiceImpl implements EnhanceService {
 
     /** 调用运行时生成并校验结构化结果，返回紧凑 JSON 文本。 */
     private String generate(Long workspaceId, AiScene scene, String content) {
-        String system = scene == AiScene.SUMMARY ? PromptTemplates.SUMMARY : PromptTemplates.SEO;
+        String system = promptResolver.resolve(workspaceId, scene);
         String raw = chatRuntime.chat(workspaceId, scene,
                 List.of(
                         new SystemMessage(system),

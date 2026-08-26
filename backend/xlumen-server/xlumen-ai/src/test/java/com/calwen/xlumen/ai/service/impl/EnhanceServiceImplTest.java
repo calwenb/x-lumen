@@ -4,6 +4,9 @@ import com.calwen.xlumen.ai.entity.AiEnhanceResultEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.mapper.AiEnhanceResultMapper;
 import com.calwen.xlumen.ai.service.ChatRuntime;
+import com.calwen.xlumen.ai.service.PromptResolver;
+import com.calwen.xlumen.ai.service.SceneConfigService;
+import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.vo.EnhanceResultVO;
 import com.calwen.xlumen.common.exception.BizException;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +20,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -41,7 +46,10 @@ class EnhanceServiceImplTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        enhanceService = new EnhanceServiceImpl(chatRuntime, enhanceResultMapper);
+        SceneConfigService sceneConfigService = mock(SceneConfigService.class);
+        when(sceneConfigService.resolve(anyLong(), any())).thenReturn(SceneModel.builder().build());
+        enhanceService = new EnhanceServiceImpl(chatRuntime, enhanceResultMapper,
+                new PromptResolver(sceneConfigService));
     }
 
     @Test

@@ -45,6 +45,8 @@ public class SceneConfigServiceImpl implements SceneConfigService {
                         .providerName(config.getProvider())
                         .model(config.getModel())
                         .paramsJson(config.getParamsJson())
+                        .prompt(config.getPrompt())
+                        .dailyQuota(config.getDailyQuota())
                         .build();
             }
         }
@@ -65,13 +67,15 @@ public class SceneConfigServiceImpl implements SceneConfigService {
                         .provider(e.getProvider())
                         .model(e.getModel())
                         .paramsJson(e.getParamsJson())
+                        .prompt(e.getPrompt())
+                        .dailyQuota(e.getDailyQuota())
                         .build())
                 .toList();
     }
 
     @Override
     public void update(Long workspaceId, AiScene scene, String provider, String model,
-                       String paramsJson) {
+                       String paramsJson, String prompt, Integer dailyQuota) {
         AiSceneConfigEntity existing = sceneConfigMapper.selectOne(new LambdaQueryWrapper<AiSceneConfigEntity>()
                 .eq(AiSceneConfigEntity::getWorkspaceId, workspaceId)
                 .eq(AiSceneConfigEntity::getScene, scene.name())
@@ -82,6 +86,12 @@ public class SceneConfigServiceImpl implements SceneConfigService {
         entity.setProvider(provider.toUpperCase());
         entity.setModel(model);
         entity.setParamsJson(paramsJson);
+        if (prompt != null) {
+            entity.setPrompt(prompt);
+        }
+        if (dailyQuota != null) {
+            entity.setDailyQuota(dailyQuota);
+        }
         if (entity.getId() == null) {
             sceneConfigMapper.insert(entity);
         } else {

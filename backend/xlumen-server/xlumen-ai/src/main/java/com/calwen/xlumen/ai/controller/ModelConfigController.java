@@ -51,13 +51,14 @@ public class ModelConfigController {
     }
 
     /**
-     * 新增或更新场景配置（provider/model/paramsJson）。
+     * 新增或更新场景配置（provider/model/paramsJson/prompt/dailyQuota）。
      */
     @PutMapping("/{scene}")
     public ApiResponse<Void> update(@PathVariable String scene,
                                     @Valid @RequestBody ModelConfigUpdateDTO dto) {
         sceneConfigService.update(WorkspaceContext.workspaceId(), parseScene(scene),
-                dto.getProvider(), dto.getModel(), dto.getParamsJson());
+                dto.getProvider(), dto.getModel(), dto.getParamsJson(),
+                dto.getPrompt(), dto.getDailyQuota());
         return ApiResponse.success(null);
     }
 

@@ -3,6 +3,9 @@ package com.calwen.xlumen.ai.service.executor;
 import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.service.ChatRuntime;
+import com.calwen.xlumen.ai.service.PromptResolver;
+import com.calwen.xlumen.ai.service.SceneConfigService;
+import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.service.TaskContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
@@ -15,7 +18,9 @@ import org.mockito.MockitoAnnotations;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,7 +46,9 @@ class ReviewExecutorTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        executor = new ReviewExecutor(chatRuntime);
+        SceneConfigService sceneConfigService = mock(SceneConfigService.class);
+        when(sceneConfigService.resolve(anyLong(), any())).thenReturn(SceneModel.builder().build());
+        executor = new ReviewExecutor(chatRuntime, new PromptResolver(sceneConfigService));
         task = new AiTaskEntity();
         task.setId(1L);
         task.setWorkspaceId(1L);

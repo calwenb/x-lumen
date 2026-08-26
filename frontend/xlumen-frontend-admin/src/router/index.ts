@@ -40,6 +40,12 @@ const router = createRouter({
       meta: { authenticated: true, title: '模型配置' },
     },
     {
+      path: '/ai-traces',
+      name: 'ai-traces',
+      component: () => import('@/modules/model/pages/AiTracePage.vue'),
+      meta: { authenticated: true, title: 'AI 调用追踪' },
+    },
+    {
       path: '/audit-logs',
       name: 'audit-logs',
       component: () => import('@/modules/audit/pages/AuditLogPage.vue'),

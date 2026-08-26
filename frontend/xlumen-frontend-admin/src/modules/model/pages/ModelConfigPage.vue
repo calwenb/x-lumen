@@ -1,9 +1,11 @@
 <script setup lang="ts">
-// A03 模型配置：场景模型表格（供应商下拉 + 模型输入 + 保存）与连通性测试。
+// 模型配置：场景模型表格（供应商下拉 + 模型输入 + 每日配额 + Prompt 编辑 + 保存）与连通性测试。
+// WRITING 场景 Prompt 为 JSON 文本（大纲/分章/自审/修订 4 槽位），其余场景为单个 Prompt 文本。
+// 保存语义：provider/model/dailyQuota 必发；prompt 仅当用户编辑过或点击「恢复默认」才发送。
 // 关键状态：加载骨架、失败重试、空态、保存中、测试中、结果提示。
-import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { Setting } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 import {
   PROVIDER_OPTIONS,
@@ -13,7 +15,7 @@ import {
   updateModelConfig,
 } from '../api/model'
 
-import type { ModelConfig, ModelTestResult, ProviderValue } from '../api/model'
+import type { ModelConfig, ModelConfigUpdate, ModelTestResult, ProviderValue } from '../api/model'
 
 const configs = ref<ModelConfig[]>([])
 const loading = ref(true)
@@ -26,6 +28,42 @@ const testProvider = ref<ProviderValue>('BAILIAN')
 const testModel = ref('')
 const testing = ref(false)
 const testResult = ref<ModelTestResult | null>(null)
+
+// WRITING 场景 Prompt 槽位（存为 JSON 对象）。
+const PROMPT_SLOTS = [
+  { key: 'outline', label: '大纲' },
+  { key: 'chapter', label: '分章' },
+  { key: 'self_review', label: '自审' },
+  { key: 'revise', label: '修订' },
+] as const
+
+type PromptSlotKey = (typeof PROMPT_SLOTS)[number]['key']
+type PromptSlots = Record<PromptSlotKey, string>
+
+interface PromptDraft {
+  slots: PromptSlots
+  text: string
+  dirty: boolean
+}
+
+const EMPTY_SLOTS: PromptSlots = { outline: '', chapter: '', self_review: '', revise: '' }
+
+// 场景 Prompt 草稿（scene → 草稿）；Prompt 为空或无效 JSON 时四个槽位均为空。
+const promptDrafts = reactive(new Map<string, PromptDraft>())
+
+// Prompt 编辑弹窗状态：当前行、场景、草稿（草稿与 promptDrafts 共享引用）。
+const promptEditorVisible = ref(false)
+const promptEditorRecord = ref<ModelConfig | null>(null)
+const promptEditorScene = ref('')
+const promptEditorDraft = ref<PromptDraft>({ slots: { ...EMPTY_SLOTS }, text: '', dirty: false })
+
+const promptEditorTitle = computed(() => {
+  const item = promptEditorRecord.value
+  if (!item) {
+    return 'Prompt 配置'
+  }
+  return `${SCENE_LABELS[item.scene] ?? item.scene} · Prompt 配置`
+})
 
 function formatTime(iso: string): string {
   return iso ? iso.slice(0, 16).replace('T', ' ') : '—'
@@ -43,11 +81,68 @@ function providerOptions(current: string): Array<{ value: string; label: string 
   return options
 }
 
+/** 解析 WRITING 场景的 JSON Prompt（空/无效 JSON 时四槽位为空）。 */
+function parseWritingSlots(prompt: string): PromptSlots {
+  if (!prompt) {
+    return { ...EMPTY_SLOTS }
+  }
+  try {
+    const parsed: unknown = JSON.parse(prompt)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return { ...EMPTY_SLOTS }
+    }
+    const source = parsed as Record<string, unknown>
+    const slots: PromptSlots = { ...EMPTY_SLOTS }
+    for (const slot of PROMPT_SLOTS) {
+      const value = source[slot.key]
+      slots[slot.key] = typeof value === 'string' ? value : ''
+    }
+    return slots
+  } catch {
+    return { ...EMPTY_SLOTS }
+  }
+}
+
+/** 构造场景 Prompt 草稿。 */
+function buildDraft(scene: string, prompt: string | undefined): PromptDraft {
+  if (scene === 'WRITING') {
+    return { slots: parseWritingSlots(prompt ?? ''), text: '', dirty: false }
+  }
+  return { slots: { ...EMPTY_SLOTS }, text: prompt ?? '', dirty: false }
+}
+
+/** 加载/更新完成后按返回数据重建全部草稿。 */
+function rebuildDrafts(): void {
+  promptDrafts.clear()
+  for (const item of configs.value) {
+    promptDrafts.set(item.scene, buildDraft(item.scene, item.prompt))
+  }
+}
+
+/** 序列化草稿为提交的 Prompt 文本；内容为空时等同恢复默认（空串）。 */
+function serializePrompt(scene: string, draft: PromptDraft): string {
+  if (scene === 'WRITING') {
+    const obj: Record<string, string> = {}
+    for (const slot of PROMPT_SLOTS) {
+      if (draft.slots[slot.key]) {
+        obj[slot.key] = draft.slots[slot.key]
+      }
+    }
+    return Object.keys(obj).length === 0 ? '' : JSON.stringify(obj)
+  }
+  return draft.text.trim() === '' ? '' : draft.text
+}
+
 async function load(): Promise<void> {
   loading.value = true
   loadError.value = false
   try {
-    configs.value = await fetchModelConfigs()
+    const items = await fetchModelConfigs()
+    for (const item of items) {
+      item.dailyQuota = item.dailyQuota ?? 0
+    }
+    configs.value = items
+    rebuildDrafts()
   } catch {
     loadError.value = true
   } finally {
@@ -55,18 +150,116 @@ async function load(): Promise<void> {
   }
 }
 
-async function save(item: ModelConfig): Promise<void> {
+/** 每日配额输入：清空输入按 0（不限）处理。 */
+function updateQuota(item: ModelConfig, value: number | undefined): void {
+  item.dailyQuota = value ?? 0
+}
+
+/** 保存单行：provider/model/dailyQuota 必发；prompt 仅在用户编辑过或恢复默认后才发送。 */
+async function save(item: ModelConfig): Promise<boolean> {
   savingScenes.add(item.scene)
   try {
-    const updated = await updateModelConfig(item.scene, {
+    const payload: ModelConfigUpdate = {
       provider: item.provider,
       model: item.model,
       ...(item.paramsJson ? { paramsJson: item.paramsJson } : {}),
-    })
+      dailyQuota: item.dailyQuota ?? 0,
+    }
+    const draft = promptDrafts.get(item.scene)
+    if (draft?.dirty) {
+      payload.prompt = serializePrompt(item.scene, draft)
+      draft.dirty = false
+    }
+    const updated = await updateModelConfig(item.scene, payload)
     Object.assign(item, updated)
+    promptDrafts.set(item.scene, buildDraft(item.scene, item.prompt))
     ElMessage.success('已保存')
+    return true
   } catch {
     ElMessage.error('保存失败，请稍后重试')
+    return false
+  } finally {
+    savingScenes.delete(item.scene)
+  }
+}
+
+/** 打开 Prompt 编辑弹窗。 */
+function openPromptEditor(item: ModelConfig): void {
+  let draft = promptDrafts.get(item.scene)
+  if (!draft) {
+    draft = buildDraft(item.scene, item.prompt)
+    promptDrafts.set(item.scene, draft)
+  }
+  promptEditorRecord.value = item
+  promptEditorScene.value = item.scene
+  promptEditorDraft.value = draft
+  promptEditorVisible.value = true
+}
+
+/** 编辑 Prompt 之后标记草稿待保存。 */
+function markPromptDirty(): void {
+  promptEditorDraft.value.dirty = true
+}
+
+/** 丢弃弹窗中未保存的编辑（回到最后已保存的 Prompt）。 */
+function discardPromptEdits(): void {
+  const item = promptEditorRecord.value
+  if (!item) {
+    return
+  }
+  const fresh = buildDraft(item.scene, item.prompt)
+  promptDrafts.set(item.scene, fresh)
+  promptEditorDraft.value = fresh
+}
+
+/** 弹窗遮罩/右上角关闭按取消处理。 */
+function onPromptEditorClose(done: () => void): void {
+  discardPromptEdits()
+  done()
+}
+
+function cancelPromptEditor(): void {
+  discardPromptEdits()
+  promptEditorRecord.value = null
+  promptEditorVisible.value = false
+}
+
+/** 保存当前行的 Prompt 编辑（含 provider/model/dailyQuota）。 */
+async function savePromptEditor(): Promise<void> {
+  const item = promptEditorRecord.value
+  if (!item) {
+    return
+  }
+  const ok = await save(item)
+  if (ok) {
+    promptEditorRecord.value = null
+    promptEditorVisible.value = false
+  }
+}
+
+/** 恢复默认：将 prompt 置空字符串发送。 */
+async function restorePromptDefault(): Promise<void> {
+  const item = promptEditorRecord.value
+  if (!item) {
+    return
+  }
+  savingScenes.add(item.scene)
+  try {
+    const payload: ModelConfigUpdate = {
+      provider: item.provider,
+      model: item.model,
+      ...(item.paramsJson ? { paramsJson: item.paramsJson } : {}),
+      dailyQuota: item.dailyQuota ?? 0,
+      prompt: '',
+    }
+    const updated = await updateModelConfig(item.scene, payload)
+    Object.assign(item, updated)
+    const fresh = buildDraft(item.scene, updated.prompt ?? '')
+    promptDrafts.set(item.scene, fresh)
+    promptEditorDraft.value = fresh
+    ElMessage.success('已恢复默认')
+  } catch {
+    ElMessage.error('恢复默认失败，请稍后重试')
   } finally {
     savingScenes.delete(item.scene)
   }
@@ -92,7 +285,7 @@ onMounted(() => {
 <template>
   <main class="models">
     <h1 class="models__title">模型配置</h1>
-    <p class="models__hint">API Key 在服务器 .env 配置，界面不展示</p>
+    <p class="models__hint">API Key 在服务器 .env 配置，界面不展示；每日配额为 0 表示不限</p>
 
     <div v-if="loading" class="models__state" role="status">
       <el-skeleton :rows="5" animated />
@@ -129,6 +322,24 @@ onMounted(() => {
         <el-table-column label="模型" min-width="160">
           <template #default="{ row }">
             <el-input v-model="row.model" class="models__model-input" placeholder="模型名称" />
+          </template>
+        </el-table-column>
+        <el-table-column label="每日配额" min-width="130">
+          <template #default="{ row }">
+            <el-input-number
+              :model-value="row.dailyQuota"
+              :min="0"
+              :controls="false"
+              size="small"
+              class="models__quota-input"
+              aria-label="每日配额"
+              @update:model-value="(value: number | undefined) => updateQuota(row, value)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="Prompt 配置" min-width="120">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="openPromptEditor(row)">编辑 Prompt</el-button>
           </template>
         </el-table-column>
         <el-table-column label="更新时间" min-width="140">
@@ -180,12 +391,62 @@ onMounted(() => {
         </p>
       </section>
     </template>
+
+    <el-dialog
+      v-model="promptEditorVisible"
+      :title="promptEditorTitle"
+      width="640px"
+      :before-close="onPromptEditorClose"
+    >
+      <div class="models__prompt-fields">
+        <template v-if="promptEditorScene === 'WRITING'">
+          <div v-for="slot in PROMPT_SLOTS" :key="slot.key" class="models__prompt-field">
+            <label class="models__prompt-label">{{ slot.label }}</label>
+            <el-input
+              v-model="promptEditorDraft.slots[slot.key]"
+              type="textarea"
+              :rows="5"
+              class="models__prompt-textarea"
+              placeholder="输入 Prompt 内容，留空表示不使用该槽位"
+              @input="markPromptDirty"
+            />
+          </div>
+          <p class="models__prompt-hint">
+            四个槽位内容保存为 JSON；全部留空并保存等同于恢复默认 Prompt
+          </p>
+        </template>
+        <div v-else class="models__prompt-field">
+          <label class="models__prompt-label">Prompt 内容</label>
+          <el-input
+            v-model="promptEditorDraft.text"
+            type="textarea"
+            :rows="8"
+            class="models__prompt-textarea"
+            placeholder="输入 Prompt 内容，留空并保存等同于恢复默认"
+            @input="markPromptDirty"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <el-button :loading="savingScenes.has(promptEditorScene)" @click="restorePromptDefault">
+          恢复默认
+        </el-button>
+        <el-button @click="cancelPromptEditor">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="savingScenes.has(promptEditorScene)"
+          @click="savePromptEditor"
+        >
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
   </main>
 </template>
 
 <style scoped>
 .models {
-  max-width: 960px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: var(--xl-space-8) var(--xl-space-4);
 }
@@ -246,6 +507,10 @@ onMounted(() => {
   max-width: 220px;
 }
 
+.models__quota-input {
+  width: 120px;
+}
+
 .models__test {
   margin-top: var(--xl-space-6);
   padding: var(--xl-space-6);
@@ -287,5 +552,32 @@ onMounted(() => {
 
 .models__test-result--fail {
   color: var(--xl-color-danger);
+}
+
+.models__prompt-fields {
+  display: grid;
+  gap: var(--xl-space-4);
+}
+
+.models__prompt-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-2);
+}
+
+.models__prompt-label {
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.models__prompt-textarea {
+  width: 100%;
+}
+
+.models__prompt-hint {
+  margin: 0;
+  color: var(--xl-text-muted);
+  font-size: 12px;
 }
 </style>

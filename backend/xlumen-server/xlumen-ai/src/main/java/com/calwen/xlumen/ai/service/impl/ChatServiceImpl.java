@@ -14,6 +14,7 @@ import com.calwen.xlumen.ai.mapper.ChatMessageMapper;
 import com.calwen.xlumen.ai.prompt.PromptTemplates;
 import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.ChatService;
+import com.calwen.xlumen.ai.service.PromptResolver;
 import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.service.tool.AgentToolContext;
 import com.calwen.xlumen.ai.service.tool.ToolEvent;
@@ -72,17 +73,20 @@ public class ChatServiceImpl implements ChatService {
     private final ChatConversationMapper conversationMapper;
     private final ChatMessageMapper messageMapper;
     private final ThreadPoolTaskExecutor chatStreamExecutor;
+    private final PromptResolver promptResolver;
 
     public ChatServiceImpl(WorkspaceApi workspaceApi,
                            ChatRuntime chatRuntime,
                            ChatConversationMapper conversationMapper,
                            ChatMessageMapper messageMapper,
-                           @Qualifier("chatStreamExecutor") ThreadPoolTaskExecutor chatStreamExecutor) {
+                           @Qualifier("chatStreamExecutor") ThreadPoolTaskExecutor chatStreamExecutor,
+                           PromptResolver promptResolver) {
         this.workspaceApi = workspaceApi;
         this.chatRuntime = chatRuntime;
         this.conversationMapper = conversationMapper;
         this.messageMapper = messageMapper;
         this.chatStreamExecutor = chatStreamExecutor;
+        this.promptResolver = promptResolver;
     }
 
     @Override
@@ -140,7 +144,7 @@ public class ChatServiceImpl implements ChatService {
                           ChatRequestDTO dto, Long knowledgeId, List<ChatMessageEntity> history,
                           SseEmitter emitter) {
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(PromptTemplates.QA_AGENT));
+        messages.add(new SystemMessage(promptResolver.resolve(workspaceId, AiScene.QA)));
         messages.addAll(replayHistory(history));
         messages.add(new UserMessage(dto.getQuery()));
 

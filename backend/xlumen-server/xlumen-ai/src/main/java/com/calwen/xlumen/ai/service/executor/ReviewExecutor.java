@@ -9,6 +9,7 @@ import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.prompt.PromptTemplates;
 import com.calwen.xlumen.ai.service.AiTaskExecutor;
 import com.calwen.xlumen.ai.service.ChatRuntime;
+import com.calwen.xlumen.ai.service.PromptResolver;
 import com.calwen.xlumen.ai.service.TaskContext;
 import com.calwen.xlumen.ai.service.tool.AgentToolContext;
 import com.calwen.xlumen.ai.service.tool.ToolEventSink;
@@ -36,9 +37,11 @@ import java.util.List;
 public class ReviewExecutor implements AiTaskExecutor {
 
     private final ChatRuntime chatRuntime;
+    private final PromptResolver promptResolver;
 
-    public ReviewExecutor(ChatRuntime chatRuntime) {
+    public ReviewExecutor(ChatRuntime chatRuntime, PromptResolver promptResolver) {
         this.chatRuntime = chatRuntime;
+        this.promptResolver = promptResolver;
     }
 
     @Override
@@ -75,7 +78,7 @@ public class ReviewExecutor implements AiTaskExecutor {
     /** 事实核对模式：ChatRuntime 非流式工具循环（轮数上限在 ToolCallbackAdapter 内收紧）。 */
     private String chatWithTools(AiTaskEntity task, String userPrompt) {
         List<Message> messages = List.of(
-                new SystemMessage(PromptTemplates.REVIEWER_SYSTEM),
+                new SystemMessage(promptResolver.resolve(task.getWorkspaceId(), AiScene.REVIEWER)),
                 new UserMessage(userPrompt));
         AgentToolContext toolContext = AgentToolContext.builder()
                 .workspaceId(task.getWorkspaceId())

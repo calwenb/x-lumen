@@ -7,9 +7,9 @@ import cn.hutool.json.JSONUtil;
 import com.calwen.xlumen.ai.config.AiProperties;
 import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
-import com.calwen.xlumen.ai.prompt.PromptTemplates;
 import com.calwen.xlumen.ai.service.AiTaskExecutor;
 import com.calwen.xlumen.ai.service.ChatRuntime;
+import com.calwen.xlumen.ai.service.PromptResolver;
 import com.calwen.xlumen.ai.service.TaskContext;
 import com.calwen.xlumen.ai.util.AiJson;
 import org.slf4j.Logger;
@@ -39,10 +39,13 @@ public class WritingExecutor implements AiTaskExecutor {
 
     private final ChatRuntime chatRuntime;
     private final AiProperties aiProperties;
+    private final PromptResolver promptResolver;
 
-    public WritingExecutor(ChatRuntime chatRuntime, AiProperties aiProperties) {
+    public WritingExecutor(ChatRuntime chatRuntime, AiProperties aiProperties,
+                           PromptResolver promptResolver) {
         this.chatRuntime = chatRuntime;
         this.aiProperties = aiProperties;
+        this.promptResolver = promptResolver;
     }
 
     @Override
@@ -126,7 +129,8 @@ public class WritingExecutor implements AiTaskExecutor {
 
     /** 步1：大纲；解析失败或章节超限返回 null（回退单次）。 */
     private List<JSONObject> outline(AiTaskEntity task, JSONObject input) {
-        String prompt = PromptTemplates.WRITING_OUTLINE.replace("{{MAX}}", String.valueOf(maxChapters()));
+        String prompt = promptResolver.resolveWriting(task.getWorkspaceId(), "outline")
+                .replace("{{MAX}}", String.valueOf(maxChapters()));
         try {
             String content = chatRuntime.chat(task.getWorkspaceId(), AiScene.WRITING,
                     List.of(
@@ -158,7 +162,8 @@ public class WritingExecutor implements AiTaskExecutor {
     /** 步2：单章流式生成；失败重试 1 次，仍失败返回 null（触发降级）。 */
     private String generateChapter(AiTaskEntity task, TaskContext ctx, String userContext,
                                    String outlineText, String chapterTitle) {
-        String chapterPrompt = PromptTemplates.WRITING_CHAPTER.replace("{{TITLE}}", chapterTitle);
+        String chapterPrompt = promptResolver.resolveWriting(task.getWorkspaceId(), "chapter")
+                .replace("{{TITLE}}", chapterTitle);
         StringBuilder sb = new StringBuilder();
         for (int attempt = 0; attempt < 2; attempt++) {
             StringBuilder content = new StringBuilder();
@@ -188,7 +193,7 @@ public class WritingExecutor implements AiTaskExecutor {
         try {
             String content = chatRuntime.chat(task.getWorkspaceId(), AiScene.REVIEWER,
                     List.of(
-                            new SystemMessage(PromptTemplates.WRITING_SELF_REVIEW),
+                            new SystemMessage(promptResolver.resolveWriting(task.getWorkspaceId(), "self_review")),
                             new UserMessage(fullText)),
                     0.2, 2048);
             JSONArray arr = AiJson.extractArray(content);
@@ -208,7 +213,7 @@ public class WritingExecutor implements AiTaskExecutor {
         AtomicReference<String> error = new AtomicReference<>();
         chatRuntime.chatStream(task.getWorkspaceId(), AiScene.WRITING,
                 List.of(
-                        new SystemMessage(PromptTemplates.WRITING_REVISE),
+                        new SystemMessage(promptResolver.resolveWriting(task.getWorkspaceId(), "revise")),
                         new UserMessage("审校意见：\n" + reviewJson + "\n\n全文初稿：\n" + fullText)),
                 0.5, 4096,
                 delta -> {

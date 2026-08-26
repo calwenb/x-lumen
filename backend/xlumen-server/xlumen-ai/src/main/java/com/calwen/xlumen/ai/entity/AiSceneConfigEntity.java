@@ -42,6 +42,12 @@ public class AiSceneConfigEntity {
     @TableField(typeHandler = JacksonTypeHandler.class)
     private String paramsJson;
 
+    /** 场景提示词（覆盖默认；WRITING 为 JSON 多槽位，空=回退常量默认）。 */
+    private String prompt;
+
+    /** 每日调用配额（0=不限）。 */
+    private Integer dailyQuota;
+
     /** 创建时间。 */
     private LocalDateTime createdAt;
 

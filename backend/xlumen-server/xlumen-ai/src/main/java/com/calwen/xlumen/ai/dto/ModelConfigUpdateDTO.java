@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 场景模型配置更新入参（管理面 A03）：密钥不入表，仅改供应商/模型/参数。
+ * 场景模型配置更新入参（管理面 A03）：密钥不入表，仅改供应商/模型/参数/提示词/配额。
  *
  * @author calwen
  * @date 2026/8/13
@@ -28,4 +28,10 @@ public class ModelConfigUpdateDTO {
 
     /** 场景参数（JSON 文本，可空）。 */
     private String paramsJson;
+
+    /** 场景提示词（null=保持原值，空串=清除回默认；WRITING 为多槽位 JSON）。 */
+    private String prompt;
+
+    /** 每日调用配额（null=保持原值，0=不限）。 */
+    private Integer dailyQuota;
 }

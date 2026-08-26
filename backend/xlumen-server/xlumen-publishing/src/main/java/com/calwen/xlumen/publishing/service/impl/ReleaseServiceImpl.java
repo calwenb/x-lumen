@@ -98,7 +98,7 @@ public class ReleaseServiceImpl implements ReleaseService {
         if (KnowledgeStatus.of(knowledge.getStatus()) != KnowledgeStatus.APPROVED) {
             throw new BizException(ErrorCode.CONFLICT, "仅审核通过的知识可发布");
         }
-        // 归属兜底（决策 D16）：发布必须归属有效知识库，拦截历史孤儿数据（BUG-4 防线）
+        // 归属兜底（决策 D16）：发布必须归属有效知识库，拦截历史孤儿数据
         if (knowledge.getKbId() == null
                 || knowledgeApi.getKnowledgeBase(workspaceId, knowledge.getKbId()) == null) {
             throw new BizException(ErrorCode.CONFLICT, "知识未归属有效知识库，无法发布");

@@ -4,12 +4,15 @@ import cn.hutool.core.util.StrUtil;
 import com.calwen.xlumen.ai.config.AiProperties;
 import com.calwen.xlumen.ai.config.ScriptedChatModel;
 import com.calwen.xlumen.ai.enums.AiScene;
+import com.calwen.xlumen.ai.service.AiCallLogService;
 import com.calwen.xlumen.ai.service.ChatRuntime;
+import com.calwen.xlumen.ai.service.QuotaService;
 import com.calwen.xlumen.ai.service.SceneConfigService;
 import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.service.tool.AgentTool;
 import com.calwen.xlumen.ai.service.tool.ToolCallbackAdapter;
 import com.calwen.xlumen.ai.service.tool.ToolRun;
+import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
 import org.slf4j.Logger;
@@ -17,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -45,6 +49,7 @@ import java.util.stream.Collectors;
  * 简单熔断（连续失败 5 次熔断 60s）、无密钥回退 ScriptedChatModel；对话全走 Spring AI
  * ChatModel/ChatClient。工具路径把业务 AgentTool 注册为 ToolCallback 交给 ChatClient 自动循环，
  * 并注入业务 AgentToolContext 与 ToolEventSink（KEY_* 常量见 ToolCallbackAdapter）。
+ * V2 基建：所有 LLM 调用经配额预占（超限 429）与调用追踪埋点（ai_call_log）。
  *
  * @author calwen
  * @date 2026/8/24
@@ -70,6 +75,8 @@ public class ChatRuntimeImpl implements ChatRuntime {
     private final SceneConfigService sceneConfigService;
     private final AiProperties aiProperties;
     private final ScriptedChatModel scriptedChatModel;
+    private final QuotaService quotaService;
+    private final AiCallLogService aiCallLogService;
     private final List<AgentTool> agentTools;
     private final ExecutorService toolExecutor;
     private final Map<String, ChatModel> modelCache = new ConcurrentHashMap<>();
@@ -78,10 +85,14 @@ public class ChatRuntimeImpl implements ChatRuntime {
     public ChatRuntimeImpl(SceneConfigService sceneConfigService,
                            AiProperties aiProperties,
                            ScriptedChatModel scriptedChatModel,
+                           QuotaService quotaService,
+                           AiCallLogService aiCallLogService,
                            List<AgentTool> agentTools) {
         this.sceneConfigService = sceneConfigService;
         this.aiProperties = aiProperties;
         this.scriptedChatModel = scriptedChatModel;
+        this.quotaService = quotaService;
+        this.aiCallLogService = aiCallLogService;
         this.agentTools = agentTools;
         this.toolExecutor = Executors.newFixedThreadPool(TOOL_POOL_SIZE, r -> {
             Thread t = new Thread(r, "xlumen-agent-tool");
@@ -102,16 +113,31 @@ public class ChatRuntimeImpl implements ChatRuntime {
         ChatModel model = resolveModel(sm);
         String key = circuitKey(sm);
         checkCircuit(key);
+        quotaService.reserve(workspaceId, scene);
+        boolean degraded = model == scriptedChatModel;
+        long start = System.currentTimeMillis();
+        boolean success = false;
+        String errorMsg = "";
+        int tokensIn = 0;
+        int tokensOut = 0;
         try {
             ChatResponse response = model.call(new Prompt(messages, openAiOptions(sm, temperature, maxTokens)));
             recordSuccess(key);
+            success = true;
+            int[] usage = usageOf(response);
+            tokensIn = usage[0];
+            tokensOut = usage[1];
             return textOf(response);
-        } catch (BizException e) {
-            throw e;
         } catch (Exception e) {
+            quotaService.release(workspaceId, scene);
             log.warn("AI 对话调用失败 provider={} model={}", sm.getProviderName(), sm.getModel(), e);
             recordFailure(key);
+            errorMsg = safeMessage(e);
             throw new BizException(ErrorCode.SERVICE_UNAVAILABLE, CIRCUIT_MESSAGE);
+        } finally {
+            aiCallLogService.record(workspaceId, WorkspaceContext.userId(), scene, null, "CHAT",
+                    sm.getProviderName(), sm.getModel(), promptHash(messages),
+                    tokensIn, tokensOut, System.currentTimeMillis() - start, success, degraded, errorMsg);
         }
     }
 
@@ -128,13 +154,24 @@ public class ChatRuntimeImpl implements ChatRuntime {
             onError.accept(e);
             return;
         }
+        quotaService.reserve(workspaceId, scene);
+        boolean degraded = model == scriptedChatModel;
+        long start = System.currentTimeMillis();
         AtomicBoolean errored = new AtomicBoolean(false);
+        int[] usage = {0, 0};
         try {
             model.stream(new Prompt(messages, openAiOptions(sm, temperature, maxTokens)))
                     .doOnNext(r -> {
                         String text = textOf(r);
                         if (StrUtil.isNotBlank(text)) {
                             onChunk.accept(text);
+                        }
+                        int[] u = usageOf(r);
+                        if (u[0] > usage[0]) {
+                            usage[0] = u[0];
+                        }
+                        if (u[1] > usage[1]) {
+                            usage[1] = u[1];
                         }
                     })
                     .doOnError(e -> {
@@ -152,6 +189,13 @@ public class ChatRuntimeImpl implements ChatRuntime {
                 recordFailure(key);
                 onError.accept(e);
             }
+        } finally {
+            if (errored.get()) {
+                quotaService.release(workspaceId, scene);
+            }
+            aiCallLogService.record(workspaceId, WorkspaceContext.userId(), scene, null, "CHAT_STREAM",
+                    sm.getProviderName(), sm.getModel(), promptHash(messages),
+                    usage[0], usage[1], System.currentTimeMillis() - start, !errored.get(), degraded, "");
         }
     }
 
@@ -162,6 +206,13 @@ public class ChatRuntimeImpl implements ChatRuntime {
         ChatModel model = resolveModel(sm);
         String key = circuitKey(sm);
         checkCircuit(key);
+        quotaService.reserve(workspaceId, scene);
+        boolean degraded = model == scriptedChatModel;
+        long start = System.currentTimeMillis();
+        boolean success = false;
+        String errorMsg = "";
+        int tokensIn = 0;
+        int tokensOut = 0;
         try {
             ChatClient client = ChatClient.builder(model).build();
             List<ToolCallback> callbacks = toolsFor(run);
@@ -176,13 +227,21 @@ public class ChatRuntimeImpl implements ChatRuntime {
                     .call()
                     .chatResponse();
             recordSuccess(key);
+            success = true;
+            int[] usage = usageOf(response);
+            tokensIn = usage[0];
+            tokensOut = usage[1];
             return response == null ? "" : textOf(response);
-        } catch (BizException e) {
-            throw e;
         } catch (Exception e) {
+            quotaService.release(workspaceId, scene);
             log.warn("AI 工具化调用失败 provider={} model={}", sm.getProviderName(), sm.getModel(), e);
             recordFailure(key);
+            errorMsg = safeMessage(e);
             throw new BizException(ErrorCode.SERVICE_UNAVAILABLE, CIRCUIT_MESSAGE);
+        } finally {
+            aiCallLogService.record(workspaceId, WorkspaceContext.userId(), scene, null, "CHAT_TOOLS",
+                    sm.getProviderName(), sm.getModel(), promptHash(messages),
+                    tokensIn, tokensOut, System.currentTimeMillis() - start, success, degraded, errorMsg);
         }
     }
 
@@ -199,8 +258,12 @@ public class ChatRuntimeImpl implements ChatRuntime {
             onError.accept(e);
             return;
         }
+        quotaService.reserve(workspaceId, scene);
+        boolean degraded = model == scriptedChatModel;
+        long start = System.currentTimeMillis();
         ChatClient client = ChatClient.builder(model).build();
         AtomicBoolean errored = new AtomicBoolean(false);
+        int[] usage = {0, 0};
         try {
             List<ToolCallback> callbacks = toolsFor(run);
             client.prompt()
@@ -218,6 +281,13 @@ public class ChatRuntimeImpl implements ChatRuntime {
                         if (StrUtil.isNotBlank(text)) {
                             onChunk.accept(text);
                         }
+                        int[] u = usageOf(r);
+                        if (u[0] > usage[0]) {
+                            usage[0] = u[0];
+                        }
+                        if (u[1] > usage[1]) {
+                            usage[1] = u[1];
+                        }
                     })
                     .doOnError(e -> {
                         errored.set(true);
@@ -234,6 +304,13 @@ public class ChatRuntimeImpl implements ChatRuntime {
                 recordFailure(key);
                 onError.accept(e);
             }
+        } finally {
+            if (errored.get()) {
+                quotaService.release(workspaceId, scene);
+            }
+            aiCallLogService.record(workspaceId, WorkspaceContext.userId(), scene, null, "CHAT_STREAM_TOOLS",
+                    sm.getProviderName(), sm.getModel(), promptHash(messages),
+                    usage[0], usage[1], System.currentTimeMillis() - start, !errored.get(), degraded, "");
         }
     }
 
@@ -347,6 +424,48 @@ public class ChatRuntimeImpl implements ChatRuntime {
         }
         AssistantMessage message = response.getResult().getOutput();
         return message == null || message.getText() == null ? "" : message.getText();
+    }
+
+    /** 从响应元数据提取 token 用量（供应商未返回时为 0，异常静默）。 */
+    private int[] usageOf(ChatResponse response) {
+        try {
+            if (response != null && response.getMetadata() != null && response.getMetadata().getUsage() != null) {
+                var usage = response.getMetadata().getUsage();
+                return new int[]{Math.max(0, usage.getPromptTokens()), Math.max(0, usage.getCompletionTokens())};
+            }
+        } catch (Exception ignored) {
+            // 元数据形态因供应商而异，缺失不阻断调用
+        }
+        return new int[]{0, 0};
+    }
+
+    /** 生效 System Prompt 的哈希前缀（前 12 位），用于调用版本溯源；无 System Prompt 返回空串。 */
+    private String promptHash(List<Message> messages) {
+        if (messages == null) {
+            return "";
+        }
+        for (Message message : messages) {
+            if (message instanceof SystemMessage systemMessage && systemMessage.getText() != null) {
+                String sha1 = sha1Hex(systemMessage.getText());
+                return sha1.length() > 12 ? sha1.substring(0, 12) : sha1;
+            }
+        }
+        return "";
+    }
+
+    /** JDK SHA-1 十六进制（免额外依赖）。 */
+    private String sha1Hex(String text) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-1");
+            byte[] bytes = digest.digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : bytes) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private String circuitKey(SceneModel sm) {

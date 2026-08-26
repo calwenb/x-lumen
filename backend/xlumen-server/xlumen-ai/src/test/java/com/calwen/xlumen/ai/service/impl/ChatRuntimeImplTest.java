@@ -6,6 +6,8 @@ import com.calwen.xlumen.ai.config.ScriptedChatModel;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.service.SceneConfigService;
 import com.calwen.xlumen.ai.service.SceneModel;
+import com.calwen.xlumen.ai.service.AiCallLogService;
+import com.calwen.xlumen.ai.service.QuotaService;
 import com.calwen.xlumen.ai.service.tool.AgentTool;
 import com.calwen.xlumen.ai.service.tool.AgentToolContext;
 import com.calwen.xlumen.ai.service.tool.ToolEventPayload;
@@ -94,7 +96,7 @@ class ChatRuntimeImplTest {
         fakeTool = new FakeTool();
         sink = new ToolEventSink();
         chatRuntime = new ChatRuntimeImpl(sceneConfigService, aiProperties, scriptedChatModel,
-                List.of(fakeTool));
+                mock(QuotaService.class), mock(AiCallLogService.class), List.of(fakeTool));
     }
 
     @Test

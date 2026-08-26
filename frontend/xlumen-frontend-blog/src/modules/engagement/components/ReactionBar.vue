@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 知识赞/踩按钮组（B02）：互斥高亮，以服务端返回的 reaction 为准。
-// 交互模式沿用原 LikeButton（BUG-8）：点击后乐观更新 -> 服务端校正 -> 失败回滚；
+// 交互模式沿用原 LikeButton：点击后乐观更新 -> 服务端校正 -> 失败回滚；
 // 未登录点击跳登录页（携带 redirect）。计数变化通过 update:counts 同步父组件。
 // 本文件不使用模板字符串拼接 URL（统一由 api/engagement 构造）。
 import { ref, watch } from 'vue'
@@ -36,7 +36,7 @@ const pending = ref(false)
 watch(
   () => props.knowledgeId,
   () => {
-    // 切换知识时同步新的初始状态（同篇知识的交互不触发本 watch，沿用 BUG-8 结论）
+    // 切换知识时同步新的初始状态（同篇知识的交互不触发本 watch，沿用既有结论）
     reaction.value = props.initialReaction
     likeCount.value = props.likeCount
     dislikeCount.value = props.dislikeCount

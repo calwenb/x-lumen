@@ -42,6 +42,12 @@ public class ReviewEntity {
     /** AI 审校任务 ID（逻辑外键 ai_task.id，可空）。 */
     private Long aiTaskId;
 
+    /** AI 任务状态镜像（事件驱动，COMPLETED/FAILED 等，展示用，可空）。 */
+    private String aiStatus;
+
+    /** AI 任务失败原因镜像（事件驱动，可空）。 */
+    private String aiError;
+
     /** AI 审校结果快照（JSON 文本，可空）。 */
     private String aiResultJson;
 

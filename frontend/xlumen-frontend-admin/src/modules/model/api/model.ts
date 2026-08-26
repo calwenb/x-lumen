@@ -25,14 +25,20 @@ export interface ModelConfig {
   provider: string
   model: string
   paramsJson?: string
+  /** 场景 Prompt（WRITING 场景为 JSON 文本；空字符串表示默认）。 */
+  prompt?: string
+  /** 每日配额：0 表示不限。 */
+  dailyQuota: number
   updatedAt: string
 }
 
-/** 更新入参。 */
+/** 更新入参（prompt/dailyQuota 缺省或 null 时后端保持原值）。 */
 export interface ModelConfigUpdate {
   provider: string
   model: string
   paramsJson?: string
+  prompt?: string
+  dailyQuota?: number
 }
 
 /** 连通性测试结果。 */

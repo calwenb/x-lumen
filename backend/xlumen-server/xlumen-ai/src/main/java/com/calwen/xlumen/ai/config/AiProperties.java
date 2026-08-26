@@ -68,6 +68,10 @@ public class AiProperties {
     @Value("${XLUMEN_AGENT_MAX_ROUNDS:5}")
     private int agentMaxRounds;
 
+    /** AI 调用追踪：每千 Token 费用估算单价（元），用于 ai_call_log.est_cost。 */
+    @Value("${XLUMEN_TRACE_COST_PER_1K:0.004}")
+    private double traceCostPer1k;
+
     /** 单工具执行超时（毫秒）：超时返回错误信封，孤儿 future 结果丢弃。 */
     @Value("${XLUMEN_AGENT_TOOL_TIMEOUT_MILLIS:10000}")
     private long agentToolTimeoutMillis;

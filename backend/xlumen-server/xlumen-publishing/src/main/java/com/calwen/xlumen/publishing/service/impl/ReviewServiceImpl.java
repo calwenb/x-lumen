@@ -104,7 +104,7 @@ public class ReviewServiceImpl implements ReviewService {
         if (status != KnowledgeStatus.DRAFT && status != KnowledgeStatus.APPROVED) {
             throw new BizException(ErrorCode.CONFLICT, "当前状态不可提交审核");
         }
-        // 归属兜底（决策 D16）：知识必须归属有效的知识库/目录，拦截历史孤儿数据（BUG-4 防线）
+        // 归属兜底（决策 D16）：知识必须归属有效的知识库/目录，拦截历史孤儿数据
         if (knowledge.getKbId() == null
                 || !knowledgeApi.checkOwnership(workspaceId, knowledge.getKbId(), knowledge.getDirectoryId())) {
             throw new BizException(ErrorCode.INVALID_PARAM, "知识未归属有效知识库，请先在编辑器中选择知识库与目录");
@@ -313,9 +313,13 @@ public class ReviewServiceImpl implements ReviewService {
 
     /**
      * 懒回填：审核记录尚未落 AI 结果且任务已完成时，从 ai_task 拉取快照写回 pub_review.ai_result_json。
-     * 幂等（已有结果即跳过）；回填失败不阻断读取/流转，下次访问重试。
+     * 事件镜像优先：ai_status=COMPLETED 且已有结果快照 → 直接读表（事件驱动镜像已就绪，不再实时回查 AI 模块）；
+     * 镜像缺失（事件未及落库/历史数据）→ 实时查询补一次快照兜底。幂等（已有结果即跳过）；回填失败不阻断读取/流转，下次访问重试。
      */
     private void backfillAiResult(ReviewEntity review) {
+        if (AiTaskStatus.COMPLETED.name().equals(review.getAiStatus()) && StrUtil.isNotBlank(review.getAiResultJson())) {
+            return;
+        }
         if (review.getAiTaskId() == null || StrUtil.isNotBlank(review.getAiResultJson())) {
             return;
         }

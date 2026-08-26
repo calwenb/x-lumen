@@ -28,4 +28,10 @@ public class ModelConfigVO {
 
     /** 场景参数（JSON 文本，可空）。 */
     private String paramsJson;
+
+    /** 场景提示词（可空；WRITING 为多槽位 JSON）。 */
+    private String prompt;
+
+    /** 每日调用配额（0=不限）。 */
+    private Integer dailyQuota;
 }
