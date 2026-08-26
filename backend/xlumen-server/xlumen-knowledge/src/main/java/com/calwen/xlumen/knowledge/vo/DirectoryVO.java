@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 目录树视图（F-0309）：parent_id 多级平铺返回，子目录挂 children；
+ * 目录树视图：parent_id 多级平铺返回，子目录挂 children；
  * 列表按名称排序（数据库排序规则，不设拼音列）。
  *
  * @author calwen

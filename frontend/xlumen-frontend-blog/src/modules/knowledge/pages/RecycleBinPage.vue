@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 回收站（B16，F-0305，KB-3 后端能力）：知识库/知识统一回收站，双 Tab（全部/知识库/知识）。
+// 回收站（B16，KB-3 后端能力）：知识库/知识统一回收站，双 Tab（全部/知识库/知识）。
 // 剩余天数 = deletedAt + 30 天 - now（超期自动彻底删除，后端定时清理）；恢复/彻底删除二次确认。
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'

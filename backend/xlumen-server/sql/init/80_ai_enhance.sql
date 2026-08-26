@@ -1,10 +1,10 @@
 -- 80_ai_enhance.sql：xlumen-ai 模块 enhance 域（ai_enhance_ 摘要/SEO）
--- M09（F-0801~F-0802）落地：ai_enhance_result（结构化增值结果，同步生成后落库）。
+-- M09（~）落地：ai_enhance_result（结构化增值结果，同步生成后落库）。
 
 USE `xlumen_dev`;
 SET NAMES utf8mb4;
 
--- AI 增值结果（F-0801/F-0802）：摘要/SEO 结构化结果，同步生成后落库供前台复用。
+-- AI 增值结果：摘要/SEO 结构化结果，同步生成后落库供前台复用。
 CREATE TABLE IF NOT EXISTS `ai_enhance_result` (
     `id`           BIGINT      NOT NULL COMMENT '主键（雪花 ID）',
     `workspace_id` BIGINT      NOT NULL COMMENT '工作空间 ID',

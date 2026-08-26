@@ -1,4 +1,4 @@
--- 88_knowledge_version.sql：知识版本快照表迁移（F-0303 历史版本，BUG-014 补全）
+-- 88_knowledge_version.sql：知识版本快照表迁移
 -- 适用：存量开发库/测试库（xlumen_dev / xlumen_test）。干净安装走 sql/init/40_content.sql，无需本脚本。
 -- 背景：cnt_knowledge_version 此前在 BUGS.md 中被误记为「8-12 M04 已建表」，实际全仓无该表 DDL；
 --       本次补全建表 + 发布/保存时快照写入 + GET /api/v1/knowledge/{id}/versions 查询端点。

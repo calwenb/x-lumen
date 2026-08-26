@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Configuration;
 public class MybatisPlusConfig {
 
     /**
-     * 分页拦截器：MySQL 方言，溢出页数时返回空结果而非报错；乐观锁拦截器支持版本校验（F-0905/PRODUCT §6）。
+     * 分页拦截器：MySQL 方言，溢出页数时返回空结果而非报错；乐观锁拦截器支持版本校验（PRODUCT §6）。
      *
      * @return MyBatis-Plus 拦截器
      */

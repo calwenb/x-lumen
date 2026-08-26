@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 角色定义实体（iam_role，F-0103）：OWNER/ADMIN/EDITOR/AUTHOR/VISITOR，系统数据入库。
+ * 角色定义实体（iam_role）：OWNER/ADMIN/EDITOR/AUTHOR/VISITOR，系统数据入库。
  *
  * @author calwen
  * @date 2026/8/12

@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 工具过程事件（IDEA-025 F-0708，OPT-2 迁移后原样保留）：SSE tool 事件的数据体与轨迹记录共用同一结构。
+ * 工具过程事件（迁移后原样保留）：SSE tool 事件的数据体与轨迹记录共用同一结构。
  * start：phase=start + argsSummary；done：phase=done + ok/durationMs/summary。
  *
  * @author calwen

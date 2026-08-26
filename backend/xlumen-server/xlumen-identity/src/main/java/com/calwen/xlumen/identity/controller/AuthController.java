@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 认证接口（F-0101）：注册/登录/登出/刷新，均为公开端点（SecurityConfig 白名单）。
+ * 认证接口：注册/登录/登出/刷新，均为公开端点（SecurityConfig 白名单）。
  *
  * @author calwen
  * @date 2026/8/12
@@ -62,7 +62,7 @@ public class AuthController {
     }
 
     /**
-     * 登出：撤销刷新令牌。body 可选——缺 body/空 body 统一提示 refreshToken 字段（BUG-023）。
+     * 登出：撤销刷新令牌。body 可选——缺 body/空 body 统一提示 refreshToken 字段。
      *
      * @param dto 刷新令牌（可空）
      * @return 统一响应

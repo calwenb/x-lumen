@@ -12,7 +12,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * AI 任务完结事件监听（IDEA-024）：REVIEWER 场景任务完结时产生站内消息——
+ * AI 任务完结事件监听：REVIEWER 场景任务完结时产生站内消息——
  * COMPLETED 按 severity 汇总（存在 error → 未通过；否则通过）；FAILED 提醒重试。
  * 消息链接指向审核中心（/studio/review）；知识标题/ID 取自任务入参快照。
  *

@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * AI 写作入参（F-0601）：topic/draft/content 至少填写一项（Service 层校验），title 为可选标题提示。
+ * AI 写作入参：topic/draft/content 至少填写一项（Service 层校验），title 为可选标题提示。
  *
  * @author calwen
  * @date 2026/8/13

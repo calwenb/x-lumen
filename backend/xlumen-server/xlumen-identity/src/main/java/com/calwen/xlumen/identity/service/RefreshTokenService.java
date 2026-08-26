@@ -1,7 +1,7 @@
 package com.calwen.xlumen.identity.service;
 
 /**
- * 刷新令牌服务（F-0101）：短期状态存 Redis（决策 D6），
+ * 刷新令牌服务：短期状态存 Redis（决策 D6），
  * 不存明文只存 SHA-256 哈希，轮换用 GETDEL 原子操作防重放（BACKEND.md §15.3）。
  *
  * @author calwen

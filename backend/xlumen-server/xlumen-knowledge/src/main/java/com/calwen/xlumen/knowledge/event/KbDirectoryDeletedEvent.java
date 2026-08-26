@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 目录删除事件（F-0309，进程内事件）：目录（含全部子目录）删除后发布。
+ * 目录删除事件（进程内事件）：目录（含全部子目录）删除后发布。
  * 消费方：content 模块（KB-3 content 改造）监听后将 directoryIds（被删目录及子目录）下未删除知识
  * 统一迁移到 newDirectoryId（= 被删目录的父目录，0=库根），即「删除目录时知识上挂父目录」。
  *

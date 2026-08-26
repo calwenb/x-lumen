@@ -1,5 +1,5 @@
--- 90_notification.sql：xlumen-notification 模块站内消息（noti_ 前缀，IDEA-024 通用通知模块）
--- 与审核业务解耦：评论回复/@小光（F-1005）等事件可复用同一套站内信能力。
+-- 90_notification.sql：xlumen-notification 模块站内消息（noti_ 前缀）
+-- 与审核业务解耦：评论回复/@小光等事件可复用同一套站内信能力。
 
 USE `xlumen_dev`;
 SET NAMES utf8mb4;

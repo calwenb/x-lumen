@@ -57,7 +57,7 @@
             <artifactId>hutool-core</artifactId>
         </dependency>
 
-        <!-- Spring AI：向量化换 OpenAiEmbeddingModel（OPT-2/D20 全量迁移），版本随父 BOM -->
+        <!-- Spring AI：向量化换 OpenAiEmbeddingModel（D20 全量迁移），版本随父 BOM -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-openai</artifactId>

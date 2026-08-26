@@ -1,4 +1,4 @@
-// publishing 模块：Markdown 渲染（F-0201 B02，PRODUCT §10 要求渲染必须执行 XSS 清洗）。
+// publishing 模块：Markdown 渲染（B02，PRODUCT §10 要求渲染必须执行 XSS 清洗）。
 // markdown-it 负责语法转换，DOMPurify 清洗输出 HTML；两库按需加载（FRONTEND.md §13 路由级拆包，
 // 本模块仅被详情页引用，随路由 chunk 一起按需下载）。
 import DOMPurify from 'dompurify'

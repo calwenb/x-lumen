@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 创建发布入参（F-0904，决策 D16）：publishAt 为空表示立即发布，非空表示定时发布（留待定时任务执行）；
+ * 创建发布入参（决策 D16）：publishAt 为空表示立即发布，非空表示定时发布（留待定时任务执行）；
  * 发布目标（库/目录）由知识本身归属决定（KB-3 起删除文章级可见性入参，可见性由知识库决定）。
  *
  * @author calwen

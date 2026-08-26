@@ -9,8 +9,8 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 站内消息实体（noti_notification，IDEA-024 通用通知模块）：只增不改，读状态 read_flag 翻转。
- * type 为业务事件类型（REVIEW=AI 审核结果；评论回复/@小光 F-1005 等后续事件复用）。
+ * 站内消息实体（noti_notification）：只增不改，读状态 read_flag 翻转。
+ * type 为业务事件类型（REVIEW=AI 审核结果；评论回复/@小光 等后续事件复用）。
  *
  * @author calwen
  * @date 2026/8/24

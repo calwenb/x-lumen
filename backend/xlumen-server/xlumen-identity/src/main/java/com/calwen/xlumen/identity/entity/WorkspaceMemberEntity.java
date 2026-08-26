@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 空间成员实体（iam_workspace_member，F-0102/F-0103）：成员角色绑定，
+ * 空间成员实体（iam_workspace_member）：成员角色绑定，
  * 唯一键 uk_workspace_member 承担幂等（BACKEND.md §8.2）。
  *
  * @author calwen

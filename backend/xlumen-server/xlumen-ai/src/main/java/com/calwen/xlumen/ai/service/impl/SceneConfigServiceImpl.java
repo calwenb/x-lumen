@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * 场景模型配置服务实现（F-0502）：ai_scene_config 表优先，无则回退 AiProperties 默认模型；
+ * 场景模型配置服务实现：ai_scene_config 表优先，无则回退 AiProperties 默认模型；
  * 密钥不入表（决策 D8），默认供应商为 BAILIAN。
  *
  * @author calwen

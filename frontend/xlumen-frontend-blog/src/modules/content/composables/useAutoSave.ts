@@ -1,4 +1,4 @@
-// 草稿自动保存组合式函数（F-0302）：10s 节流 + 失焦触发 + 内容未变化不发请求。
+// 草稿自动保存组合式函数：10s 节流 + 失焦触发 + 内容未变化不发请求。
 // 与服务端幂等去重（KnowledgeServiceImpl.autosave）配合，避免无效版本增长。
 import { onBeforeUnmount, ref } from 'vue'
 

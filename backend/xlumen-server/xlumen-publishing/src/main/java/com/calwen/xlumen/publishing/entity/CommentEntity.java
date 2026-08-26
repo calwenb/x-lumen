@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 知识评论实体（eng_comment，F-0203）：parent_id 支持回复。
+ * 知识评论实体（eng_comment）：parent_id 支持回复。
  *
  * @author calwen
  * @date 2026/8/12

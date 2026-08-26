@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * AI 审校入参（F-0604）：content 为待审校正文（必填），knowledgeId/title 供溯源与快照。
+ * AI 审校入参：content 为待审校正文（必填），knowledgeId/title 供溯源与快照。
  *
  * @author calwen
  * @date 2026/8/13

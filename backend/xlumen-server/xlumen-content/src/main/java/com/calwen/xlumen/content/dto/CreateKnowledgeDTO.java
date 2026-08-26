@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 创建知识入参（F-0301，决策 D16）：新建即草稿状态，作者与空间取自登录态（WorkspaceContext）；
+ * 创建知识入参（决策 D16）：新建即草稿状态，作者与空间取自登录态（WorkspaceContext）；
  * 必须归属一个知识库（kbId 必填，单库单目录）。
  *
  * @author calwen

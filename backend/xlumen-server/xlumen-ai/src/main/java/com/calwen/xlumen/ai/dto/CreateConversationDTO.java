@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 新建 AI 会话入参（F-0701）：标题必填。
+ * 新建 AI 会话入参：标题必填。
  *
  * @author calwen
  * @date 2026/8/13

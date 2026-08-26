@@ -1,11 +1,11 @@
-// content 模块 API：知识管理（F-0301/F-0302/F-0307，B10 创作中心）。
+// content 模块 API：知识管理（B10 创作中心）。
 // ID 与版本为 string（雪花 ID 超出 JS 安全整数，后端 Long 序列化为 String，BACKEND.md §5.3）；
 // 统计数值在 API 层 Number() 还原，页面代码不感知。
 import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
 
-/** 状态枚举 → 展示文案（与后端 KnowledgeStatus 一致，F-0901 八状态机）。 */
+/** 状态枚举 → 展示文案（与后端 KnowledgeStatus 一致）。 */
 export const STATUS_LABELS: Record<number, string> = {
   1: '构思',
   2: '草稿',
@@ -17,7 +17,7 @@ export const STATUS_LABELS: Record<number, string> = {
   8: '已下架',
 }
 
-/** 可见性 → 展示文案（F-0307）。 */
+/** 可见性 → 展示文案。 */
 export const VISIBILITY_LABELS: Record<number, string> = {
   0: '私有',
   1: '公开',
@@ -111,7 +111,7 @@ function normalize(raw: RawKnowledge): KnowledgeDetail {
   }
 }
 
-/** 分页查询作者知识列表（F-0301）。 */
+/** 分页查询作者知识列表。 */
 export async function fetchKnowledges(
   query: KnowledgeListQuery,
 ): Promise<PageResult<KnowledgeListItem>> {
@@ -143,13 +143,13 @@ export async function fetchKnowledge(id: string): Promise<KnowledgeDetail> {
   return normalize(unwrap(data))
 }
 
-/** 创建知识（F-0301）：新建即草稿。 */
+/** 创建知识：新建即草稿。 */
 export async function createKnowledge(payload: KnowledgeSavePayload): Promise<KnowledgeDetail> {
   const { data } = await http.post<ApiResponse<RawKnowledge>>('/knowledge', payload)
   return normalize(unwrap(data))
 }
 
-/** 更新知识（F-0301）：携带版本号乐观锁，冲突 409。 */
+/** 更新知识：携带版本号乐观锁，冲突 409。 */
 export async function updateKnowledge(
   id: string,
   version: string,
@@ -162,7 +162,7 @@ export async function updateKnowledge(
   return normalize(unwrap(data))
 }
 
-/** 草稿自动保存（F-0302）：knowledgeId 为空新建草稿（需 kbId 归属，决策 D16）；服务端幂等去重。 */
+/** 草稿自动保存：knowledgeId 为空新建草稿（需 kbId 归属，决策 D16）；服务端幂等去重。 */
 export async function autosaveDraft(payload: {
   knowledgeId?: string
   title?: string
@@ -176,7 +176,7 @@ export async function autosaveDraft(payload: {
   return normalize(unwrap(data))
 }
 
-/** 删除知识（F-0301）：仅构思/草稿可删除。 */
+/** 删除知识：仅构思/草稿可删除。 */
 export async function deleteKnowledge(id: string): Promise<void> {
   await http.delete<ApiResponse<null>>(`/knowledge/${id}`)
 }

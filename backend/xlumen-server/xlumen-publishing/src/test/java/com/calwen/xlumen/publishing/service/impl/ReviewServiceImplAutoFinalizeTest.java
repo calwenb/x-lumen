@@ -30,8 +30,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 发布后异步审核最终化单测（IDEA-024）：COMPLETED 无 error → 通过并自动发布（携带 autoPublishAt）；
- * COMPLETED 含 error → 驳回回草稿（F-0907 闸门）；FAILED → 驳回；非自动模式不动。
+ * 发布后异步审核最终化单测：COMPLETED 无 error → 通过并自动发布（携带 autoPublishAt）；
+ * COMPLETED 含 error → 驳回回草稿；FAILED → 驳回；非自动模式不动。
  *
  * @author calwen
  * @date 2026/8/24

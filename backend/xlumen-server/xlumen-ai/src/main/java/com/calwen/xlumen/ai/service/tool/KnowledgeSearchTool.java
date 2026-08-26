@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * knowledge.search 工具（IDEA-025 F-0708）：包装 KnowledgeApi.search（只读，红线合规）。
+ * knowledge.search 工具：包装 KnowledgeApi.search（只读，红线合规）。
  * 权限规则：kbId 必须在 resolveVisibleKbIds(userId) 集合内，否则错误信封；未传 kbId 按可见库全集检索（D13）；
  * 命中结果同时上报 citationCollector 聚合进引用事件。
  *
@@ -83,7 +83,7 @@ public class KnowledgeSearchTool implements AgentTool {
                 }
                 kbIds = List.of(kbId);
             } else if (ctx.getKbId() != null) {
-                // 会话锁定知识库（F-0702 单篇问答场景）：未显式指定时默认限定锁定的库
+                // 会话锁定知识库：未显式指定时默认限定锁定的库
                 if (visible == null || !visible.contains(ctx.getKbId())) {
                     return ToolEventPayload.errorEnvelope("无权访问该知识库（kbId=" + ctx.getKbId() + "）");
                 }

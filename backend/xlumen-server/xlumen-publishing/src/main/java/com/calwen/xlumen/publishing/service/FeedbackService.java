@@ -4,7 +4,7 @@ import com.calwen.xlumen.publishing.dto.CreateFeedbackDTO;
 import com.calwen.xlumen.publishing.vo.FeedbackVO;
 
 /**
- * 读者纠错服务（F-1001）：匿名可提交，同一 IP 60s 限流 2 次，返回追踪号。
+ * 读者纠错服务：匿名可提交，同一 IP 60s 限流 2 次，返回追踪号。
  *
  * @author calwen
  * @date 2026/8/13
@@ -12,7 +12,7 @@ import com.calwen.xlumen.publishing.vo.FeedbackVO;
 public interface FeedbackService {
 
     /**
-     * 提交读者纠错（F-1001）：校验知识存在 + IP 限流（Redis），生成追踪号。
+     * 提交读者纠错：校验知识存在 + IP 限流（Redis），生成追踪号。
      *
      * @param knowledgeId 知识 ID
      * @param dto       纠错内容（含服务端回填的 ip）

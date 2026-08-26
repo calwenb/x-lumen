@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * AI 对话入参（F-0701/F-0702）：query 为提问内容，conversationId 为空表示新会话。
+ * AI 对话入参：query 为提问内容，conversationId 为空表示新会话。
  * KB-3 检索范围参数：kbId 限定单库；allVisible 控制是否检索全部可见库（决策 D13，
  * 可见库集合由后端按身份推导）。
  *

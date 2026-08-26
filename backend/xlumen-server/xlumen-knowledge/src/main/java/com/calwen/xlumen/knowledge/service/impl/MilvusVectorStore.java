@@ -23,8 +23,8 @@ import java.util.Map;
 /**
  * Milvus 向量库实现（REST API v2，HTTP + JSON，不引 SDK，避免 JDK25/Boot4 兼容风险）。
  * 集合 kb_chunks 以 id(VarChar 主键)+vector(向量) 为核心，附带 workspace_id/article_id/version/
- * chunk_seq/heading_anchor/chunk_text/visibility/title/kb_id 元数据，支持 F-0405 溯源与
- * F-0407 按库过滤（决策 D13）。注意：article_id 为 KB-1 遗留 schema 字段名（本任务不改名，
+ * chunk_seq/heading_anchor/chunk_text/visibility/title/kb_id 元数据，支持 溯源与
+ * 按库过滤（决策 D13）。注意：article_id 为 KB-1 遗留 schema 字段名（本任务不改名，
  * Milvus 就绪后同步 schema 为 knowledge_id）；kb_id 依赖 enableDynamicField 动态字段写入。
  * 任一请求失败时记录 warn 并降级（index/delete 跳过、search 返回空），由装配层探测不可达时整体回退 Noop。
  *
@@ -117,7 +117,7 @@ public class MilvusVectorStore implements VectorStore {
         return parseSearchResponse(response);
     }
 
-    /** 构建检索过滤表达式：空间隔离 + 可见库集合（kb_id in [...]，决策 D13）+ 可选知识级过滤（F-0407）。 */
+    /** 构建检索过滤表达式：空间隔离 + 可见库集合（kb_id in [...]，决策 D13）+ 可选知识级过滤。 */
     private String buildFilter(Long workspaceId, List<Long> kbIds, Long knowledgeId) {
         List<String> conditions = new ArrayList<>();
         conditions.add("workspace_id == " + workspaceId);

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * 检索服务实现（F-0404/F-0407）：Embedding(query) → VectorStore.search。
+ * 检索服务实现：Embedding(query) → VectorStore.search。
  * 查询为空、向量化为空或可见库集合为空（无可见库，决策 D13）时返回空列表（Noop 降级亦返回空）。
  *
  * @author calwen
@@ -33,7 +33,7 @@ public class RetrievalServiceImpl implements RetrievalService {
     public List<SearchResultDTO> search(SearchRequestDTO request) {
         if (request == null || StrUtil.isBlank(request.getQuery())
                 || request.getKbIds() == null || request.getKbIds().isEmpty()) {
-            // kbIds 为空 = 无可见库，直接返回空列表（F-0407 决策 D13）
+            // kbIds 为空 = 无可见库，直接返回空列表（ D13）
             return List.of();
         }
         int topK = Math.max(1, Math.min(request.getTopK(), MAX_TOP_K));

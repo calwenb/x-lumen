@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 知识收藏服务（F-0212）：收藏 toggle、状态与批量统计、我的收藏分页（eng_favorite 表）。
+ * 知识收藏服务：收藏 toggle、状态与批量统计、我的收藏分页（eng_favorite 表）。
  * 登录态接口的用户/空间上下文从 WorkspaceContext 读取。
  *
  * @author calwen

@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 工作空间设置视图（F-1201）：含空间简介与强制审核开关（决策 D9）。
+ * 工作空间设置视图：含空间简介与强制审核开关（决策 D9）。
  *
  * @author calwen
  * @date 2026/8/13

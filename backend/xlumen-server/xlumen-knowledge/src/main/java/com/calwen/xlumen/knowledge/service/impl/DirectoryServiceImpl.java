@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 目录服务实现（F-0309，决策 D16）：目录树组装按名称排序（数据库排序规则），
+ * 目录服务实现（决策 D16）：目录树组装按名称排序（数据库排序规则），
  * 删除目录时知识上挂父目录的写入联动通过 KbDirectoryDeletedEvent 交给 content 侧（cnt_knowledge 属 content 模块）。
  *
  * @author calwen
@@ -118,7 +118,7 @@ public class DirectoryServiceImpl implements DirectoryService {
         }
         dir.setUpdatedAt(LocalDateTime.now());
         directoryMapper.updateById(dir);
-        // 返回更新后视图：契约与 create 一致（前端 F-0312 重命名后依赖响应值，不得返回空）
+        // 返回更新后视图：契约与 create 一致（前端 重命名后依赖响应值，不得返回空）
         KbKnowledgeBaseEntity kb = kbMapper.selectById(kbId);
         Map<Long, Long> counts = countKnowledge(kb, List.of(dir.getId()));
         return toVO(dir, counts.getOrDefault(dir.getId(), 0L));

@@ -1,4 +1,4 @@
-// M03 E2E：博客前台公开页（F-0201~F-0203，B01~B04）
+// M03 E2E：博客前台公开页（~B01~B04）
 // 依赖后端已就绪且存在测试知识（公开 3 篇 + 草稿/私有各 1 篇）；数据由验证脚本插入，非代码库产物。
 import { expect, test } from '@playwright/test'
 
@@ -11,7 +11,7 @@ test.describe('博客前台公开页（M03）', () => {
     await expect(page.getByRole('link', { name: 'Spring Boot 4 模块化单体实践' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'RAG 检索增强生成入门' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Vue 3 组合式 API 设计心得' })).toBeVisible()
-    // 草稿与私有知识不得出现（F-0307，库级可见性）
+    // 草稿与私有知识不得出现（库级可见性）
     await expect(page.getByText('草稿：未发布的思考')).toHaveCount(0)
     await expect(page.getByText('私有：仅自己可见')).toHaveCount(0)
     // 左栏：未登录显示公开读说明（库切换/标签云需登录，KB-4 决策）
@@ -73,7 +73,7 @@ test.describe('博客前台公开页（M03）', () => {
     await page.getByRole('button', { name: /登 录|登录/ }).click()
     await expect(page.getByRole('button', { name: /qoder_test 账号菜单/ })).toBeVisible()
 
-    // 回跳后已在详情页（内存会话保留，F-0203 互动）：若残留已赞先取消（幂等），再点赞 + 评论
+    // 回跳后已在详情页（内存会话保留）：若残留已赞先取消（幂等），再点赞 + 评论
     const likeAfterLogin = page.getByRole('button', { name: /赞/ })
     if ((await likeAfterLogin.innerText()).includes('已赞')) {
       await likeAfterLogin.click()

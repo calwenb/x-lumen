@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 场景模型配置视图（F-0502）：列表展示，永不返回密钥。
+ * 场景模型配置视图：列表展示，永不返回密钥。
  *
  * @author calwen
  * @date 2026/8/13

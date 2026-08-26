@@ -30,6 +30,6 @@ public class SubmitTaskDTO {
     /** 任务入参（JSON 文本）。 */
     private String inputJson;
 
-    /** 业务幂等键（重复提交返回已有任务，F-0905 精神）。 */
+    /** 业务幂等键（重复提交返回已有任务）。 */
     private String idempotencyKey;
 }

@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 索引版本与活动指针实体（kb_index_version，F-0403）：同一知识多版本并存，
+ * 索引版本与活动指针实体（kb_index_version）：同一知识多版本并存，
  * 仅一条 status=ACTIVE 为当前生效索引，旧版本置 STALE 后清理向量。
  *
  * @author calwen

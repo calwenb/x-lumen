@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * 工具适配器（OPT-2/D20 全量迁移）：把业务 AgentTool 注册为 Spring AI ToolCallback，
+ * 工具适配器（D20 全量迁移）：把业务 AgentTool 注册为 Spring AI ToolCallback，
  * 供 ChatClient 的 ToolCallingAdvisor 自动循环调用。执行原 ToolRegistry 的防护语义：
  * 预算上限（REVIEWER 用审校轮数上限，其余用全局调用数上限，超限给错误信封让模型作答）、
  * 超时（独立 future，孤儿结果丢弃）、结果截断、异常兜底——错误一律以信封回给模型。
@@ -60,7 +60,7 @@ public class ToolCallbackAdapter implements ToolCallback {
         return call(toolInput, null);
     }
 
-    /** 业务 AgentToolContext 与 Spring 的 ToolContext 不同名，无遮蔽问题（OPT-2 改名后）。 */
+    /** 业务 AgentToolContext 与 Spring 的 ToolContext 不同名，无遮蔽问题。 */
     @Override
     public String call(String toolInput, org.springframework.ai.chat.model.ToolContext springContext) {
         ToolEventSink sink = run.getSink();

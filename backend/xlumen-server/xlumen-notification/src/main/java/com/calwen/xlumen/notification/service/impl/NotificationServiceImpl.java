@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * 站内消息服务实现（IDEA-024）：只增不改，已读状态翻转；分页上限 100 由服务层截断（惯例同 BACKEND.md §5.1）。
+ * 站内消息服务实现：只增不改，已读状态翻转；分页上限 100 由服务层截断（惯例同 BACKEND.md §5.1）。
  * 创建成功后经 UserSseRegistry 实时推送（前端右上角弹窗），无活跃连接时静默（30s 轮询兜底）。
  *
  * @author calwen

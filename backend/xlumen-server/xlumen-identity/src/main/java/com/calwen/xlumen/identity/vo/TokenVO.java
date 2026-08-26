@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 令牌响应（F-0101）：JWT 访问令牌（短时效）+ 刷新令牌（Redis 存储哈希、GETDEL 轮换，BACKEND.md §15.3）。
+ * 令牌响应：JWT 访问令牌（短时效）+ 刷新令牌（Redis 存储哈希、GETDEL 轮换，BACKEND.md §15.3）。
  *
  * @author calwen
  * @date 2026/8/12

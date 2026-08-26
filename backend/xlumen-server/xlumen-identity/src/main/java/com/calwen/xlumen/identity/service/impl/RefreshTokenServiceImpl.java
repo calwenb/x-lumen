@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.util.Base64;
 
 /**
- * 刷新令牌实现（F-0101）：Redis key 为哈希值，value 为 "userId:workspaceId"；
+ * 刷新令牌实现：Redis key 为哈希值，value 为 "userId:workspaceId"；
  * 轮换使用 GETDEL 原子操作，旧令牌一次性失效（BACKEND.md §15.3 防重放）。
  *
  * @author calwen

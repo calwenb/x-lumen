@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * 知识模块对外接口实现（KnowledgeApi，M05）：索引/检索委托索引流水线与检索服务；
- * KB-3（F-0308/F-0309/F-0407）知识库/目录/可见库集合推导委托对应 Service。
+ * KB-3知识库/目录/可见库集合推导委托对应 Service。
  * 供 ai 模块对话检索编排（M08）与 publishing 公开读按身份聚合（resolveVisibleKbIds/getKnowledgeBase）调用。
  *
  * @author calwen

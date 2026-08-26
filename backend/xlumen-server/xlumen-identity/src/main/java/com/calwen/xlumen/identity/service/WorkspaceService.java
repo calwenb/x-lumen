@@ -3,7 +3,7 @@ package com.calwen.xlumen.identity.service;
 import com.calwen.xlumen.identity.vo.WorkspaceVO;
 
 /**
- * 工作空间服务（F-0102）：MVP 单空间使用（注册即建空间，决策 D9）；切换/成员邀请 V2 启用。
+ * 工作空间服务：MVP 单空间使用（注册即建空间，决策 D9）；切换/成员邀请 V2 启用。
  *
  * @author calwen
  * @date 2026/8/12

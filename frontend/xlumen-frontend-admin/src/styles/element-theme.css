@@ -1,5 +1,5 @@
 /* Element Plus 主题映射（FRONTEND.md §10.1）：EP 组件通过 CSS 变量继承 --xl-* 设计体系，
-   保证双端（博客/管理后台）同一视觉语言。仅 light 主题；dark 变体 V2（F-1306）启用。 */
+   保证双端（博客/管理后台）同一视觉语言。仅 light 主题；dark 变体 V2 启用。 */
 :root {
   /* 主色：品牌蓝紫 #5367e8 及其派生色 */
   --el-color-primary: var(--xl-color-primary);

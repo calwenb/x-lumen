@@ -50,9 +50,9 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * AI 对话服务实现（F-0701/F-0702，双轨合并后单轨）：统一走 ChatRuntime 工具化流式（ChatClient 自动多轮工具循环，
+ * AI 对话服务实现（双轨合并后单轨）：统一走 ChatRuntime 工具化流式（ChatClient 自动多轮工具循环，
  * knowledge.search 工具即 RAG 检索），SSE 返回 chunk/citation/tool/done/error 事件；会话/消息持久化含工具轨迹。
- * OPT-2/D20 全量迁移：链路改走 Spring AI 消息类型与 ChatRuntime，业务语义与对外事件格式不变。
+ * D20 全量迁移：链路改走 Spring AI 消息类型与 ChatRuntime，业务语义与对外事件格式不变。
  *
  * @author calwen
  * @date 2026/8/13
@@ -307,7 +307,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /**
-     * 历史重放（IDEA-025 F-0708 配对修剪）：TOOL 行转 tool 角色消息；窗口截断可能剪坏
+     * 历史重放：TOOL 行转 tool 角色消息；窗口截断可能剪坏
      * assistant.tool_calls 与 tool 响应的配对——孤儿 tool 行剔除、toolCalls 无对应响应的 assistant 行降级为纯文本。
      */
     private List<Message> replayHistory(List<ChatMessageEntity> history) {

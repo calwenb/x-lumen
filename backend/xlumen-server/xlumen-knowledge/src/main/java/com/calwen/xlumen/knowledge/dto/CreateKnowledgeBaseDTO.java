@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 创建知识库入参（F-0308）：名称空间内唯一（uk_kb_ws_name）；可见性默认私有（0）。
+ * 创建知识库入参：名称空间内唯一（uk_kb_ws_name）；可见性默认私有（0）。
  *
  * @author calwen
  * @date 2026/8/14
@@ -32,6 +32,6 @@ public class CreateKnowledgeBaseDTO {
     @Size(max = 255, message = "封面 URL 不能超过 255 字")
     private String cover;
 
-    /** 可见性：0 私有 1 公开（默认私有，F-0308）。 */
+    /** 可见性：0 私有 1 公开（默认私有）。 */
     private Integer visibility;
 }

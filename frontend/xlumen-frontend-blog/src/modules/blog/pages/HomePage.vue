@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 首页知识流（B01，F-0201/F-0202/F-0208，KB-4 知识平台化）：左栏库导航 + 右栏知识卡片流。
+// 首页知识流（B01，KB-4 知识平台化）：左栏库导航 + 右栏知识卡片流。
 // 左栏：库切换器（全部知识库/我的知识库）；选中库后切换为该库目录树 + 标签云；未选库时显示公开知识库列表与「我的知识库」入口。
 // 简化决策：目录树/标签云/库切换仅在登录态可用（后端 /knowledge-bases 为鉴权接口），未登录首页为纯列表流。
 // 排序由后端保证：未选目录按更新时间倒序，选中目录后按创建时间正序。私有库知识卡片 🔒 由前端比对登录用户私有库集合标记。
@@ -42,11 +42,11 @@ const privateKbIds = computed(
 )
 const selectedKb = computed(() => myKnowledgeBases.value.find((kb) => kb.id === selectedKbId.value))
 
-// F-0312 库主判定：左栏库切换器数据源为 fetchKnowledgeBases（鉴权接口，仅返回登录用户自己的库），
+// 库主判定：左栏库切换器数据源为 fetchKnowledgeBases（鉴权接口，仅返回登录用户自己的库），
 // 选中库必然属于当前用户，故「已选中某库」即等价于库主，右键菜单可用。
 const isKbOwner = computed(() => Boolean(selectedKb.value))
 
-/** F-0312 右键菜单实例（open(event, node?) 由目录树 contextmenu 调用，node 省略 = 树根）。 */
+/** 右键菜单实例（open(event, node?) 由目录树 contextmenu 调用，node 省略 = 树根）。 */
 const dirMenu = ref<InstanceType<typeof DirectoryTreeContextMenu> | null>(null)
 
 /** 范围标题：全部知识库 / [库名] / [目录名]。 */
@@ -138,7 +138,7 @@ async function toggleTag(name: string): Promise<void> {
   await infinite.loadFirst()
 }
 
-/** F-0312 右键菜单操作成功后刷新目录树（知识数随树节点返回；失败保留原树）。 */
+/** 右键菜单操作成功后刷新目录树（知识数随树节点返回；失败保留原树）。 */
 async function refreshDirectories(): Promise<void> {
   if (!selectedKbId.value) return
   directoryTree.value = await fetchDirectoryTree(selectedKbId.value).catch(
@@ -146,7 +146,7 @@ async function refreshDirectories(): Promise<void> {
   )
 }
 
-/** F-0312 删除目录后：选中目录在删除范围内则重置为「全部知识」，并重新拉取列表（知识上挂父目录）。 */
+/** 删除目录后：选中目录在删除范围内则重置为「全部知识」，并重新拉取列表（知识上挂父目录）。 */
 function onDirectoryDeleted(ids: string[]): void {
   if (selectedDirectoryId.value && ids.includes(selectedDirectoryId.value)) {
     selectedDirectoryId.value = ''
@@ -245,7 +245,7 @@ onMounted(async () => {
             </section>
           </template>
 
-          <!-- 全部知识库：我的公开库列表 + 我的知识库入口（BUG-008：数据源为鉴权接口仅返回自己的库，标题对齐语义） -->
+          <!-- 全部知识库：我的公开库列表 + 我的知识库入口（数据源为鉴权接口仅返回自己的库，标题对齐语义） -->
           <template v-else>
             <section class="side-card">
               <h2 class="side-card__title">我的公开库</h2>
@@ -353,7 +353,7 @@ onMounted(async () => {
       </section>
     </div>
 
-    <!-- F-0312 目录树右键菜单（新增/重命名/删除，仅库主；open 非库主时忽略） -->
+    <!-- 目录树右键菜单（新增/重命名/删除，仅库主；open 非库主时忽略） -->
     <DirectoryTreeContextMenu
       ref="dirMenu"
       :kb-id="selectedKbId"

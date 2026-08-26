@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 用户实体（iam_user，F-0101）：密码 BCrypt 哈希存储，仅对应数据库结构（BACKEND.md §5.1）。
+ * 用户实体（iam_user）：密码 BCrypt 哈希存储，仅对应数据库结构（BACKEND.md §5.1）。
  *
  * @author calwen
  * @date 2026/8/12

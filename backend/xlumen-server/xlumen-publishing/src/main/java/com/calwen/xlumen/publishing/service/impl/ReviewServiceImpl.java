@@ -43,7 +43,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 审核服务实现（F-0902/F-0903）：状态流转规则集中本服务（禁 Controller 判断状态）。
+ * 审核服务实现：状态流转规则集中本服务（禁 Controller 判断状态）。
  * 知识状态经 ContentApi.publishKnowledge 乐观锁迁移；AI 审校任务经 AiApi 异步提交。
  *
  * @author calwen
@@ -158,7 +158,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     /**
-     * AI 审核任务完结回调（事件驱动，发布后异步审核——IDEA-024）：COMPLETED 无 error →
+     * AI 审核任务完结回调（事件驱动，发布后异步审核——）：COMPLETED 无 error →
      * 审核通过并自动发布（立即/按 autoPublishAt 定时）；COMPLETED 含 error / FAILED → 驳回并回草稿。
      * 仅处理 auto_mode=1（发布按钮提交）的 PENDING 记录；审核中心人工提交的审核不受影响。
      * 调用方（ReviewAutoPublishListener）已建立 WorkspaceContext；异常由调用方兜底不抛出。
@@ -312,7 +312,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     /**
-     * BUG-003 懒回填：审核记录尚未落 AI 结果且任务已完成时，从 ai_task 拉取快照写回 pub_review.ai_result_json。
+     * 懒回填：审核记录尚未落 AI 结果且任务已完成时，从 ai_task 拉取快照写回 pub_review.ai_result_json。
      * 幂等（已有结果即跳过）；回填失败不阻断读取/流转，下次访问重试。
      */
     private void backfillAiResult(ReviewEntity review) {

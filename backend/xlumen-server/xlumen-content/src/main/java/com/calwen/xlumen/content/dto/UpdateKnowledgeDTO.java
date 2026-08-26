@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 更新知识入参（F-0301，决策 D16）：携带版本号做乐观锁校验，冲突返回 409（PRODUCT §6 禁止静默覆盖）；
+ * 更新知识入参（决策 D16）：携带版本号做乐观锁校验，冲突返回 409（PRODUCT §6 禁止静默覆盖）；
  * 仅构思/草稿状态可编辑，已发布版本不可修改（PRODUCT §4）；同库内可换目录（跨库移动不提供）。
  *
  * @author calwen

@@ -14,7 +14,7 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 /**
- * 索引补跑编排实现（BUG-004）：读取当前空间已发布知识正文，经 KnowledgeApi 强制重建索引。
+ * 索引补跑编排实现：读取当前空间已发布知识正文，经 KnowledgeApi 强制重建索引。
  *
  * @author calwen
  * @date 2026/8/17

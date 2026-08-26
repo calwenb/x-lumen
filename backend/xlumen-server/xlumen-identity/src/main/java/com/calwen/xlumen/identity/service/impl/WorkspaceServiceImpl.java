@@ -13,7 +13,7 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 /**
- * 工作空间服务实现（F-0102）：MVP 单空间使用；资源归属校验（权限双层校验第二层，BACKEND.md §9）。
+ * 工作空间服务实现：MVP 单空间使用；资源归属校验（权限双层校验第二层，BACKEND.md §9）。
  *
  * @author calwen
  * @date 2026/8/12

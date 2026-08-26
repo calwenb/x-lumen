@@ -3,7 +3,7 @@ package com.calwen.xlumen.ai.service;
 import com.calwen.xlumen.ai.dto.WritingRequestDTO;
 
 /**
- * AI 写作服务（F-0601）：校验入参、生成幂等键、创建 WRITING 异步任务。
+ * AI 写作服务：校验入参、生成幂等键、创建 WRITING 异步任务。
  *
  * @author calwen
  * @date 2026/8/13

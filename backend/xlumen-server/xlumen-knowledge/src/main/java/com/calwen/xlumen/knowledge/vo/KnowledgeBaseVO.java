@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 知识库视图（F-0308，决策 D16）：内容容器与权限边界，可见性库级决定。
+ * 知识库视图（决策 D16）：内容容器与权限边界，可见性库级决定。
  *
  * @author calwen
  * @date 2026/8/14

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 工作空间接口（F-0102）：需认证访问；工作空间 ID 来自可信会话上下文（JWT claims，BACKEND.md §9）。
+ * 工作空间接口：需认证访问；工作空间 ID 来自可信会话上下文（JWT claims，BACKEND.md §9）。
  *
  * @author calwen
  * @date 2026/8/12

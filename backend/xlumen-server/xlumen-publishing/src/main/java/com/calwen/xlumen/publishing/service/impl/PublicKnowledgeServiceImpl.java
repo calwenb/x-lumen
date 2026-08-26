@@ -31,9 +31,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 博客前台公开读服务实现（F-0201/F-0202）：公开读编排 + 阅读量 Redis 防刷（F-0203）。
+ * 博客前台公开读服务实现：公开读编排 + 阅读量 Redis 防刷。
  * 阅读量防刷：访客指纹 + 知识 ID 组成 Redis 键，24 小时有效期内只计一次（短期状态，决策 D6）。
- * KB-3 起按身份推导可见库集合（F-0407 单一实现 resolveVisibleKbIds，决策 D13）：
+ * KB-3 起按身份推导可见库集合（ resolveVisibleKbIds，决策 D13）：
  * 列表/详情均按库级可见性过滤，kbName 由本层批量填充（卡片库 badge）。
  *
  * @author calwen
@@ -112,11 +112,11 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
 
     @Override
     public KnowledgeDetailVO getKnowledge(Long knowledgeId) {
-        // 多用户公开读跨空间（D9 改写）：可见库集合按身份推导（userId 可空=访客，F-0407 决策 D13）
+        // 多用户公开读跨空间（D9 改写）：可见库集合按身份推导（userId 可空=访客， D13）
         Long userId = WorkspaceContext.userId();
         Long workspaceId = WorkspaceContext.workspaceId();
         List<Long> visibleKbIds = knowledgeApi.resolveVisibleKbIds(userId);
-        // 热点读缓存（F-1301）：仅访客视角按 id 缓存（键 xlumen:knowledge:detail:{id}，
+        // 热点读缓存：仅访客视角按 id 缓存（键 xlumen:knowledge:detail:{id}，
         // KB-3 分片改造，方案 §3.4）。登录态直查回源：可见范围含私有库，缓存键不含身份，
         // 避免私有库内容跨身份串读（决策 D13 库级可见性）。
         KnowledgeDetailVO vo = userId == null
@@ -135,7 +135,7 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
 
     @Override
     public KnowledgeBaseVO getKnowledgeBase(Long kbId) {
-        // 公开探测（BUG-030）：私有库/不存在统一 404「知识库不存在或无权访问」，
+        // 公开探测：私有库/不存在统一 404「知识库不存在或无权访问」，
         // 与知识详情「不可访问」语义一致，避免前端对私有直链静默回退到公开占位
         KnowledgeBaseVO kb = knowledgeApi.getKnowledgeBaseById(kbId);
         if (kb == null || !Integer.valueOf(1).equals(kb.getVisibility())) {
@@ -158,12 +158,12 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
                 .getOrDefault(knowledgeId, 0L);
         long likeCount = likeService.countLikes(null, List.of(knowledgeId))
                 .getOrDefault(knowledgeId, 0L);
-        // 点踩/收藏计数同模式批量聚合（F-0212，跨空间聚合）
+        // 点踩/收藏计数同模式批量聚合（跨空间聚合）
         long dislikeCount = likeService.countDislikes(null, List.of(knowledgeId))
                 .getOrDefault(knowledgeId, 0L);
         long favoriteCount = favoriteService.countFavorites(null, List.of(knowledgeId))
                 .getOrDefault(knowledgeId, 0L);
-        // AI 摘要（F-0808）：非用户态，可随缓存回源结果一起缓存；摘要落库在知识归属空间
+        // AI 摘要：非用户态，可随缓存回源结果一起缓存；摘要落库在知识归属空间
         // （与发布事件 workspaceId 对齐），跨空间读时经 kbId 反查库归属空间
         String aiSummary = kb == null ? null
                 : aiApi.findLatestSummary(kb.getWorkspaceId(), knowledgeId);
@@ -181,7 +181,7 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
 
     @Override
     public boolean recordView(Long knowledgeId, String visitorKey) {
-        // 未公开/不存在的知识不计数（与 GET /knowledge/{id} 一致，BUG-022）
+        // 未公开/不存在的知识不计数（与 GET /knowledge/{id} 一致）
         Long workspaceId = resolveKnowledgeWorkspace(knowledgeId);
         if (workspaceId == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "知识不存在或未公开");

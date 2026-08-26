@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 发布管理（B13，F-0905/F-0906，决策 D16）：已通过知识列表（调 content fetchKnowledges status=4）→
+// 发布管理（B13，决策 D16）：已通过知识列表（调 content fetchKnowledges status=4）→
 // 展示知识当前归属（库/目录，发布目标由知识归属决定）→ 立即/定时发布（二次确认）+ 下方发布记录列表。
 // 文章级可见性已废弃（KB-3 起 CreateReleaseDTO 删除 visibility，可见性由知识库决定）。
 import { onMounted, ref } from 'vue'
@@ -189,7 +189,7 @@ async function releaseScheduled(row: ReleaseRow): Promise<void> {
   await doRelease(row, normalizePublishAt(row.publishAt))
 }
 
-/** 异步发布（IDEA-024）：提交审核即返回，不轮询不弹审核意见——审核通过自动发布，完成站内通知。 */
+/** 异步发布：提交审核即返回，不轮询不弹审核意见——审核通过自动发布，完成站内通知。 */
 async function doRelease(row: ReleaseRow, publishAt?: string): Promise<void> {
   row.releasing = true
   try {

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 知识反应接口（F-0203/F-0212，B02 点赞区）：点赞/点踩三态互斥 toggle 与状态查询均需登录。
+ * 知识反应接口（B02 点赞区）：点赞/点踩三态互斥 toggle 与状态查询均需登录。
  * 用户/空间上下文由 Service 从 WorkspaceContext 读取（JWT claims），资源归属校验在服务层（双层校验第二层）。
  *
  * @author calwen
@@ -25,7 +25,7 @@ public class LikeController {
     private LikeService likeService;
 
     /**
-     * 点赞/取消点赞（F-0203/F-0212）：三态互斥 toggle，需登录；
+     * 点赞/取消点赞：三态互斥 toggle，需登录；
      * 已点踩时点赞会切换为点赞。
      *
      * @return toggle 后当前用户活动反应（LIKE|DISLIKE|NONE）
@@ -37,7 +37,7 @@ public class LikeController {
     }
 
     /**
-     * 点踩/取消点踩（F-0212）：三态互斥 toggle，需登录；已点赞时点踩会切换为点踩。
+     * 点踩/取消点踩：三态互斥 toggle，需登录；已点赞时点踩会切换为点踩。
      *
      * @return toggle 后当前用户活动反应（LIKE|DISLIKE|NONE）
      */
@@ -48,7 +48,7 @@ public class LikeController {
     }
 
     /**
-     * 当前用户反应状态（F-0212）：需登录，详情页初始化用（用户从 WorkspaceContext 读取）。
+     * 当前用户反应状态：需登录，详情页初始化用（用户从 WorkspaceContext 读取）。
      */
     @GetMapping("/like/status")
     public ApiResponse<ReactionStateVO> likeStatus(@PathVariable Long knowledgeId) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// AI 助理（B00/D01 合一，F-0701）：左侧会话列表（登录可见）+ 右侧消息流（流式打字 + 引用溯源）。
+// AI 助理（B00/D01 合一）：左侧会话列表（登录可见）+ 右侧消息流（流式打字 + 引用溯源）。
 // 访客无会话功能，单次问答；登录用户可选会话/新对话，回答附带 [序号] 引用卡片。
 // KB-3 检索范围选择器（决策 D13/D16）：全部可见库（默认）/ 指定知识库；访客隐藏选择器默认全部。
 import { nextTick, onMounted, reactive, ref } from 'vue'
@@ -25,7 +25,7 @@ interface ChatItem {
   role: 'user' | 'assistant'
   content: string
   citations: Citation[]
-  /** 本次流式过程中的工具过程事件（IDEA-025：start/done 时序渲染）。 */
+  /** 本次流式过程中的工具过程事件（start/done 时序渲染）。 */
   tools: ToolEvent[]
   /** 历史回放的工具调用记录（来源 toolCallsJson）。 */
   toolCalls: ToolCallRecord[]
@@ -134,7 +134,7 @@ async function send(): Promise<void> {
     toolCalls: [],
     streaming: false,
   })
-  // BUG-002：须用 reactive 代理后再入列，onChunk 持有的引用才能触发流式重渲染
+  // 须用 reactive 代理后再入列，onChunk 持有的引用才能触发流式重渲染
   const assistant = reactive<ChatItem>({
     id: `local-${Date.now()}-assistant`,
     role: 'assistant',
@@ -279,7 +279,7 @@ onMounted(() => {
               aria-hidden="true"
               >▍</span
             >
-            <!-- IDEA-025 工具过程：进行中状态行（正在检索） -->
+            <!-- 工具过程：进行中状态行（正在检索） -->
             <div
               v-if="message.role === 'assistant' && activeTools(message.tools).length > 0"
               class="chat-message__active-tools"
@@ -292,7 +292,7 @@ onMounted(() => {
                 {{ tool.name === 'knowledge.search' ? '正在检索知识库…' : `正在调用 ${tool.name}…` }}
               </span>
             </div>
-            <!-- IDEA-025 工具轨迹：done 面板（流式过程）+ 历史回放 -->
+            <!-- 工具轨迹：done 面板（流式过程）+ 历史回放 -->
             <details
               v-if="message.role === 'assistant' && doneTools(message.tools).length > 0"
               class="chat-message__tools"
@@ -646,7 +646,7 @@ onMounted(() => {
   color: var(--xl-color-ai);
 }
 
-/* IDEA-025 工具过程展示：进行中状态行 + done/历史折叠面板 */
+/* 工具过程展示：进行中状态行 + done/历史折叠面板 */
 .chat-message__active-tools {
   display: flex;
   flex-direction: column;

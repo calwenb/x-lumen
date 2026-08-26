@@ -19,7 +19,7 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 回收站聚合服务（F-0305，KB-3）：knowledge 模块依赖方向受限（content→ai→knowledge 环）无法直连
+ * 回收站聚合服务（KB-3）：knowledge 模块依赖方向受限（content→ai→knowledge 环）无法直连
  * content，回收站统一编排收敛到 publishing（同时依赖 content+knowledge，无环）：
  * kb 侧委托 KnowledgeApi（库回收），knowledge 侧委托 ContentApi（知识回收含恢复冲突判定）。
  *
@@ -91,7 +91,7 @@ public class RecycleBinFacadeService {
     }
 
     /**
-     * 恢复（F-0305）：kb 整体恢复（连带恢复库内知识）；知识恢复含冲突判定
+     * 恢复：kb 整体恢复（连带恢复库内知识）；知识恢复含冲突判定
      * （原目录已删→挂库根；原库已彻底删除→409「原知识库不存在，无法恢复」）。
      *
      * @param type 类型（kb/knowledge）
@@ -122,7 +122,7 @@ public class RecycleBinFacadeService {
     }
 
     /**
-     * 彻底删除（F-0305 回收站清空）：二次确认 confirm=CONFIRM；kb 物理级联删（KbPurgedEvent
+     * 彻底删除：二次确认 confirm=CONFIRM；kb 物理级联删（KbPurgedEvent
      * content 侧级联删知识 + 索引清理）；knowledge 物理删除并清理索引。
      *
      * @param type    类型（kb/knowledge）
@@ -140,7 +140,7 @@ public class RecycleBinFacadeService {
             return;
         }
         if ("knowledge".equals(normalized)) {
-            // 存在性判定与 restore 一致：条目不在回收站 → 404（BUG-021 契约一致性）
+            // 存在性判定与 restore 一致：条目不在回收站 → 404
             ContentApi.RecycledKnowledgeItem item = contentApi.getRecycledKnowledge(workspaceId, id);
             if (item == null) {
                 throw new BizException(ErrorCode.NOT_FOUND, "知识不存在或不在回收站");

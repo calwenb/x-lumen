@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 /**
- * 作者知识列表查询参数（F-0301，B10 列表，决策 D16）：库/目录/状态筛选 + 关键词，分页参数继承 {@link PageQueryDTO}；
+ * 作者知识列表查询参数（B10 列表，决策 D16）：库/目录/状态筛选 + 关键词，分页参数继承 {@link PageQueryDTO}；
  * 排序固定更新时间倒序（PRODUCT §6 排序规则）。
  *
  * @author calwen

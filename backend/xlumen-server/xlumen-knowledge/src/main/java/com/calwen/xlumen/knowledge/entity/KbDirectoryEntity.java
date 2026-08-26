@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 目录树实体（kb_directory，F-0309，决策 D16）：parent_id 多级自关联（0=库根），
+ * 目录树实体（kb_directory，决策 D16）：parent_id 多级自关联（0=库根），
  * 列表按名称排序（数据库排序规则，不设拼音列）。
  *
  * @author calwen

@@ -21,7 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 审校执行器单测（F-0604，双轨合并后单轨）：统一走 ChatRuntime 工具化非流式（chatWithTools）——
+ * 审校执行器单测（双轨合并后单轨）：统一走 ChatRuntime 工具化非流式（chatWithTools）——
  * Schema 兼容（旧结果无证据字段合法）、事实核对（可选证据字段）、模型失败阻断、解析失败重试。
  *
  * @author calwen
@@ -102,7 +102,7 @@ class ReviewExecutorTest {
 
         executor.execute(task, ctx);
 
-        // 解析失败重试一次（共 2 次 chatWithTools），仍失败则任务 FAILED（F-0907 闸门）
+        // 解析失败重试一次（共 2 次 chatWithTools），仍失败则任务 FAILED
         verify(chatRuntime, times(2)).chatWithTools(eq(1L), eq(AiScene.REVIEWER), any(), any(), any(), any());
         verify(ctx).fail("审校输出必须是 JSON 数组");
     }

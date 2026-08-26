@@ -1,4 +1,4 @@
-// engagement 模块 API：读者纠错（F-1001，M11）——匿名提交，成功后返回追踪编号。
+// engagement 模块 API：读者纠错（M11）——匿名提交，成功后返回追踪编号。
 // 公开匿名接口，无需登录（后端 xlumen-publishing engagement 域）。
 import { http, unwrap } from '@/api/http'
 
@@ -17,7 +17,7 @@ export interface FeedbackResult {
   problem: string
 }
 
-/** 提交读者纠错（F-1001，匿名可提交）。 */
+/** 提交读者纠错（匿名可提交）。 */
 export async function submitFeedback(knowledgeId: string, payload: FeedbackRequest): Promise<FeedbackResult> {
   const { data } = await http.post<ApiResponse<FeedbackResult>>(`/public/knowledge/${knowledgeId}/feedback`, payload)
   const result = unwrap(data)

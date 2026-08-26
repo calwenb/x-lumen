@@ -41,7 +41,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
- * AI 运行时实现（OPT-2/D20 全量迁移）：场景解析（表优先回退）、供应商 ChatModel 懒装配缓存、
+ * AI 运行时实现（D20 全量迁移）：场景解析（表优先回退）、供应商 ChatModel 懒装配缓存、
  * 简单熔断（连续失败 5 次熔断 60s）、无密钥回退 ScriptedChatModel；对话全走 Spring AI
  * ChatModel/ChatClient。工具路径把业务 AgentTool 注册为 ToolCallback 交给 ChatClient 自动循环，
  * 并注入业务 AgentToolContext 与 ToolEventSink（KEY_* 常量见 ToolCallbackAdapter）。

@@ -10,7 +10,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * 知识库联动事件监听（KB-3，F-0305/F-0309）：knowledge 模块在库/目录/回收站状态变更时发布进程内事件，
+ * 知识库联动事件监听（KB-3）：knowledge 模块在库/目录/回收站状态变更时发布进程内事件，
  * 本监听负责 cnt_knowledge 侧的连带操作——删库连带软删、恢复连带恢复、目录删除知识上挂、
  * 库彻底删除物理级联删知识（方案 §7.2）。任务失败仅记录日志，不影响库侧状态主流程。
  *

@@ -15,7 +15,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
 /**
- * JWT 装配（F-0101）：HS256 对称密钥来自 .env 的 XLUMEN_JWT_SECRET（决策 D8），
+ * JWT 装配：HS256 对称密钥来自 .env 的 XLUMEN_JWT_SECRET（决策 D8），
  * 访问令牌签发（JwtEncoder）与校验（JwtDecoder）统一在 boot 装配。
  *
  * @author calwen

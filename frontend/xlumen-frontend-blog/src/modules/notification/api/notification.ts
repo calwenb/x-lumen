@@ -1,5 +1,5 @@
-// notification 模块 API：站内消息（IDEA-024 通用通知模块，对应后端 /api/v1/notifications）。
-// 消息与业务解耦：当前 REVIEW（AI 审核结果）事件消费 ai_task 完结；评论回复/@小光（F-1005）等后续复用。
+// notification 模块 API：站内消息，对应后端 /api/v1/notifications）。
+// 消息与业务解耦：当前 REVIEW（AI 审核结果）事件消费 ai_task 完结；评论回复/@小光等后续复用。
 // ID/缩略信息为 string（雪花 ID 后端 Long 序列化为 String，BACKEND.md §5.3）。
 import { http, unwrap } from '@/api/http'
 
@@ -73,7 +73,7 @@ export async function markAllNotificationsRead(): Promise<void> {
 }
 
 /**
- * 实时推送流（SSE）：后端通知创建时推送「notification」事件（IDEA-024 弹窗提醒，无需 WS）。
+ * 实时推送流（SSE）：后端通知创建时推送「notification」事件，无需 WS）。
  * 断线/结束返回后由调用方决定重连；返回的 AbortController 供卸载时断开。
  */
 export function streamNotifications(

@@ -9,8 +9,8 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 知识版本快照（cnt_knowledge_version，F-0303 自动保存 + 历史版本）：每次落库（创建/更新/自动保存）
- * 记录当时标题与正文快照，供版本历史查询（BUG-014 补全）。
+ * 知识版本快照（cnt_knowledge_version， + 历史版本）：每次落库（创建/更新/自动保存）
+ * 记录当时标题与正文快照，供版本历史查询。
  *
  * @author calwen
  * @date 2026/8/19

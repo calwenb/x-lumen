@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 更新工作空间设置入参（F-1201）：PUT 全量更新简介与强制审核开关。
+ * 更新工作空间设置入参：PUT 全量更新简介与强制审核开关。
  *
  * @author calwen
  * @date 2026/8/13

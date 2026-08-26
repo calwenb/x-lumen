@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 回收站条目视图（F-0305）：知识库与知识统一回收站，双 Tab 展示。
+ * 回收站条目视图：知识库与知识统一回收站，双 Tab 展示。
  * 类型 type=kb|knowledge；剩余天数由展示层按 deleted_at+30 天计算。
  *
  * @author calwen

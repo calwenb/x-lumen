@@ -5,7 +5,7 @@ import com.calwen.xlumen.identity.entity.RoleEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 角色数据访问（iam_role，F-0103）：仅身份模块内部使用。
+ * 角色数据访问（iam_role）：仅身份模块内部使用。
  *
  * @author calwen
  * @date 2026/8/12

@@ -3,7 +3,7 @@ package com.calwen.xlumen.knowledge.service;
 import java.util.List;
 
 /**
- * 向量化服务（F-0402/F-0404）：本模块内直接 HTTP 调用百炼兼容 embeddings 端点
+ * 向量化服务：本模块内直接 HTTP 调用百炼兼容 embeddings 端点
  * （knowledge 不依赖 ai 模块，ai 依赖 knowledge）。key 缺失或调用失败抛
  * BizException(SERVICE_UNAVAILABLE)，由索引流水线标记任务失败。
  *

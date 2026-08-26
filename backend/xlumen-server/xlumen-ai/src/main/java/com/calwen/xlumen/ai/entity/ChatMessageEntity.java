@@ -11,9 +11,9 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * AI 对话消息实体（chat_message，F-0701/F-0702）：role=USER|ASSISTANT|TOOL。
+ * AI 对话消息实体（chat_message）：role=USER|ASSISTANT|TOOL。
  * citations_json 为 JSON 列，经 JacksonTypeHandler 映射 String（引用证据快照）。
- * IDEA-025 F-0708：assistant 行 tool_calls_json 存 ToolCall 数组快照；tool 行 tool_call_id/tool_name 回引。
+ * assistant 行 tool_calls_json 存 ToolCall 数组快照；tool 行 tool_call_id/tool_name 回引。
  *
  * @author calwen
  * @date 2026/8/13

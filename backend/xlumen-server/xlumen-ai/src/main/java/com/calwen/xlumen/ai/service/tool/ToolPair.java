@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 工具调用配对（OPT-2/D20）：assistant.tool_calls 行与 tool 行一一对应的落库数据。
+ * 工具调用配对（D20）：assistant.tool_calls 行与 tool 行一一对应的落库数据。
  * toolCallId 为适配层合成的本地关联 ID（tc-序号），仅保证 chat_message 表内一致性，
  * 供历史回放配对修剪与前端工具面板归并使用——语义与迁移前 provider tool_call_id 一致。
  *

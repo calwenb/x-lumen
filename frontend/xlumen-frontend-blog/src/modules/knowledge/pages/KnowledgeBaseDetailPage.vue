@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// 知识库详情页（B20，F-0308/F-0309/F-0201，决策 D16）：库头部 + 多级目录树 + 知识列表。
+// 知识库详情页（B20，决策 D16）：库头部 + 多级目录树 + 知识列表。
 // 数据流：route.params.id → kbId；登录态经 fetchKnowledgeBases 匹配自己的库（isOwner），
-// 访客/非本人先公开探测（BUG-030）：公开库显示公开头部，私有库/不存在显示「知识库不可访问」，
+// 访客/非本人先公开探测：公开库显示公开头部，私有库/不存在显示「知识库不可访问」，
 // 不再静默回退到公开占位。排序由后端处理（未选目录 updated_at DESC、选中目录 created_at ASC）。
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -33,7 +33,7 @@ const kbId = computed(() => String(route.params.id))
 
 const kbDetail = ref<KnowledgeBase | null>(null)
 const isOwner = ref(false)
-// BUG-030：私有库/不存在直链不可达态（404 语义，与知识详情「不可访问」一致）
+// 私有库/不存在直链不可达态（404 语义，与知识详情「不可访问」一致）
 const notFound = ref(false)
 const directories = ref<DirectoryNode[]>([])
 
@@ -47,7 +47,7 @@ const dirVisible = ref(false)
 const dirName = ref('')
 const dirParentId = ref('')
 
-/** F-0312 右键菜单实例（open(event, node?) 由目录树 contextmenu 调用，node 省略 = 树根「全部知识」）。 */
+/** 右键菜单实例（open(event, node?) 由目录树 contextmenu 调用，node 省略 = 树根「全部知识」）。 */
 const dirMenu = ref<InstanceType<typeof DirectoryTreeContextMenu> | null>(null)
 
 /** 目录总数（扁平化树节点）。 */
@@ -101,7 +101,7 @@ async function loadOwnerInfo(): Promise<void> {
   directories.value = await fetchDirectoryTree(kbId.value)
 }
 
-/** BUG-030 公开探测：登录态本人库豁免；其余先探测公开可读性，私有不达置不可访问态。 */
+/** 公开探测：登录态本人库豁免；其余先探测公开可读性，私有不达置不可访问态。 */
 async function probePublicKb(): Promise<void> {
   if (isOwner.value) return
   try {
@@ -174,12 +174,12 @@ async function submitDirectory(): Promise<void> {
   }
 }
 
-/** F-0312 右键菜单操作成功后刷新目录树（目录总数 computed 自动更新；失败保留原树）。 */
+/** 右键菜单操作成功后刷新目录树（目录总数 computed 自动更新；失败保留原树）。 */
 async function refreshDirectories(): Promise<void> {
   directories.value = await fetchDirectoryTree(kbId.value).catch(() => directories.value)
 }
 
-/** F-0312 删除目录后：选中目录在删除范围内则重置为「全部知识」，并重新拉取列表（知识上挂父目录）。 */
+/** 删除目录后：选中目录在删除范围内则重置为「全部知识」，并重新拉取列表（知识上挂父目录）。 */
 function onDirectoryDeleted(ids: string[]): void {
   if (selectedDirectoryId.value && ids.includes(selectedDirectoryId.value)) {
     selectedDirectoryId.value = ''
@@ -189,7 +189,7 @@ function onDirectoryDeleted(ids: string[]): void {
 
 onMounted(async () => {
   await loadOwnerInfo()
-  // BUG-030：库主命中后直接加载列表；否则先公开探测，私有/不存在则不再请求知识列表
+  // 库主命中后直接加载列表；否则先公开探测，私有/不存在则不再请求知识列表
   if (!isOwner.value) {
     await probePublicKb()
   }
@@ -204,7 +204,7 @@ onMounted(async () => {
     <div v-if="notFound" class="kb-detail__state kb-detail__state--block">
       <el-icon class="kb-detail__state-icon"><Lock /></el-icon>
       <h1 class="kb-detail__state-title">知识库不可访问</h1>
-      <p class="kb-detail__state-text">知识库不存在或无权访问（F-0307）。</p>
+      <p class="kb-detail__state-text">知识库不存在或无权访问。</p>
       <RouterLink class="kb-detail__back-link" to="/knowledge-bases">返回知识库列表</RouterLink>
     </div>
     <template v-else>
@@ -380,7 +380,7 @@ onMounted(async () => {
       </template>
     </el-dialog>
 
-    <!-- F-0312 目录树右键菜单（新增子目录/重命名/删除，仅库主；open 非库主时忽略） -->
+    <!-- 目录树右键菜单（新增子目录/重命名/删除，仅库主；open 非库主时忽略） -->
     <DirectoryTreeContextMenu
       ref="dirMenu"
       :kb-id="kbId"

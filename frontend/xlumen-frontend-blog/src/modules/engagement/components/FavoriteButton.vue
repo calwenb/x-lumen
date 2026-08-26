@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 知识收藏按钮（F-0212，B02）：星形 toggle 高亮，以服务端返回布尔为准；
+// 知识收藏按钮（B02）：星形 toggle 高亮，以服务端返回布尔为准；
 // 乐观更新 + 服务端校正 + 失败回滚（与 ReactionBar 同一模式）；未登录跳登录页。
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'

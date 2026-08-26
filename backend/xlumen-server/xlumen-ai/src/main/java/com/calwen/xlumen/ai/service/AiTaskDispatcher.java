@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 
 /**
- * AI 任务派发器（F-1302）：注册执行器 Map&lt;AiScene, AiTaskExecutor&gt;，submit 后提交线程池执行；
+ * AI 任务派发器：注册执行器 Map&lt;AiScene, AiTaskExecutor&gt;，submit 后提交线程池执行；
  * 拒绝时任务保持 QUEUED。
  *
  * @author calwen

@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 索引线程池装配（F-0402）：发布即索引异步执行的专用线程池（core2/max4/queue100）。
+ * 索引线程池装配：发布即索引异步执行的专用线程池（core2/max4/queue100）。
  * 拒绝策略 CallerRunsPolicy：队列满时由发布线程兜底执行，保证索引任务不丢失。
  *
  * @author calwen

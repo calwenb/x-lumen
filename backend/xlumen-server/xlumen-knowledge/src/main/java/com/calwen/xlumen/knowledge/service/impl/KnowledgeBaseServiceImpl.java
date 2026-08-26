@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 知识库服务实现（F-0308，决策 D16）：库 CRUD 与可见性切换落库，审计与跨模块联动走事件。
+ * 知识库服务实现（决策 D16）：库 CRUD 与可见性切换落库，审计与跨模块联动走事件。
  * 时间戳由应用侧显式设置（无全局 MetaObjectHandler，见 identity 模块约定）。
  *
  * @author calwen
@@ -140,7 +140,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         kb.setUpdatedAt(LocalDateTime.now());
         kbMapper.updateById(kb);
         try {
-            // 审计（F-1202）：append-only，操作人/空间由 identity 侧落库
+            // 审计：append-only，操作人/空间由 identity 侧落库
             activityLogService.record(kb.getWorkspaceId(), WorkspaceContext.userId(),
                     WorkspaceContext.username(), "KB_VISIBILITY_CHANGE", "KNOWLEDGE_BASE", kbId, null);
             // 缓存失效：公开读/检索缓存由 publishing 侧监听 KbVisibilityChangedEvent 按维度失效

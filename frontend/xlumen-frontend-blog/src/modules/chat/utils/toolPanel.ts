@@ -1,4 +1,4 @@
-// chat 模块：工具过程事件面板工具（IDEA-025 工具轨迹统一渲染口径，D 批去重）。
+// chat 模块：工具过程事件面板工具（工具轨迹统一渲染口径，D 批去重）。
 // ChatPage 与 KnowledgeQaDialog 共用，避免两处完全相同的过滤/排序逻辑。
 import type { ToolEvent } from '@/modules/chat/api/chat'
 

@@ -30,7 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * 运行时集成单测（OPT-2/D20 全量迁移，离线铁律：不调真实模型）：ScriptedChatModel + ChatClient 全链路——
+ * 运行时集成单测（D20 全量迁移，离线铁律：不调真实模型）：ScriptedChatModel + ChatClient 全链路——
  * 无密钥脚本回退的 chat/chatStream，以及带工具的自动多轮循环（脚本「首轮工具调用 → 次轮正文」），
  * 验证 ChatGPTClient/ToolCallingAdvisor 在我们装配下真实执行工具并收集事件与配对。
  *

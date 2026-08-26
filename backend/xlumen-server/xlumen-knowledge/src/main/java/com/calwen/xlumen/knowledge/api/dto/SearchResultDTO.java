@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 检索结果（跨模块稳定类型，F-0405 引用溯源）：篇名/段落定位可跳转原文；分数供检索测试（F-0404）展示。
+ * 检索结果（跨模块稳定类型）：篇名/段落定位可跳转原文；分数供检索测试展示。
  *
  * @author calwen
  * @date 2026/8/13

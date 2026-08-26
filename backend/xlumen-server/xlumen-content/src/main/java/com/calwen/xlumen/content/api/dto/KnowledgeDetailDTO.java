@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 公开知识详情（F-0201）：已发布且库可见的知识正文快照（决策 D16 库级可见性过滤后）。
+ * 公开知识详情：已发布且库可见的知识正文快照（决策 D16 库级可见性过滤后）。
  *
  * @author calwen
  * @date 2026/8/12

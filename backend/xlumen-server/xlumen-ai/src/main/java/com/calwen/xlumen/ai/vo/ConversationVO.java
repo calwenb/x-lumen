@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * AI 会话视图（F-0701）：会话列表展示。
+ * AI 会话视图：会话列表展示。
  *
  * @author calwen
  * @date 2026/8/13

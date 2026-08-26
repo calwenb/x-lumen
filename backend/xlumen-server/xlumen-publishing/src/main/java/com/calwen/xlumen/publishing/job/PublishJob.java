@@ -13,7 +13,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 定时发布任务（F-0905）：自主调度（非 Spring Task），每分钟扫描 PENDING 且 publish_at&lt;=now 的发布记录并幂等执行。
+ * 定时发布任务：自主调度（非 Spring Task），每分钟扫描 PENDING 且 publish_at&lt;=now 的发布记录并幂等执行。
  * 用 ScheduledExecutorService 避免与 boot 调度装配耦合；发布逻辑与状态流转集中在 ReleaseService.publishDue。
  *
  * @author calwen

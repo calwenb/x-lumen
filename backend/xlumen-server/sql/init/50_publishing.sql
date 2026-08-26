@@ -1,11 +1,11 @@
--- 50_publishing.sql：xlumen-publishing 模块审核/发布域（pub_ 前缀）——M10 落地 F-0901~F-0905
+-- 50_publishing.sql：xlumen-publishing 模块审核/发布域（pub_ 前缀）——M10 落地 ~
 -- 表命名规则：单 Schema、无外键、主键 BIGINT 雪花 ID、业务表含 workspace_id、唯一键 uk_ 前缀（BACKEND.md §7/§8）。
 -- 主键由应用侧 IdUtil 雪花生成，本脚本不设置 AUTO_INCREMENT。
 
 USE `xlumen_dev`;
 SET NAMES utf8mb4;
 
--- 知识审核记录（F-0902/F-0903）：AI 审校结果快照 ai_result_json；knowledge_title 冗余展示字段（列表免 N+1）
+-- 知识审核记录：AI 审校结果快照 ai_result_json；knowledge_title 冗余展示字段（列表免 N+1）
 CREATE TABLE IF NOT EXISTS `pub_review` (
     `id`                 BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
     `workspace_id`       BIGINT       NOT NULL COMMENT '工作空间 ID',
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `pub_review` (
 --   ALTER TABLE pub_review ADD COLUMN auto_publish_at DATETIME NULL COMMENT '定时发布时间（自动模式生效，NULL=立即发布）' AFTER auto_mode;
 --   ALTER TABLE pub_review ADD INDEX idx_review_ai_task (ai_task_id);
 
--- 知识发布记录（F-0904/F-0905）：唯一键 uk_release_ws_knowledge_version 幂等；定时发布幂等执行
+-- 知识发布记录：唯一键 uk_release_ws_knowledge_version 幂等；定时发布幂等执行
 CREATE TABLE IF NOT EXISTS `pub_release` (
     `id`              BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
     `workspace_id`    BIGINT       NOT NULL COMMENT '工作空间 ID',

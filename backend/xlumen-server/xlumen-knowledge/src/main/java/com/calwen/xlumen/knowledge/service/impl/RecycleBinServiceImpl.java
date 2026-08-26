@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 回收站服务实现（F-0305）：库侧回收（kb_knowledge_base.status=1）本模块直接承载；
+ * 回收站服务实现：库侧回收（kb_knowledge_base.status=1）本模块直接承载；
  * 知识侧（cnt_knowledge.recycle_status=1）数据属 content 模块，knowledge 依赖方向受限（content→ai→
  * knowledge 环）无法直连，列表/恢复/彻底删除的接入待 KB-3 content 改造实现 ContentApi 契约后完成。
  *

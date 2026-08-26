@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * AI 增值结果视图（F-0801/F-0802）：摘要/SEO 结构化结果。
+ * AI 增值结果视图：摘要/SEO 结构化结果。
  *
  * @author calwen
  * @date 2026/8/13

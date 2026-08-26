@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 博客前台公开读接口（F-0201/F-0202，B01/B02/B03）：匿名可访问（SecurityConfig 白名单 /api/v1/public/**）。
- * 工作空间为默认空间（MVP 单空间，决策 D9）；私有/未发布知识不出现（F-0307）。
+ * 博客前台公开读接口（B01/B02/B03）：匿名可访问（SecurityConfig 白名单 /api/v1/public/**）。
+ * 工作空间为默认空间（MVP 单空间，决策 D9）；私有/未发布知识不出现。
  *
  * @author calwen
  * @date 2026/8/12
@@ -33,7 +33,7 @@ public class PublicKnowledgeController {
     private PublicKnowledgeService publicKnowledgeService;
 
     /**
-     * 分页查询公开知识（F-0201/F-0202）：关键词/库(kbId)/目录(directoryId)/标签组合筛选，服务端分页；
+     * 分页查询公开知识：关键词/库(kbId)/目录(directoryId)/标签组合筛选，服务端分页；
      * 查询参数由 KnowledgeQueryDTO 自动绑定（GET），字段默认值即接口默认值。
      */
     @GetMapping("/knowledge")
@@ -42,7 +42,7 @@ public class PublicKnowledgeController {
     }
 
     /**
-     * 知识详情（F-0201，B02）：登录用户附带点赞状态（WorkspaceContext）。
+     * 知识详情（B02）：登录用户附带点赞状态（WorkspaceContext）。
      */
     @GetMapping("/knowledge/{id}")
     public ApiResponse<KnowledgeDetailVO> getKnowledge(@PathVariable Long id) {
@@ -50,7 +50,7 @@ public class PublicKnowledgeController {
     }
 
     /**
-     * 公开知识库探测（BUG-030，B20）：公开库返回库信息；私有库/不存在统一 404
+     * 公开知识库探测（B20）：公开库返回库信息；私有库/不存在统一 404
      * 「知识库不存在或无权访问」，与知识详情不可访问语义一致。
      */
     @GetMapping("/knowledge-bases/{kbId}")
@@ -59,7 +59,7 @@ public class PublicKnowledgeController {
     }
 
     /**
-     * 阅读量记录（F-0203）：访客指纹（IP）24 小时窗口内只计一次，防刷。
+     * 阅读量记录：访客指纹（IP）24 小时窗口内只计一次，防刷。
      */
     @PostMapping("/knowledge/{id}/view")
     public ApiResponse<Boolean> recordView(@PathVariable Long id, HttpServletRequest request) {
@@ -67,7 +67,7 @@ public class PublicKnowledgeController {
     }
 
     /**
-     * 标签聚合（F-0202，B01 侧栏/B03 筛选）。
+     * 标签聚合（B01 侧栏/B03 筛选）。
      */
     @GetMapping("/tags")
     public ApiResponse<List<CategoryCountDTO>> listTags() {

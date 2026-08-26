@@ -9,7 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 审核驳回入参（F-0903）：驳回三要素（原因/位置/期望）必填 + 版本号乐观锁校验。
+ * 审核驳回入参：驳回三要素（原因/位置/期望）必填 + 版本号乐观锁校验。
  *
  * @author calwen
  * @date 2026/8/13

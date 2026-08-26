@@ -5,7 +5,7 @@ import com.calwen.xlumen.identity.entity.WorkspaceMemberEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 空间成员数据访问（iam_workspace_member，F-0102/F-0103）：仅身份模块内部使用。
+ * 空间成员数据访问（iam_workspace_member）：仅身份模块内部使用。
  *
  * @author calwen
  * @date 2026/8/12

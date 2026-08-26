@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 知识模块通用分页结果（F-0305/F-0308）：统一 pageNo/pageSize 分页（BACKEND.md §10）。
+ * 知识模块通用分页结果：统一 pageNo/pageSize 分页（BACKEND.md §10）。
  * 与 publishing 的 PageResult / identity 的 PageVO 语义一致，各模块自持避免跨模块依赖。
  *
  * @author calwen

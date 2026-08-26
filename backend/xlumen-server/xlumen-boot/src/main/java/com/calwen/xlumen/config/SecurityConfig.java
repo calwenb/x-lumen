@@ -24,7 +24,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * 安全装配（F-0101/F-0104，BACKEND.md §2/§9）：OAuth2 resource-server（JWT 认证）、无状态会话；
+ * 安全装配（BACKEND.md §2/§9）：OAuth2 resource-server（JWT 认证）、无状态会话；
  * 401/403 统一 JSON 响应；方法级安全用于接口权限（双层校验第一层）。
  *
  * @author calwen
@@ -52,7 +52,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**", "/api/v1/system/**", "/actuator/**",
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        // 博客前台公开读（F-0201~F-0203，B01~B04）：GET 全部匿名；阅读量上报匿名；读者纠错匿名（F-1001）；评论/点赞需登录
+                        // 博客前台公开读（~B01~B04）：GET 全部匿名；阅读量上报匿名；读者纠错匿名；评论/点赞需登录
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/public/knowledge/*/view").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/public/knowledge/*/feedback").permitAll()
@@ -89,7 +89,7 @@ public class SecurityConfig {
         return converter;
     }
 
-    /** 密码哈希（F-0101）：BCrypt 存储（BACKEND.md §15.3）。 */
+    /** 密码哈希：BCrypt 存储（BACKEND.md §15.3）。 */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

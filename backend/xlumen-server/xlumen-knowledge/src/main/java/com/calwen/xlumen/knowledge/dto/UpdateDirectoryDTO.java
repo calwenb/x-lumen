@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 更新目录入参（F-0309）：仅名称可改（父目录变更 V2 提供）。
+ * 更新目录入参：仅名称可改（父目录变更 V2 提供）。
  *
  * @author calwen
  * @date 2026/8/14

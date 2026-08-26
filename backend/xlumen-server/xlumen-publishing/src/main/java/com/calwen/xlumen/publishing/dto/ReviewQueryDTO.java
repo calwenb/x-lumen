@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 /**
- * 审核列表查询参数（F-0902）：状态筛选，分页参数继承 {@link PageQueryDTO}（默认值即接口默认值）。
+ * 审核列表查询参数：状态筛选，分页参数继承 {@link PageQueryDTO}（默认值即接口默认值）。
  * Spring MVC 自动绑定 GET 查询参数。
  *
  * @author calwen

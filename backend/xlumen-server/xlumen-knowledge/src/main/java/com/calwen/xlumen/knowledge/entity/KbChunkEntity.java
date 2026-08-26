@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 切片元数据实体（kb_chunk，F-0402/F-0405）：正文按标题边界切片落库，
+ * 切片元数据实体（kb_chunk）：正文按标题边界切片落库，
  * vector_id 指向向量库条目（Noop 降级时留空），content_hash 用于发布幂等。
  *
  * @author calwen

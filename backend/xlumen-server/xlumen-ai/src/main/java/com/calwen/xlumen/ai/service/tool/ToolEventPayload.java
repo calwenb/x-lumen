@@ -4,7 +4,7 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 
 /**
- * 工具信封工具（OPT-2/D20 迁移：原 ToolRegistry 静态信封方法独立成类，适配层与工具共用）。
+ * 工具信封工具（D20 迁移：原 ToolRegistry 静态信封方法独立成类，适配层与工具共用）。
  * 成功信封 {ok:true,data}；错误信封 {ok:false,error}。
  *
  * @author calwen

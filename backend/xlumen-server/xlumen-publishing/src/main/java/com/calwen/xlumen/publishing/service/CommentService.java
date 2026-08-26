@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 评论服务（F-0203）：列表/发表与批量统计（eng_comment 表）。
+ * 评论服务：列表/发表与批量统计（eng_comment 表）。
  * 登录态接口的用户/空间上下文从 WorkspaceContext 读取；匿名评论列表取默认空间。
  *
  * @author calwen

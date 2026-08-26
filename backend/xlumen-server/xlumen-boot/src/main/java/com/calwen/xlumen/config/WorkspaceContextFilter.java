@@ -14,7 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * 工作空间上下文过滤器（F-0102/F-0104，BACKEND.md §9）：认证成功后从 JWT claims
+ * 工作空间上下文过滤器（BACKEND.md §9）：认证成功后从 JWT claims
  * 建立 WorkspaceContext（workspaceId 只来自可信会话上下文，不信任 URL/Header/DTO）。
  * 在 Security 授权过滤器之后执行；匿名请求不设置上下文。
  *

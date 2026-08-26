@@ -3,7 +3,7 @@ package com.calwen.xlumen.notification.service;
 import com.calwen.xlumen.notification.vo.NotificationPageVO;
 
 /**
- * 站内消息服务（IDEA-024 通用通知模块）：创建/分页/已读，与具体业务事件解耦。
+ * 站内消息服务：创建/分页/已读，与具体业务事件解耦。
  *
  * @author calwen
  * @date 2026/8/24

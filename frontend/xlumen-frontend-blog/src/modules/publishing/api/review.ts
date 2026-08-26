@@ -1,4 +1,4 @@
-// publishing 模块 API：审核中心（F-0902/F-0904，B12，对应后端 xlumen-publishing review 域）。
+// publishing 模块 API：审核中心（B12，对应后端 xlumen-publishing review 域）。
 // ID/版本为 string（雪花 ID 后端 Long 序列化为 String，BACKEND.md §5.3）；
 // 分页数值在 API 层 Number() 还原，页面代码不感知。
 import { http, unwrap } from '@/api/http'
@@ -9,7 +9,7 @@ import type { PageResult } from '@/modules/publishing/api/public'
 /** 审核状态。 */
 export type ReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
-/** AI 审校问题（aiResultJson 解析后）。IDEA-025 事实核对模式附可选库内证据字段。 */
+/** AI 审校问题（aiResultJson 解析后）。事实核对模式附可选库内证据字段。 */
 export interface ReviewIssue {
   severity: 'error' | 'warning' | 'info'
   position: string
@@ -94,13 +94,13 @@ function normalizeReview(raw: RawReview): ReviewVO {
   }
 }
 
-/** 提交审核（F-0902）。 */
+/** 提交审核。 */
 export async function createReview(knowledgeId: string): Promise<ReviewVO> {
   const { data } = await http.post<ApiResponse<RawReview>>('/reviews', { knowledgeId })
   return normalizeReview(unwrap(data))
 }
 
-/** 新发布链路：提交 AI 审核后异步发布——通过后自动发布（立即/按 publishAt 定时），完成站内通知（IDEA-024）。 */
+/** 新发布链路：提交 AI 审核后异步发布——通过后自动发布（立即/按 publishAt 定时），完成站内通知。 */
 export async function createAutoReview(knowledgeId: string, publishAt?: string): Promise<ReviewVO> {
   const { data } = await http.post<ApiResponse<RawReview>>(
     '/reviews/auto',
@@ -122,7 +122,7 @@ export async function publishAfterAutoReview(
   return { id: String(result.id), status: result.status }
 }
 
-/** 分页查询审核列表（F-0904）。 */
+/** 分页查询审核列表。 */
 export async function fetchReviews(query: ReviewQuery): Promise<PageResult<ReviewVO>> {
   const { data } = await http.get<ApiResponse<RawReviewPage>>('/reviews', { params: query })
   const page = unwrap(data)
@@ -134,18 +134,18 @@ export async function fetchReviews(query: ReviewQuery): Promise<PageResult<Revie
   }
 }
 
-/** 审核详情（F-0904）。 */
+/** 审核详情。 */
 export async function fetchReview(id: string): Promise<ReviewVO> {
   const { data } = await http.get<ApiResponse<RawReview>>(`/reviews/${id}`)
   return normalizeReview(unwrap(data))
 }
 
-/** 审核通过（F-0904，乐观锁版本校验，冲突 409）。 */
+/** 审核通过（乐观锁版本校验，冲突 409）。 */
 export async function approveReview(id: string, version: string): Promise<void> {
   await http.post<ApiResponse<unknown>>(`/reviews/${id}/approve`, { version })
 }
 
-/** 审核驳回（F-0904，三要素必填，冲突 409）。 */
+/** 审核驳回（三要素必填，冲突 409）。 */
 export async function rejectReview(id: string, payload: RejectPayload): Promise<void> {
   await http.post<ApiResponse<unknown>>(`/reviews/${id}/reject`, payload)
 }

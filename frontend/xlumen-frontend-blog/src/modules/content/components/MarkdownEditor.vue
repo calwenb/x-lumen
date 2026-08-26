@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Markdown 编辑器（F-0301，B10）：编辑/预览双栏切换；预览走 publishing 模块渲染工具（markdown-it + DOMPurify XSS 清洗，PRODUCT §10）。
+// Markdown 编辑器（B10）：编辑/预览双栏切换；预览走 publishing 模块渲染工具（markdown-it + DOMPurify XSS 清洗，PRODUCT §10）。
 import { ref } from 'vue'
 
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'

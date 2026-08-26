@@ -5,7 +5,7 @@
 USE `xlumen_dev`;
 SET NAMES utf8mb4;
 
--- 角色定义（F-0103）：OWNER/ADMIN/EDITOR/AUTHOR/VISITOR；团队角色（EDITOR/ADMIN/AUTHOR）V2 启用（决策 D9），定义先行入库
+-- 角色定义：OWNER/ADMIN/EDITOR/AUTHOR/VISITOR；团队角色（EDITOR/ADMIN/AUTHOR）V2 启用（决策 D9），定义先行入库
 CREATE TABLE IF NOT EXISTS `iam_role` (
     `id`          BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
     `role_code`   VARCHAR(32)  NOT NULL COMMENT '角色编码',
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `iam_role` (
     UNIQUE KEY `uk_role_code` (`role_code`)
 ) ENGINE = InnoDB COMMENT ='角色定义（F-0103）';
 
--- 用户（F-0101）：密码 BCrypt 哈希存储（BACKEND.md §15.3）；邮箱唯一可空（MVP 登录用用户名）
+-- 用户：密码 BCrypt 哈希存储（BACKEND.md §15.3）；邮箱唯一可空（MVP 登录用用户名）
 CREATE TABLE IF NOT EXISTS `iam_user` (
     `id`            BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
     `username`      VARCHAR(64)  NOT NULL COMMENT '登录用户名',
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS `iam_user` (
     UNIQUE KEY `uk_user_email` (`email`)
 ) ENGINE = InnoDB COMMENT ='用户（F-0101）';
 
--- 工作空间（F-0102）：注册即建空间（决策 D9）；slug 承担业务唯一约束（uk_workspace_slug，BACKEND.md §8.2）
+-- 工作空间：注册即建空间（决策 D9）；slug 承担业务唯一约束（uk_workspace_slug，BACKEND.md §8.2）
 CREATE TABLE IF NOT EXISTS `iam_workspace` (
     `id`           BIGINT      NOT NULL COMMENT '主键（雪花 ID）',
     `name`         VARCHAR(64) NOT NULL COMMENT '空间名称',
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS `iam_workspace` (
     KEY `idx_workspace_owner_status` (`owner_user_id`, `status`)
 ) ENGINE = InnoDB COMMENT ='工作空间（F-0102）';
 
--- 空间成员（F-0102/F-0103）：成员角色绑定，唯一键 uk_workspace_member 承担幂等（BACKEND.md §8.2）
+-- 空间成员：成员角色绑定，唯一键 uk_workspace_member 承担幂等（BACKEND.md §8.2）
 CREATE TABLE IF NOT EXISTS `iam_workspace_member` (
     `id`           BIGINT      NOT NULL COMMENT '主键（雪花 ID）',
     `workspace_id` BIGINT      NOT NULL COMMENT '工作空间 ID（逻辑外键 iam_workspace.id）',

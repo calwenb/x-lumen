@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 评论入参（F-0203）：需登录；内容 1~1000 字符，parentId 为空表示顶级评论。
+ * 评论入参：需登录；内容 1~1000 字符，parentId 为空表示顶级评论。
  *
  * @author calwen
  * @date 2026/8/12

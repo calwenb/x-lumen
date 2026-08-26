@@ -1,4 +1,4 @@
--- 87_reaction_upgrade.sql：互动反应升级迁移（F-0212 知识赞/踩/收藏 + F-0213 评论赞/踩）
+-- 87_reaction_upgrade.sql：互动反应升级迁移（知识赞/踩/收藏 + 评论赞/踩）
 -- 适用：存量开发库/测试库（xlumen_dev / xlumen_test）。干净安装走 sql/init/60_engagement.sql，无需本脚本。
 -- 背景：eng_like 升级为三态互斥反应（加 reaction_type 列，1=赞 2=踩，存量行默认 1=赞，语义不变）；
 --       新增 eng_favorite（知识收藏）与 eng_comment_reaction（评论赞/踩），结构与 eng_like 同构。

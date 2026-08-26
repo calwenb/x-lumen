@@ -90,7 +90,7 @@ watch([intro, forceReview], () => {
           placeholder="介绍你的空间…"
         />
       </el-form-item>
-      <!-- F-0907：旧 forceReview 字段继续随表单保存以支持回退，但暂不向用户展示。 -->
+      <!-- 旧 forceReview 字段继续随表单保存以支持回退，但暂不向用户展示。 -->
       <div class="settings__actions">
         <el-button type="primary" native-type="submit" :loading="saving">
           {{ saving ? '保存中…' : '保存' }}

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 索引补跑接口（BUG-004 存量补跑）：强制重建已发布知识的向量索引；
+ * 索引补跑接口：强制重建已发布知识的向量索引；
  * 需登录（SecurityConfig 兜底），仅当前空间已发布知识可补跑。
  * 落在 publishing 而非 knowledge 的 IndexController：正文需经 ContentApi 获取（模块依赖方向）。
  *
@@ -25,7 +25,7 @@ public class IndexBackfillController {
     private IndexBackfillService indexBackfillService;
 
     /**
-     * 强制重建索引（BUG-004）：失效旧切片/版本后重跑流水线，返回最新索引状态。
+     * 强制重建索引：失效旧切片/版本后重跑流水线，返回最新索引状态。
      *
      * @param knowledgeId 知识 ID
      * @return 重建后的索引状态

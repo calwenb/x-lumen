@@ -1,4 +1,4 @@
-// publishing 模块 API：发布管理（F-0905/F-0906，B13，对应后端 xlumen-publishing release 域）。
+// publishing 模块 API：发布管理（B13，对应后端 xlumen-publishing release 域）。
 // ID/版本为 string（雪花 ID 后端 Long 序列化为 String，BACKEND.md §5.3）；
 // 分页/可见性数值在 API 层 Number() 还原。
 import { http, unwrap } from '@/api/http'
@@ -73,7 +73,7 @@ function normalizeRelease(raw: RawRelease): ReleaseVO {
   }
 }
 
-/** 提交发布（F-0905，立即/定时）。 */
+/** 提交发布（立即/定时）。 */
 export async function createRelease(payload: ReleaseRequest): Promise<ReleaseSubmitted> {
   const { data } = await http.post<ApiResponse<RawReleaseSubmitted>>('/releases', payload)
   const result = unwrap(data)
@@ -84,7 +84,7 @@ export async function createRelease(payload: ReleaseRequest): Promise<ReleaseSub
   }
 }
 
-/** 分页查询发布记录（F-0906）。 */
+/** 分页查询发布记录。 */
 export async function fetchReleases(query: { pageNo: number; pageSize: number }): Promise<PageResult<ReleaseVO>> {
   const { data } = await http.get<ApiResponse<RawReleasePage>>('/releases', { params: query })
   const page = unwrap(data)

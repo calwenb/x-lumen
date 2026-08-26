@@ -6,7 +6,7 @@ import com.calwen.xlumen.identity.dto.RegisterDTO;
 import com.calwen.xlumen.identity.vo.TokenVO;
 
 /**
- * 认证服务（F-0101）：注册（注册即建空间）、登录、登出、令牌刷新。
+ * 认证服务：注册（注册即建空间）、登录、登出、令牌刷新。
  *
  * @author calwen
  * @date 2026/8/12

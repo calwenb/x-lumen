@@ -16,7 +16,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * 脚本化聊天模型（OPT-2/D20 全量迁移）：以 Spring AI ChatModel 形态替代原 MockProvider——
+ * 脚本化聊天模型（D20 全量迁移）：以 Spring AI ChatModel 形态替代原 MockProvider——
  * 无密钥兜底与离线测试的基座（AGENTS.md 铁律：测试不调付费模型）。
  * 支持注入响应脚本队列（按调用次序出队，典型脚本「第一轮返 assistant.tool_calls → 第二轮返正文」），
  * 无脚本时返回固定文本。ChatClient 的工具循环在本模型上照常运转（模型不发起工具调用则单轮结束）。

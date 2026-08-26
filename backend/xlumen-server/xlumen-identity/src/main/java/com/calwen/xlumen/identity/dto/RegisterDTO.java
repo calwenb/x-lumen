@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
- * 注册入参（F-0101）：注册成功即建空间（决策 D9），注册失败统一提示不暴露账号是否存在（PRODUCT §10 防枚举）。
+ * 注册入参：注册成功即建空间（决策 D9），注册失败统一提示不暴露账号是否存在（PRODUCT §10 防枚举）。
  *
  * @author calwen
  * @date 2026/8/12

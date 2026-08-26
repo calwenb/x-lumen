@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 知识编辑视图（F-0301，决策 D16）：作者本人可见的全部字段（含草稿/私有），编辑页与详情复用。
+ * 知识编辑视图（决策 D16）：作者本人可见的全部字段（含草稿/私有），编辑页与详情复用。
  *
  * @author calwen
  * @date 2026/8/13

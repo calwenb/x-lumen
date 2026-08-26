@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 知识审核记录实体（pub_review，F-0902/F-0903）：AI 审校结果快照 ai_result_json，
+ * 知识审核记录实体（pub_review）：AI 审校结果快照 ai_result_json，
  * knowledge_title 冗余展示字段（列表免 N+1）；状态 PENDING/APPROVED/REJECTED。
  *
  * @author calwen

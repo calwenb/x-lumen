@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 更新知识库入参（F-0308）：名称/简介/封面可改；可见性切换走独立接口（{id}/visibility，审计+缓存失效）。
+ * 更新知识库入参：名称/简介/封面可改；可见性切换走独立接口（{id}/visibility，审计+缓存失效）。
  *
  * @author calwen
  * @date 2026/8/14

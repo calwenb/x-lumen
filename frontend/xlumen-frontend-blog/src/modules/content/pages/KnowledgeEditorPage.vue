@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// 知识编辑页（B10，F-0301/F-0302/F-0307，KB-4 适配决策 D16）：
+// 知识编辑页（B10，KB-4 适配决策 D16）：
 // 单库单目录归属（知识库/目录选择器，无文章级可见性/分类），草稿自动保存（10s 节流 + 失焦触发）。
-// 显式保存走乐观锁版本校验，409 冲突提供恢复入口；草稿态可触发自动 AI 审核发布（F-0907）。
+// 显式保存走乐观锁版本校验，409 冲突提供恢复入口；草稿态可触发自动 AI 审核发布。
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -43,7 +43,7 @@ const saveMessage = ref('')
 const submitting = ref(false)
 const publishAt = ref('')
 
-/** 可选知识库列表（当前空间，F-0308）。 */
+/** 可选知识库列表（当前空间）。 */
 const knowledgeBases = ref<KnowledgeBase[]>([])
 /** 当前库的目录树（扁平化后供下拉选择，0=库根）。 */
 const directoryOptions = ref<Array<{ id: string; label: string }>>([])
@@ -235,7 +235,7 @@ async function handleSave(): Promise<boolean> {
   }
 }
 
-/** 发布（F-0907 异步化，IDEA-024）：提交 AI 审核后立即返回，审核通过自动发布（立即/定时），完成站内通知。 */
+/** 发布：提交 AI 审核后立即返回，审核通过自动发布（立即/定时），完成站内通知。 */
 async function handleAutoPublish(): Promise<void> {
   if (!title.value.trim()) {
     saveMessage.value = '请先填写标题'
@@ -284,7 +284,7 @@ async function handleAutoPublish(): Promise<void> {
 }
 
 onMounted(async () => {
-  // 加载当前空间知识库列表（编辑器归属选择，F-0308）
+  // 加载当前空间知识库列表（编辑器归属选择）
   try {
     knowledgeBases.value = await fetchKnowledgeBases()
   } catch {
@@ -420,7 +420,7 @@ const editorStatusText = computed(() => {
         <div class="editor-page__row editor-page__hint">
           <span v-if="knowledgeId" class="editor-page__status-text">
             当前状态：{{ STATUS_LABELS[status] ?? status }} ·
-            归属库不可修改，目录可调整（单库单目录，决策 D16）
+            归属库不可修改，目录可调整
           </span>
           <span v-else>知识按「库 → 目录 → 知识」组织，请先选择知识库（新建后不可更换）</span>
         </div>

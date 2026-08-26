@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 知识详情（B02，F-0201/F-0203/F-0212/F-0808）：标题/作者/时间/阅读时间/标签 + AI 摘要 +
+// 知识详情（B02）：标题/作者/时间/阅读时间/标签 + AI 摘要 +
 // 目录导航 + Markdown 正文 + 赞/踩/收藏/评论。
 // 关键状态：加载骨架、404 不可访问解释、失败可重试；进入页面上报一次阅读量（防刷由后端保证）。
 // 目录（TOC）滚动高亮：监听滚动，当前章节主色 + 左侧竖线。
@@ -29,7 +29,7 @@ const commentCount = ref(0)
 
 const knowledgeId = computed(() => String(route.params.id))
 const toc = computed<TocItem[]>(() => (knowledge.value ? extractToc(knowledge.value.content) : []))
-// 正文若以与标题相同的一级标题开头，去掉该行，避免页头标题重复渲染（BUG-006）
+// 正文若以与标题相同的一级标题开头，去掉该行，避免页头标题重复渲染
 function stripLeadingTitle(source: string): string {
   const match = /^(#\s+.+)\r?\n?/.exec(source.trimStart())
   if (match && match[1] && match[1].replace(/^#\s+/, '').trim() === knowledge.value?.title.trim()) {
@@ -43,7 +43,7 @@ const renderedHtml = computed(() =>
 )
 const updatedAt = computed(() => (knowledge.value ? formatDate(knowledge.value.updatedAt) : ''))
 
-// D02 知识级问答与 F-1001 读者纠错弹窗
+// D02 知识级问答与 读者纠错弹窗
 const showQa = ref(false)
 const showFeedback = ref(false)
 
@@ -91,14 +91,14 @@ function scrollToAnchor(anchor: string): void {
   document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-/** 赞/踩计数同步（F-0212）：ReactionBar 以服务端结果校正后回传。 */
+/** 赞/踩计数同步：ReactionBar 以服务端结果校正后回传。 */
 function onCountsChange(counts: { likeCount: number; dislikeCount: number }): void {
   if (!knowledge.value) return
   knowledge.value.likeCount = counts.likeCount
   knowledge.value.dislikeCount = counts.dislikeCount
 }
 
-/** 收藏状态同步（F-0212）。 */
+/** 收藏状态同步。 */
 function onFavoriteChange(state: { favorited: boolean; count: number }): void {
   if (!knowledge.value) return
   knowledge.value.favorited = state.favorited
@@ -108,7 +108,7 @@ function onFavoriteChange(state: { favorited: boolean; count: number }): void {
 onMounted(async () => {
   await load()
   if (!notFound.value && !loadError.value) {
-    // 阅读量上报：失败不影响阅读（F-0203）
+    // 阅读量上报：失败不影响阅读
     reportView(knowledgeId.value).catch(() => undefined)
     // 正文渲染完成后挂滚动监听（TOC 高亮）
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -128,7 +128,7 @@ onUnmounted(() => {
     </div>
     <div v-else-if="notFound" class="detail__state">
       <h1 class="detail__state-title">知识不可访问</h1>
-      <p class="detail__state-text">知识不存在、已下架或未公开（F-0307）。</p>
+      <p class="detail__state-text">知识不存在、已下架或未公开。</p>
       <RouterLink class="detail__back" to="/">返回首页</RouterLink>
     </div>
     <div v-else-if="loadError || !knowledge" class="detail__state">
@@ -176,7 +176,7 @@ onUnmounted(() => {
           </div>
         </header>
 
-        <!-- AI 摘要（F-0808）：有值才渲染，浅色卡片，不参与 TOC -->
+        <!-- AI 摘要：有值才渲染，浅色卡片，不参与 TOC -->
         <div v-if="knowledge.aiSummary" class="detail__summary">
           <el-tag class="detail__summary-tag" size="small" effect="plain">AI 摘要</el-tag>
           <p class="detail__summary-text">{{ knowledge.aiSummary }}</p>
@@ -278,7 +278,7 @@ onUnmounted(() => {
   align-items: start;
 }
 
-/* BUG-006：目录为空时目录栏不渲染，必须退回单栏，否则正文被塞进 200px 的目录列 */
+/* 目录为空时目录栏不渲染，必须退回单栏，否则正文被塞进 200px 的目录列 */
 .detail__layout--single {
   grid-template-columns: minmax(0, 760px);
 }
@@ -376,7 +376,7 @@ onUnmounted(() => {
   text-decoration: none;
 }
 
-/* AI 摘要区块（F-0808）：header 与正文之间，浅色卡片（AI 色 token 化） */
+/* AI 摘要区块：header 与正文之间，浅色卡片（AI 色 token 化） */
 .detail__summary {
   display: flex;
   gap: var(--xl-space-3);

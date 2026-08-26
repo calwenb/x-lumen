@@ -35,7 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 发布服务单测（F-0904/F-0905，BUG 修复 2026-08-24）：发布门禁同时认人工审核（审核中心通过，
+ * 发布服务单测（BUG 修复 2026-08-24）：发布门禁同时认人工审核（审核中心通过，
  * 无 AI 任务）与 AI 审核；已发布版本重复点「发布」走幂等返回不报 409。
  *
  * @author calwen

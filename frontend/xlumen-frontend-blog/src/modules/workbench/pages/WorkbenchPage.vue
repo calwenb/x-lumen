@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 创作工作台（B09）：内容创作链路聚合入口（知识管理/写作/审核/发布）。
 // 依赖各里程碑逐个接入：M04 知识管理；AI 写作随 M07、审核随 M10、发布随 M10 接入路由后启用。
-// IDEA-024：恢复「审核中心」入口（/studio/review → ReviewCenterPage，B12）。
+// 恢复「审核中心」入口/studio/review → ReviewCenterPage，B12）。
 import { RouterLink } from 'vue-router'
 import { DocumentChecked, EditPen, Promotion, Stamp } from '@element-plus/icons-vue'
 
@@ -9,28 +9,28 @@ import { DocumentChecked, EditPen, Promotion, Stamp } from '@element-plus/icons-
 const entries = [
   {
     title: '知识管理',
-    description: '新建、编辑、自动保存草稿，管理公开/私有可见性（F-0301/F-0302/F-0307）',
+    description: '新建、编辑、自动保存草稿，管理公开/私有可见性',
     to: { name: 'knowledge-list' },
     icon: DocumentChecked,
     enabled: true,
   },
   {
     title: 'AI 写作',
-      description: '「小光」输入主题或草稿直接输出完整知识，发布前自动审校（F-0601/F-0604/F-0907）',
+      description: '「小光」输入主题或草稿直接输出完整知识，发布前自动审校',
     to: { name: 'writing' },
     icon: EditPen,
     enabled: true,
   },
   {
     title: '审核中心',
-    description: '查看人工/AI 审核中与已完成项：通过、驳回、唤起审校意见，AI 审核完成有站内消息提醒（IDEA-024）',
+    description: '查看人工/AI 审核中与已完成项：通过、驳回、唤起审校意见，AI 审核完成有站内消息提醒',
     to: { name: 'review-center' },
     icon: Stamp,
     enabled: true,
   },
   {
     title: '发布管理',
-    description: '立即/定时发布，发布幂等防重复，发布成功自动建立 RAG 索引（F-0905/F-0402）',
+    description: '立即/定时发布，发布幂等防重复，发布成功自动建立 RAG 索引',
     to: { name: 'release-list' },
     icon: Promotion,
     enabled: true,

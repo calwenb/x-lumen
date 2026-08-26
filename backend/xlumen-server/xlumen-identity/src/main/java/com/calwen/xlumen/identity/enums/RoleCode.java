@@ -1,7 +1,7 @@
 package com.calwen.xlumen.identity.enums;
 
 /**
- * 角色编码（F-0103，BACKEND.md §8.1）：与 iam_role.role_code 一一对应。
+ * 角色编码（BACKEND.md §8.1）：与 iam_role.role_code 一一对应。
  * 团队角色（ADMIN/EDITOR/AUTHOR）V2 团队模式启用（决策 D9），定义先入库。
  *
  * @author calwen

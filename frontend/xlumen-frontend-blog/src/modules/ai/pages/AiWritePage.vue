@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// AI 写作页（B11，F-0601/F-0604）：主题/草稿/完整知识三种输入，流式打字展示生成过程，
+// AI 写作页（B11）：主题/草稿/完整知识三种输入，流式打字展示生成过程，
 // 完成后展示标题 + Markdown 预览，可保存为新知识（走 content createKnowledge，归属库必选，决策 D16）。
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -41,7 +41,7 @@ const resultContent = ref('')
 const errorMsg = ref('')
 const saving = ref(false)
 const saveMessage = ref('')
-/** 多步工作流进度（IDEA-025 F-0608：SSE progress 事件，0~100）。 */
+/** 多步工作流进度（SSE progress 事件，0~100）。 */
 const taskProgress = ref(0)
 
 /** 保存为新知识的目标库（决策 D16：单库单目录，创建后不可更换）。 */
@@ -68,7 +68,7 @@ const renderedResult = computed(() =>
   resultContent.value ? renderMarkdown(resultContent.value) : '',
 )
 
-/** 多步工作流阶段文案（IDEA-025 F-0608；单次生成模式进度同样走 10→90）。 */
+/** 多步工作流阶段文案（单次生成模式进度同样走 10→90）。 */
 const stepLabel = computed(() => {
   const p = taskProgress.value
   if (p < 20) return '正在准备提纲…'

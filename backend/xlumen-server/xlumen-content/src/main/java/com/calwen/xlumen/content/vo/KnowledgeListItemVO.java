@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 知识列表项（F-0301，B10 列表，决策 D16）：不含正文，含库/目录/状态/版本便于筛选与编辑跳转。
+ * 知识列表项（B10 列表，决策 D16）：不含正文，含库/目录/状态/版本便于筛选与编辑跳转。
  *
  * @author calwen
  * @date 2026/8/13

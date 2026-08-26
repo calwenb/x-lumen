@@ -5,7 +5,7 @@ import com.calwen.xlumen.ai.entity.ChatMessageEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * AI 对话消息数据访问（chat_message，F-0701/F-0702）：仅 ai 模块内部使用。
+ * AI 对话消息数据访问（chat_message）：仅 ai 模块内部使用。
  *
  * @author calwen
  * @date 2026/8/13

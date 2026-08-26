@@ -28,7 +28,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 
 /**
- * 评论列表聚合单元测试（F-0213）：listComments 批量填充赞/踩计数与当前用户反应（防 N+1）。
+ * 评论列表聚合单元测试：listComments 批量填充赞/踩计数与当前用户反应（防 N+1）。
  *
  * @author calwen
  * @date 2026/8/18

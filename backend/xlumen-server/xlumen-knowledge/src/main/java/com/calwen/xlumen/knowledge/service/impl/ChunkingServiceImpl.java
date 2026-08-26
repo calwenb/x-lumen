@@ -11,7 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 切片服务实现（F-0402）：按 Markdown 标题（#/##/###）边界切段，段内超过上限再以
+ * 切片服务实现：按 Markdown 标题（#/##/###）边界切段，段内超过上限再以
  * 滑动窗口细分，相邻切片带 15% 重叠，保证语义边界不割裂。
  *
  * @author calwen

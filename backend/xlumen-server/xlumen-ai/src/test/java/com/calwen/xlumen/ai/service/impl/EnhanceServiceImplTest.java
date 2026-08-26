@@ -22,8 +22,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * AI 摘要生成单元测试（F-0808）：generateAndStoreSummary 落库断言（mock ChatRuntime，不调真实模型）。
- * OPT-2/D20：MockProvider/ModelGateway 已退役，改 mock ChatRuntime（Spring AI 形态）。
+ * AI 摘要生成单元测试：generateAndStoreSummary 落库断言（mock ChatRuntime，不调真实模型）。
+ * D20：MockProvider/ModelGateway 已退役，改 mock ChatRuntime（Spring AI 形态）。
  *
  * @author calwen
  * @date 2026/8/18

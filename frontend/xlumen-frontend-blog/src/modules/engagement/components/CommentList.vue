@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// 评论区（F-0203，B02）：评论列表 + 发表评论；发表需登录，未登录引导登录页。
-// F-0213：每条评论底部提供赞/踩互斥按钮，以服务端返回 reaction 校正并增减本地计数。
+// 评论区（B02）：评论列表 + 发表评论；发表需登录，未登录引导登录页。
+// 每条评论底部提供赞/踩互斥按钮，以服务端返回 reaction 校正并增减本地计数。
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -32,7 +32,7 @@ const submitting = ref(false)
 // 正在切换反应的评论 id：请求期间禁用该评论的两个反应按钮，防重复提交
 const pendingCommentId = ref<string | null>(null)
 
-/** 相对时间：分钟/小时/天前；时戳缺失（后端未回填）时返回空串，避免 null 当 1970（BUG-010 防御）。 */
+/** 相对时间：分钟/小时/天前；时戳缺失（后端未回填）时返回空串，避免 null 当 1970。 */
 function formatTime(iso: string): string {
   if (!iso) return ''
   const diff = Date.now() - new Date(iso).getTime()
@@ -88,7 +88,7 @@ function applyCommentTransition(comment: CommentItem, from: MyReaction | null, t
   else if (to === 'DISLIKE') comment.dislikeCount += 1
 }
 
-/** 评论赞/踩（F-0213）：toggle 语义（已选中取消、互斥切换），服务端 reaction 校正。 */
+/** 评论赞/踩：toggle 语义（已选中取消、互斥切换），服务端 reaction 校正。 */
 async function react(comment: CommentItem, target: MyReaction): Promise<void> {
   if (!session.loggedIn) {
     await router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })

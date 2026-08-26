@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 读者纠错视图（F-1001）：以 trackNo 作为对外追踪号。
+ * 读者纠错视图：以 trackNo 作为对外追踪号。
  *
  * @author calwen
  * @date 2026/8/13

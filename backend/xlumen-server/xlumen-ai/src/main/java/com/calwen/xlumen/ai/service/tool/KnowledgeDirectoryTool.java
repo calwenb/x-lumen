@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * knowledge.getDirectoryTree 工具（IDEA-025 F-0708）：获取知识库目录树（id 序列化为字符串防精度丢失），
+ * knowledge.getDirectoryTree 工具：获取知识库目录树（id 序列化为字符串防精度丢失），
  * 供模型按目录缩小检索范围。只读包装 KnowledgeApi.getDirectoryTree，kbId 强制校验可见集合。
  *
  * @author calwen

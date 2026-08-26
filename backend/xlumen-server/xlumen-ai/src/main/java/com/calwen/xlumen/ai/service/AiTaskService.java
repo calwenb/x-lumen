@@ -6,7 +6,7 @@ import com.calwen.xlumen.ai.enums.AiScene;
 import java.util.List;
 
 /**
- * AI 任务底座（F-1302）：任务事实存 MySQL（决策 D6），进度写 Redis 短期状态。
+ * AI 任务底座：任务事实存 MySQL（决策 D6），进度写 Redis 短期状态。
  * 幂等提交、状态流转（QUEUED→RUNNING→COMPLETED/FAILED）、有限重试、启动恢复。
  *
  * @author calwen

@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 知识管理接口（F-0301/F-0302/F-0307，B10 创作中心）：需登录（接口权限双层校验第一层）；
+ * 知识管理接口（B10 创作中心）：需登录（接口权限双层校验第一层）；
  * 资源归属与状态校验在 Service（第二层）。公开读走 publishing 的 /api/v1/public/**（M03）。
  *
  * @author calwen
@@ -39,7 +39,7 @@ public class KnowledgeController {
     private KnowledgeService knowledgeService;
 
     /**
-     * 创建知识（F-0301）：新建即草稿。
+     * 创建知识：新建即草稿。
      */
     @PostMapping
     public ApiResponse<KnowledgeVO> create(@Valid @RequestBody CreateKnowledgeDTO dto) {
@@ -47,7 +47,7 @@ public class KnowledgeController {
     }
 
     /**
-     * 更新知识（F-0301）：版本乐观锁，冲突 409。
+     * 更新知识：版本乐观锁，冲突 409。
      */
     @PutMapping("/{knowledgeId}")
     public ApiResponse<KnowledgeVO> update(@PathVariable Long knowledgeId,
@@ -56,7 +56,7 @@ public class KnowledgeController {
     }
 
     /**
-     * 草稿自动保存（F-0302）：幂等，未变化跳过写库。
+     * 草稿自动保存：幂等，未变化跳过写库。
      */
     @PostMapping("/autosave")
     public ApiResponse<KnowledgeVO> autosave(@Valid @RequestBody DraftSaveDTO dto) {
@@ -80,7 +80,7 @@ public class KnowledgeController {
     }
 
     /**
-     * 删除知识（F-0301/F-0305）：仅构思/草稿可删除；回收站软删，可经 restore 恢复。
+     * 删除知识：仅构思/草稿可删除；回收站软删，可经 restore 恢复。
      */
     @DeleteMapping("/{knowledgeId}")
     public ApiResponse<Void> delete(@PathVariable Long knowledgeId) {
@@ -89,7 +89,7 @@ public class KnowledgeController {
     }
 
     /**
-     * 恢复回收站知识（F-0305）：清除软删标记（recycle_status=0, deleted_at=null）。
+     * 恢复回收站知识：清除软删标记（recycle_status=0, deleted_at=null）。
      */
     @PutMapping("/{knowledgeId}/restore")
     public ApiResponse<Void> restore(@PathVariable Long knowledgeId) {
@@ -98,7 +98,7 @@ public class KnowledgeController {
     }
 
     /**
-     * 知识版本历史（F-0303，BUG-014）：版本号降序分页，含标题/正文快照。
+     * 知识版本历史：版本号降序分页，含标题/正文快照。
      */
     @GetMapping("/{knowledgeId}/versions")
     public ApiResponse<ContentPageResult<KnowledgeVersionVO>> versions(

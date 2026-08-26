@@ -5,7 +5,7 @@ import com.calwen.xlumen.notification.entity.NotificationEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 站内消息 Mapper（IDEA-024）。
+ * 站内消息 Mapper。
  *
  * @author calwen
  * @date 2026/8/24

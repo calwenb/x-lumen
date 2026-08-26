@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 索引请求（跨模块稳定类型）：发布即索引（F-0402）流水线入参，正文快照由发布事件携带。
+ * 索引请求（跨模块稳定类型）：发布即索引流水线入参，正文快照由发布事件携带。
  * KB-3 起携带 kbId（决策 D13 索引按库切分，切片/版本元数据落库）。
  *
  * @author calwen

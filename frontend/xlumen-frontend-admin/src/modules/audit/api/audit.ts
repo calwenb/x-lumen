@@ -2,7 +2,7 @@ import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
 
-// 审计日志接口封装（F-1202）：页面只调用本文件暴露的函数（FRONTEND.md §5/§8.1）。
+// 审计日志接口封装：页面只调用本文件暴露的函数（FRONTEND.md §5/§8.1）。
 
 export interface AuditLogRecord {
   id: string

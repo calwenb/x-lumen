@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * AI 写作接口（F-0601）：提交写作任务，返回任务 ID 供轮询/SSE 订阅。
+ * AI 写作接口：提交写作任务，返回任务 ID 供轮询/SSE 订阅。
  *
  * @author calwen
  * @date 2026/8/13

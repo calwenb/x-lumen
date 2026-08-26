@@ -31,10 +31,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 知识服务实现（F-0301/F-0302/F-0307）：作者与空间来自 WorkspaceContext（JWT claims，F-0104 双层校验第二层）。
+ * 知识服务实现：作者与空间来自 WorkspaceContext（JWT claims，双层校验第二层）。
  * 版本乐观锁：MyBatis-Plus @Version 插件，updateById 影响行数 0 即冲突（HTTP 409，PRODUCT §6 禁止静默覆盖）。
- * 已发布版本正文不可修改（PRODUCT §4），修改需走旧文更新闭环（V2 F-1105）。
- * KB-3（决策 D16）：知识单库单目录归属（kb_id+directory_id），无文章级可见性；删除改回收站软删（F-0305）。
+ * 已发布版本正文不可修改（PRODUCT §4），修改需走旧文更新闭环（V2 ）。
+ * KB-3（决策 D16）：知识单库单目录归属（kb_id+directory_id），无文章级可见性；删除改回收站软删。
  * 归属校验（BACKEND.md §4 依赖 DAG：content→knowledge）：创建/自动保存经 KnowledgeApi.checkOwnership 校验
  * 知识库/目录归属，禁止无归属（kb_id=0）或跨空间孤儿知识入库。
  *
@@ -44,7 +44,7 @@ import java.util.Objects;
 @Service
 public class KnowledgeServiceImpl implements KnowledgeService {
 
-    /** 回收站状态：回收中（F-0305 独立软删标记，不扩 8 状态机）。 */
+    /** 回收站状态：回收中，不扩 8 状态机）。 */
     private static final int RECYCLE_STATUS_DELETED = 1;
     /** 自动保存新建草稿的默认标题。 */
     private static final String UNTITLED = "未命名草稿";
@@ -92,7 +92,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     public KnowledgeVO update(Long knowledgeId, UpdateKnowledgeDTO dto) {
         KnowledgeEntity entity = getOwned(knowledgeId);
         checkEditable(entity);
-        // 幂等（BUG-020）：同版本同正文等字段重发不报 409——先比对版本再比对业务内容，
+        // 幂等：同版本同正文等字段重发不报 409——先比对版本再比对业务内容，
         // 内容未变化且版本一致时按成功返回，避免前端自动保存/同内容保存误报冲突
         if (java.util.Objects.equals(entity.getVersion(), dto.getVersion())
                 && java.util.Objects.equals(entity.getTitle(), dto.getTitle())
@@ -104,7 +104,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         entity.setTitle(dto.getTitle());
         entity.setContent(dto.getContent() == null ? "" : dto.getContent());
         if (dto.getDirectoryId() != null) {
-            // 同库内换目录（跨库移动不提供，决策 D16）：目录必须属于当前知识库，越界拒绝（BUG-013）
+            // 同库内换目录（跨库移动不提供，决策 D16）：目录必须属于当前知识库，越界拒绝
             if (!knowledgeApi.checkOwnership(requireWorkspaceId(), entity.getKbId(), dto.getDirectoryId())) {
                 throw new BizException(ErrorCode.INVALID_PARAM, "目录不属于当前知识库");
             }
@@ -146,7 +146,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         entity.setTitle(StrUtil.blankToDefault(dto.getTitle(), entity.getTitle()));
         entity.setContent(newContent);
         if (dto.getDirectoryId() != null) {
-            // 同库内换目录（决策 D16）：目录必须属于当前知识库，越界拒绝（BUG-013）
+            // 同库内换目录（决策 D16）：目录必须属于当前知识库，越界拒绝
             if (!knowledgeApi.checkOwnership(requireWorkspaceId(), entity.getKbId(), dto.getDirectoryId())) {
                 throw new BizException(ErrorCode.INVALID_PARAM, "目录不属于当前知识库");
             }
@@ -176,7 +176,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                 Wrappers.<KnowledgeEntity>lambdaQuery()
                         .eq(KnowledgeEntity::getWorkspaceId, requireWorkspaceId())
                         .eq(KnowledgeEntity::getAuthorId, requireUserId())
-                        // 过滤回收站（F-0305 软删不展示在知识管理列表）
+                        // 过滤回收站（软删不展示在知识管理列表）
                         .eq(KnowledgeEntity::getRecycleStatus, 0)
                         .eq(query.getStatus() != null, KnowledgeEntity::getStatus, query.getStatus())
                         .eq(query.getKbId() != null, KnowledgeEntity::getKbId, query.getKbId())
@@ -192,14 +192,14 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     public void delete(Long knowledgeId) {
         KnowledgeEntity entity = getOwned(knowledgeId);
         KnowledgeStatus status = KnowledgeStatus.of(entity.getStatus());
-        // BUG-016 配套：已下架（8）可删除（「删除已发布需先下架」闭环）
+        // 配套：已下架（8）可删除（「删除已发布需先下架」闭环）
         if (status != KnowledgeStatus.IDEA && status != KnowledgeStatus.DRAFT && status != KnowledgeStatus.UNPUBLISHED) {
             throw new BizException(ErrorCode.CONFLICT, "仅构思/草稿/已下架可删除，已发布请先下架");
         }
         if (entity.getRecycleStatus() != null && entity.getRecycleStatus() == RECYCLE_STATUS_DELETED) {
             throw new BizException(ErrorCode.CONFLICT, "知识已在回收站");
         }
-        // F-0305 回收站软删：标记 recycle_status + deleted_at，不物理删除（超期清理由回收站任务负责）
+        // 回收站软删：标记 recycle_status + deleted_at，不物理删除（超期清理由回收站任务负责）
         knowledgeMapper.update(null, Wrappers.<KnowledgeEntity>lambdaUpdate()
                 .eq(KnowledgeEntity::getId, entity.getId())
                 .eq(KnowledgeEntity::getWorkspaceId, requireWorkspaceId())
@@ -259,7 +259,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     }
 
     /**
-     * 版本快照（F-0303 历史版本）：落库后调用，记录本次保存后的标题/正文与版本号
+     * 版本快照：落库后调用，记录本次保存后的标题/正文与版本号
      * （MyBatis-Plus @Version 插件 updateById 后会把新版本号回写实体）。
      */
     private void saveVersionSnapshot(KnowledgeEntity entity) {

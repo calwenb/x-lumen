@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * 热点读缓存实现（F-1301）：cache-aside 模式，Redis 异常降级回源不抛错。
+ * 热点读缓存实现：cache-aside 模式，Redis 异常降级回源不抛错。
  * KB-3 缓存分片（方案 §3.4）：详情键 xlumen:knowledge:detail:{ws}:{id}；分类缓存删除
  * （category 废弃）；标签键 xlumen:tags:{ws} 保留；列表不缓存（V2 加 list 分片预留）。
  * 序列化用 Jackson 3（tools.jackson，LocalDateTime 默认 ISO 格式可解析），与 Boot 4 技术基线一致。

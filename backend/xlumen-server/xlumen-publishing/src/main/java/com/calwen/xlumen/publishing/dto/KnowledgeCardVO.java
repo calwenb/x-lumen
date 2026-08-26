@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 知识卡片（B01 列表，F-0201/F-0202）：含互动统计（评论/点赞数由 CommentService/LikeService 批量聚合，避免 N+1）。
+ * 知识卡片（B01 列表）：含互动统计（评论/点赞数由 CommentService/LikeService 批量聚合，避免 N+1）。
  * KB-3 起携带库信息（决策 D16，卡片库 badge 跳库），category 废弃。
  *
  * @author calwen
@@ -60,6 +60,6 @@ public class KnowledgeCardVO {
     /** 发布时间。 */
     private LocalDateTime publishedAt;
 
-    /** 收藏时间（F-0212 我的收藏列表专用字段，公开列表为 null）。 */
+    /** 收藏时间（我的收藏列表专用字段，公开列表为 null）。 */
     private LocalDateTime favoritedAt;
 }

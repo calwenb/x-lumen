@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 目录管理接口（F-0309，B22 目录树 CRUD）：需登录；归属与同级同名冲突校验在 Service。
+ * 目录管理接口（B22 目录树 CRUD）：需登录；归属与同级同名冲突校验在 Service。
  * 删除目录时目录下知识上挂父目录（根级目录删除挂库根）。
  *
  * @author calwen
@@ -35,7 +35,7 @@ public class DirectoryController {
     private DirectoryService directoryService;
 
     /**
-     * 目录树（F-0309）：一级目录平铺返回，子目录挂 children，均按名称排序（数据库排序规则）。
+     * 目录树：一级目录平铺返回，子目录挂 children，均按名称排序（数据库排序规则）。
      *
      * @param kbId 知识库 ID
      * @return 目录树列表
@@ -46,7 +46,7 @@ public class DirectoryController {
     }
 
     /**
-     * 创建目录（F-0309）：parentId 必须属于同一知识库（0=库根）；同级同名冲突 409。
+     * 创建目录：parentId 必须属于同一知识库（0=库根）；同级同名冲突 409。
      *
      * @param kbId 知识库 ID
      * @param dto  创建入参
@@ -59,7 +59,7 @@ public class DirectoryController {
     }
 
     /**
-     * 更新目录（F-0309）：仅名称可改（父目录变更 V2 提供）。
+     * 更新目录：仅名称可改（父目录变更 V2 提供）。
      *
      * @param kbId        知识库 ID
      * @param directoryId 目录 ID
@@ -73,7 +73,7 @@ public class DirectoryController {
     }
 
     /**
-     * 删除目录（F-0309）：目录及全部子目录删除，目录下知识上挂父目录（根级删除挂库根）。
+     * 删除目录：目录及全部子目录删除，目录下知识上挂父目录（根级删除挂库根）。
      *
      * @param kbId        知识库 ID
      * @param directoryId 目录 ID

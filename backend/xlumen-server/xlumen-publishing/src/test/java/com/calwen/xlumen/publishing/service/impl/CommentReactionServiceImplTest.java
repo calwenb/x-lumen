@@ -30,7 +30,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * 评论反应服务单元测试（F-0213）：三态互斥 toggle、评论存在性校验与批量聚合。
+ * 评论反应服务单元测试：三态互斥 toggle、评论存在性校验与批量聚合。
  *
  * @author calwen
  * @date 2026/8/18

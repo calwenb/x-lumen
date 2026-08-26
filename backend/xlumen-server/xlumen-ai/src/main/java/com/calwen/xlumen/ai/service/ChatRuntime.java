@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * AI 运行时（OPT-2/D20 全量迁移，替代 ModelGateway/AgentRunner）：场景→(供应商,模型) 解析 +
+ * AI 运行时（D20 全量迁移，替代 ModelGateway/AgentRunner）：场景→(供应商,模型) 解析 +
  * Spring AI ChatModel/ChatClient 调用编排 + 简单熔断 + 无密钥回退 ScriptedChatModel。
  * 无工具调用用 chat/chatStream（ChatModel 直调）；工具化路径用 chatWithTools/chatStreamWithTools
  * （ChatClient + ToolCallingAdvisor 自动多轮工具循环，工具执行中间态经 ToolRun.sink 收集）。

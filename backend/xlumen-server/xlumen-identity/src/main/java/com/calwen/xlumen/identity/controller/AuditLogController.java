@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 审计日志接口（F-1202，B05 管理后台）：只读查询，需登录访问；工作空间上下文取自可信会话（WorkspaceContext）。
+ * 审计日志接口（B05 管理后台）：只读查询，需登录访问；工作空间上下文取自可信会话（WorkspaceContext）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -23,7 +23,7 @@ public class AuditLogController {
     @Resource
     private ActivityLogService activityLogService;
 
-    /** 审计日志分页查询（F-1202）：action 可空（为空查全部），查询参数由 AuditLogQueryDTO 自动绑定。 */
+    /** 审计日志分页查询：action 可空（为空查全部），查询参数由 AuditLogQueryDTO 自动绑定。 */
     @GetMapping
     public ApiResponse<PageVO<AuditLogVO>> listAuditLogs(AuditLogQueryDTO query) {
         return ApiResponse.success(activityLogService.listAuditLogs(query));

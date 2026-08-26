@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * AI 增值接口（F-0801/F-0802）：摘要/SEO 同步生成并落库返回。
+ * AI 增值接口：摘要/SEO 同步生成并落库返回。
  *
  * @author calwen
  * @date 2026/8/13

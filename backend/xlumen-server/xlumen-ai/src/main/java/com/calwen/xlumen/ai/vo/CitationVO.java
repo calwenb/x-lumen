@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 引用证据视图（F-0701/F-0702，检索溯源）：篇名/段落定位可跳转原文。
+ * 引用证据视图（检索溯源）：篇名/段落定位可跳转原文。
  *
  * @author calwen
  * @date 2026/8/13

@@ -9,7 +9,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
 /**
- * 发布即摘要事件监听（F-0808）：监听 publishing 发布的进程内 KnowledgePublishedEvent，
+ * 发布即摘要事件监听：监听 publishing 发布的进程内 KnowledgePublishedEvent，
  * 用 ai 模块线程池 aiTaskExecutor 异步生成知识摘要并落 ai_enhance_result（scene=SUMMARY）。
  * 失败仅 log.warn 降级，绝不影响发布主流程（与 knowledge 模块 KnowledgePublishedEventListener 同款写法）。
  *

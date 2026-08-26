@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 知识版本视图（F-0303 历史版本）：版本号 + 标题/正文快照 + 快照时间。
+ * 知识版本视图：版本号 + 标题/正文快照 + 快照时间。
  *
  * @author calwen
  * @date 2026/8/19

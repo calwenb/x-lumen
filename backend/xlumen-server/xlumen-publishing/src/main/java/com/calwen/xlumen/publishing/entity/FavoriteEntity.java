@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 知识收藏实体（eng_favorite，F-0212）：唯一键 (workspace_id, knowledge_id, user_id) 承担幂等，
+ * 知识收藏实体（eng_favorite）：唯一键 (workspace_id, knowledge_id, user_id) 承担幂等，
  * 收藏/取消更新 status，结构与 eng_like 同构。
  *
  * @author calwen

@@ -20,7 +20,7 @@ import java.util.HexFormat;
 import java.util.Objects;
 
 /**
- * AI 审校服务实现（F-0604）：content 必填、模型异源校验（写作与审校不同源）、创建 REVIEWER 任务。
+ * AI 审校服务实现：content 必填、模型异源校验（写作与审校不同源）、创建 REVIEWER 任务。
  *
  * @author calwen
  * @date 2026/8/13

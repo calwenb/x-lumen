@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 切片数据载体（模块内部类型，F-0402/F-0405）：切片服务输出、向量库写入输入。
+ * 切片数据载体（模块内部类型）：切片服务输出、向量库写入输入。
  * embedding 在 Embedding 阶段回填，Noop 降级时保持 null（不写向量）。
  *
  * @author calwen

@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 /**
  * 知识数统计实现（反向 SPI）：cnt_knowledge 属 content 模块，按 kb_id/directory_id 聚合非回收站知识数，
- * 供 knowledge 模块的知识库/目录列表展示（F-0308/F-0309，KB-3 遗留的恒 0 技术债闭环）。
+ * 供 knowledge 模块的知识库/目录列表展示（KB-3 遗留的恒 0 技术债闭环）。
  *
  * @author calwen
  * @date 2026/8/16

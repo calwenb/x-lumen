@@ -21,7 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 写作多步工作流单测（F-0608，双轨合并后单轨）：mock ChatRuntime——多步主链路成功，
+ * 写作多步工作流单测（双轨合并后单轨）：mock ChatRuntime——多步主链路成功，
  * 主链路失败（大纲解析失败/章节超限/单章失败）→ 任务 FAILED；增强失败（自审失败）→ 跳过修订交付初稿。
  *
  * @author calwen

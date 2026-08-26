@@ -24,10 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * AI 审校执行器（F-0604，双轨合并后单轨）：统一走事实核对模式 —— 挂 knowledge.search 工具走 ChatRuntime 工具化非流式
+ * AI 审校执行器（双轨合并后单轨）：统一走事实核对模式 —— 挂 knowledge.search 工具走 ChatRuntime 工具化非流式
  * （ChatClient 自动循环，轮数上限 reviewerAgentMaxRounds），输出严格 JSON 数组，Hutool JSONUtil 校验字段，失败重试一次。
- * 闸门语义不变：工具检索失败 ≠ 任务失败（错误信封给模型，模型继续文本层检查），仅任务本身失败才阻断发布（F-0907）。
- * OPT-2/D20 全量迁移：链路改走 ChatRuntime（Spring AI 消息类型），业务语义不变。
+ * 闸门语义不变：工具检索失败 ≠ 任务失败（错误信封给模型，模型继续文本层检查），仅任务本身失败才阻断发布。
+ * D20 全量迁移：链路改走 ChatRuntime（Spring AI 消息类型），业务语义不变。
  *
  * @author calwen
  * @date 2026/8/13

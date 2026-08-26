@@ -21,7 +21,7 @@ import java.util.Map;
 
 /**
  * 内容模块对外接口实现（BACKEND.md §5.2：XxxApiImpl 放 service/impl/）：只暴露已发布、不在回收站、
- * 且所属知识库在可见集合内的知识（F-0307/F-0407）。公开读数据源 cnt_knowledge 属 content 模块，
+ * 且所属知识库在可见集合内的知识。公开读数据源 cnt_knowledge 属 content 模块，
  * publishing 通过本 Api 编排博客前台公开读；可见库集合由 publishing 按身份推导后经
  * {@link KnowledgeQueryDTO#getVisibleKbIds()} 传入（content 不依赖 knowledge 模块，无法自查库可见性）。
  *
@@ -31,9 +31,9 @@ import java.util.Map;
 @Service
 public class ContentApiImpl implements ContentApi {
 
-    /** 状态：已发布（KnowledgeStatus.PUBLISHED，F-0901 八状态机）。 */
+    /** 状态：已发布（KnowledgeStatus.PUBLISHED）。 */
     private static final int STATUS_PUBLISHED = 6;
-    /** 回收站状态：正常（F-0305 独立软删标记，回收站知识不进公开读）。 */
+    /** 回收站状态：正常，回收站知识不进公开读）。 */
     private static final int RECYCLE_STATUS_NORMAL = 0;
 
     @Resource
@@ -42,7 +42,7 @@ public class ContentApiImpl implements ContentApi {
     @Override
     public ContentPageResult<PublishedKnowledgeDTO> listPublished(Long workspaceId, KnowledgeQueryDTO query) {
         List<Long> visibleKbIds = query.getVisibleKbIds();
-        // 可见库集合由 publishing 按身份推导传入（F-0407：访客=全平台公开库，登录=+本人私有库）；
+        // 可见库集合由 publishing 按身份推导传入（访客=全平台公开库，登录=+本人私有库）；
         // 为空 = 无任何可见库，直接返回空页（内容归属 kb_id 必填，越权指定库自然被 IN 条件排除）
         if (visibleKbIds == null || visibleKbIds.isEmpty()) {
             return ContentPageResult.<PublishedKnowledgeDTO>builder()
@@ -62,7 +62,7 @@ public class ContentApiImpl implements ContentApi {
             wrapper.eq(KnowledgeEntity::getDirectoryId, query.getDirectoryId());
         }
         if (StrUtil.isNotBlank(query.getKeyword())) {
-            // MVP 先 LIKE 后 ES（F-1305 V3 全文搜索）
+            // MVP 先 LIKE 后 ES（V3 全文搜索）
             wrapper.and(w -> w.like(KnowledgeEntity::getTitle, query.getKeyword().trim())
                     .or().like(KnowledgeEntity::getSummary, query.getKeyword().trim()));
         }
@@ -92,7 +92,7 @@ public class ContentApiImpl implements ContentApi {
 
     @Override
     public KnowledgeDetailDTO getPublished(Long workspaceId, Long knowledgeId, List<Long> visibleKbIds) {
-        // 可见库集合为空 = 无任何可见库，直接返回 null（F-0407）
+        // 可见库集合为空 = 无任何可见库，直接返回 null
         if (visibleKbIds == null || visibleKbIds.isEmpty()) {
             return null;
         }
@@ -167,7 +167,7 @@ public class ContentApiImpl implements ContentApi {
         return knowledgeMapper.updateById(knowledge) > 0;
     }
 
-    // ==================== KB-3 知识平台化契约实现（F-0305/F-0308/F-0309） ====================
+    // ==================== KB-3 知识平台化契约实现 ====================
 
     @Override
     public void softDeleteKnowledgeByKb(Long workspaceId, Long kbId) {

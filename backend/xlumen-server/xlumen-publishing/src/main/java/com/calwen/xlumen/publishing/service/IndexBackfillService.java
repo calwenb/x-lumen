@@ -3,7 +3,7 @@ package com.calwen.xlumen.publishing.service;
 import com.calwen.xlumen.knowledge.vo.IndexStatusVO;
 
 /**
- * 索引补跑编排（BUG-004）：knowledge 模块依赖方向受限无法自取正文，
+ * 索引补跑编排：knowledge 模块依赖方向受限无法自取正文，
  * 由本模块（依赖 content + knowledge）读取已发布知识正文后强制重建索引。
  *
  * @author calwen

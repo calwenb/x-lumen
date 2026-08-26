@@ -5,7 +5,7 @@ import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * AI 任务数据访问（ai_task，F-1302）：仅 ai 模块内部使用。
+ * AI 任务数据访问（ai_task）：仅 ai 模块内部使用。
  *
  * @author calwen
  * @date 2026/8/13

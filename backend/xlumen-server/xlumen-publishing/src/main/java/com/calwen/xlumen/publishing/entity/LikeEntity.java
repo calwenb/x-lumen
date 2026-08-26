@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 知识反应实体（eng_like，F-0203/F-0212）：唯一键 (workspace_id, knowledge_id, user_id) 承担幂等，
+ * 知识反应实体（eng_like）：唯一键 (workspace_id, knowledge_id, user_id) 承担幂等，
  * 赞/踩共用一行三态互斥，取消/切换更新 status 与 reaction_type。
  *
  * @author calwen

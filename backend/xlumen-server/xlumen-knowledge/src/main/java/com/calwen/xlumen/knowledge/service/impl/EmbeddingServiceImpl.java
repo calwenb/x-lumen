@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 向量化服务实现（F-0402/F-0404，OPT-2/D20 全量迁移）：手写 HTTP 层改由 Spring AI OpenAiEmbeddingModel
+ * 向量化服务实现（D20 全量迁移）：手写 HTTP 层改由 Spring AI OpenAiEmbeddingModel
  * （builder 依 options 自建 OpenAI SDK 客户端，与 ai 模块 ChatModel 同一构造方式），32 片/批语义与错误语义不变——
  * key 缺失或调用失败抛 BizException(SERVICE_UNAVAILABLE)，由索引流水线标记任务失败。
  *

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 回收站分页视图（F-0305，KB-3 publishing 聚合层）：kb 与 knowledge 双类型条目合并分页。
+ * 回收站分页视图（KB-3 publishing 聚合层）：kb 与 knowledge 双类型条目合并分页。
  *
  * @author calwen
  * @date 2026/8/14

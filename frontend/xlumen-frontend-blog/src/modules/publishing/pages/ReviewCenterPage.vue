@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 审核中心（B12，F-0902/F-0904）：审核列表（状态筛选）+ 详情（AI 审校问题 + 通过/驳回/发布）。
+// 审核中心（B12）：审核列表（状态筛选）+ 详情（AI 审校问题 + 通过/驳回/发布）。
 // 关键状态：加载骨架、空态、失败重试、409 冲突恢复、429 提示（PROTOTYPE §11）。
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -159,7 +159,7 @@ async function approve(): Promise<void> {
   }
 }
 
-/** 发布已通过知识（BUG-007 补全 F-0904 流程入口）：立即发布，公开可见。 */
+/** 发布已通过知识：立即发布，公开可见。 */
 async function publish(): Promise<void> {
   if (!selected.value || acting.value) return
   try {
@@ -336,7 +336,7 @@ onMounted(() => {
               <span v-if="issue.position" class="review-issue__position">{{ issue.position }}</span>
             </div>
             <p v-if="issue.evidence" class="review-issue__evidence">原文：{{ issue.evidence }}</p>
-            <!-- IDEA-025 事实核对：库内证据引用（有证据字段才显示） -->
+            <!-- 事实核对：库内证据引用（有证据字段才显示） -->
             <p v-if="issue.evidenceQuote" class="review-issue__evidence">
               库内证据：{{ issue.evidenceQuote }}
               <RouterLink
@@ -362,7 +362,7 @@ onMounted(() => {
           <el-button type="success" :loading="acting" @click="publish">
             {{ acting ? '处理中' : '发布' }}
           </el-button>
-          <p class="review-detail__hint">已通过审核，发布后知识在所属库中公开可见（F-0904）。</p>
+          <p class="review-detail__hint">已通过审核，发布后知识在所属库中公开可见。</p>
         </div>
 
         <div v-if="selected.status === 'PENDING'" class="review-detail__actions">

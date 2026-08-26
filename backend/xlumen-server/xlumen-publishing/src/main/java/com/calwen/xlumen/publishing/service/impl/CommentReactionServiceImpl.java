@@ -20,8 +20,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 评论反应服务实现（F-0213）：三态互斥 toggle（与知识反应同语义）+ 批量统计防 N+1。
- * 登录态接口的 workspaceId/userId 全部来自 WorkspaceContext（JWT claims，F-0104）。
+ * 评论反应服务实现：三态互斥 toggle（与知识反应同语义）+ 批量统计防 N+1。
+ * 登录态接口的 workspaceId/userId 全部来自 WorkspaceContext（JWT claims）。
  *
  * @author calwen
  * @date 2026/8/18
@@ -57,7 +57,7 @@ public class CommentReactionServiceImpl implements CommentReactionService {
     }
 
     /**
-     * 三态互斥 toggle（F-0213，语义与知识反应一致）：先校验评论存在且正常（不存在/已删抛 404），
+     * 三态互斥 toggle（语义与知识反应一致）：先校验评论存在且正常（不存在/已删抛 404），
      * 再按 无反应->激活 / 同类型->取消 / 异类型->切换 处理。
      */
     private String toggle(Long commentId, int reactionType) {

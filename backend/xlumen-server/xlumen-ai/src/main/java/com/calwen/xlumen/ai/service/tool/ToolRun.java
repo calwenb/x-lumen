@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 单次工具化调用的运行上下文（OPT-2/D20 全量迁移）：ChatRuntime 的 chatWithTools 系列入口参数。
+ * 单次工具化调用的运行上下文（D20 全量迁移）：ChatRuntime 的 chatWithTools 系列入口参数。
  * toolContext 为业务工具上下文（工作空间/身份/会话锁定库/引用收集器），
  * sink 收集 SSE 事件与落库配对；场景决定预算上限（REVIEWER 用审校轮数上限，其余用全局调用数上限）。
  *

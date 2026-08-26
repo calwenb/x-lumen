@@ -16,7 +16,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 任务 SSE 服务（F-1302）：封装事件 chunk/progress/done/error，data 带 taskId/sequence/内容，30s 心跳。
+ * 任务 SSE 服务：封装事件 chunk/progress/done/error，data 带 taskId/sequence/内容，30s 心跳。
  *
  * @author calwen
  * @date 2026/8/13

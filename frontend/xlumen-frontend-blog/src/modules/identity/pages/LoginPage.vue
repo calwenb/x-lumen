@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// B08 登录/注册（MVP · F-0101）：登录/注册切换；登录失败不暴露账号是否存在（后端统一提示）；
+// B08 登录/注册（MVP · ）：登录/注册切换；登录失败不暴露账号是否存在（后端统一提示）；
 // 注册成功即建空间；登录后进入博客首页（PROTOTYPE §7.7）。
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'

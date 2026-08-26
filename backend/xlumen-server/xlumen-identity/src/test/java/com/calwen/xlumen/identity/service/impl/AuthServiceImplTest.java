@@ -29,7 +29,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
- * 认证服务单元测试（F-0101）：注册冲突统一提示、登录失败统一 401、令牌签发。
+ * 认证服务单元测试：注册冲突统一提示、登录失败统一 401、令牌签发。
  *
  * @author calwen
  * @date 2026/8/12

@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
- * 站内消息接口（IDEA-024 通用通知模块）：已登录用户的消息中心（分页/已读/未读数）+ 实时推送流。
+ * 站内消息接口：已登录用户的消息中心（分页/已读/未读数）+ 实时推送流。
  * 默认需认证（SecurityConfig anyRequest().authenticated，BACKEND.md §9），归属校验在服务层；
  * /stream 为用户级 SSE 长连接，通知创建时推送「notification」事件（前端右上角弹窗），单向推送用 SSE 无需 WS。
  *

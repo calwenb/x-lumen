@@ -3,7 +3,7 @@ package com.calwen.xlumen.identity.dto;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * 登录入参（F-0101）：登录失败统一提示与统一延迟（PRODUCT §10 防枚举）。
+ * 登录入参：登录失败统一提示与统一延迟（PRODUCT §10 防枚举）。
  *
  * @author calwen
  * @date 2026/8/12

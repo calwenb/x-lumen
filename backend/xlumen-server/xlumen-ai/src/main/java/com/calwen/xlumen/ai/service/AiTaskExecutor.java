@@ -4,7 +4,7 @@ import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 
 /**
- * AI 任务执行器（F-1302）：按场景注册，执行器内部通过 TaskContext 推进度/结果。
+ * AI 任务执行器：按场景注册，执行器内部通过 TaskContext 推进度/结果。
  *
  * @author calwen
  * @date 2026/8/13

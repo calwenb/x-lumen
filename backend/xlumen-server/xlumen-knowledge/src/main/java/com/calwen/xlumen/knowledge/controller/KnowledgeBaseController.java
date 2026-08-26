@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 知识库管理接口（F-0308，B22 知识库管理）：需登录（接口权限双层校验第一层），
+ * 知识库管理接口（B22 知识库管理）：需登录（接口权限双层校验第一层），
  * 资源归属与二次确认校验在 Service（第二层）；可见性切换独立接口（审计+缓存失效事件）。
  *
  * @author calwen
@@ -40,7 +40,7 @@ public class KnowledgeBaseController {
     private KnowledgeBaseService knowledgeBaseService;
 
     /**
-     * 我的知识库列表（F-0308）：当前空间 status=0（正常）的库，按名称排序。
+     * 我的知识库列表：当前空间 status=0（正常）的库，按名称排序。
      *
      * @return 知识库列表
      */
@@ -50,7 +50,7 @@ public class KnowledgeBaseController {
     }
 
     /**
-     * 创建知识库（F-0308）：名称空间内唯一，冲突 409。
+     * 创建知识库：名称空间内唯一，冲突 409。
      *
      * @param dto 创建入参
      * @return 创建后的知识库
@@ -61,7 +61,7 @@ public class KnowledgeBaseController {
     }
 
     /**
-     * 知识库详情（F-0308）：不存在或跨空间 404。
+     * 知识库详情：不存在或跨空间 404。
      *
      * @param kbId 知识库 ID
      * @return 知识库详情
@@ -76,7 +76,7 @@ public class KnowledgeBaseController {
     }
 
     /**
-     * 更新知识库（F-0308）：名称/简介/封面可改（空值不覆盖）。
+     * 更新知识库：名称/简介/封面可改（空值不覆盖）。
      *
      * @param kbId 知识库 ID
      * @param dto  更新入参
@@ -89,7 +89,7 @@ public class KnowledgeBaseController {
     }
 
     /**
-     * 删除知识库（F-0305）：二次确认参数 confirm=CONFIRM；库与库内知识连带进回收站（方案 §7.2）。
+     * 删除知识库：二次确认参数 confirm=CONFIRM；库与库内知识连带进回收站（方案 §7.2）。
      *
      * @param kbId    知识库 ID
      * @param confirm 二次确认参数（固定值 CONFIRM）
@@ -102,7 +102,7 @@ public class KnowledgeBaseController {
     }
 
     /**
-     * 切换知识库可见性（F-0308）：0 私有/1 公开，变更即时生效（公开读缓存由 publishing 侧按事件失效）。
+     * 切换知识库可见性：0 私有/1 公开，变更即时生效（公开读缓存由 publishing 侧按事件失效）。
      *
      * @param kbId      知识库 ID
      * @param visibility 变更入参 {visibility: 0|1}

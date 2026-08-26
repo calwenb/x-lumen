@@ -104,7 +104,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 权限不足（F-0104 第一层：@PreAuthorize 接口权限）：统一 403。
+     * 权限不足（第一层：@PreAuthorize 接口权限）：统一 403。
      */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException e) {

@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 读者纠错实体（eng_feedback，F-1001）：匿名可提交（user_id 可空）；
+ * 读者纠错实体（eng_feedback）：匿名可提交（user_id 可空）；
  * track_no 业务唯一（uk_feedback_track_no），对外作为追踪号。
  *
  * @author calwen

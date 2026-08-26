@@ -25,9 +25,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * AI 写作执行器（F-0601，双轨合并后单轨）：统一走多步工作流 —— 大纲 → 分章流式 → 异源自审（REVIEWER）→ 修订，
+ * AI 写作执行器（双轨合并后单轨）：统一走多步工作流 —— 大纲 → 分章流式 → 异源自审（REVIEWER）→ 修订，
  * 全程无人工确认断点。降级语义：主链路失败（大纲解析失败/章节超限/单章生成失败）→ 任务 FAILED；
- * 增强步骤失败（自审失败/修订失败）→ 跳过修订交付初稿。OPT-2/D20 全量迁移：链路改走 ChatRuntime（Spring AI 消息类型）。
+ * 增强步骤失败（自审失败/修订失败）→ 跳过修订交付初稿。D20 全量迁移：链路改走 ChatRuntime（Spring AI 消息类型）。
  *
  * @author calwen
  * @date 2026/8/13

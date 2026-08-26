@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 审核通过入参（F-0903）：携带文章版本号做乐观锁校验。
+ * 审核通过入参：携带文章版本号做乐观锁校验。
  *
  * @author calwen
  * @date 2026/8/13

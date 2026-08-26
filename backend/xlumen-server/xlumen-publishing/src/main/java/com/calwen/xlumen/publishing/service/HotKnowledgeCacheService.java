@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * 热点读缓存（F-1301）：公开知识详情与标签聚合的 cache-aside 缓存。
+ * 热点读缓存：公开知识详情与标签聚合的 cache-aside 缓存。
  * KB-3 缓存分片（方案 §3.4）：详情键 xlumen:knowledge:detail:{id}（多用户公开读跨空间，
  * 访客视角全平台共享，键不含身份与空间），失效按库维度（发布/下架/可见性变更调用 evictByKb，
  * MVP 简化全量删 detail 前缀）；分类聚合缓存删除（category 废弃，决策 D16 改目录树）；

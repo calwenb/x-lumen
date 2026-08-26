@@ -2,7 +2,7 @@ import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
 
-// 身份接口封装（F-0101）：页面只调用本文件暴露的函数（FRONTEND.md §5/§8.1）。
+// 身份接口封装：页面只调用本文件暴露的函数（FRONTEND.md §5/§8.1）。
 
 export interface TokenPayload {
   accessToken: string

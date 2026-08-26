@@ -13,7 +13,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * 审核完成通知监听单测（IDEA-024）：REVIEWER 完结按 severity 汇总生成「通过/未通过/失败」消息，
+ * 审核完成通知监听单测：REVIEWER 完结按 severity 汇总生成「通过/未通过/失败」消息，
  * 非 REVIEWER 场景不打扰；消息链接指向审核中心。
  *
  * @author calwen

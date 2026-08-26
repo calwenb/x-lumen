@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Web 装配：请求 ID 过滤器（BACKEND.md §10/§15.2）。
  * UTF-8 字符编码由 Boot 自动配置 HttpEncodingAutoConfiguration 提供
- * （application.yml spring.servlet.encoding 绑定，BUG-028 修复）。
+ * （application.yml spring.servlet.encoding 绑定）。
  *
  * @author calwen
  * @date 2026/8/12

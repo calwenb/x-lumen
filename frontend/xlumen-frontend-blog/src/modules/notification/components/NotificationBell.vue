@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 消息铃铛（IDEA-024）：登录态顶栏组件——未读角标（30s 轮询）+ 下拉消息列表（最近 20 条）。
+// 消息铃铛：登录态顶栏组件——未读角标（30s 轮询）+ 下拉消息列表（最近 20 条）。
 // 消息点击：标记已读并跳转 link（审核结果 → /studio/review 审核中心）。
 import { onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -95,7 +95,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)} 天前`
 }
 
-/** 通知类型 → 弹窗颜色（IDEA-024）：未通过/失败=error，通过=success，其余 info。 */
+/** 通知类型 → 弹窗颜色：未通过/失败=error，通过=success，其余 info。 */
 function notificationType(title: string): 'success' | 'info' | 'warning' | 'error' {
   if (title.includes('未通过') || title.includes('失败')) return 'error'
   if (title.includes('通过')) return 'success'

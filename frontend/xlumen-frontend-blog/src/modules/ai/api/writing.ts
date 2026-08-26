@@ -1,4 +1,4 @@
-// ai 模块 API：AI 写作任务（F-0601/F-0604，B11）——提交任务、查询任务、重试。
+// ai 模块 API：AI 写作任务（B11）——提交任务、查询任务、重试。
 // 流式输出走 utils/sse.ts（fetch 读取，需 Authorization 头），不在本文件处理。
 // ID 为 string（雪花 ID 后端 Long 序列化为 String，BACKEND.md §5.3）。
 import { http, unwrap } from '@/api/http'
@@ -36,14 +36,14 @@ interface RawTask {
   errorMsg: string | null
 }
 
-/** 提交写作任务（F-0601）。 */
+/** 提交写作任务。 */
 export async function submitWriting(payload: WritingRequest): Promise<WritingTaskSubmitted> {
   const { data } = await http.post<ApiResponse<WritingTaskSubmitted>>('/ai/writing', payload)
   const result = unwrap(data)
   return { taskId: String(result.taskId) }
 }
 
-/** 查询写作任务详情（F-0604，流结束后回拉最终结果）。 */
+/** 查询写作任务详情（流结束后回拉最终结果）。 */
 export async function fetchWritingTask(taskId: string): Promise<AiWritingTask> {
   const { data } = await http.get<ApiResponse<RawTask>>(`/ai/tasks/${taskId}`)
   const task = unwrap(data)
@@ -56,7 +56,7 @@ export async function fetchWritingTask(taskId: string): Promise<AiWritingTask> {
   }
 }
 
-/** 重试失败任务（F-0604）。 */
+/** 重试失败任务。 */
 export async function retryWritingTask(taskId: string): Promise<void> {
   await http.post<ApiResponse<unknown>>(`/ai/tasks/${taskId}/retry`)
 }

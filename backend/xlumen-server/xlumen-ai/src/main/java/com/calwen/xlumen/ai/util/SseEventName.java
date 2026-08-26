@@ -24,9 +24,9 @@ public final class SseEventName {
     /** 错误。 */
     public static final String ERROR = "error";
 
-    /** 对话引用证据（Q：F-0405 引用溯源）。 */
+    /** 对话引用证据（Q）。 */
     public static final String CITATION = "citation";
 
-    /** 工具调用过程事件（Q：IDEA-025 工具轨迹）。 */
+    /** 工具调用过程事件（Q）。 */
     public static final String TOOL = "tool";
 }

@@ -20,7 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 知识反应服务单元测试（F-0212）：三态互斥 toggle 语义
+ * 知识反应服务单元测试：三态互斥 toggle 语义
  * （无反应->激活、同类型->取消、异类型->切换）。
  *
  * @author calwen

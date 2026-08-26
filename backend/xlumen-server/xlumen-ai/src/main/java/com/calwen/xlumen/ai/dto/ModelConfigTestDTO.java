@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 模型连通性测试入参（F-0502）：指定供应商+模型发一句 ping 验证连通性。
+ * 模型连通性测试入参：指定供应商+模型发一句 ping 验证连通性。
  *
  * @author calwen
  * @date 2026/8/13

@@ -13,7 +13,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
- * AI 模块对外接口单元测试（F-0808）：findLatestSummary 取最新一条并解析 summary 字段。
+ * AI 模块对外接口单元测试：findLatestSummary 取最新一条并解析 summary 字段。
  *
  * @author calwen
  * @date 2026/8/18

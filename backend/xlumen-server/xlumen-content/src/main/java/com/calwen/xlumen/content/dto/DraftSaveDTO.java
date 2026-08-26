@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 草稿自动保存入参（F-0302，决策 D16）：knowledgeId 为空时新建草稿（需 kbId 归属），
+ * 草稿自动保存入参（决策 D16）：knowledgeId 为空时新建草稿（需 kbId 归属），
  * 非空时按版本更新；服务端做内容幂等去重（内容未变跳过写库），前端 10s/失焦节流触发。
  *
  * @author calwen

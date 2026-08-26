@@ -2,7 +2,7 @@ import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
 
-// 空间设置接口封装（F-1201）：页面只调用本文件暴露的函数（FRONTEND.md §5/§8.1）。
+// 空间设置接口封装：页面只调用本文件暴露的函数（FRONTEND.md §5/§8.1）。
 
 export interface WorkspaceSettings {
   workspaceId: string
@@ -12,7 +12,7 @@ export interface WorkspaceSettings {
   forceReview: boolean
 }
 
-/** 更新入参（F-1201）：仅 intro 与 forceReview 可写。 */
+/** 更新入参：仅 intro 与 forceReview 可写。 */
 export interface WorkspaceSettingsUpdate {
   intro: string
   forceReview: boolean

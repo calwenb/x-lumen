@@ -1,7 +1,7 @@
-// chat 模块 API：AI 助理对话（F-0701，B00/D01）+ 知识级问答（F-0702，D02）。
+// chat 模块 API：AI 助理对话（B00/D01）+ 知识级问答（D02）。
 // 流式对话复用 ai/utils/sse.ts 的 fetch 解析（需 Authorization 头）；REST 走统一 http 客户端。
 // ID 为 string（雪花 ID 后端 Long 序列化为 String，BACKEND.md §5.3）。
-// IDEA-025 F-0708：SSE 新增 tool 事件（工具调用过程），历史消息透传工具轨迹（toolCalls）。
+// SSE 新增 tool 事件（工具调用过程），历史消息透传工具轨迹（toolCalls）。
 import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
@@ -17,7 +17,7 @@ export interface Conversation {
   updatedAt: string
 }
 
-/** 工具过程事件（SSE tool 事件负载，IDEA-025）。 */
+/** 工具过程事件（SSE tool 事件负载）。 */
 export interface ToolEvent {
   seq: number
   name: string
@@ -28,7 +28,7 @@ export interface ToolEvent {
   summary?: string
 }
 
-/** 历史消息中的工具调用记录（toolCallsJson 解析后，IDEA-025 轨迹回放）。 */
+/** 历史消息中的工具调用记录（toolCallsJson 解析后）。 */
 export interface ToolCallRecord {
   id: string
   name: string
@@ -76,7 +76,7 @@ interface RawMessage {
   toolCallsJson?: string | null
 }
 
-/** 会话列表（登录可见，F-0701）。 */
+/** 会话列表（登录可见）。 */
 export async function fetchConversations(): Promise<Conversation[]> {
   const { data } = await http.get<ApiResponse<RawConversation[]>>('/chat/conversations')
   return unwrap(data).map((item) => ({
@@ -86,7 +86,7 @@ export async function fetchConversations(): Promise<Conversation[]> {
   }))
 }
 
-/** 会话消息历史（F-0701）：TOOL 行不单独占消息位（按 tool_call_id 归并进 assistant 的工具面板）。 */
+/** 会话消息历史：TOOL 行不单独占消息位（按 tool_call_id 归并进 assistant 的工具面板）。 */
 export async function fetchMessages(conversationId: string): Promise<ChatMessage[]> {
   const { data } = await http.get<ApiResponse<RawMessage[]>>(`/chat/conversations/${conversationId}/messages`)
   return unwrap(data)
@@ -100,7 +100,7 @@ export async function fetchMessages(conversationId: string): Promise<ChatMessage
     }))
 }
 
-/** 新建会话（F-0701）：后端 data 直接返回 id 字符串（Long 全局序列化为 String）。 */
+/** 新建会话：后端 data 直接返回 id 字符串（Long 全局序列化为 String）。 */
 export async function createConversation(title: string): Promise<{ id: string }> {
   const { data } = await http.post<ApiResponse<string>>('/chat/conversations', { title })
   return { id: String(unwrap(data)) }
@@ -114,7 +114,7 @@ export interface ChatScope {
   allVisible?: boolean
 }
 
-/** 流式对话（F-0701）：chunk 文本增量 / tool 工具过程 / citation 引用 / done 会话归属。 */
+/** 流式对话：chunk 文本增量 / tool 工具过程 / citation 引用 / done 会话归属。 */
 export function streamChat(
   body: { query: string; conversationId?: string } & ChatScope,
   callbacks: ChatStreamCallbacks,
@@ -133,7 +133,7 @@ export function streamChat(
   )
 }
 
-/** 知识级流式问答（F-0702，D02）：scope 空=全部可见库；传 kbId=锁定当前知识库。 */
+/** 知识级流式问答（D02）：scope 空=全部可见库；传 kbId=锁定当前知识库。 */
 export function streamKnowledgeAsk(
   knowledgeId: string,
   query: string,

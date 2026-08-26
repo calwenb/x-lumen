@@ -1,9 +1,9 @@
 package com.calwen.xlumen.ai.enums;
 
 /**
- * AI 任务状态机（F-1302，BACKEND.md §14）：
+ * AI 任务状态机（BACKEND.md §14）：
  * QUEUED → RUNNING → COMPLETED；失败分支 FAILED，人工可 CANCELLED；
- * WAITING_APPROVAL 为 V2 大纲可选确认（F-0602）预留。
+ * WAITING_APPROVAL 为 V2 大纲可选确认预留。
  * 任务事实存 MySQL（决策 D6），进度存 Redis 短期状态。
  *
  * @author calwen
@@ -15,7 +15,7 @@ public enum AiTaskStatus {
     QUEUED,
     /** 执行中：执行器处理中。 */
     RUNNING,
-    /** 等待人工确认（V2 大纲确认 F-0602 预留，MVP 不启用）。 */
+    /** 等待人工确认（V2 大纲确认 ，MVP 不启用）。 */
     WAITING_APPROVAL,
     /** 已完成：结果写入 result_json。 */
     COMPLETED,

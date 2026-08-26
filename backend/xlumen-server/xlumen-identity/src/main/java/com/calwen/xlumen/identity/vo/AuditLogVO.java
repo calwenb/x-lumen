@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 审计日志视图（F-1202）。
+ * 审计日志视图。
  *
  * @author calwen
  * @date 2026/8/13

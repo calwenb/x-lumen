@@ -18,8 +18,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 知识反应服务实现（F-0203/F-0212）：三态互斥 toggle（赞/踩共用一行，唯一键幂等）+ 批量统计防 N+1。
- * 登录态接口的 workspaceId/userId 全部来自 WorkspaceContext（JWT claims，F-0104）。
+ * 知识反应服务实现：三态互斥 toggle（赞/踩共用一行，唯一键幂等）+ 批量统计防 N+1。
+ * 登录态接口的 workspaceId/userId 全部来自 WorkspaceContext（JWT claims）。
  *
  * @author calwen
  * @date 2026/8/12
@@ -50,7 +50,7 @@ public class LikeServiceImpl implements LikeService {
     }
 
     /**
-     * 三态互斥 toggle（F-0212）：一个用户对一篇知识只有一个活动反应。
+     * 三态互斥 toggle：一个用户对一篇知识只有一个活动反应。
      * 无记录或已取消 -> 激活指定类型；活动类型相同 -> 取消；活动类型不同 -> 切换为指定类型。
      */
     private String toggle(Long knowledgeId, int reactionType) {

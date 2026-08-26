@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test'
 
-// IDEAS 批次验收（F-0212/F-0213/F-0214/F-0312）：创作中心主导航、知识赞/踩互斥与收藏、
+// IDEAS 批次验收：创作中心主导航、知识赞/踩互斥与收藏、
 // 个人收藏页、评论点赞、目录树右键菜单。走用户可见语义；互动目标取公开列表第一篇已发布知识。
 test('互动与导航增强端到端验收', async ({ page }) => {
   test.setTimeout(90000)
   const username = `pw_enh_${Date.now().toString(36)}`
 
-  // --- 注册即登录（F-0101），注册成功回到首页 ---
+  // --- 注册即登录，注册成功回到首页 ---
   await page.goto('/login')
   await page.getByRole('tab', { name: '注册' }).click()
   await page.getByLabel('用户名').fill(username)
@@ -14,17 +14,17 @@ test('互动与导航增强端到端验收', async ({ page }) => {
   await page.getByRole('button', { name: '注册', exact: true }).click()
   await expect(page.getByRole('heading', { name: '全部知识库' })).toBeVisible()
 
-  // --- F-0214：主导航出现「创作中心」，点击进入创作工作台 ---
+  // --- 主导航出现「创作中心」，点击进入创作工作台 ---
   await page.getByRole('navigation').getByRole('link', { name: '创作中心' }).click()
   await expect(page).toHaveURL(/\/studio/)
 
-  // --- F-0212：头像下拉「我的收藏」进入收藏页，初始为空态 ---
+  // --- 头像下拉「我的收藏」进入收藏页，初始为空态 ---
   await page.getByRole('button', { name: `${username} 账号菜单` }).click()
   await page.getByRole('menuitem', { name: '我的收藏' }).click()
   await expect(page).toHaveURL(/\/favorites/)
   await expect(page.getByText(/还没有收藏|去知识库逛逛|空/).first()).toBeVisible()
 
-  // --- F-0212：公开知识详情页 赞/踩互斥 + 收藏 toggle ---
+  // --- 公开知识详情页 赞/踩互斥 + 收藏 toggle ---
   const list = await page.request.get('/api/v1/public/knowledge?pageNo=1&pageSize=1')
   const listData = ((await list.json()) as { data: { records: { id: string; title: string }[] } })
     .data
@@ -66,7 +66,7 @@ test('互动与导航增强端到端验收', async ({ page }) => {
   await page.getByRole('button', { name: /取消收藏/ }).first().click()
   await expect(page.getByText(/还没有收藏|去知识库逛逛|空/).first()).toBeVisible()
 
-  // --- F-0213：发表评论后点赞该评论 ---
+  // --- 发表评论后点赞该评论 ---
   await page.goto(`/knowledge/${knowledgeId}`)
   const content = `e2e 评论 ${Date.now().toString(36)}`
   await page.getByPlaceholder('写下你的评论…').fill(content)
@@ -79,7 +79,7 @@ test('互动与导航增强端到端验收', async ({ page }) => {
   await expect(commentLike).toHaveText(/[1-9]\d*/)
   await expect(commentLike).toHaveAttribute('aria-pressed', 'true')
 
-  // --- F-0312：首页左栏目录树右键菜单（新用户需先有知识库；注册不自动建库，测试经 API 建一个）---
+  // --- 首页左栏目录树右键菜单（新用户需先有知识库；注册不自动建库，测试经 API 建一个）---
   const loginResp = await page.request.post('/api/v1/auth/login', {
     data: { username, password: 'Test123456' },
   })

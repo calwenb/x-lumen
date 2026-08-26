@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 我的收藏（F-0212，PROTOTYPE B23）：登录用户收藏知识卡片流。
+// 我的收藏（PROTOTYPE B23）：登录用户收藏知识卡片流。
 // 卡片：标题（点击进详情）/作者/所属库/摘要/收藏时间 + 取消收藏（toggle 成功后本地移除并刷新计数）。
 // 状态：加载骨架、空态（引导去知识库发现页 /knowledge-bases）、失败重试；滚动触底自动追加。
 import { onMounted, ref } from 'vue'

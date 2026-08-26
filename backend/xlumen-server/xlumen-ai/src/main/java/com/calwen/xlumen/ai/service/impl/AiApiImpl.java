@@ -19,8 +19,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * AI 模块对外接口实现（BACKEND.md §5.2）：跨模块任务提交与查询（F-1302）
- * + 知识最新摘要查询（F-0808，publishing 详情页填充）。
+ * AI 模块对外接口实现（BACKEND.md §5.2）：跨模块任务提交与查询
+ * + 知识最新摘要查询（publishing 详情页填充）。
  * 调用方（content/publishing）通过 AiApi 提交写作/审校任务后轮询结果。
  *
  * @author calwen

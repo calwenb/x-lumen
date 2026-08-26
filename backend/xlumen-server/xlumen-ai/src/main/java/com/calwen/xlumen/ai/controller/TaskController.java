@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
- * AI 任务接口（F-1302）：任务状态查询、SSE 事件订阅、失败重试。
+ * AI 任务接口：任务状态查询、SSE 事件订阅、失败重试。
  *
  * @author calwen
  * @date 2026/8/13

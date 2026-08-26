@@ -10,9 +10,9 @@ import com.calwen.xlumen.publishing.dto.PageResult;
 import java.util.List;
 
 /**
- * 博客前台公开读服务（F-0201/F-0202）：编排 ContentApi 与互动统计。
- * 工作空间取默认空间（MVP 单空间，决策 D9），可见库集合按身份推导（F-0407 单一实现，决策 D13），
- * 私有/未发布知识不出现（F-0307 由 ContentApi 保证）。
+ * 博客前台公开读服务：编排 ContentApi 与互动统计。
+ * 工作空间取默认空间（MVP 单空间，决策 D9），可见库集合按身份推导，决策 D13），
+ * 私有/未发布知识不出现（ ContentApi 保证）。
  *
  * @author calwen
  * @date 2026/8/12
@@ -36,7 +36,7 @@ public interface PublicKnowledgeService {
     KnowledgeDetailVO getKnowledge(Long knowledgeId);
 
     /**
-     * 公开知识库探测（BUG-030）：公开库返回库信息，私有库/不存在统一 404
+     * 公开知识库探测：公开库返回库信息，私有库/不存在统一 404
      * 「知识库不存在或无权访问」——与知识详情「不可访问」语义一致，避免前端静默回退。
      *
      * @param kbId 知识库 ID
@@ -45,7 +45,7 @@ public interface PublicKnowledgeService {
     KnowledgeBaseVO getKnowledgeBase(Long kbId);
 
     /**
-     * 阅读量防刷自增（F-0203）：同一访客 24 小时内只计一次（Redis 短期状态，决策 D6）。
+     * 阅读量防刷自增：同一访客 24 小时内只计一次（Redis 短期状态，决策 D6）。
      *
      * @param knowledgeId  知识 ID
      * @param visitorKey 访客指纹（IP 等）
@@ -54,7 +54,7 @@ public interface PublicKnowledgeService {
     boolean recordView(Long knowledgeId, String visitorKey);
 
     /**
-     * 标签聚合（F-0202）。
+     * 标签聚合。
      *
      * @return 标签列表
      */

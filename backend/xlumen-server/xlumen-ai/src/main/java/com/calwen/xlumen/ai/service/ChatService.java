@@ -9,7 +9,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 
 /**
- * AI 对话服务（F-0701/F-0702）：RAG 检索增强问答（流式 SSE）+ 引用溯源 + 会话/消息管理。
+ * AI 对话服务：RAG 检索增强问答（流式 SSE）+ 引用溯源 + 会话/消息管理。
  *
  * @author calwen
  * @date 2026/8/13
@@ -25,7 +25,7 @@ public interface ChatService {
     SseEmitter streamChat(ChatRequestDTO dto);
 
     /**
-     * 知识级问答（F-0702）：限定单篇知识检索，SSE 事件同上。
+     * 知识级问答：限定单篇知识检索，SSE 事件同上。
      *
      * @param knowledgeId 知识 ID
      * @param dto       提问

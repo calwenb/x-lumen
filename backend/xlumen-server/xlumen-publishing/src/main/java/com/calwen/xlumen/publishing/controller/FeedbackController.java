@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 读者纠错接口（F-1001，B02 评论区）：匿名可提交（SecurityConfig 已放行 /api/v1/public/**）；
+ * 读者纠错接口（B02 评论区）：匿名可提交（SecurityConfig 已放行 /api/v1/public/**）；
  * 提交者 IP 由服务端从请求回填（用于限流，不信任请求体），工作空间取默认空间。
  *
  * @author calwen
@@ -27,7 +27,7 @@ public class FeedbackController {
     @Resource
     private FeedbackService feedbackService;
 
-    /** 提交读者纠错（F-1001）：匿名可提交，返回追踪号。 */
+    /** 提交读者纠错：匿名可提交，返回追踪号。 */
     @PostMapping
     public ApiResponse<FeedbackVO> createFeedback(@PathVariable Long knowledgeId,
                                                   @Valid @RequestBody CreateFeedbackDTO dto,

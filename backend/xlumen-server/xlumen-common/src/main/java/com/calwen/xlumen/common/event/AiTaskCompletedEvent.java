@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * AI 任务完结事件（进程内，IDEA-024）：AiTaskServiceImpl.complete/fail 发布，
+ * AI 任务完结事件（进程内）：AiTaskServiceImpl.complete/fail 发布，
  * 供通知模块等跨模块监听消费（任务在异步线程执行，无 WorkspaceContext，身份以显式字段为准）。
  *
  * @author calwen

@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 /**
- * 公开知识查询参数（F-0201/F-0202）：关键词/标签/库级筛选组合 + 服务端分页（B01/B03），
+ * 公开知识查询参数：关键词/标签/库级筛选组合 + 服务端分页（B01/B03），
  * 分页参数继承 {@link PageQueryDTO}。Spring MVC 自动绑定 GET 查询参数，字段默认值即接口默认值。
  * KB-3 起 category 废弃（决策 D16 改目录树），改 kbId/directoryId 库级筛选。
  *

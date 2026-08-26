@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 站内消息视图（IDEA-024）：id 转 String 传输（雪花 Long 精度，BACKEND.md §5.3）。
+ * 站内消息视图：id 转 String 传输（雪花 Long 精度，BACKEND.md §5.3）。
  *
  * @author calwen
  * @date 2026/8/24

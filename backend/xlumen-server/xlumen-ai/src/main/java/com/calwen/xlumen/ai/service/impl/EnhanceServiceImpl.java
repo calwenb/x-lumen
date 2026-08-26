@@ -21,8 +21,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * AI 增值服务实现（F-0801/F-0802/F-0808）：SUMMARY/SEO 同步生成，结构化校验后落 ai_enhance_result；
- * F-0808 抽出 generateAndStoreSummary 供发布事件监听（KnowledgePublishedSummaryListener）异步复用。
+ * AI 增值服务实现：SUMMARY/SEO 同步生成，结构化校验后落 ai_enhance_result；
+ * generateAndStoreSummary 供发布事件监听（KnowledgePublishedSummaryListener）异步复用。
  *
  * @author calwen
  * @date 2026/8/13
@@ -50,7 +50,7 @@ public class EnhanceServiceImpl implements EnhanceService {
         }
         AiScene scene = parseScene(dto.getScene());
         if (scene == AiScene.SUMMARY) {
-            // F-0808：SUMMARY 复用可复用的摘要生成方法（发布事件监听同款路径）
+            // SUMMARY 复用可复用的摘要生成方法（发布事件监听同款路径）
             return generateAndStoreSummary(workspaceId, dto.getKnowledgeId(), null, content);
         }
         String resultJson = generate(workspaceId, scene, content);
@@ -79,7 +79,7 @@ public class EnhanceServiceImpl implements EnhanceService {
         entity.setKnowledgeId(knowledgeId);
         entity.setScene(scene.name());
         entity.setResultJson(resultJson);
-        // BUG-010：DB 有 DEFAULT CURRENT_TIMESTAMP 但 MyBatis-Plus insert 不回填内存实体，需手动赋值
+        // DB 有 DEFAULT CURRENT_TIMESTAMP 但 MyBatis-Plus insert 不回填内存实体，需手动赋值
         entity.setCreatedAt(java.time.LocalDateTime.now());
         enhanceResultMapper.insert(entity);
         return EnhanceResultVO.builder()

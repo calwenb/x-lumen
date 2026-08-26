@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 知识实体（cnt_knowledge，F-0201，决策 D16）：单库单目录归属（kb_id+directory_id），
+ * 知识实体（cnt_knowledge，决策 D16）：单库单目录归属（kb_id+directory_id），
  * 可见性由所属知识库决定（无独立 visibility 列）；回收站用 recycle_status+deleted_at
  * 独立软删标记（不扩 8 状态机）。tags 为 MySQL JSON 列，经 JacksonTypeHandler 映射 List&lt;String&gt;。
  *
@@ -53,21 +53,21 @@ public class KnowledgeEntity {
     /** 正文 Markdown（已发布版本正文快照）。 */
     private String content;
 
-    /** 标签数组（公开筛选维度，F-0202）。 */
+    /** 标签数组（公开筛选维度）。 */
     @TableField(typeHandler = JacksonTypeHandler.class)
     private List<String> tags;
 
-    /** 状态：1 构思 2 草稿 3 待审核 4 已通过 5 定时发布 6 已发布 7 更新中 8 已下架（F-0901 八状态机，见 KnowledgeStatus）。 */
+    /** 状态：1 构思 2 草稿 3 待审核 4 已通过 5 定时发布 6 已发布 7 更新中 8 已下架，见 KnowledgeStatus）。 */
     private Integer status;
 
     /** 版本号（乐观锁，审核/发布/更新必须校验，冲突 HTTP 409）。 */
     @Version
     private Long version;
 
-    /** 阅读量（F-0203，Redis 防刷后自增）。 */
+    /** 阅读量（Redis 防刷后自增）。 */
     private Long viewCount;
 
-    /** 回收站状态：0 正常 1 回收站（F-0305，独立软删标记，不扩状态机）。 */
+    /** 回收站状态：0 正常 1 回收站（独立软删标记，不扩状态机）。 */
     private Integer recycleStatus;
 
     /** 进回收站时间（超期 30 天清理依据）。 */

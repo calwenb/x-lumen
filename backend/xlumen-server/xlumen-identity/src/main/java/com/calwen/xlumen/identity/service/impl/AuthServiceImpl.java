@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 认证服务实现（F-0101）：注册（注册即建空间，决策 D9）/登录/登出/刷新。
+ * 认证服务实现：注册（注册即建空间，决策 D9）/登录/登出/刷新。
  * 登录失败统一提示 + 统一延迟防枚举（PRODUCT §10）；刷新令牌 GETDEL 轮换防重放（BACKEND.md §15.3）。
  *
  * @author calwen

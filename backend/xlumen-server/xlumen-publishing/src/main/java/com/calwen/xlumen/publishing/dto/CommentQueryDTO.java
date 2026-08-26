@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 /**
- * 评论列表查询参数（F-0203）：文章 ID 走路径变量，分页参数继承 {@link PageQueryDTO}（默认值即接口默认值）。
+ * 评论列表查询参数：文章 ID 走路径变量，分页参数继承 {@link PageQueryDTO}（默认值即接口默认值）。
  *
  * @author calwen
  * @date 2026/8/12

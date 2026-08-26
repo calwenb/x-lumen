@@ -28,8 +28,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * 知识收藏服务实现（F-0212）：toggle 幂等（唯一键）+ 我的收藏分页（可见性过滤后组装）。
- * 登录态接口的 workspaceId/userId 全部来自 WorkspaceContext（JWT claims，F-0104）。
+ * 知识收藏服务实现：toggle 幂等（唯一键）+ 我的收藏分页（可见性过滤后组装）。
+ * 登录态接口的 workspaceId/userId 全部来自 WorkspaceContext（JWT claims）。
  *
  * @author calwen
  * @date 2026/8/18
@@ -111,7 +111,7 @@ public class FavoriteServiceImpl implements FavoriteService {
         if (userId == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
-        // 可见库集合按身份推导（F-0407 单一实现，决策 D13）：与公开列表同一可见性口径
+        // 可见库集合按身份推导，决策 D13）：与公开列表同一可见性口径
         List<Long> visibleKbIds = knowledgeApi.resolveVisibleKbIds(userId);
         Page<FavoriteEntity> page = favoriteMapper.selectPage(new Page<>(query.getPageNo(), query.getPageSize()),
                 Wrappers.<FavoriteEntity>lambdaQuery()

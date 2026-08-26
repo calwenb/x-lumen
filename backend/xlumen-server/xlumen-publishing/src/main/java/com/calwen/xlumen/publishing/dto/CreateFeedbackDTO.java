@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 读者纠错入参（F-1001）：匿名可提交；ip 由 Controller 从请求中取回填（不来自请求体）。
+ * 读者纠错入参：匿名可提交；ip 由 Controller 从请求中取回填（不来自请求体）。
  *
  * @author calwen
  * @date 2026/8/13

@@ -6,7 +6,7 @@ import com.calwen.xlumen.ai.vo.ModelConfigVO;
 import java.util.List;
 
 /**
- * 场景模型配置服务（F-0502）：表优先、AiProperties 默认回退；管理面增改查（密钥永不返回）。
+ * 场景模型配置服务：表优先、AiProperties 默认回退；管理面增改查（密钥永不返回）。
  *
  * @author calwen
  * @date 2026/8/13

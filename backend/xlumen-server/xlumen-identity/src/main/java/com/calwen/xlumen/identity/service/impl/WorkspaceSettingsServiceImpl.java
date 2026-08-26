@@ -20,7 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 工作空间设置服务实现（F-1201）：简介 + 强制审核开关（决策 D9）；更新后写审计 WORKSPACE_SETTINGS_UPDATE。
+ * 工作空间设置服务实现：简介 + 强制审核开关（决策 D9）；更新后写审计 WORKSPACE_SETTINGS_UPDATE。
  * 设置内容校验/权限在 Controller 入口（登录态）+ 本服务（第二层：空间存在性）完成。
  *
  * @author calwen

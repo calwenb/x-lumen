@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 场景模型配置更新入参（F-0502，管理面 A03）：密钥不入表，仅改供应商/模型/参数。
+ * 场景模型配置更新入参（管理面 A03）：密钥不入表，仅改供应商/模型/参数。
  *
  * @author calwen
  * @date 2026/8/13

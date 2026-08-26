@@ -18,7 +18,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 发布后异步审核监听单测（IDEA-024）：仅对 auto_mode=1 且 PENDING 的 REVIEWER 任务驱动
+ * 发布后异步审核监听单测：仅对 auto_mode=1 且 PENDING 的 REVIEWER 任务驱动
  * finalizeAutoReview；非自动模式/未知任务/非审核场景不动作；回调异常不抛出（不中断同事件其他监听）。
  *
  * @author calwen

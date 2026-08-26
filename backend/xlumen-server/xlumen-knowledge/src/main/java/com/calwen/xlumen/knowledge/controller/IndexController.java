@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 知识索引管理接口（F-0404 检索测试 / 索引状态）：均需登录（SecurityConfig 兜底），
+ * 知识索引管理接口（ / 索引状态）：均需登录（SecurityConfig 兜底），
  * 检索测试范围为当前用户全部可见库（resolveVisibleKbIds，决策 D13），供博主校验发布即索引效果。
  *
  * @author calwen
@@ -41,7 +41,7 @@ public class IndexController {
     private KnowledgeApi knowledgeApi;
 
     /**
-     * 检索测试（F-0404）：Embedding(query) → 向量检索，返回含 score/段落/切片的结果列表。
+     * 检索测试：Embedding(query) → 向量检索，返回含 score/段落/切片的结果列表。
      *
      * @param request 检索测试入参（query/topK）
      * @return 检索结果列表
@@ -61,7 +61,7 @@ public class IndexController {
     }
 
     /**
-     * 索引状态查询（F-0403/F-0404）：未索引返回 data=null。
+     * 索引状态查询：未索引返回 data=null。
      *
      * @param knowledgeId 知识 ID
      * @return 索引状态或 null

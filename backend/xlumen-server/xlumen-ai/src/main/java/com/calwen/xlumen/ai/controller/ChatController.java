@@ -18,7 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 
 /**
- * AI 对话接口（F-0701/F-0702）：流式问答（SSE chunk/citation/done）、知识级问答、会话/消息管理。
+ * AI 对话接口：流式问答（SSE chunk/citation/done）、知识级问答、会话/消息管理。
  *
  * @author calwen
  * @date 2026/8/13
@@ -42,7 +42,7 @@ public class ChatController {
     }
 
     /**
-     * 知识级问答（F-0702，流式 SSE）：限定单篇知识检索。
+     * 知识级问答（流式 SSE）：限定单篇知识检索。
      */
     @PostMapping("/knowledge/{knowledgeId}/ask")
     public SseEmitter ask(@PathVariable Long knowledgeId,

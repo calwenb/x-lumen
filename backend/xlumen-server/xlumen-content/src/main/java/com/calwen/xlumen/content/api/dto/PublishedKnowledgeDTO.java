@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 公开知识卡片（F-0201）：公开列表展示用，不返回正文（详情接口才返回）。
+ * 公开知识卡片：公开列表展示用，不返回正文（详情接口才返回）。
  * KB-3 起携带库信息（决策 D16，卡片库 badge 跳库）。
  *
  * @author calwen

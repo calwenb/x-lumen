@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 场景模型配置接口（F-0502，管理面 A03）：仅博主（OWNER）可管理，密钥永不返回。
+ * 场景模型配置接口（管理面 A03）：仅博主（OWNER）可管理，密钥永不返回。
  *
  * @author calwen
  * @date 2026/8/13

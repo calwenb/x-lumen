@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 创建目录入参（F-0309）：parentId 为 0 表示库根下的一级目录。
+ * 创建目录入参：parentId 为 0 表示库根下的一级目录。
  *
  * @author calwen
  * @date 2026/8/14

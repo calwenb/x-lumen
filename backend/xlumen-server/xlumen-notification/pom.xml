@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- xlumen-notification：站内消息（noti_ 前缀，IDEA-024 通用通知模块）。
-     与审核业务解耦：消费 AI 任务完结领域事件（AiTaskCompletedEvent），评论回复/@小光（F-1005）等事件可复用同一套站内信能力。
+<!-- xlumen-notification：站内消息（noti_ 前缀）。
+     与审核业务解耦：消费 AI 任务完结领域事件（AiTaskCompletedEvent），评论回复/@小光等事件可复用同一套站内信能力。
      依赖 common（WorkspaceContext/事件/ApiResponse）与 identity（可选用户反查）；不依赖 ai/publishing。 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

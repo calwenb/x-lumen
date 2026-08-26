@@ -5,7 +5,7 @@ import com.calwen.xlumen.publishing.entity.CommentReactionEntity;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 评论反应数据访问（eng_comment_reaction，F-0213）：仅 publishing 模块使用。
+ * 评论反应数据访问（eng_comment_reaction）：仅 publishing 模块使用。
  *
  * @author calwen
  * @date 2026/8/18

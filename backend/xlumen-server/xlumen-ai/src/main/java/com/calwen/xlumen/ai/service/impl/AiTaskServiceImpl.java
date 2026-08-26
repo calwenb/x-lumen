@@ -24,7 +24,7 @@ import java.time.Duration;
 import java.util.List;
 
 /**
- * AI 任务底座实现（F-1302）：幂等提交落库 QUEUED、状态流转、Redis 进度、有限重试、启动恢复。
+ * AI 任务底座实现：幂等提交落库 QUEUED、状态流转、Redis 进度、有限重试、启动恢复。
  *
  * @author calwen
  * @date 2026/8/13
@@ -124,7 +124,7 @@ public class AiTaskServiceImpl implements AiTaskService {
         publishCompleted(task);
     }
 
-    /** 发布任务完结事件（IDEA-024）：通知模块等跨模块监听消费；监听器异常不影响任务完结。 */
+    /** 发布任务完结事件：通知模块等跨模块监听消费；监听器异常不影响任务完结。 */
     private void publishCompleted(AiTaskEntity task) {
         try {
             eventPublisher.publishEvent(AiTaskCompletedEvent.builder()

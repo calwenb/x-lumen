@@ -1,6 +1,6 @@
-// publishing 模块 API：博客前台公开读（F-0201/F-0202）——知识/标签（后端 xlumen-publishing review/release 域）。
+// publishing 模块 API：博客前台公开读——知识/标签（后端 xlumen-publishing review/release 域）。
 // KB-3 起分类字段废弃（决策 D16 目录树接管），知识卡片改携 kbId/kbName/directoryId，查询改 kbId/directoryId 库级筛选。
-// 公开读为匿名接口；评论/点赞（F-0203）由 engagement 模块 API 提供。
+// 公开读为匿名接口；评论/点赞由 engagement 模块 API 提供。
 // ID 类字段为 string（雪花 ID 超出 JS 安全整数，后端 Long 序列化为 String，BACKEND.md §5.3）；
 // 统计/分页数值在 API 层 Number() 还原，页面代码不感知。
 import { http, unwrap } from '@/api/http'
@@ -24,7 +24,7 @@ export interface KnowledgeCard {
   publishedAt: string
 }
 
-/** 知识详情（B02；F-0212 起携带点踩/收藏统计与收藏态，F-0808 起携带 AI 摘要）。 */
+/** 知识详情（B02；起携带点踩/收藏统计与收藏态， AI 摘要）。 */
 export interface KnowledgeDetail extends KnowledgeCard {
   content: string
   liked: boolean
@@ -63,7 +63,7 @@ function toNumber(value: unknown): number {
   return Number(value ?? 0)
 }
 
-/** 分页查询公开知识（关键词/标签/知识库/目录组合筛选，F-0201/F-0202）。 */
+/** 分页查询公开知识（关键词/标签/知识库/目录组合筛选）。 */
 export async function fetchKnowledges(query: KnowledgeQuery): Promise<PageResult<KnowledgeCard>> {
   const { data } = await http.get<ApiResponse<RawPage<RawCard>>>('/public/knowledge', {
     params: query,
@@ -83,7 +83,7 @@ export async function fetchKnowledges(query: KnowledgeQuery): Promise<PageResult
   }
 }
 
-/** 知识详情（F-0201，B02）。 */
+/** 知识详情（B02）。 */
 export async function fetchKnowledge(id: string): Promise<KnowledgeDetail> {
   const { data } = await http.get<ApiResponse<RawKnowledgeDetail>>(`/public/knowledge/${id}`)
   const knowledge = unwrap(data)
@@ -98,13 +98,13 @@ export async function fetchKnowledge(id: string): Promise<KnowledgeDetail> {
   }
 }
 
-/** 阅读量上报（F-0203，匿名；同访客 24 小时窗口只计一次）。 */
+/** 阅读量上报（匿名；同访客 24 小时窗口只计一次）。 */
 export async function reportView(id: string): Promise<void> {
   const { data } = await http.post<ApiResponse<boolean>>(`/public/knowledge/${id}/view`)
   unwrap(data)
 }
 
-/** 标签聚合（F-0202，B01 侧栏/B03 筛选）。 */
+/** 标签聚合（B01 侧栏/B03 筛选）。 */
 export async function fetchTags(): Promise<CategoryCount[]> {
   const { data } = await http.get<ApiResponse<RawCategoryCount[]>>('/public/tags')
   return unwrap(data).map((item) => ({ ...item, count: toNumber(item.count) }))

@@ -14,7 +14,7 @@ import java.util.concurrent.Executors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 工具适配器单测（OPT-2/D20 全量迁移）：信封语义、预算上限信封、超时错误信封、事件与配对收集
+ * 工具适配器单测（D20 全量迁移）：信封语义、预算上限信封、超时错误信封、事件与配对收集
  * （替代原 ToolRegistryTest 的防护语义断言；工具循环本身由 ChatRuntimeImplTest 覆盖）。
  *
  * @author calwen

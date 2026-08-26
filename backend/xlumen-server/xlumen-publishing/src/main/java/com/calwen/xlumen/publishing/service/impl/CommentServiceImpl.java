@@ -26,8 +26,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 评论服务实现（F-0203/F-0213）：列表/发表 + 批量统计防 N+1（评论数与赞/踩计数同模式聚合）。
- * 登录态接口的 workspaceId/userId/userName 全部来自 WorkspaceContext（JWT claims，F-0104）。
+ * 评论服务实现：列表/发表 + 批量统计防 N+1（评论数与赞/踩计数同模式聚合）。
+ * 登录态接口的 workspaceId/userId/userName 全部来自 WorkspaceContext（JWT claims）。
  *
  * @author calwen
  * @date 2026/8/12
@@ -90,7 +90,7 @@ public class CommentServiceImpl implements CommentService {
         comment.setParentId(dto.getParentId());
         comment.setContent(dto.getContent().trim());
         comment.setStatus(STATUS_NORMAL);
-        // BUG-010：DB 有 DEFAULT CURRENT_TIMESTAMP 但 MyBatis-Plus insert 不回填内存实体，
+        // DB 有 DEFAULT CURRENT_TIMESTAMP 但 MyBatis-Plus insert 不回填内存实体，
         // 不手动赋值则返回 VO 的 createdAt 为 null（前端「xx 天前」把 null 当 1970）。
         comment.setCreatedAt(LocalDateTime.now());
         commentMapper.insert(comment);

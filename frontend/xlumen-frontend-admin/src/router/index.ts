@@ -11,7 +11,7 @@ declare module 'vue-router' {
   }
 }
 
-// 管理后台准入角色（F-0101）：仅 OWNER/ADMIN 可进
+// 管理后台准入角色：仅 OWNER/ADMIN 可进
 const ADMIN_ROLES = ['OWNER', 'ADMIN']
 
 const router = createRouter({

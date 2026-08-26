@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 反应状态视图（F-0212/F-0213）：toggle 后当前用户对资源的活动反应。
+ * 反应状态视图：toggle 后当前用户对资源的活动反应。
  * LIKE=已点赞、DISLIKE=已点踩、NONE=无活动反应（已取消）。
  *
  * @author calwen

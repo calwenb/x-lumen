@@ -22,7 +22,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 /**
- * 读者纠错服务实现（F-1001）：匿名可提交（user_id 可空），同一 IP 每分钟 1 条限流（M11，Redis 降级放行）。
+ * 读者纠错服务实现：匿名可提交（user_id 可空），同一 IP 每分钟 1 条限流（M11，Redis 降级放行）。
  * 工作空间取默认空间（MVP 单空间，决策 D9）。
  *
  * @author calwen

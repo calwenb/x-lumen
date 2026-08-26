@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 知识反应服务（F-0203/F-0212）：三态互斥 toggle（赞/踩共用一行）、状态查询与批量统计（eng_like 表）。
+ * 知识反应服务：三态互斥 toggle（赞/踩共用一行）、状态查询与批量统计（eng_like 表）。
  * 登录态接口的用户/空间上下文从 WorkspaceContext 读取。
  *
  * @author calwen

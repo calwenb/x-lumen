@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * AI 对话消息视图（F-0701/F-0702）：历史消息展示，citationsJson 为引用证据快照文本；
- * toolCallsJson/toolCallId/toolName 为 IDEA-025 F-0708 工具轨迹透传（assistant 行 toolCallsJson，tool 行 toolCallId/toolName）。
+ * AI 对话消息视图：历史消息展示，citationsJson 为引用证据快照文本；
+ * toolCallsJson/toolCallId/toolName 为 工具轨迹透传（assistant 行 toolCallsJson，tool 行 toolCallId/toolName）。
  *
  * @author calwen
  * @date 2026/8/13

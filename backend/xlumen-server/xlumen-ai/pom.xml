@@ -56,7 +56,7 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-        <!-- 全量迁移后的 AI 模型客户端（OPT-2/D20）：ChatModel/ChatClient/ToolCallback，版本随父 BOM
+        <!-- 全量迁移后的 AI 模型客户端（D20）：ChatModel/ChatClient/ToolCallback，版本随父 BOM
              （自动配置由装配层 spring.ai.model.*: none 关闭，双供应商手动装配） -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
@@ -75,7 +75,7 @@
             <artifactId>hutool-core</artifactId>
         </dependency>
 
-        <!-- JSON 解析（结构化输出 Schema 校验，F-0604） -->
+        <!-- JSON 解析（结构化输出 Schema 校验） -->
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-json</artifactId>

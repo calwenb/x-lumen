@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * AI 供应商配置（F-0501）：绑定 .env 的 XLUMEN_ 变量（决策 D8 唯一配置载体，GLOBAL.md §6.2）。
+ * AI 供应商配置：绑定 .env 的 XLUMEN_ 变量（决策 D8 唯一配置载体，GLOBAL.md §6.2）。
  * .env 提供服务器级默认密钥与默认模型；业务级场景配置在 ai_scene_config 表（管理面 A03），运行时表优先、.env 回退。
  * 注：Boot 4 的 Binder 对 .env 导入的大写属性不做 relaxed binding，改用 @Value 显式占位符绑定（与 application.yml 同源可靠）。
  *
@@ -64,27 +64,27 @@ public class AiProperties {
     @Value("${XLUMEN_DEEPSEEK_MODEL_SUMMARY:deepseek-chat}")
     private String deepseekModelSummary;
 
-    /** Agent 最大循环轮数（IDEA-025 F-0708）：对话工具循环上限，用尽后最后一轮禁工具强制作答。 */
+    /** Agent 最大循环轮数：对话工具循环上限，用尽后最后一轮禁工具强制作答。 */
     @Value("${XLUMEN_AGENT_MAX_ROUNDS:5}")
     private int agentMaxRounds;
 
-    /** 单工具执行超时（毫秒，IDEA-025）：超时返回错误信封，孤儿 future 结果丢弃。 */
+    /** 单工具执行超时（毫秒）：超时返回错误信封，孤儿 future 结果丢弃。 */
     @Value("${XLUMEN_AGENT_TOOL_TIMEOUT_MILLIS:10000}")
     private long agentToolTimeoutMillis;
 
-    /** 单请求工具调用总次数上限（IDEA-025）：超出部分截断并给错误信封。 */
+    /** 单请求工具调用总次数上限：超出部分截断并给错误信封。 */
     @Value("${XLUMEN_AGENT_MAX_TOOL_CALLS:8}")
     private int agentMaxToolCalls;
 
-    /** 单工具结果截断长度（IDEA-025）：超长截断并附 truncated:true。 */
+    /** 单工具结果截断长度：超长截断并附 truncated:true。 */
     @Value("${XLUMEN_AGENT_TOOL_RESULT_MAX_CHARS:8000}")
     private int agentToolResultMaxChars;
 
-    /** 审校事实核对轮数上限（IDEA-025 F-0604）：发布闸门路径总耗时应可控。 */
+    /** 审校事实核对轮数上限：发布闸门路径总耗时应可控。 */
     @Value("${XLUMEN_REVIEWER_AGENT_MAX_ROUNDS:2}")
     private int reviewerAgentMaxRounds;
 
-    /** 多步写作章节上限（IDEA-025 F-0608）：大纲超过则回退单次生成模式。 */
+    /** 多步写作章节上限：大纲超过则回退单次生成模式。 */
     @Value("${XLUMEN_WRITING_MAX_CHAPTERS:8}")
     private int writingMaxChapters;
 }

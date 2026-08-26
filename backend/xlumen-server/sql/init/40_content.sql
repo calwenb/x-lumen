@@ -1,11 +1,11 @@
 -- 40_content.sql：xlumen-content 模块（cnt_ 知识主体）
--- M03 落地公开读所需字段（F-0201 列表/详情、F-0202 标签搜索）；M04 落地编辑字段（F-0301 CRUD/F-0302 自动保存）；KB-2 落地库/目录归属与回收站（F-0308/F-0309/F-0305，删除文章级 category/visibility，决策 D16）。
--- 完整 8 状态内容状态机（构思→草稿→待审核→已通过→定时发布→已发布→更新中→已下架）随 M10（F-0901）细化流转逻辑。
+-- M03 落地公开读所需字段（列表/详情）；M04 落地编辑字段（CRUD）；KB-2 落地库/目录归属与回收站（删除文章级 category/visibility，决策 D16）。
+-- 完整 8 状态内容状态机（构思→草稿→待审核→已通过→定时发布→已发布→更新中→已下架）随 M10细化流转逻辑。
 
 USE `xlumen_dev`;
 SET NAMES utf8mb4;
 
--- 知识主体（F-0201/F-0301，决策 D16）：归属单库单目录（kb_id+directory_id）；可见性由所属知识库决定（无独立 visibility 列）；回收站用 recycle_status+deleted_at（不扩 8 状态机）
+-- 知识主体（决策 D16）：归属单库单目录（kb_id+directory_id）；可见性由所属知识库决定（无独立 visibility 列）；回收站用 recycle_status+deleted_at（不扩 8 状态机）
 CREATE TABLE IF NOT EXISTS `cnt_knowledge` (
     `id`             BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
     `workspace_id`   BIGINT       NOT NULL COMMENT '工作空间 ID（逻辑外键 iam_workspace.id）',
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `cnt_knowledge` (
 --   UPDATE cnt_knowledge SET status = CASE status WHEN 1 THEN 2 WHEN 2 THEN 6 WHEN 3 THEN 8 ELSE status END;
 --   UPDATE cnt_knowledge SET status = 2 WHERE status NOT BETWEEN 1 AND 8;
 
--- 知识版本快照表（F-0303 历史版本，BUG-014 补全）：每次落库（创建/更新/自动保存）记录当时标题/正文快照
+-- 知识版本快照表：每次落库（创建/更新/自动保存）记录当时标题/正文快照
 CREATE TABLE IF NOT EXISTS `cnt_knowledge_version` (
     `id`           BIGINT     NOT NULL COMMENT '主键（雪花 ID）',
     `workspace_id` BIGINT     NOT NULL COMMENT '工作空间 ID（逻辑外键 iam_workspace.id）',

@@ -17,7 +17,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 /**
- * AI 写作服务实现（F-0601）：topic/draft/content 三选一校验，幂等键取内容 SHA-256。
+ * AI 写作服务实现：topic/draft/content 三选一校验，幂等键取内容 SHA-256。
  *
  * @author calwen
  * @date 2026/8/13

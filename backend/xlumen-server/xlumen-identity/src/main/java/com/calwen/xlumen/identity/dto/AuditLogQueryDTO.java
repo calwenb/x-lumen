@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 /**
- * 审计日志查询参数（F-1202）：action 可空（为空查全部），分页参数继承 {@link PageQueryDTO}。
+ * 审计日志查询参数：action 可空（为空查全部），分页参数继承 {@link PageQueryDTO}。
  * Spring MVC 自动绑定 GET 查询参数。
  *
  * @author calwen

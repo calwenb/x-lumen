@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 应用根组件：顶栏（品牌 Logo、主导航：知识/知识库/创作中心(登录态，F-0214)/AI小光、全局搜索框、
+// 应用根组件：顶栏（品牌 Logo、主导航：知识/知识库/创作中心(登录态)/AI小光、全局搜索框、
 // 写知识 CTA、头像菜单，PROTOTYPE §5.1）与路由出口。
 // 当前导航项高亮用 router-link-exact-active（首页 / 为全部路由父级，router-link-active 会全站匹配误高亮）。
 import { computed, ref } from 'vue'
@@ -89,7 +89,7 @@ function handleNavCommand(command: string): void {
           <el-icon class="app-header__link-icon"><Collection /></el-icon>
           知识库
         </RouterLink>
-        <!-- 创作中心（F-0214）：一级导航，仅登录态显示 -->
+        <!-- 创作中心：一级导航，仅登录态显示 -->
         <RouterLink v-if="session.loggedIn" class="app-header__link" :to="{ name: 'workbench' }">
           <el-icon class="app-header__link-icon"><Monitor /></el-icon>
           创作中心
@@ -127,7 +127,7 @@ function handleNavCommand(command: string): void {
           >登录 / 注册</RouterLink
         >
         <template v-else>
-          <!-- IDEA-024 通用消息：AI 审核完成等站内提醒（仅登录态） -->
+          <!-- 通用消息：AI 审核完成等站内提醒（仅登录态） -->
           <NotificationBell />
           <RouterLink class="app-header__write" :to="{ name: 'knowledge-new' }">
             <el-icon class="app-header__write-icon"><EditPen /></el-icon>

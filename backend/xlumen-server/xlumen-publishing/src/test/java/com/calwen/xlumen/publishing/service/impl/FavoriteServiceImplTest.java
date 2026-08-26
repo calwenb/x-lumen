@@ -32,7 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 知识收藏服务单元测试（F-0212）：toggle 幂等 + 收藏列表可见性过滤。
+ * 知识收藏服务单元测试：toggle 幂等 + 收藏列表可见性过滤。
  *
  * @author calwen
  * @date 2026/8/18

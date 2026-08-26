@@ -38,7 +38,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 发布服务实现（F-0904/F-0905）：立即/定时发布，发布成功发布 KnowledgePublishedEvent 进程内事件、
+ * 发布服务实现：立即/定时发布，发布成功发布 KnowledgePublishedEvent 进程内事件、
  * 写审计 KNOWLEDGE_PUBLISH 并失效热点缓存；定时发布幂等（状态 + 乐观锁双保险）。
  *
  * @author calwen
@@ -82,10 +82,10 @@ public class ReleaseServiceImpl implements ReleaseService {
         if (knowledge == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
         }
-        // 幂等兜底：同一知识同一提交版本只允许一次发布记录（F-0905）。放在状态检查之前——
+        // 幂等兜底：同一知识同一提交版本只允许一次发布记录。放在状态检查之前——
         // 自动审核发布链路（finalizeAutoReview）已建立记录后审核中心重复点「发布」直接返回既有记录，
         // 不再被「仅审核通过的知识可发布」误拦 409。
-        // BUG-007 配套：发布入参版本是审核通过时的快照版本，approve 状态迁移经 @Version 乐观锁
+        // 配套：发布入参版本是审核通过时的快照版本，approve 状态迁移经 @Version 乐观锁
         // 会把知识版本号 +1，故不在此强校验 dto.version 与知识当前版本相等；真正迁移的
         // expectedVersion 在 doRelease 内取知识当前版本（防覆盖并发），幂等由本查询保证。
         ReleaseEntity existing = releaseMapper.selectOne(Wrappers.<ReleaseEntity>lambdaQuery()

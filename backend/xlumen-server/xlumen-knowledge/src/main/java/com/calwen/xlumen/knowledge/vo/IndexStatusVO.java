@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 索引状态视图（F-0403/F-0404）：知识当前索引版本状态，供管理面展示与重试判断。
+ * 索引状态视图：知识当前索引版本状态，供管理面展示与重试判断。
  * 未索引时接口返回 data=null。
  *
  * @author calwen

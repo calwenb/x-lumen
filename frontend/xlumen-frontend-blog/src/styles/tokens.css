@@ -1,5 +1,5 @@
 /* Design Token（FRONTEND.md §10.1）：所有业务样式通过 var(--xl-xxx) 引用，禁止硬编码颜色。
-   MVP 仅 light 主题；dark 变体预留，V2 启用切换入口（F-1306）。 */
+   MVP 仅 light 主题；dark 变体预留，V2 启用切换入口。 */
 :root {
   --xl-bg-page: #f6f8fc;
   --xl-bg-surface: #fff;

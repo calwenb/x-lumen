@@ -11,7 +11,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * AI 任务实体（ai_task，F-1302）：任务事实存 MySQL（决策 D6），进度存 Redis 短期状态。
+ * AI 任务实体（ai_task）：任务事实存 MySQL（决策 D6），进度存 Redis 短期状态。
  * input_json/result_json 为 JSON 列，经 JacksonTypeHandler 映射 String（各场景 Service 自行序列化）。
  *
  * @author calwen

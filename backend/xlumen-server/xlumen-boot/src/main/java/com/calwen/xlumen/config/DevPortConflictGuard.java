@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 开发环境端口守卫（IDEA-008）：在 Web 容器绑定前询问是否结束监听进程。
+ * 开发环境端口守卫：在 Web 容器绑定前询问是否结束监听进程。
  * 通过 XLUMEN_DEV_PORT_GUARD 显式开启，生产环境默认关闭。
  */
 public final class DevPortConflictGuard implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {

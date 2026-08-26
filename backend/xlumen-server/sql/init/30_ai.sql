@@ -1,11 +1,11 @@
 -- 30_ai.sql：xlumen-ai 模块 AI 引擎表（ai_ 前缀）
--- M06 落地模型网关（F-0501）/场景模型配置（F-0502）；M12 落地异步任务底座（F-1302）。
+-- M06 落地模型网关/场景模型配置；M12 落地异步任务底座。
 -- 密钥不入表：API Key 唯一来源 config/.env（决策 D8），表仅存供应商/模型/参数（管理面 A03 可改）。
 
 USE `xlumen_dev`;
 SET NAMES utf8mb4;
 
--- AI 任务（F-1302 异步底座）：任务事实以 MySQL 为准（决策 D6），进度写 Redis 短期状态
+-- AI 任务：任务事实以 MySQL 为准（决策 D6），进度写 Redis 短期状态
 CREATE TABLE IF NOT EXISTS `ai_task` (
     `id`             BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
     `workspace_id`   BIGINT       NOT NULL COMMENT '工作空间 ID',
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `ai_task` (
     KEY `idx_ai_task_idem` (`workspace_id`, `idempotency_key`)
 ) ENGINE = InnoDB COMMENT ='AI 任务（F-1302 异步底座）';
 
--- 场景模型配置（F-0502）：按场景分配供应商与模型；密钥不入表（决策 D8），连通性测试读 .env。
+-- 场景模型配置：按场景分配供应商与模型；密钥不入表（决策 D8），连通性测试读 .env。
 -- 双轨合并后 agent_enabled 列已废弃（不在此建）；存量库删列见 sql/migration/89_ai_scene_single_track.sql。
 CREATE TABLE IF NOT EXISTS `ai_scene_config` (
     `id`            BIGINT      NOT NULL COMMENT '主键（雪花 ID）',

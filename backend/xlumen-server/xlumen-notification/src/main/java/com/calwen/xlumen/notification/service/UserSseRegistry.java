@@ -15,7 +15,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 用户级通知 SSE 注册表（IDEA-024）：站内消息实时推送通道——通知创建时按接收用户推送
+ * 用户级通知 SSE 注册表：站内消息实时推送通道——通知创建时按接收用户推送
  * 「notification」事件，前端收到后右上角 ElNotification 弹窗。单向服务端推送用 SSE 即可，
  * 无需 WebSocket（项目已复用 fetch 流式解析工具）。断线期间消息由前端 30s 轮询兜底。
  *

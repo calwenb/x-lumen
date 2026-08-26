@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 评论反应服务（F-0213）：三态互斥 toggle（赞/踩共用一行）与批量统计（eng_comment_reaction 表）。
+ * 评论反应服务：三态互斥 toggle（赞/踩共用一行）与批量统计（eng_comment_reaction 表）。
  * 登录态接口的用户/空间上下文从 WorkspaceContext 读取。
  *
  * @author calwen

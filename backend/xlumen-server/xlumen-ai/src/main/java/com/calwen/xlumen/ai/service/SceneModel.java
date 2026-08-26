@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 场景模型解析结果（F-0502）：供应商名 + 模型名（+ 场景参数）。
+ * 场景模型解析结果：供应商名 + 模型名（+ 场景参数）。
  *
  * @author calwen
  * @date 2026/8/13

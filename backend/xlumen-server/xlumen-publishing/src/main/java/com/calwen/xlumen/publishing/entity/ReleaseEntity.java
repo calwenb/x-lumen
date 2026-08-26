@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 知识发布记录实体（pub_release，F-0904/F-0905）：唯一键 uk_release_ws_knowledge_version 幂等；
+ * 知识发布记录实体（pub_release）：唯一键 uk_release_ws_knowledge_version 幂等；
  * publish_at 为空表示立即发布，非空留待定时任务执行（幂等）。
  *
  * @author calwen

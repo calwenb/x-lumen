@@ -19,7 +19,7 @@ const password = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
 
-// 管理后台准入角色（F-0101）：仅 OWNER/ADMIN
+// 管理后台准入角色：仅 OWNER/ADMIN
 const ADMIN_ROLES = ['OWNER', 'ADMIN']
 
 async function submit(): Promise<void> {

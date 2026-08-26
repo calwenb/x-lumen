@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 提交审核入参（F-0902）：知识从草稿/已通过状态提交审核。
+ * 提交审核入参：知识从草稿/已通过状态提交审核。
  * publishAt 为自动审核发布模式的定时发布时间（可空，空=审核通过后立即发布）。
  *
  * @author calwen

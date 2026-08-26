@@ -29,7 +29,7 @@ import java.util.HexFormat;
 import java.util.List;
 
 /**
- * 索引流水线实现（F-0402/F-0403）：清洗→切片→幂等检查→Embedding→清旧向量→写新向量→
+ * 索引流水线实现：清洗→切片→幂等检查→Embedding→清旧向量→写新向量→
  * 写切片元数据→激活新版本→旧版本置 STALE。幂等：正文 hash 相同且已有 ACTIVATING/ACTIVE
  * 版本则跳过；Embedding/写向量失败标记索引任务失败（STALE），不影响发布本身。
  *

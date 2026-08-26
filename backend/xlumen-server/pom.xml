@@ -120,7 +120,7 @@
                 <version>2.2.52</version>
             </dependency>
 
-            <!-- Spring AI BOM：AI 供应商层全量迁移（OPT-2/D20），2.0.1 对齐 Boot 4.1.0（v2.0.0 官方声明） -->
+            <!-- Spring AI BOM：AI 供应商层全量迁移（D20），2.0.1 对齐 Boot 4.1.0（v2.0.0 官方声明） -->
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>

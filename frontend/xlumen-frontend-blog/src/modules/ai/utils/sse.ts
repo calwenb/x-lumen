@@ -1,4 +1,4 @@
-// ai 模块：SSE 流式解析（fetch + ReadableStream，F-0601/F-0701）。
+// ai 模块：SSE 流式解析（fetch + ReadableStream）。
 // 事件流需要 Authorization 头，不能用浏览器原生 EventSource；用 fetch 读取 response.body，
 // 按 \n\n 分帧，逐行解析 event: 与 data: 字段后回调（多 data 行以 \n 连接，首空格剥离）。
 import { useSessionStore } from '@/stores/session'

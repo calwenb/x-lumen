@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.ExecutorService;
 
 /**
- * 发布即索引事件监听（F-0402，决策 D13）：监听 publishing 发布的进程内 KnowledgePublishedEvent，
+ * 发布即索引事件监听（决策 D13）：监听 publishing 发布的进程内 KnowledgePublishedEvent，
  * 用本模块线程池异步执行索引流水线（不依赖 @Async/@EnableAsync）。任务失败仅记录日志，不影响发布。
  *
  * @author calwen

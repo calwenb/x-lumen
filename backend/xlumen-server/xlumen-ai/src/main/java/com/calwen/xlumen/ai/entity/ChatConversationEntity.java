@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * AI 对话会话实体（chat_conversation，F-0701）：多轮对话容器，标题取首条提问截断。
+ * AI 对话会话实体（chat_conversation）：多轮对话容器，标题取首条提问截断。
  *
  * @author calwen
  * @date 2026/8/13

@@ -11,7 +11,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * AI 增值结果实体（ai_enhance_result，F-0801/F-0802）：摘要/SEO 结构化结果。
+ * AI 增值结果实体（ai_enhance_result）：摘要/SEO 结构化结果。
  * result_json 为 JSON 列，经 JacksonTypeHandler 映射 String。
  *
  * @author calwen

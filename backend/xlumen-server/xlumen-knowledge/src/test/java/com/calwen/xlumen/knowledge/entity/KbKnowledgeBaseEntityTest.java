@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 知识库/目录实体映射契约（kb_knowledge_base / kb_directory，F-0308/F-0309，决策 D16）：
+ * 知识库/目录实体映射契约（kb_knowledge_base / kb_directory，决策 D16）：
  * @TableName 与字段驼峰映射由 MyBatis-Plus 默认配置保证，此处锁定关键字段与状态语义。
  *
  * @author calwen

@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
- * 向量库装配决策（F-0402）：启动时探测 Milvus REST v2 可达性（超时 2s），
+ * 向量库装配决策：启动时探测 Milvus REST v2 可达性（超时 2s），
  * 可达启用 MilvusVectorStore，否则降级 NoopVectorStore（@Bean + if/else 选择）。
  *
  * @author calwen
@@ -49,7 +49,7 @@ public class VectorStoreAutoConfiguration {
     }
 
     /**
-     * 探测 Milvus REST v2（BUG-004）：/healthz 位于 metrics 端口（9091），打 19530 恒 404 导致恒降级；
+     * 探测 Milvus REST v2：/healthz 位于 metrics 端口（9091），打 19530 恒 404 导致恒降级；
      * 改打与 MilvusVectorStore 数据面一致的 REST v2 端点 collections/has（集合存在与否均返回 200），
      * 200 视为可达，其余或异常视为不可达。
      */

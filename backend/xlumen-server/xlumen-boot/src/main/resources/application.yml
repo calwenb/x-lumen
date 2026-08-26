@@ -2,7 +2,7 @@
 spring:
   application:
     name: xlumen
-  # Spring AI：关闭全部六个 OpenAI 自动配置（OPT-2/D20，双供应商与向量化手动装配于 ChatModelFactory/EmbeddingServiceImpl）
+  # Spring AI：关闭全部六个 OpenAI 自动配置（D20，双供应商与向量化手动装配于 ChatModelFactory/EmbeddingServiceImpl）
   ai:
     model:
       chat: none
@@ -41,7 +41,7 @@ spring:
           min-idle: 1
   servlet:
     encoding:
-      # 请求/响应统一 UTF-8（BUG-028）：Spring Boot 4 用 spring.servlet.encoding 前缀
+      # 请求/响应统一 UTF-8：Spring Boot 4 用 spring.servlet.encoding 前缀
       # （ServletEncodingProperties 绑定），旧 server.servlet.encoding.charset 键已失效
       charset: UTF-8
       force: true

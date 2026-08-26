@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 平台操作审计日志实体（plt_activity_log，F-1202）：只增不改（append-only），仅 INSERT 不 UPDATE/DELETE。
+ * 平台操作审计日志实体（plt_activity_log）：只增不改（append-only），仅 INSERT 不 UPDATE/DELETE。
  * operator_id 可空（系统/定时任务触发）；detail_json 为操作详情快照。
  *
  * @author calwen

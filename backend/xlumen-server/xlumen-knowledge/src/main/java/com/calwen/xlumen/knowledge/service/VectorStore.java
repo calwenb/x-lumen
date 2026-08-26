@@ -7,7 +7,7 @@ import com.calwen.xlumen.knowledge.dto.Chunk;
 import java.util.List;
 
 /**
- * 向量库抽象（F-0402/F-0407）：屏蔽 Milvus 与 Noop 降级差异，统一向流水线/检索暴露
+ * 向量库抽象：屏蔽 Milvus 与 Noop 降级差异，统一向流水线/检索暴露
  * 写向量、删向量、检索三个能力。实现由 VectorStoreAutoConfiguration 探测装配。
  *
  * @author calwen
@@ -24,7 +24,7 @@ public interface VectorStore {
     void index(IndexRequestDTO request, List<Chunk> chunks);
 
     /**
-     * 删除知识全部向量条目（删除/下架同步出索引，F-0402）。
+     * 删除知识全部向量条目（删除/下架同步出索引）。
      *
      * @param workspaceId 工作空间 ID
      * @param knowledgeId   知识 ID
@@ -32,7 +32,7 @@ public interface VectorStore {
     void delete(Long workspaceId, Long knowledgeId);
 
     /**
-     * 向量检索（F-0404/F-0407）：按可见库集合过滤（决策 D13，替代 visibilityScope），
+     * 向量检索：按可见库集合过滤（决策 D13，替代 visibilityScope），
      * 返回按分数降序的结果。
      *
      * @param queryEmbedding 查询向量

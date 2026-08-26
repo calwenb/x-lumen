@@ -13,7 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * 可见库集合推导实现（F-0407 单一实现，决策 D13/D16）：只读 kb_knowledge_base 推导身份可见集合，
+ * 可见库集合推导实现，决策 D13/D16）：只读 kb_knowledge_base 推导身份可见集合，
  * 供 publishing 公开读聚合、检索过滤与知识列表共用；V2 授权库（kb_kb_grant）不实现。
  *
  * @author calwen

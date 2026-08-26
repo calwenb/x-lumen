@@ -3,7 +3,7 @@ package com.calwen.xlumen.ai.service;
 import com.calwen.xlumen.ai.dto.ReviewRequestDTO;
 
 /**
- * AI 审校服务（F-0604）：content 必填、模型异源校验、创建 REVIEWER 异步任务。
+ * AI 审校服务：content 必填、模型异源校验、创建 REVIEWER 异步任务。
  *
  * @author calwen
  * @date 2026/8/13

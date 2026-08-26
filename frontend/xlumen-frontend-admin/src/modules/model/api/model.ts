@@ -2,7 +2,7 @@ import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
 
-// 模型配置接口封装（F-0501/F-0502 管理面）：页面只调用本文件暴露的函数（FRONTEND.md §5/§8.1）。
+// 模型配置接口封装：页面只调用本文件暴露的函数（FRONTEND.md §5/§8.1）。
 
 /** 供应商选项（展示文案 → 供应商编码，与后端枚举对齐）。 */
 export const PROVIDER_OPTIONS = [
@@ -28,7 +28,7 @@ export interface ModelConfig {
   updatedAt: string
 }
 
-/** 更新入参（F-0501/F-0502）。 */
+/** 更新入参。 */
 export interface ModelConfigUpdate {
   provider: string
   model: string

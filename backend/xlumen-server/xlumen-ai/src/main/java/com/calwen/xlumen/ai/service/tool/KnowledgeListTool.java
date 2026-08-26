@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * knowledge.list 工具（IDEA-025 F-0708）：列出当前用户可见知识库（id/名称/可见性），
+ * knowledge.list 工具：列出当前用户可见知识库（id/名称/可见性），
  * 供模型先看有哪些库再决定检索范围。只读包装 KnowledgeApi（resolveVisibleKbIds + getKnowledgeBaseById）。
  *
  * @author calwen

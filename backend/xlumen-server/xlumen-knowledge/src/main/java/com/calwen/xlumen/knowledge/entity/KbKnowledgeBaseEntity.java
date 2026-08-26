@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 知识库实体（kb_knowledge_base，F-0308，决策 D16）：内容容器与权限边界，
+ * 知识库实体（kb_knowledge_base，决策 D16）：内容容器与权限边界，
  * 可见性库级决定（0 私有/1 公开）；回收站用 status+deleted_at（独立软删标记，不扩 8 状态机）。
  *
  * @author calwen

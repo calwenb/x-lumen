@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 回收站接口（F-0305，B16 回收站，KB-3 聚合层在 publishing）：知识库/知识统一回收站，双 Tab；
+ * 回收站接口（B16 回收站，KB-3 聚合层在 publishing）：知识库/知识统一回收站，双 Tab；
  * 彻底删除为红色操作 + 二次确认（confirm=CONFIRM），恢复/删除幂等。
  * knowledge 模块依赖方向受限（content→ai→knowledge 环），回收站编排收敛到 publishing
  * （同时依赖 content+knowledge，无环），kb 侧委托 KnowledgeApi、knowledge 侧委托 ContentApi。
@@ -32,7 +32,7 @@ public class RecycleBinController {
     private RecycleBinFacadeService recycleBinFacadeService;
 
     /**
-     * 回收站分页列表（F-0305）：type=kb|knowledge|空=全部，deleted_at 降序。
+     * 回收站分页列表：type=kb|knowledge|空=全部，deleted_at 降序。
      *
      * @param type     类型（kb/knowledge，可空=全部）
      * @param pageNo   页码（默认 1）
@@ -48,7 +48,7 @@ public class RecycleBinController {
     }
 
     /**
-     * 恢复（F-0305）：kb 整体恢复（连带恢复库内知识）；知识恢复含冲突判定
+     * 恢复：kb 整体恢复（连带恢复库内知识）；知识恢复含冲突判定
      * （原目录已删→挂库根、原库已彻底删除→409）。
      *
      * @param type 类型（kb/knowledge）
@@ -62,7 +62,7 @@ public class RecycleBinController {
     }
 
     /**
-     * 彻底删除（F-0305 回收站清空）：二次确认参数 confirm=CONFIRM；物理删除并联动清理索引。
+     * 彻底删除：二次确认参数 confirm=CONFIRM；物理删除并联动清理索引。
      *
      * @param type    类型（kb/knowledge）
      * @param id      条目 ID

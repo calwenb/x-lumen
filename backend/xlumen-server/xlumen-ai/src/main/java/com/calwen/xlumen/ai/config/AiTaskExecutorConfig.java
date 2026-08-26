@@ -7,7 +7,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
- * AI 任务线程池装配（F-1302）：任务执行 core2/max4/queue200，拒绝时抛异常使任务保持 QUEUED；
+ * AI 任务线程池装配：任务执行 core2/max4/queue200，拒绝时抛异常使任务保持 QUEUED；
  * 对话流式独立线程池 core2/max8/queue50，避免阻塞 AI 任务执行。
  *
  * @author calwen
