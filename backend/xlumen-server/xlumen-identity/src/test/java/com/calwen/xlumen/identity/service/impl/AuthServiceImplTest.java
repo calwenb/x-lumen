@@ -9,12 +9,14 @@ import com.calwen.xlumen.identity.entity.UserEntity;
 import com.calwen.xlumen.identity.mapper.UserMapper;
 import com.calwen.xlumen.identity.mapper.WorkspaceMapper;
 import com.calwen.xlumen.identity.mapper.WorkspaceMemberMapper;
+import com.calwen.xlumen.identity.service.MailService;
 import com.calwen.xlumen.identity.service.RefreshTokenService;
 import com.calwen.xlumen.identity.vo.TokenVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -47,6 +49,11 @@ class AuthServiceImplTest {
     @Mock
     private JwtEncoder jwtEncoder;
 
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private MailService mailService;
     private AuthServiceImpl authService;
 
     @BeforeEach
@@ -61,7 +68,7 @@ class AuthServiceImplTest {
                 .build());
         when(refreshTokenService.create(eq(1L), any())).thenReturn("refresh-token");
         authService = new AuthServiceImpl(userMapper, workspaceMapper, memberMapper, encoder,
-                refreshTokenService, jwtEncoder, "xlumen");
+                refreshTokenService, jwtEncoder, "xlumen", redisTemplate, mailService);
     }
 
     @Test

@@ -12,7 +12,7 @@ vi.mock('@/api/http', () => ({
   },
 }))
 
-import { assistAction } from '@/modules/ai/api/assist'
+import { assistAction, explainTerm } from '@/modules/ai/api/assist'
 import { http } from '@/api/http'
 
 const mockedPost = vi.mocked(http.post)
@@ -55,5 +55,50 @@ describe('assistAction', () => {
     await expect(assistAction({ action: 'continue', content: 'x' })).rejects.toThrow(
       'AI 服务不可用',
     )
+  })
+
+  it('图片讲解透传 imageUrl 且不携带 content', async () => {
+    mockedPost.mockResolvedValue({
+      data: {
+        code: 'SUCCESS',
+        message: 'ok',
+        data: { text: '这是一张架构图…' },
+        requestId: 'req-3',
+      },
+    })
+    await expect(
+      assistAction({ action: 'image_explain', imageUrl: 'https://example.com/a.png' }),
+    ).resolves.toBe('这是一张架构图…')
+    expect(mockedPost).toHaveBeenCalledWith('/ai/assist', {
+      action: 'image_explain',
+      imageUrl: 'https://example.com/a.png',
+    })
+  })
+})
+
+describe('explainTerm', () => {
+  beforeEach(() => {
+    mockedPost.mockReset()
+  })
+
+  it('透传术语并解包返回 termsCache 等字段', async () => {
+    mockedPost.mockResolvedValue({
+      data: {
+        code: 'SUCCESS',
+        message: 'ok',
+        data: {
+          term: 'Bloom Filter',
+          explanation: '布隆过滤器是一种概率型数据结构。',
+          fromCache: true,
+        },
+        requestId: 'req-4',
+      },
+    })
+    await expect(explainTerm('Bloom Filter')).resolves.toEqual({
+      term: 'Bloom Filter',
+      explanation: '布隆过滤器是一种概率型数据结构。',
+      fromCache: true,
+    })
+    expect(mockedPost).toHaveBeenCalledWith('/ai/term-explain', { term: 'Bloom Filter' })
   })
 })

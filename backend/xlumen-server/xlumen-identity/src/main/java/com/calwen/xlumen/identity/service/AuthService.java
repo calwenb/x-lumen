@@ -44,4 +44,10 @@ public interface AuthService {
      * @return 新令牌响应
      */
     TokenVO refresh(RefreshTokenDTO dto);
+
+    /** 忘记密码：向注册邮箱发送验证码（账号不存在也返回通用成功，不泄露账号存在性）。 */
+    void forgotPassword(String email);
+
+    /** 重置密码：校验验证码后更新密码哈希。 */
+    void resetPassword(String email, String code, String newPassword);
 }

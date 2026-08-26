@@ -46,6 +46,18 @@ const router = createRouter({
       meta: { title: '知识库发现' },
     },
     {
+      path: '/map',
+      name: 'knowledge-map',
+      component: () => import('@/modules/knowledge/pages/KnowledgeMapPage.vue'),
+      meta: { title: '知识地图' },
+    },
+    {
+      path: '/changelog',
+      name: 'changelog',
+      component: () => import('@/modules/blog/pages/ChangelogPage.vue'),
+      meta: { title: '更新日志' },
+    },
+    {
       path: '/about',
       name: 'about',
       component: () => import('@/modules/blog/pages/AboutPage.vue'),

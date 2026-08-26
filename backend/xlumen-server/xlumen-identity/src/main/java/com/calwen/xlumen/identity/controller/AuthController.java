@@ -3,9 +3,11 @@ package com.calwen.xlumen.identity.controller;
 import com.calwen.xlumen.common.web.ApiResponse;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
+import com.calwen.xlumen.identity.dto.ForgotPasswordDTO;
 import com.calwen.xlumen.identity.dto.LoginDTO;
 import com.calwen.xlumen.identity.dto.RefreshTokenDTO;
 import com.calwen.xlumen.identity.dto.RegisterDTO;
+import com.calwen.xlumen.identity.dto.ResetPasswordDTO;
 import com.calwen.xlumen.identity.service.AuthService;
 import com.calwen.xlumen.identity.vo.TokenVO;
 import jakarta.annotation.Resource;
@@ -16,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 认证接口：注册/登录/登出/刷新，均为公开端点（SecurityConfig 白名单）。
+ * 认证接口：注册/登录/登出/刷新/忘记密码，均为公开端点（SecurityConfig 白名单）。
  *
  * @author calwen
  * @date 2026/8/12
@@ -73,6 +75,30 @@ public class AuthController {
             throw new BizException(ErrorCode.INVALID_PARAM, "refreshToken 刷新令牌不能为空");
         }
         authService.logout(dto.refreshToken());
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 忘记密码：向注册邮箱发送 6 位验证码（账号不存在也返回成功）。
+     *
+     * @param dto 邮箱
+     * @return 统一响应
+     */
+    @PostMapping("/forgot")
+    public ApiResponse<Void> forgot(@Valid @RequestBody ForgotPasswordDTO dto) {
+        authService.forgotPassword(dto.getEmail());
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 重置密码：校验验证码后更新密码。
+     *
+     * @param dto 邮箱/验证码/新密码
+     * @return 统一响应
+     */
+    @PostMapping("/reset")
+    public ApiResponse<Void> reset(@Valid @RequestBody ResetPasswordDTO dto) {
+        authService.resetPassword(dto.getEmail(), dto.getCode(), dto.getNewPassword());
         return ApiResponse.success(null);
     }
 }

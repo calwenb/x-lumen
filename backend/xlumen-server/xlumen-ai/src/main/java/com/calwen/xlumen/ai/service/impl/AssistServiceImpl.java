@@ -5,10 +5,16 @@ import com.calwen.xlumen.ai.dto.AssistDTO;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.service.AssistService;
 import com.calwen.xlumen.ai.service.ChatRuntime;
+import com.calwen.xlumen.common.exception.BizException;
+import com.calwen.xlumen.common.web.ErrorCode;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.content.Media;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MimeTypeUtils;
 
+import java.net.URI;
 import java.util.List;
 
 /**
@@ -31,9 +37,23 @@ public class AssistServiceImpl implements AssistService {
     public String assist(Long workspaceId, AssistDTO dto) {
         String action = dto.getAction().trim().toLowerCase();
         String system = systemFor(action);
-        String user = buildUserText(dto);
+        Message user = "image_explain".equals(action)
+                ? imageMessage(dto)
+                : new UserMessage(buildUserText(dto));
         return chatRuntime.chat(workspaceId, AiScene.WRITING,
-                List.of(new SystemMessage(system), new UserMessage(user)), 0.5, 2048).trim();
+                List.of(new SystemMessage(system), user), 0.5, 2048).trim();
+    }
+
+    /** 图片讲解消息：附媒体内容（模型需具备视觉能力，如 qwen-vl；文本模型会忽略图片按提示词作答）。 */
+    private Message imageMessage(AssistDTO dto) {
+        String url = StrUtil.blankToDefault(dto.getImageUrl(), "").trim();
+        if (StrUtil.isBlank(url) || !(url.startsWith("http://") || url.startsWith("https://"))) {
+            throw new BizException(ErrorCode.INVALID_PARAM, "图片地址无效，需为 http(s) 公网可访问链接");
+        }
+        return UserMessage.builder()
+                .text("请讲解这张图片：" + url + (StrUtil.isNotBlank(dto.getSelection()) ? "\n补充说明：" + dto.getSelection() : ""))
+                .media(new Media(MimeTypeUtils.parseMimeType("image/jpeg"), URI.create(url)))
+                .build();
     }
 
     private String systemFor(String action) {
@@ -58,6 +78,8 @@ public class AssistServiceImpl implements AssistService {
             case "kb_cluster" -> "你是小光，一名知识聚类分析专家。给定输入为「编号. 标题——摘要」列表行，"
                     + "请把主题相近的内容聚为一类，输出一个严格的 JSON 数组，每项为 {\"topic\":\"主题名\",\"ids\":[编号...]}，"
                     + "只输出 JSON 数组本身，不要包含任何解释或 Markdown 围栏。";
+            case "image_explain" -> "你是小光，一名技术图解助手。请讲解图片内容：先一句话概述，"
+                    + "再用 Markdown 分要点说明图片中的结构、关系或关键信息；若无法看到图片请明确说明。";
             default -> throw new IllegalArgumentException("未知辅助能力：" + action);
         };
     }

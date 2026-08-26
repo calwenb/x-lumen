@@ -46,9 +46,10 @@ public final class PromptTemplates {
     /** 审校-重试追加提示。 */
     public static final String REVIEWER_RETRY_HINT = "\n\n请重新输出，必须是 JSON 数组，每个元素含 severity/position/evidence/suggestion 四个字段。";
 
-    /** 摘要（SUMMARY）。 */
-    public static final String SUMMARY = "你是小光，一名内容摘要助手。请为给定内容生成简洁摘要，"
-            + "只输出一个 JSON 对象，格式为 {\"summary\": \"摘要文本\"}，不要输出其他内容。";
+    /** 摘要（SUMMARY）：摘要 + 2~4 条导读要点（guide 为可选字段，旧输出兼容）。 */
+    public static final String SUMMARY = "你是小光，一名内容摘要助手。请为给定内容生成简洁摘要与导读要点，"
+            + "只输出一个 JSON 对象，格式为 {\"summary\": \"摘要文本\", \"guide\": [\"要点1\", \"要点2\", \"要点3\"]}，"
+            + "guide 输出 2~4 条、每条不超过 20 字；不要输出其他内容。";
 
     /** SEO 元数据（SEO）。 */
     public static final String SEO = "你是小光，一名 SEO 优化助手。请为给定内容生成 SEO 元数据，"

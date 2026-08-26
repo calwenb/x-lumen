@@ -1,0 +1,350 @@
+<script setup lang="ts">
+// 知识地图：全站公开知识的总览页，访客可见。
+// 已登录且公开知识 ≥3 篇时，调 AI 做主题聚类（assist kb_cluster），按主题卡片展示；
+// 未登录、知识不足或聚类失败时，回退为按知识库分组的静态文档网格，均可点击跳转详情。
+// AI 聚类为增强能力，任何失败都不阻断页面展示。
+import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { RouterLink, useRouter } from 'vue-router'
+import { MapLocation } from '@element-plus/icons-vue'
+
+import { assistAction } from '@/modules/ai/api/assist'
+import { fetchKnowledges } from '@/modules/publishing/api/public'
+import { useSessionStore } from '@/stores/session'
+
+import type { KnowledgeCard } from '@/modules/publishing/api/public'
+
+const router = useRouter()
+const session = useSessionStore()
+
+const knowledges = ref<KnowledgeCard[]>([])
+const loading = ref(true)
+const loadError = ref(false)
+
+/** AI 聚类进行中（不阻断页面，期间先展示静态分组）。 */
+const clustering = ref(false)
+/** AI 聚类结果（[{topic, ids}]）；null 表示未启用或失败，走静态按库分组。 */
+const aiThemes = ref<ClusterTheme[] | null>(null)
+
+interface ClusterTheme {
+  topic: string
+  ids: string[]
+}
+
+const PAGE_SIZE = 100
+
+function formatDate(iso: string | null | undefined): string {
+  return iso ? iso.slice(0, 10) : ''
+}
+
+async function load(): Promise<void> {
+  loading.value = true
+  loadError.value = false
+  try {
+    const page = await fetchKnowledges({ pageNo: 1, pageSize: PAGE_SIZE })
+    knowledges.value = page.records
+  } catch {
+    loadError.value = true
+    return
+  } finally {
+    loading.value = false
+  }
+  if (knowledgeCount.value >= 3 && session.loggedIn) {
+    void runClustering()
+  }
+}
+
+const knowledgeCount = computed(() => knowledges.value.length)
+
+/** 聚类输入：每行「序号. 标题——摘要」，序号与后端返回的 ids 一一对应（1 起）。 */
+function buildClusterContent(): string {
+  return knowledges.value
+    .map((knowledge, index) => `${index + 1}. ${knowledge.title}——${knowledge.summary}`)
+    .join('\n')
+}
+
+async function runClustering(): Promise<void> {
+  clustering.value = true
+  try {
+    const raw = await assistAction({ action: 'kb_cluster', content: buildClusterContent() })
+    aiThemes.value = parseThemes(raw)
+  } catch {
+    aiThemes.value = null
+    ElMessage.warning('AI 主题聚类暂不可用，已按知识库为你整理')
+  } finally {
+    clustering.value = false
+  }
+}
+
+/** 解析 AI 返回的 JSON 数组（[{topic, ids}]，ids 为数字序号字符串）；结构不符返回 null。 */
+function parseThemes(raw: string): ClusterTheme[] | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!Array.isArray(parsed)) return null
+  const themes: ClusterTheme[] = []
+  for (const item of parsed) {
+    if (typeof item !== 'object' || item === null) continue
+    const candidate = item as { topic?: unknown; ids?: unknown }
+    if (typeof candidate.topic !== 'string' || !candidate.topic.trim()) continue
+    if (!Array.isArray(candidate.ids)) continue
+    const numericIds = candidate.ids.map((id) => String(id)).filter((id) => /^\d+$/.test(id))
+    if (numericIds.length === 0) continue
+    themes.push({ topic: candidate.topic.trim(), ids: numericIds })
+  }
+  return themes.length > 0 ? themes : null
+}
+
+/** AI 主题视图：把数字序号映射回知识记录，越界/无效序号自动丢弃。 */
+const themeGroups = computed(() => {
+  if (!aiThemes.value) return []
+  return aiThemes.value
+    .map((theme) => ({
+      topic: theme.topic,
+      items: theme.ids
+        .map((id) => knowledges.value[Number(id) - 1])
+        .filter((item): item is KnowledgeCard => Boolean(item)),
+    }))
+    .filter((group) => group.items.length > 0)
+})
+
+interface KbGroup {
+  kbId: string
+  kbName: string
+  items: KnowledgeCard[]
+}
+
+/** 静态视图：按知识库分组（kbName 缺失归入「未分组知识」）。 */
+const kbGroups = computed<KbGroup[]>(() => {
+  const map = new Map<string, KbGroup>()
+  for (const knowledge of knowledges.value) {
+    const key = knowledge.kbId || ''
+    const group = map.get(key)
+    if (group) {
+      group.items.push(knowledge)
+    } else {
+      map.set(key, {
+        kbId: key,
+        kbName: knowledge.kbName || '未分组知识',
+        items: [knowledge],
+      })
+    }
+  }
+  return [...map.values()]
+})
+
+/** 聚类有结果时采用主题视图，否则静态按库分组（含聚类进行中/失败）。 */
+const useThemeView = computed(() => themeGroups.value.length > 0)
+
+function openKnowledge(id: string): void {
+  void router.push(`/knowledge/${id}`)
+}
+
+onMounted(() => {
+  void load()
+})
+</script>
+
+<template>
+  <main class="map">
+    <header class="map__head">
+      <h1 class="map__title">
+        <el-icon class="map__title-icon"><MapLocation /></el-icon>
+        知识地图
+      </h1>
+      <p class="map__desc">总览全部公开知识：已登录时 AI 按主题自动聚类，否则按知识库归档展示。</p>
+      <p v-if="clustering" class="map__hint" role="status">AI 正在为主题聚类…</p>
+    </header>
+
+    <div v-if="loading" class="map__state">
+      <div v-for="i in 4" :key="i" class="map__skeleton" aria-hidden="true" />
+    </div>
+    <div v-else-if="loadError" class="map__state">
+      <p class="map__state-text">知识地图加载失败</p>
+      <el-button type="primary" plain @click="load">重试</el-button>
+    </div>
+    <div v-else-if="knowledgeCount === 0" class="map__state">
+      <p class="map__state-text">还没有公开知识，敬请期待。</p>
+    </div>
+    <template v-else>
+      <section v-if="useThemeView" class="map__grid">
+        <article v-for="group in themeGroups" :key="group.topic" class="map__card">
+          <h2 class="map__card-title map__card-title--theme">{{ group.topic }}</h2>
+          <ul class="map__card-list">
+            <li
+              v-for="item in group.items"
+              :key="item.id"
+              class="map__card-item"
+              @click="openKnowledge(item.id)"
+            >
+              <RouterLink class="map__card-link" :to="`/knowledge/${item.id}`">
+                {{ item.title }}
+              </RouterLink>
+              <p class="map__card-summary">{{ item.summary }}</p>
+              <div class="map__card-meta">
+                <el-tag v-if="item.kbName" size="small" effect="plain">{{ item.kbName }}</el-tag>
+                <span v-if="formatDate(item.publishedAt)">{{ formatDate(item.publishedAt) }}</span>
+              </div>
+            </li>
+          </ul>
+        </article>
+      </section>
+      <section v-else class="map__grid">
+        <article v-for="group in kbGroups" :key="group.kbId" class="map__card">
+          <h2 class="map__card-title">{{ group.kbName }}</h2>
+          <ul class="map__card-list">
+            <li
+              v-for="item in group.items"
+              :key="item.id"
+              class="map__card-item"
+              @click="openKnowledge(item.id)"
+            >
+              <RouterLink class="map__card-link" :to="`/knowledge/${item.id}`">
+                {{ item.title }}
+              </RouterLink>
+              <p class="map__card-summary">{{ item.summary }}</p>
+              <div class="map__card-meta">
+                <el-tag v-if="item.kbName" size="small" effect="plain">{{ item.kbName }}</el-tag>
+                <span>{{ formatDate(item.publishedAt) }}</span>
+              </div>
+            </li>
+          </ul>
+        </article>
+      </section>
+    </template>
+  </main>
+</template>
+
+<style scoped>
+.map {
+  width: min(calc(100% - 48px), 1180px);
+  margin: 0 auto;
+  padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
+  box-sizing: border-box;
+}
+
+.map__head {
+  margin-bottom: var(--xl-space-6);
+}
+
+.map__title {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
+  margin: 0 0 var(--xl-space-2);
+  color: var(--xl-text-primary);
+  font-size: 22px;
+}
+
+.map__title-icon {
+  color: var(--xl-color-primary);
+  font-size: 20px;
+}
+
+.map__desc {
+  margin: 0;
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+}
+
+.map__hint {
+  margin: var(--xl-space-2) 0 0;
+  color: var(--xl-color-ai);
+  font-size: 13px;
+}
+
+.map__state {
+  padding: var(--xl-space-8) 0;
+  text-align: center;
+}
+
+.map__skeleton {
+  height: 96px;
+  margin-bottom: var(--xl-space-4);
+  border-radius: var(--xl-radius-card);
+  background: color-mix(in srgb, var(--xl-border) 60%, transparent);
+}
+
+.map__state-text {
+  color: var(--xl-text-secondary);
+  font-size: 14px;
+}
+
+.map__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--xl-space-4);
+  align-items: start;
+}
+
+.map__card {
+  padding: var(--xl-space-4);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+/* AI 主题卡片：左侧 AI 色强调线 + 主题名 */
+.map__card-title--theme {
+  border-left: 3px solid var(--xl-color-ai);
+  padding-left: var(--xl-space-2);
+}
+
+.map__card-title {
+  margin: 0 0 var(--xl-space-3);
+  padding-bottom: var(--xl-space-2);
+  border-bottom: 1px solid var(--xl-border);
+  color: var(--xl-text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+.map__card-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.map__card-item {
+  padding: var(--xl-space-2) 0;
+  cursor: pointer;
+}
+
+.map__card-link {
+  color: var(--xl-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: break-word;
+}
+
+.map__card-item:hover .map__card-link {
+  color: var(--xl-color-primary);
+}
+
+.map__card-summary {
+  margin: 4px 0 0;
+  color: var(--xl-text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.map__card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--xl-space-2);
+  margin-top: 6px;
+  color: var(--xl-text-muted);
+  font-size: 12px;
+}
+</style>

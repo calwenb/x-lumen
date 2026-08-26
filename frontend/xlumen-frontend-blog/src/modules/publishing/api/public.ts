@@ -117,6 +117,22 @@ export async function reportView(id: string): Promise<void> {
   unwrap(data)
 }
 
+/** 相关推荐条目（详情页底部推荐；publishedAt 可能为 null）。 */
+export interface RelatedKnowledge {
+  id: string
+  title: string
+  kbName: string
+  publishedAt: string | null
+}
+
+/** 相关推荐（详情页正文下方，至多 5 条由前端截取）。 */
+export async function fetchRelatedKnowledge(id: string): Promise<RelatedKnowledge[]> {
+  const { data } = await http.get<ApiResponse<RelatedKnowledge[]>>(
+    `/public/knowledge/${id}/related`,
+  )
+  return unwrap(data)
+}
+
 /** 标签聚合（B01 侧栏/B03 筛选）。 */
 export async function fetchTags(): Promise<CategoryCount[]> {
   const { data } = await http.get<ApiResponse<RawCategoryCount[]>>('/public/tags')

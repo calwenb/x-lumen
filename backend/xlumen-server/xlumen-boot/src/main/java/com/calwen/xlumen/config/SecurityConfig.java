@@ -58,6 +58,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/public/knowledge/*/feedback").permitAll()
                         // 访客问答（匿名，控制器内按 IP 限流）
                         .requestMatchers(HttpMethod.POST, "/api/v1/public/chat").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/ai/term-explain").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))

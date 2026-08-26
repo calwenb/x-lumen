@@ -21,7 +21,8 @@ public class AssistDTO {
 
     /** 能力：continue 续写 / polish 润色 / titles 标题生成 / spellfix 错别字修正 /
      *  code_explain 代码解释 / code_bug 找 bug / code_test 生成测试 /
-     *  kb_insight 库主题概览 / kb_cluster 库内容聚类（输入编号列表行）。 */
+     *  kb_insight 库主题概览 / kb_cluster 库内容聚类（输入编号列表行）/
+     *  image_explain 图片讲解（配合 imageUrl）。 */
     @NotBlank(message = "能力不能为空")
     private String action;
 
@@ -34,4 +35,7 @@ public class AssistDTO {
 
     /** 主题/原标题（可选上下文，可空）。 */
     private String title;
+
+    /** 图片地址（image_explain 用，需模型可访问的 http(s) URL）。 */
+    private String imageUrl;
 }

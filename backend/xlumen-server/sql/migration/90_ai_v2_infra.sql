@@ -28,7 +28,7 @@ DEALLOCATE PREPARE st;
 -- ③ ai_call_log 表
 CREATE TABLE IF NOT EXISTS `ai_call_log` (
     `id`             BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
-    `workspace_id`   BIGINT       NOT NULL COMMENT '工作空间 ID',
+    `workspace_id`   BIGINT       NULL COMMENT '工作空间 ID（访客调用为空）',
     `user_id`        BIGINT       NULL COMMENT '发起用户 ID（访客为空）',
     `scene`          VARCHAR(32)  NOT NULL COMMENT '场景（AiScene）',
     `task_id`        BIGINT       NULL COMMENT '关联任务 ID（可空）',

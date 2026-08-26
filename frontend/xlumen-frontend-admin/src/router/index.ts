@@ -46,6 +46,12 @@ const router = createRouter({
       meta: { authenticated: true, title: 'AI 调用追踪' },
     },
     {
+      path: '/changelogs',
+      name: 'changelogs',
+      component: () => import('@/modules/workspace/pages/ChangelogAdminPage.vue'),
+      meta: { authenticated: true, title: '站点动态' },
+    },
+    {
       path: '/audit-logs',
       name: 'audit-logs',
       component: () => import('@/modules/audit/pages/AuditLogPage.vue'),

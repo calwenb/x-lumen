@@ -8,7 +8,7 @@ SET NAMES utf8mb4;
 -- AI 任务：任务事实以 MySQL 为准（决策 D6），进度写 Redis 短期状态
 CREATE TABLE IF NOT EXISTS `ai_task` (
     `id`             BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
-    `workspace_id`   BIGINT       NOT NULL COMMENT '工作空间 ID',
+    `workspace_id`   BIGINT       NULL COMMENT '工作空间 ID（访客调用为空）',
     `user_id`        BIGINT       NOT NULL COMMENT '发起用户 ID',
     `scene`          VARCHAR(32)  NOT NULL COMMENT '场景（AiScene：WRITING/REVIEWER/QA/SUMMARY/SEO）',
     `status`         VARCHAR(32)  NOT NULL DEFAULT 'QUEUED' COMMENT '状态：QUEUED/RUNNING/WAITING_APPROVAL/COMPLETED/FAILED/CANCELLED',
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS `ai_scene_config` (
 -- AI 调用追踪：记录每次 LLM 调用的模型/Prompt 版本/Token/费用/耗时/成败/降级，供管理面排障与用量统计。
 CREATE TABLE IF NOT EXISTS `ai_call_log` (
     `id`             BIGINT       NOT NULL COMMENT '主键（雪花 ID）',
-    `workspace_id`   BIGINT       NOT NULL COMMENT '工作空间 ID',
+    `workspace_id`   BIGINT       NULL COMMENT '工作空间 ID（访客调用为空）',
     `user_id`        BIGINT       NULL COMMENT '发起用户 ID（访客为空）',
     `scene`          VARCHAR(32)  NOT NULL COMMENT '场景（AiScene，EMBEDDING 不入此表）',
     `task_id`        BIGINT       NULL COMMENT '关联任务 ID（异步任务路径，可空）',

@@ -11,16 +11,20 @@ import {
   HomeFilled,
   Monitor,
   Search,
+  Tickets,
 } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import NotificationBell from '@/modules/notification/components/NotificationBell.vue'
+import { useTheme } from '@/composables/useTheme'
 import FloatingAssistant from '@/modules/chat/components/FloatingAssistant.vue'
+import SiteTour from '@/modules/blog/components/SiteTour.vue'
 
 const router = useRouter()
 const session = useSessionStore()
+const { isDark, toggleTheme } = useTheme()
 
 const keyword = ref('')
 
@@ -71,6 +75,9 @@ function handleNavCommand(command: string): void {
     case 'kb-discovery':
       void router.push({ name: 'kb-discovery' })
       break
+    case 'changelog':
+      void router.push({ name: 'changelog' })
+      break
     case 'studio':
       void router.push({ name: 'workbench' })
       break
@@ -97,6 +104,10 @@ function handleNavCommand(command: string): void {
           <el-icon class="app-header__link-icon"><Collection /></el-icon>
           知识库
         </RouterLink>
+        <RouterLink class="app-header__link" :to="{ name: 'changelog' }">
+          <el-icon class="app-header__link-icon"><Tickets /></el-icon>
+          动态
+        </RouterLink>
         <!-- 创作中心：一级导航，仅登录态显示 -->
         <RouterLink v-if="session.loggedIn" class="app-header__link" :to="{ name: 'workbench' }">
           <el-icon class="app-header__link-icon"><Monitor /></el-icon>
@@ -108,12 +119,14 @@ function handleNavCommand(command: string): void {
         </RouterLink>
       </nav>
       <div class="app-header__menu">
+        <button type="button" class="app-header__theme" aria-label="切换深浅色" @click="toggleTheme">{{ isDark ? '☀' : '☾' }}</button>
         <el-dropdown trigger="click" @command="handleNavCommand">
           <button type="button" class="app-header__hamburger" aria-label="打开导航菜单">☰</button>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="home">知识</el-dropdown-item>
               <el-dropdown-item command="kb-discovery">知识库</el-dropdown-item>
+              <el-dropdown-item command="changelog">动态</el-dropdown-item>
               <el-dropdown-item v-if="session.loggedIn" command="studio">创作中心</el-dropdown-item>
               <el-dropdown-item command="chat">AI小光</el-dropdown-item>
             </el-dropdown-menu>
@@ -166,6 +179,8 @@ function handleNavCommand(command: string): void {
     <RouterView />
     <!-- 全站悬浮小光：登录/访客均可用，右下角悬浮球 -->
     <FloatingAssistant />
+    <!-- 站点 AI 导游：首次访问自动弹出的分步导览（登录/注册页不放行） -->
+    <SiteTour />
   </div>
 </template>
 

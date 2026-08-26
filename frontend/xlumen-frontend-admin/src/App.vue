@@ -3,14 +3,16 @@
 // 登录页（guest）不渲染侧边栏，仅路由出口。侧栏基于 Element Plus el-menu（EP 接入后统一视觉）。
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Monitor, Operation, Setting, User, View } from '@element-plus/icons-vue'
+import { Document, Monitor, Operation, Setting, User, View } from '@element-plus/icons-vue'
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import { useSessionStore } from '@/stores/session'
+import { useTheme } from '@/composables/useTheme'
 
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
+const { isDark, toggleTheme } = useTheme()
 
 const showShell = computed(() => !route.meta.guest)
 
@@ -43,12 +45,17 @@ async function handleLogout(): Promise<void> {
           <el-icon><Monitor /></el-icon>
           <span>AI 调用追踪</span>
         </el-menu-item>
+        <el-menu-item index="/changelogs">
+          <el-icon><Document /></el-icon>
+          <span>站点动态</span>
+        </el-menu-item>
         <el-menu-item index="/audit-logs">
           <el-icon><View /></el-icon>
           <span>审计日志</span>
         </el-menu-item>
       </el-menu>
       <div class="app-sidebar__footer">
+        <button type="button" class="app-sidebar__theme" @click="toggleTheme">{{ isDark ? '☀' : '☾' }}</button>
         <span class="app-sidebar__user">
           <el-icon><User /></el-icon>
           {{ session.snapshot?.username }}

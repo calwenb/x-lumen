@@ -40,3 +40,23 @@
   /* 过渡时长 */
   --xl-transition: 0.2s ease;
 }
+
+/* ===== dark 主题（V2 深浅色切换，html.dark 生效） ===== */
+html.dark {
+  --xl-bg-page: #0f1117;
+  --xl-bg-surface: #171a22;
+  --xl-bg-secondary: #1e2430;
+  --xl-text-primary: #e6e8ee;
+  --xl-text-secondary: #9aa3b2;
+  --xl-text-muted: #6b7280;
+  --xl-color-primary: #7c93ff;
+  --xl-color-primary-hover: #647cff;
+  --xl-color-ai: #2dd4bf;
+  --xl-border: #2a3040;
+  --xl-color-danger: #f97066;
+  --xl-color-success: #2dd4bf;
+  --xl-color-warning: #f0a64f;
+  --xl-shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+  --xl-shadow-md: 0 4px 16px rgb(0 0 0 / 38%);
+  --xl-shadow-lg: 0 12px 32px rgb(0 0 0 / 45%);
+}
