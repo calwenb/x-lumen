@@ -16,6 +16,19 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/8/26 · ZCode（V2 全量实施交付：批次 0~5，28 项功能 + 工程项 IDEA-027）
+
+> 影响文档：docs/product/PRODUCT.md（V2 全部交付状态）、docs/ai/STATUS.md §3/§4/§5/§7 · 决策摘要：D19~D27 全部落地（D20 Spring AI 迁移为旧）
+
+- **批次 0（chore，f21daf5）**：IDEA-027 注释编号清理——Python 脚本清除 Java/TS/Vue/CSS/XML/yml/SQL(--) 注释中的 F-/IDEA-/BUG-/OPT- 编号（保留 Dxx 决策号；SQL DDL COMMENT 字符串不动），375 文件 787 行 + 8 处用户可见文案 + BUG-4/8 短编号兜底；验证：后端 8 模块 SUCCESS、双前端 typecheck。
+- **批次 1（feat，7a07256）**：AI 基建四件套——F-0506 Prompt 后台动态管理（ai_scene_config.prompt 列，WRITING 四槽位 JSON，PromptResolver 表优先回退常量，admin 编辑）；F-0505 AI 调用追踪（ai_call_log 表 + ChatRuntimeImpl 四入口统一埋点：模型/Prompt 哈希/Token/费用/耗时/成败/降级，admin AI Trace 页）；F-0504 配额管理（daily_quota + Redis 预占/释放，超限 429，fail-open）；F-1304 审核事件解耦（pub_review ai_status/ai_error 镜像 + publishing 监听 AiTaskCompletedEvent 写回，读取镜像优先实时兜底，状态机闸门原样）。迁移 90/91 幂等已应用；93 测试全绿 + 真实模型冒烟（tokens/费用落库）。
+- **批次 2（feat，1eb200e）**：检索双线——F-0217 语义向量（public 搜索 mode=semantic，Embedding→Milvus 可见库过滤→段落聚合卡片（相关度/命中段数/首锚点），不可用自动回退 LIKE）；F-0216 问搜一体（SearchPage 三态：关键词/向量语义/问小光，问小光复用 chat SSE + 引用溯源）；reindex-all 全量补跑端点（存量 14 篇已补）；**Milvus 本环境三连坑根治**（REST 仅快速建集→建集最小化；大雪花 ID 超 float64 精度失真→动态字段字符串化 + 过滤器字符串字面量；search 响应扁平 vs 嵌套→兼容解析 + postJson 校验响应体 code 消除静默降级）；98 测试全绿。
+- **批次 3（feat，2d4534c）**：写作三件套——F-0603 RAG 增强写作（写作前检索注入参考资料 [n] 标注 + results.references 证据，XLUMEN_WRITING_RAG_ENABLED 默认开，检索失败降级）；F-0606 辅助编辑（POST /ai/assist：continue/polish/titles/spellfix + MarkdownEditor AI 工具条）；F-0607 代码解读（assist code_explain/bug/test + highlight.js + 详情页代码块按钮弹窗）；100 测试全绿，前端新增依赖 highlight.js。
+- **批次 4（feat，d03bd21）**：对话组八项——F-0703 访客问答（/public/chat 匿名 SSE + IP 小时限流 60，前端全站悬浮小光）；F-0709 对话长期记忆（chat_memory 主题记忆注入 QA 提示词，上限 20 条）；F-0706 相关追问（SSE followups 事件 + chips 点击即问 + 落知识缺口池）；F-1103 知识缺口（零命中自动记录 ai_question_gap + 清单分页/置已处理）；F-0704 多文档对比（knowledgeIds 透传，单篇精确限定）；F-0707 问答转草稿（回答卡存草稿：正文+参考来源）；F-0705 库洞察能力（assist kb_insight/kb_cluster）+ KB 详情页「AI 库洞察」卡；F-1005 评论 @小光（检索摘要回复 is_ai+citations、5 分钟限流、跨空间可见性修复、状态机零影响）；迁移 92/93 已应用；125 测试全绿；冒烟：访客匿名问答/追问事件/记忆落库/缺口清单/@小光 回复带真实引用（0.67 分）。
+- **批次 5（feat，44a0594 + d7caa85）**：前台增值十二项——F-0105 忘记密码（starter-mail + forgot/reset 验证码 Redis 10 分钟/错 5 次作废，SMTP 未配置开发模式日志输出验证码，上线仅需 .env 补 MAIL_*）；F-0218 术语解释（/ai/term-explain 访客公开 + 24h 缓存 + 详情页选词气泡）；F-0204 相关推荐（同库标签交集优先 + 语义兜底）；F-0806 听知识（/public/knowledge/{id}/speech 百炼 qwen-tts 兼容端点，环境不可用 501 降级 + 前端音频条）；F-0809 图片 AI 讲解（assist image_explain，Spring AI Media 多模态，模型需支持视觉，默认模型不可见图时提示）；F-0219 图文导读（SUMMARY 提示词扩展 guide 要点 + 详情页 AI 导读折叠卡）；F-0206 SEO（sitemap.xml/robots.txt 公开端点，15 URL 冒烟）；F-0222 站点更新日志（plt_changelog 表 + admin CRUD + 前台时间线页，发布/草稿联动）；F-0221 知识地图页（assist kb_cluster 聚类，访客按库静态分组回退）；F-0220 站点导游（首次访问 4 步静态导览）；F-1306 深浅色主题（双端 tokens/element-theme dark 块 + 切换按钮 + localStorage/系统偏好）；修复：ai_call_log.workspace_id 可空（访客追踪）、MailService ObjectProvider 无 SMTP 启动容错。
+- **总结**：V2 28 项功能 + 工程项 IDEA-027 全部交付；后端 125 测试全绿（JUnit5），博客 19 + 后台 2 前端测试全部通过，双端 typecheck/lint 0 errors；真实模型 API 冒烟覆盖全部交互链路（注册/登录/对话/检索/追踪/配额/评论/assist/忘记密码/更新日志）；Milvus 检索线落地为真实向量检索；冒烟账号/临时凭据（admin/qoder_test 密码交换）已全部恢复原状并清理。遗留说明：F-0806 TTS 需环境支持 qwen-tts 或换供应商；F-0809 需在模型配置改用视觉模型；SMTP 账号待用户提供后填 .env 启用真实发件。
+
+
 ## 2026/8/26 11:01 · ZCode（启动 V2 实施：D27 落档 + 开工约束确认，V2 冻结 28 项功能）
 
 > 影响文档：docs/product/PRODUCT.md（F-0605/F-0609 两行+统计行+阶段标记说明 D27）、docs/ai/STATUS.md（§4/§5/§7/§8 D27）、docs/ai/IDEAS.md（IDEA-010 阶段注记）· 决策摘要：D27

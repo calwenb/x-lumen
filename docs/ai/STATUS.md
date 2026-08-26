@@ -53,9 +53,12 @@
 - **环境**：编译前 JAVA_HOME 必须指向 JDK 25；本地 Redis 需无密码启动（.env 密码为空）。
 - **遗留运维**：Milvus 就绪后，存量已发布知识需逐篇调用 reindex 补跑端点重建向量（BUG-004 收尾事项，见 BUGS.md 备注）。
 
+| V2 全量交付 | 2026-08-26 | 28 项功能 + 工程项 IDEA-027（批次 0 注释清理 / 1 AI 基建：配额+追踪+Prompt 后台+事件解耦 / 2 检索双线：语义向量+问搜一体+全量补跑 / 3 写作：RAG 增强+辅助编辑+代码解读 / 4 对话组：访客助手+多文档+追问+草稿+记忆+缺口+库洞察+评论@小光 / 5 前台增值：推荐+SEO+术语+导读+导游+地图+日志+TTS+图片讲解+主题+忘记密码）；Milvus 检索线落地（快速建集/大整数字符串化/扁平响应适配）；ai_call_log 访客可空 |
+
 ## 4. 进行中
 
 IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾已完成；**IDEA-024/025 已于 2026-08-24 立项实施完成**（F-0708/F-0608 登记总表，见 §3 能力基线与本日 CHANGELOG）；**OPT-2 AI 实现方式全量迁移 Spring AI 2.0.1 已于 2026-08-24 交付**（决策 D20，见本日 CHANGELOG）；V2/V3 范围经决策 D19（2026-08-22）按「个人使用 × 访客/面试官浏览可见」评分重划，决策 D21（2026-08-26）将 I 系数调至 2 重评换档，决策 D22（2026-08-26，用户指定）再微调，决策 D23（2026-08-26，用户拍板）F-0906 随保鲜组移 V3，决策 D24（2026-08-26）工程项 IDEA-027 采纳入 V2 批次，决策 D25（2026-08-26，用户拍板）检索定案 MySQL 关键词 + 语义向量双线，决策 D26（2026-08-26，用户拍板）搭车 5 项登记并入 V2（F-0221 知识地图/F-0222 站点更新日志/F-0506 Prompt 后台/F-0609 双栏改写/F-0709 对话记忆），决策 D27（2026-08-26，用户拍板）F-0609/F-0605 移 V3：现 V2 28 项功能（首批 15 项定版优先实施）+ 工程项 IDEA-027、V3 29 项（含 6 项多用户/治理向「暂缓」）；9 项对话期新候选已登记总表（F-0216~F-0220/F-0706/F-0707/F-0809/F-1005），其余候选在 IDEAS.md 待评估（决策 D18 保留历史记录）。待办为 OPT-1（AI 线程模型虚拟线程评估，待认领）与 V2 批次（见 §5 待办）；用户新发现缺陷记 [BUGS.md](./BUGS.md)（仅按明确要求修复，不自动认领）。
+；**2026-08-26 晚：V2 全量实施（批次 0~5）已交付**（28 项功能 + 工程项 IDEA-027，后端 125 测试全绿 + 前端双应用 typecheck/lint/tests + 真实模型 API 冒烟，详情见本日 CHANGELOG），后续进入 V3 规划。
 
 ## 5. 待办
 
@@ -64,7 +67,7 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 | 编号 | 阶段/任务 | 依赖文档 | 状态 | 认领人 |
 | --- | --- | --- | --- | --- |
 | OPT-1 | 技术优化：AI 线程模型评估虚拟线程。主项：chatStreamExecutor（SSE 长连接占平台线程、池满 CallerRuns 堵容器线程）改 `Executors.newVirtualThreadPerTaskExecutor()` + Semaphore 并发上限（限流与线程模型解耦）。候选点：aiTaskExecutor（AI 任务，需保留并发上限）、indexExecutor（发布即索引 embedding/Milvus 阻塞 I/O）、OpenAiChatModel/EmbeddingServiceImpl/MilvusVectorStore 的同步阻塞调用；SseService 心跳与 PublishJob 为固定间隔单线程调度，不适用 | 2026-08-17 线程模型评估（chatStreamExecutor 结构性短板，详见会话记录） | 待认领 | |
-| V2 | V2 批次（D19 定 27 项，D21 换档、D22/D23/D25 微调、D26 加 5 项、D27 移 2 项后 28 项功能 + 工程项 IDEA-027，全部实施）：首批定版 15 项——总表 F-0204/F-0603/F-0606/F-0607/F-0703/F-0806/F-1103 + 新登记 F-0216~F-0219/F-0706/F-0707/F-0809/F-1005；D21 换入 F-0220/F-0705/F-1305（F-1305 已于 D25 移回 V3）、换出 F-0304/F-0210（至 V3）；D22 用户微调：F-0105 忘记密码（邮件验证码）换入，F-1102/F-0303/F-1105 保鲜组移回 V3；D23 用户拍板：F-0906 随保鲜组移 V3；D24 用户拍板：+工程项 IDEA-027 代码注释去除功能编号（存量 Java 约 600 行/294 文件 + 前端 66 文件，脚本批量 + git diff 复核，执行方式待定）；D25 用户拍板：检索引擎定案 MySQL 关键词 + 语义向量双线——页面搜索默认 MySQL 关键词（全站零费），登录用户可切换向量语义（未登录提示），F-1305 ES 移 V3，对话 RAG 统一 MySQL 关键词；D26 用户拍板：+5 项登记 F-0221 知识地图页（IDEA-015）/F-0222 站点更新日志（IDEA-020 改版，admin 动态编辑发布）/F-0506 Prompt 后台动态管理（IDEA-026）/F-0609 双栏对照改写（IDEA-010）/F-0709 对话长期记忆（IDEA-014）；D27 用户拍板：F-0609/F-0605 移 V3；基建前置：Milvus 已装（D25 起换真检索）+ 存量 reindex 补跑（BUG-004 收尾）、F-0105 需 SMTP 邮件服务（账号后续提供）、F-0504/F-0505/F-1304 | PRODUCT §5（V2 28 项）、PROTOTYPE §7/§8 | 待认领 | |
+| V2（已完成） | V2 批次（D19 定 27 项，D21 换档、D22/D23/D25 微调、D26 加 5 项、D27 移 2 项后 28 项功能 + 工程项 IDEA-027，全部实施）：首批定版 15 项——总表 F-0204/F-0603/F-0606/F-0607/F-0703/F-0806/F-1103 + 新登记 F-0216~F-0219/F-0706/F-0707/F-0809/F-1005；D21 换入 F-0220/F-0705/F-1305（F-1305 已于 D25 移回 V3）、换出 F-0304/F-0210（至 V3）；D22 用户微调：F-0105 忘记密码（邮件验证码）换入，F-1102/F-0303/F-1105 保鲜组移回 V3；D23 用户拍板：F-0906 随保鲜组移 V3；D24 用户拍板：+工程项 IDEA-027 代码注释去除功能编号（存量 Java 约 600 行/294 文件 + 前端 66 文件，脚本批量 + git diff 复核，执行方式待定）；D25 用户拍板：检索引擎定案 MySQL 关键词 + 语义向量双线——页面搜索默认 MySQL 关键词（全站零费），登录用户可切换向量语义（未登录提示），F-1305 ES 移 V3，对话 RAG 统一 MySQL 关键词；D26 用户拍板：+5 项登记 F-0221 知识地图页（IDEA-015）/F-0222 站点更新日志（IDEA-020 改版，admin 动态编辑发布）/F-0506 Prompt 后台动态管理（IDEA-026）/F-0609 双栏对照改写（IDEA-010）/F-0709 对话长期记忆（IDEA-014）；D27 用户拍板：F-0609/F-0605 移 V3；基建前置：Milvus 已装（D25 起换真检索）+ 存量 reindex 补跑（BUG-004 收尾）、F-0105 需 SMTP 邮件服务（账号后续提供）、F-0504/F-0505/F-1304 | PRODUCT §5（V2 28 项）、PROTOTYPE §7/§8 | 已完成（2026-08-26 批次 0~5 全部交付） | |
 
 > 说明：V2/V3 范围经决策 D19（2026-08-22）按「个人使用效率 × 访客/面试官浏览可见」评分重划，决策 D21（2026-08-26）将 I 系数调至 2 重评换档，决策 D22/D23（2026-08-26，用户指定/拍板）与 D25（检索定案）、D26（搭车并入）、D27（移出 F-0609/F-0605）微调：现 V2 28 项功能 / V3 29 项（其中 F-0106/F-0211/F-1002/F-1003/F-1203/F-1204 共 6 项多用户/治理向标「暂缓」），另加工程项 IDEA-027；原 D18「AI 优先」标注停用（历史决策保留于 §8 与 CHANGELOG）；V3 其余 23 项保持规划不排期；阶段调整须经 CHANGELOG 记录（决策 D10）。
 > KB-1~KB-6 已全部交付验收；实施细则方案（`knowledge-redesign-proposal.md` / `code-implementation-plan.md`）已随实施完成删除，需要时经 git 历史回溯。
@@ -77,11 +80,10 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/26 · ZCode：**V2 全量实施交付（批次 0~5，28 项功能 + 工程项 IDEA-027）**——0：注释编号清理（375 文件 787 行）；1：AI 基建（F-0504 配额 / F-0505 调用追踪 / F-0506 Prompt 后台 / F-1304 审核事件解耦）；2：检索双线（F-0217 语义向量+Milvus 落地+全量补跑、F-0216 问搜一体）；3：写作（F-0603 RAG 增强 / F-0606 辅助编辑 / F-0607 代码解读）；4：对话组八项（F-0703 访客助手 / 0704 / 0705 / 0706 / 0707 / 0709 / 1103 / 1005 评论@小光）；5：前台增值十二项（F-0105 忘记密码 / 0204 / 0206 / 0218 / 0219 / 0220 / 0221 / 0222 / 0806 / 0809 / 1306）。验证：后端 125 测试全绿、blog 19 + admin 2 前端测试、双 typecheck/lint 0 errors、真实模型 API 冒烟全链路；Milvus 检索线三连坑根治；冒烟数据与临时凭据全部清理还原。
 - 2026/8/26 · ZCode：**V2 名单定版 D21~D27（V2 冻结 28 项功能 + 工程项 IDEA-027，全部实施，未开工）**——D21：I 系数 1.2→2（总分 = P + I×2 + 成本），52 项全量重评：F-0220/F-1305/F-0705/F-1105 移入 V2、F-0304/F-0210 移出至 V3，评分明细归档 CHANGELOG 2026/8/26；D22（用户指定）：保鲜组 F-1102/F-0303/F-1105 移回 V3、F-0105 忘记密码（邮件验证码，SMTP 依赖）换入 V2；D23（用户拍板）：F-0906 随保鲜组移 V3；D24：IDEA-027 代码注释清理采纳入 V2 批次（工程项）；D25（用户拍板）：**检索引擎定案 MySQL 关键词 + 语义向量双线**——页面搜索默认 MySQL 关键词、登录可切换语义（未登录提示），F-1305 ES 移 V3，对话 RAG 统一 MySQL 关键词；D26（用户拍板）：**搭车 5 项并入**——F-0221 知识地图页/F-0222 站点更新日志（admin 动态编辑发布）/F-0506 Prompt 后台/F-0609 双栏改写/F-0709 对话记忆。最终：V2 30 项功能 / V3 27 项（首批 15 项与 6 项暂缓不变），全部实施、未开工。纯文档变更。
 - 2026/8/25 · ZCode：**AI 代码级去重 A-F 批（承接架构收敛）**——①Prompt 9 条集中为 `PromptTemplates` 常量类（WritingExecutor 4/ReviewExecutor 2/EnhanceServiceImpl 2/ChatServiceImpl 1，IDEA-026 落点预留为默认值来源）；②JSON 提取统一 `AiJson`（三执行器近似实现收敛，Enhance 抛异常语义保留）；③删 `TaskVO`，`GET /tasks/{taskId}` 改返跨模块稳定类型 `TaskResultVO`（REST `id`→`taskId`，blog writing.ts 同步）；④SSE 事件名后端 `SseEventName`/前端 `sseEvent.ts` 常量化（chunk/progress/done/error/citation/tool）；⑤前端 activeTools/doneTools 收口 `chat/utils/toolPanel.ts`；⑥parse* 函数源核后无跨文件重复，并入 ④⑤。验证：后端 8 模块 BUILD SUCCESS（ai 24 测试全绿）、blog typecheck/vitest 6 条（含新增 toolPanel）/eslint 0 errors。
-- 2026/8/25 · ZCode：**AI 架构收敛三项（双轨合单轨 + EMBEDDING 删虚 + 删 EnhancePanel）**——①**双轨合单轨**：QA/写作/审校一律走 Agent 路径（QA=`ChatServiceImpl` 删固定 RAG 的 `runFixedRag/retrieve/buildSystemPrompt/SYSTEM_PROMPT`，RAG 检索收敛到 `knowledge.search` 工具；写作=`WritingExecutor` 删 `singlePass`，主链路失败→任务 FAILED、自审/修订失败→跳过修订交付初稿；审校=`ReviewExecutor` 删普通 `chat()` 统一走工具核对）；移除 `ai_scene_config.agent_enabled` 开关（`SceneModel/SceneConfigService/Entity/VO/DTO/Controller/admin` 配置页全删，存量列清理见 `sql/migration/89_ai_scene_single_track.sql`）。②**EMBEDDING 删虚**：移除 `AiScene.EMBEDDING` 场景枚举与 ai 模块 `bailianModelEmbedding` 绑定，向量化统一由 knowledge 模块 `KnowledgeAiProperties` 读 `.env`（`admin` 模型配置页移除 Embedding 行）。③**删 EnhancePanel 孤儿模块**（blog `ai-enhance` 261 行，从未接线）。验证：后端 xlumen-ai 24 测试全绿（WritingExecutorTest 5/ReviewExecutorTest 4/ChatRuntimeImplTest 3）、admin typecheck 通过；前端/后端代码零 EMBEDDING·agentEnabled·singlePass 残留（SQL/文档已同步）。
-
-## 8. 关键决策摘要（详见规范文档，勿推翻）
+- 2026/8/25 · ZCode：**AI ## 8. 关键决策摘要（详见规范文档，勿推翻）
 
 | 编号 | 决策 |
 | --- | --- |
