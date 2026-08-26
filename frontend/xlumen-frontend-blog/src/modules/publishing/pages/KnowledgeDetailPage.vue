@@ -3,7 +3,8 @@
 // 目录导航 + Markdown 正文 + 赞/踩/收藏/评论。
 // 关键状态：加载骨架、404 不可访问解释、失败可重试；进入页面上报一次阅读量（防刷由后端保证）。
 // 目录（TOC）滚动高亮：监听滚动，当前章节主色 + 左侧竖线。
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { RouterLink, useRoute } from 'vue-router'
 
 import CommentList from '@/modules/engagement/components/CommentList.vue'
@@ -11,10 +12,12 @@ import FavoriteButton from '@/modules/engagement/components/FavoriteButton.vue'
 import FeedbackDialog from '@/modules/engagement/components/FeedbackDialog.vue'
 import ReactionBar from '@/modules/engagement/components/ReactionBar.vue'
 import KnowledgeQaDialog from '@/modules/chat/components/KnowledgeQaDialog.vue'
+import { assistAction } from '@/modules/ai/api/assist'
 import { useSessionStore } from '@/stores/session'
 import { fetchKnowledge, reportView } from '@/modules/publishing/api/public'
 import { extractToc, renderMarkdown } from '@/modules/publishing/utils/markdown'
 
+import type { AssistAction } from '@/modules/ai/api/assist'
 import type { KnowledgeDetail } from '@/modules/publishing/api/public'
 import type { TocItem } from '@/modules/publishing/utils/markdown'
 
@@ -46,6 +49,114 @@ const updatedAt = computed(() => (knowledge.value ? formatDate(knowledge.value.u
 // D02 知识级问答与 读者纠错弹窗
 const showQa = ref(false)
 const showFeedback = ref(false)
+
+// 代码块 AI 解读（F-0607）：正文渲染后动态给每个 <pre><code> 包一个右上角操作条，
+// 不在 markdown 内插入 HTML；渲染结果在弹窗内展示 Markdown 并支持复制。
+const contentEl = ref<HTMLElement | null>(null)
+
+interface CodeAiAction {
+  action: AssistAction
+  label: string
+  dialogTitle: string
+}
+
+const CODE_AI_ACTIONS: ReadonlyArray<CodeAiAction> = [
+  { action: 'code_explain', label: '解释', dialogTitle: 'AI 代码解释' },
+  { action: 'code_bug', label: '找 Bug', dialogTitle: 'AI 找 Bug' },
+  { action: 'code_test', label: '生成测试', dialogTitle: 'AI 生成测试' },
+]
+
+/** 操作条前置的 Sparkles 标识（静态 SVG，与 AiSparkles 同源图形）。 */
+const SPARKLES_SVG =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.94 15.5a2 2 0 0 0-1.44-1.44l-6.13-1.58a.5.5 0 0 1 0-.96l6.13-1.58A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0l1.58 6.13a2 2 0 0 0 1.44 1.44l6.13 1.58a.5.5 0 0 1 0 .96l-6.13 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"></path><path d="M20 3v4"></path><path d="M22 5h-4"></path><path d="M4 17v2"></path><path d="M5 18H3"></path></svg>'
+
+/** 正在进行的代码动作（key 形如 “代码块序号:动作”），防止同按钮重复提交。 */
+const busyCodeActions = new Set<string>()
+
+/** 代码解读结果弹窗。 */
+const codeDialog = ref<{ title: string; result: string } | null>(null)
+const codeDialogVisible = computed({
+  get: () => codeDialog.value !== null,
+  set: (visible: boolean) => {
+    if (!visible) codeDialog.value = null
+  },
+})
+
+let codeBlockSeq = 0
+
+/** 给代码块包上 AI 操作条：渲染后调用，VNode 更新后以 dataset/已有子元素去重。 */
+function enhanceCodeBlocks(): void {
+  const root = contentEl.value
+  if (!root) return
+  const codeBlocks = root.querySelectorAll<HTMLElement>('pre code')
+  codeBlocks.forEach((code) => {
+    const pre = (code.closest('pre') ?? code.parentElement) as HTMLElement | null
+    if (!pre || pre.querySelector('.code-ai-bar')) return
+    pre.classList.add('detail__code')
+    const seq = codeBlockSeq++
+    const bar = document.createElement('div')
+    bar.className = 'code-ai-bar'
+    bar.setAttribute('aria-label', 'AI 代码解读')
+    const mark = document.createElement('span')
+    mark.className = 'code-ai-bar__mark'
+    mark.innerHTML = SPARKLES_SVG
+    bar.appendChild(mark)
+    CODE_AI_ACTIONS.forEach((item) => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'code-ai-bar__btn'
+      button.textContent = item.label
+      button.addEventListener('click', () =>
+        handleCodeAction(item, code, button, `${seq}:${item.action}`),
+      )
+      bar.appendChild(button)
+    })
+    pre.appendChild(bar)
+  })
+}
+
+/** 代码动作：未登录提示登录；成功后弹窗展示 AI 返回的 Markdown 文本。 */
+async function handleCodeAction(
+  item: CodeAiAction,
+  code: HTMLElement,
+  button: HTMLButtonElement,
+  busyKey: string,
+): Promise<void> {
+  if (!session.loggedIn) {
+    ElMessage.warning('请先登录后使用 AI 代码解读')
+    return
+  }
+  if (busyCodeActions.has(busyKey)) return
+  const source = code.textContent ?? ''
+  if (!source.trim()) {
+    ElMessage.warning('该代码块为空，暂无可解读内容')
+    return
+  }
+  busyCodeActions.add(busyKey)
+  button.disabled = true
+  button.classList.add('is-loading')
+  try {
+    const result = await assistAction({ action: item.action, content: source })
+    codeDialog.value = { title: item.dialogTitle, result }
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : 'AI 代码解读失败，请稍后重试')
+  } finally {
+    button.classList.remove('is-loading')
+    button.disabled = false
+    busyCodeActions.delete(busyKey)
+  }
+}
+
+/** 复制 AI 解读结果。 */
+async function copyCodeResult(): Promise<void> {
+  if (!codeDialog.value) return
+  try {
+    await navigator.clipboard.writeText(codeDialog.value.result)
+    ElMessage.success('已复制到剪贴板')
+  } catch {
+    ElMessage.warning('复制失败，请手动选择复制')
+  }
+}
 
 // 目录滚动高亮：当前阅读章节 anchor
 const activeAnchor = ref('')
@@ -119,6 +230,14 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
 })
+
+// 正文 v-html 更新后（含首次加载）为代码块补包 AI 操作条；flush post 确保 DOM 已渲染
+watch(renderedHtml, () => {
+  if (!knowledge.value) return
+  void nextTick(() => {
+    enhanceCodeBlocks()
+  })
+})
 </script>
 
 <template>
@@ -182,7 +301,7 @@ onUnmounted(() => {
           <p class="detail__summary-text">{{ knowledge.aiSummary }}</p>
         </div>
 
-        <div class="markdown-body" v-html="renderedHtml" />
+        <div ref="contentEl" class="markdown-body" v-html="renderedHtml" />
 
         <div class="detail__actions">
           <ReactionBar
@@ -200,7 +319,9 @@ onUnmounted(() => {
           />
           <el-button plain @click="showQa = true">问「小光」</el-button>
           <el-button plain @click="showFeedback = true">纠错反馈</el-button>
-          <span v-if="!session.loggedIn" class="detail__actions-hint">登录后可点赞、收藏与评论</span>
+          <span v-if="!session.loggedIn" class="detail__actions-hint"
+            >登录后可点赞、收藏与评论</span
+          >
         </div>
       </article>
     </div>
@@ -222,6 +343,23 @@ onUnmounted(() => {
       :knowledge-id="knowledge.id"
       @close="showFeedback = false"
     />
+
+    <el-dialog
+      v-model="codeDialogVisible"
+      :title="codeDialog?.title ?? 'AI 代码解读'"
+      width="min(720px, 92vw)"
+      append-to-body
+    >
+      <div v-if="codeDialog" class="detail__code-result">
+        <div
+          class="markdown-body detail__code-result-body"
+          v-html="renderMarkdown(codeDialog.result)"
+        />
+        <div class="detail__code-result-actions">
+          <el-button size="small" type="primary" plain @click="copyCodeResult">复制</el-button>
+        </div>
+      </div>
+    </el-dialog>
   </main>
 </template>
 
@@ -451,6 +589,7 @@ onUnmounted(() => {
 }
 
 .markdown-body :deep(pre) {
+  position: relative;
   padding: var(--xl-space-4);
   overflow-x: auto;
   border-radius: var(--xl-radius-card);
@@ -463,6 +602,90 @@ onUnmounted(() => {
   padding: 0;
   background: none;
   color: inherit;
+}
+
+/* 已包 AI 操作条的代码块：顶部预留操作条空间，避免遮挡首行代码 */
+.markdown-body :deep(.detail__code) {
+  padding-top: 40px;
+}
+
+/* 代码块右上角 AI 操作条（渲染后动态包一层，AI 色点缀） */
+.markdown-body :deep(.code-ai-bar) {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--xl-color-ai) 45%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--xl-bg-surface) 88%, transparent);
+  box-shadow: var(--xl-shadow-sm);
+  backdrop-filter: blur(4px);
+}
+
+.markdown-body :deep(.code-ai-bar__mark) {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 2px 4px 6px;
+  color: var(--xl-color-ai);
+}
+
+.markdown-body :deep(.code-ai-bar__btn) {
+  padding: 3px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--xl-color-ai);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.markdown-body :deep(.code-ai-bar__btn:hover) {
+  background: color-mix(in srgb, var(--xl-color-ai) 12%, transparent);
+}
+
+.markdown-body :deep(.code-ai-bar__btn:disabled) {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* 加载态：按钮前置旋转圈 */
+.markdown-body :deep(.code-ai-bar__btn.is-loading) {
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.markdown-body :deep(.code-ai-bar__btn.is-loading::before) {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border: 2px solid color-mix(in srgb, var(--xl-color-ai) 30%, transparent);
+  border-top-color: var(--xl-color-ai);
+  border-radius: 50%;
+  animation: xl-code-ai-spin 0.8s linear infinite;
+}
+
+@keyframes xl-code-ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* AI 解读结果弹窗内容 */
+.detail__code-result-body {
+  margin: 0;
+}
+
+.detail__code-result-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--xl-space-3);
 }
 
 .markdown-body :deep(blockquote) {

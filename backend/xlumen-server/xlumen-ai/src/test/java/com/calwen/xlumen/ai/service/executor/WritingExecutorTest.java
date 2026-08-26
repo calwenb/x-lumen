@@ -8,11 +8,17 @@ import com.calwen.xlumen.ai.service.PromptResolver;
 import com.calwen.xlumen.ai.service.SceneConfigService;
 import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.service.TaskContext;
+import com.calwen.xlumen.knowledge.api.KnowledgeApi;
+import com.calwen.xlumen.knowledge.api.dto.SearchRequestDTO;
+import com.calwen.xlumen.knowledge.api.dto.SearchResultDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.ai.chat.messages.Message;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,6 +47,9 @@ class WritingExecutorTest {
     @Mock
     private TaskContext ctx;
 
+    @Mock
+    private KnowledgeApi knowledgeApi;
+
     private AiProperties aiProperties;
     private WritingExecutor executor;
     private AiTaskEntity task;
@@ -50,12 +59,14 @@ class WritingExecutorTest {
         MockitoAnnotations.openMocks(this);
         aiProperties = new AiProperties();
         aiProperties.setWritingMaxChapters(8);
+        aiProperties.setWritingRagEnabled(false);
         SceneConfigService sceneConfigService = mock(SceneConfigService.class);
         when(sceneConfigService.resolve(anyLong(), any())).thenReturn(SceneModel.builder().build());
-        executor = new WritingExecutor(chatRuntime, aiProperties, new PromptResolver(sceneConfigService));
+        executor = new WritingExecutor(chatRuntime, aiProperties, new PromptResolver(sceneConfigService), knowledgeApi);
         task = new AiTaskEntity();
         task.setId(1L);
         task.setWorkspaceId(1L);
+        task.setUserId(100L);
         task.setInputJson("{\"topic\":\"部署指南\"}");
     }
 
@@ -159,5 +170,48 @@ class WritingExecutorTest {
 
         verify(ctx).fail(anyString());
         verify(ctx, never()).complete(anyString());
+    }
+
+    @Test
+    void ragEnabled_injectsReferencesIntoOutlineAndResult() {
+        aiProperties.setWritingRagEnabled(true);
+        when(knowledgeApi.resolveVisibleKbIds(anyLong())).thenReturn(List.of(10L));
+        when(knowledgeApi.search(any(SearchRequestDTO.class))).thenReturn(List.of(
+                SearchResultDTO.builder().knowledgeId(100L).title("部署手册")
+                        .headingAnchor("安装").chunkText("安装部署步骤").score(0.8f).build()));
+        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
+                .thenReturn(outlineJson(2));
+        when(chatRuntime.chat(eq(1L), eq(AiScene.REVIEWER), any(), any(), any()))
+                .thenReturn(REVIEW_JSON);
+        scriptStream("第 N 章正文");
+
+        executor.execute(task, ctx);
+
+        // 大纲用户消息携带参考资料
+        ArgumentCaptor<List<Message>> messages = ArgumentCaptor.forClass(List.class);
+        verify(chatRuntime).chat(eq(1L), eq(AiScene.WRITING), messages.capture(), any(), any());
+        String userText = messages.getValue().stream()
+                .filter(m -> m instanceof org.springframework.ai.chat.messages.UserMessage um && um.getText() != null)
+                .map(m -> ((org.springframework.ai.chat.messages.UserMessage) m).getText())
+                .reduce("", String::concat);
+        assertThat(userText).contains("参考资料").contains("部署手册");
+        // 结果携带引用证据
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(ctx).complete(captor.capture());
+        assertThat(captor.getValue()).contains("\"references\"");
+        assertThat(captor.getValue()).contains("部署手册");
+        // references 为 JSON 内嵌字符串，键值引号被转义
+        assertThat(captor.getValue()).contains("\\\"knowledgeId\\\":100");
+    }
+
+    @Test
+    void ragDisabled_skipsRetrieval() {
+        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
+                .thenReturn(outlineJson(1));
+        scriptStream("正文");
+
+        executor.execute(task, ctx);
+
+        verify(knowledgeApi, never()).search(any(SearchRequestDTO.class));
     }
 }

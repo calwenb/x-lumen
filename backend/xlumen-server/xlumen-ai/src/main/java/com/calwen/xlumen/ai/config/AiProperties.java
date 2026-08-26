@@ -91,4 +91,8 @@ public class AiProperties {
     /** 多步写作章节上限：大纲超过则回退单次生成模式。 */
     @Value("${XLUMEN_WRITING_MAX_CHAPTERS:8}")
     private int writingMaxChapters;
+
+    /** 写作 RAG 增强（可选启用）：写作前检索知识库注入参考资料，结果携带引用证据。 */
+    @Value("${XLUMEN_WRITING_RAG_ENABLED:true}")
+    private boolean writingRagEnabled;
 }

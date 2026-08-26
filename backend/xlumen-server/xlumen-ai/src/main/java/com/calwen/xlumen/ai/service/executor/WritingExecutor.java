@@ -12,6 +12,9 @@ import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.PromptResolver;
 import com.calwen.xlumen.ai.service.TaskContext;
 import com.calwen.xlumen.ai.util.AiJson;
+import com.calwen.xlumen.knowledge.api.KnowledgeApi;
+import com.calwen.xlumen.knowledge.api.dto.SearchRequestDTO;
+import com.calwen.xlumen.knowledge.api.dto.SearchResultDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.Message;
@@ -20,14 +23,17 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * AI 写作执行器（双轨合并后单轨）：统一走多步工作流 —— 大纲 → 分章流式 → 异源自审（REVIEWER）→ 修订，
+ * AI 写作执行器（双轨合并后单轨）：统一走多步工作流 —— RAG 检索（可选）→ 大纲 → 分章流式 → 异源自审（REVIEWER）→ 修订，
  * 全程无人工确认断点。降级语义：主链路失败（大纲解析失败/章节超限/单章生成失败）→ 任务 FAILED；
- * 增强步骤失败（自审失败/修订失败）→ 跳过修订交付初稿。D20 全量迁移：链路改走 ChatRuntime（Spring AI 消息类型）。
+ * 增强步骤失败（RAG 检索失败/自审失败/修订失败）→ 跳过对应增强继续交付。D20 全量迁移：
+ * 链路改走 ChatRuntime（Spring AI 消息类型）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -37,15 +43,20 @@ public class WritingExecutor implements AiTaskExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(WritingExecutor.class);
 
+    /** RAG 检索条数上限。 */
+    private static final int RAG_TOP_K = 6;
+
     private final ChatRuntime chatRuntime;
     private final AiProperties aiProperties;
     private final PromptResolver promptResolver;
+    private final KnowledgeApi knowledgeApi;
 
     public WritingExecutor(ChatRuntime chatRuntime, AiProperties aiProperties,
-                           PromptResolver promptResolver) {
+                           PromptResolver promptResolver, KnowledgeApi knowledgeApi) {
         this.chatRuntime = chatRuntime;
         this.aiProperties = aiProperties;
         this.promptResolver = promptResolver;
+        this.knowledgeApi = knowledgeApi;
     }
 
     @Override
@@ -60,16 +71,21 @@ public class WritingExecutor implements AiTaskExecutor {
         executeAgentWorkflow(task, ctx, input);
     }
 
-    /** 多步工作流：大纲 → 分章 → 自审 → 修订（主链路失败任务 FAILED，增强失败跳过修订交付）。 */
+    /** 多步工作流：RAG 检索（可选）→ 大纲 → 分章 → 自审 → 修订（主链路失败任务 FAILED，增强失败跳过交付）。 */
     private void executeAgentWorkflow(AiTaskEntity task, TaskContext ctx, JSONObject input) {
         String topic = input.getStr("topic");
         String draft = input.getStr("draft");
         String content = input.getStr("content");
         String title = input.getStr("title");
 
+        // 步0 RAG 检索增强（可选启用；检索失败不阻断，按无引用写作降级）
+        List<SearchResultDTO> references = ragRetrieve(task, topic, title);
+        String referenceText = buildReferenceText(references);
+        String userContextBase = buildUserPrompt(topic, draft, content, title);
+
         // 步1 大纲（非流式 chat 输出 JSON）
         ctx.publishProgress(10);
-        List<JSONObject> chapters = outline(task, input);
+        List<JSONObject> chapters = outline(task, input, referenceText);
         if (chapters == null || chapters.isEmpty()) {
             log.info("写作多步：大纲解析失败，任务失败 taskId={}", task.getId());
             ctx.fail("大纲生成失败，请重试");
@@ -86,7 +102,7 @@ public class WritingExecutor implements AiTaskExecutor {
             }
             outlineText.append(ch.getStr("title", ""));
         }
-        String userContext = buildUserPrompt(topic, draft, content, title);
+        String userContext = userContextBase + (StrUtil.isNotBlank(referenceText) ? "\n\n" + referenceText : "");
         for (int i = 0; i < chapters.size(); i++) {
             JSONObject ch = chapters.get(i);
             String chapterTitle = ch.getStr("title", "第 " + (i + 1) + " 章");
@@ -123,20 +139,86 @@ public class WritingExecutor implements AiTaskExecutor {
                 .set("title", parts[0])
                 .set("content", parts[1])
                 .set("outline", JSONUtil.toJsonStr(JSONUtil.createObj().set("chapters", chapters)))
-                .set("reviewIssues", reviewJson == null ? "[]" : reviewJson));
+                .set("reviewIssues", reviewJson == null ? "[]" : reviewJson)
+                .set("references", referencesJson(references)));
         ctx.complete(resultJson);
     }
 
+    /** RAG 检索：按主题/标题检索当前用户可见库，返回命中片段（按 [n] 顺序引用）。 */
+    private List<SearchResultDTO> ragRetrieve(AiTaskEntity task, String topic, String title) {
+        if (!aiProperties.isWritingRagEnabled() || task.getWorkspaceId() == null) {
+            return List.of();
+        }
+        String query = StrUtil.blankToDefault(topic, StrUtil.blankToDefault(title, ""));
+        if (StrUtil.isBlank(query)) {
+            return List.of();
+        }
+        try {
+            List<Long> kbIds = knowledgeApi.resolveVisibleKbIds(task.getUserId());
+            if (kbIds == null || kbIds.isEmpty()) {
+                return List.of();
+            }
+            return knowledgeApi.search(SearchRequestDTO.builder()
+                    .workspaceId(task.getWorkspaceId())
+                    .query(query)
+                    .kbIds(kbIds)
+                    .topK(RAG_TOP_K)
+                    .build());
+        } catch (Exception e) {
+            log.warn("写作 RAG 检索失败，按无引用写作降级 taskId={}", task.getId(), e);
+            return List.of();
+        }
+    }
+
+    /** 引用块文本：注入用户消息，正文以 [n] 标注；锚点定位片段来源。 */
+    private String buildReferenceText(List<SearchResultDTO> references) {
+        if (references == null || references.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("参考资料（来自知识库，正文引用以 [n] 标注）：\n");
+        int i = 1;
+        for (SearchResultDTO r : references) {
+            String anchor = StrUtil.isNotBlank(r.getHeadingAnchor()) ? "【" + r.getHeadingAnchor() + "】" : "";
+            sb.append("[").append(i++).append("] ").append(StrUtil.blankToDefault(r.getTitle(), ""))
+                    .append(anchor).append("：")
+                    .append(StrUtil.sub(StrUtil.blankToDefault(r.getChunkText(), ""), 0, 300)).append('\n');
+        }
+        return sb.toString();
+    }
+
+    /** 引用证据序列化（供前端溯源展示）。 */
+    private String referencesJson(List<SearchResultDTO> references) {
+        JSONArray arr = new JSONArray();
+        int i = 1;
+        for (SearchResultDTO r : references) {
+            if (r.getKnowledgeId() == null) {
+                continue;
+            }
+            arr.add(JSONUtil.createObj()
+                    .set("refNo", i++)
+                    .set("knowledgeId", r.getKnowledgeId())
+                    .set("title", StrUtil.blankToDefault(r.getTitle(), ""))
+                    .set("headingAnchor", StrUtil.blankToDefault(r.getHeadingAnchor(), ""))
+                    .set("chunkText", StrUtil.sub(StrUtil.blankToDefault(r.getChunkText(), ""), 0, 200))
+                    .set("score", r.getScore()));
+        }
+        return arr.toString();
+    }
+
     /** 步1：大纲；解析失败或章节超限返回 null（回退单次）。 */
-    private List<JSONObject> outline(AiTaskEntity task, JSONObject input) {
+    private List<JSONObject> outline(AiTaskEntity task, JSONObject input, String referenceText) {
         String prompt = promptResolver.resolveWriting(task.getWorkspaceId(), "outline")
                 .replace("{{MAX}}", String.valueOf(maxChapters()));
+        String user = buildUserPrompt(input.getStr("topic"), input.getStr("draft"),
+                input.getStr("content"), input.getStr("title"));
+        if (StrUtil.isNotBlank(referenceText)) {
+            user = user + "\n\n" + referenceText;
+        }
         try {
             String content = chatRuntime.chat(task.getWorkspaceId(), AiScene.WRITING,
                     List.of(
                             new SystemMessage(prompt),
-                            new UserMessage(buildUserPrompt(input.getStr("topic"), input.getStr("draft"),
-                                    input.getStr("content"), input.getStr("title")))),
+                            new UserMessage(user)),
                     0.4, 1024);
             JSONObject obj = AiJson.extractObject(content);
             if (obj == null) {

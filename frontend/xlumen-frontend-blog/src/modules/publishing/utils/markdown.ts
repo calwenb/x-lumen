@@ -1,14 +1,30 @@
 // publishing 模块：Markdown 渲染（B02，PRODUCT §10 要求渲染必须执行 XSS 清洗）。
-// markdown-it 负责语法转换，DOMPurify 清洗输出 HTML；两库按需加载（FRONTEND.md §13 路由级拆包，
-// 本模块仅被详情页引用，随路由 chunk 一起按需下载）。
+// markdown-it 负责语法转换，highlight.js 做围栏代码块高亮，DOMPurify 清洗输出 HTML；
+// 依赖随路由级拆包按需下载（FRONTEND.md §13，本模块被详情页/编辑器预览/问答消息复用）。
 import DOMPurify from 'dompurify'
+import hljs from 'highlight.js'
 import MarkdownIt from 'markdown-it'
 
 const md = new MarkdownIt({
   html: false, // 原文禁止内嵌 HTML，降低 XSS 面
   linkify: true,
   breaks: true,
+  highlight: highlightCode,
 })
+
+/** 围栏代码块高亮：语言可识别时用 hljs 上色，否则转义后按纯文本输出。 */
+function highlightCode(code: string, lang: string): string {
+  const language = lang.trim()
+  if (language && hljs.getLanguage(language)) {
+    try {
+      const highlighted = hljs.highlight(code, { language }).value
+      return `<pre><code class="hljs language-${md.utils.escapeHtml(language)}">${highlighted}</code></pre>`
+    } catch {
+      // 高亮抛错（罕见）时回退纯文本，保证渲染不中断
+    }
+  }
+  return `<pre><code class="hljs">${md.utils.escapeHtml(code)}</code></pre>`
+}
 
 // 渲染时为 h2~h4 附加 id（标题文本），供目录导航锚点定位（与 extractToc 同源）。
 const originalHeadingOpen =

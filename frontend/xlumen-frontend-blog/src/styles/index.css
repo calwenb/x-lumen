@@ -39,3 +39,75 @@ select {
     border-color var(--xl-transition),
     box-shadow var(--xl-transition);
 }
+
+/* 代码高亮色调（highlight.js 输出 .hljs token）：代码块底色为深色（.markdown-body pre），
+   此处仅定 token 前景色，不设背景，保持全站深色代码块视觉统一（FRONTEND.md §10.1） */
+.hljs-comment,
+.hljs-quote {
+  color: #98a2b3;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-meta,
+.hljs-doctag,
+.hljs-template-tag {
+  color: #ff7b72;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: #a5d6ff;
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet {
+  color: #79c0ff;
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-function {
+  color: #d2a8ff;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-params {
+  color: #79c0ff;
+}
+
+.hljs-type,
+.hljs-built_in,
+.hljs-builtin-name {
+  color: #ffa657;
+}
+
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #7ee787;
+}
+
+.hljs-deletion {
+  color: #ffa198;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}
+
+.hljs-link {
+  color: #79c0ff;
+  text-decoration: underline;
+}
