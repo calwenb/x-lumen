@@ -2,7 +2,7 @@
 // 站点 AI 导游：首次访问（localStorage xlumen.tour.v1 不存在）且不在登录/注册页时，
 // 自动弹出自绘的轻量分步导览（无第三方库）：欢迎 → 浏览知识与详情 → 搜索与 AI 问答 → 创作与收藏。
 // 「跳过」与「开始使用」都视为已看过，写入 localStorage 后不再弹出。
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const STORAGE_KEY = 'xlumen.tour.v1'
@@ -36,6 +36,9 @@ const STEPS: TourStep[] = [
 
 const route = useRoute()
 const visible = ref(false)
+
+/** 登录/注册页不展示导游（含挂载后跳转）。 */
+const isAuthPage = computed(() => route.path === '/login' || route.path === '/register')
 const stepIndex = ref(0)
 
 const current = computed(() => {
@@ -83,10 +86,20 @@ onMounted(() => {
     // 存储不可用视为未看过，但弹窗本身不依赖存储
   }
   if (done) return
-  if (route.path === '/login' || route.path === '/register') return
+  if (isAuthPage.value) return
   visible.value = true
   window.addEventListener('keydown', onKeydown)
 })
+
+// 首次挂载后凡发生路由跳转即收起导游并标记已看（引导目的达成，不与真实内容抢焦点）
+watch(
+  () => route.path,
+  () => {
+    if (visible.value) {
+      markSeen()
+    }
+  },
+)
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
@@ -95,7 +108,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="tour">
+    <div v-if="visible && !isAuthPage" class="tour">
       <div class="tour__overlay" aria-hidden="true" />
       <div class="tour__card" role="dialog" aria-modal="true" aria-label="站点导览">
         <span class="tour__steps">{{ stepIndex + 1 }} / {{ STEPS.length }}</span>

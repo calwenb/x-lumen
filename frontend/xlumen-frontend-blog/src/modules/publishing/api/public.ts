@@ -72,9 +72,13 @@ function toNumber(value: unknown): number {
 }
 
 /** 分页查询公开知识（关键词/标签/知识库/目录组合筛选）。 */
-export async function fetchKnowledges(query: KnowledgeQuery): Promise<PageResult<KnowledgeCard>> {
+export async function fetchKnowledges(
+  query: KnowledgeQuery,
+  signal?: AbortSignal,
+): Promise<PageResult<KnowledgeCard>> {
   const { data } = await http.get<ApiResponse<RawPage<RawCard>>>('/public/knowledge', {
     params: query,
+    ...(signal ? { signal } : {}),
   })
   const body = unwrap(data)
   return {

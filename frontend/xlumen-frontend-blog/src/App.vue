@@ -18,13 +18,11 @@ import { useSessionStore } from '@/stores/session'
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import NotificationBell from '@/modules/notification/components/NotificationBell.vue'
-import { useTheme } from '@/composables/useTheme'
 import FloatingAssistant from '@/modules/chat/components/FloatingAssistant.vue'
 import SiteTour from '@/modules/blog/components/SiteTour.vue'
 
 const router = useRouter()
 const session = useSessionStore()
-const { isDark, toggleTheme } = useTheme()
 
 const keyword = ref('')
 
@@ -119,7 +117,6 @@ function handleNavCommand(command: string): void {
         </RouterLink>
       </nav>
       <div class="app-header__menu">
-        <button type="button" class="app-header__theme" aria-label="切换深浅色" @click="toggleTheme">{{ isDark ? '☀' : '☾' }}</button>
         <el-dropdown trigger="click" @command="handleNavCommand">
           <button type="button" class="app-header__hamburger" aria-label="打开导航菜单">☰</button>
           <template #dropdown>
@@ -250,6 +247,7 @@ function handleNavCommand(command: string): void {
 .app-header__menu {
   display: none;
 }
+
 
 .app-header__hamburger {
   display: inline-flex;

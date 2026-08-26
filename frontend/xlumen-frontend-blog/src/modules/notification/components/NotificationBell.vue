@@ -34,9 +34,9 @@ async function refresh(): Promise<void> {
     if (!items.value.length || popoverVisible.value) {
       const page = await fetchNotifications(1, 20)
       items.value = page.records
-      unreadCount.value = page.unreadCount
+      unreadCount.value = Number(page.unreadCount)
     } else {
-      unreadCount.value = await fetchUnreadCount()
+      unreadCount.value = Number(await fetchUnreadCount())
     }
   } catch {
     // 消息加载失败不阻断页面
@@ -49,7 +49,7 @@ async function openPanel(): Promise<void> {
   try {
     const page = await fetchNotifications(1, 20)
     items.value = page.records
-    unreadCount.value = page.unreadCount
+    unreadCount.value = Number(page.unreadCount)
   } catch {
     // 忽略
   } finally {
@@ -156,7 +156,12 @@ timer = window.setInterval(() => void refresh(), 30_000)
     @show="openPanel"
   >
     <template #reference>
-      <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" class="noti-bell__badge">
+      <el-badge
+        :value="Number(unreadCount)"
+        :hidden="Number(unreadCount) === 0"
+        :max="99"
+        class="noti-bell__badge"
+      >
         <button type="button" class="noti-bell" aria-label="消息中心" :title="unreadPreview() || '消息中心'">
           <el-icon><Bell /></el-icon>
         </button>

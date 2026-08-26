@@ -57,7 +57,7 @@ const semanticTotal = ref(0)
 const semanticLoading = ref(false)
 const semanticError = ref(false)
 const semanticSearched = ref(false)
-let semanticGeneration = 0
+let semanticAbort: AbortController | null = null
 
 // 问小光（单题流式问答，不保留会话历史）
 const question = ref('')
@@ -70,8 +70,8 @@ const answer = reactive({
 })
 let askController: AbortController | null = null
 
-function formatDate(iso: string): string {
-  return iso.slice(0, 10)
+function formatDate(iso: string | null | undefined): string {
+  return iso ? iso.slice(0, 10) : ''
 }
 
 /** 命中高亮：将 keyword 出现处包裹 <mark>（先转义防注入，再替换）。 */
@@ -83,7 +83,9 @@ function highlight(text: string, query: string): string {
   return escaped.replace(new RegExp(pattern, 'gi'), (match) => `<mark>${match}</mark>`)
 }
 
-function escapeHtml(text: string): string {
+function escapeHtml(text: string | null | undefined): string {
+  if (text == null) return ''
+
   return text
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -162,9 +164,12 @@ function applyKeywordFilters(): void {
   void router.push({ name: 'search', query })
 }
 
-/** 语义检索单次请求；generation 防旧响应覆盖新结果。 */
+/** 语义检索单次请求：AbortController 取消上一次未完成请求；loading 无条件收敛，
+ *  10 秒看门狗兜底（请求异常挂起时转错误态可重试，绝不无限骨架）。 */
 async function runSemanticSearch(): Promise<void> {
-  const current = ++semanticGeneration
+  semanticAbort?.abort()
+  const controller = new AbortController()
+  semanticAbort = controller
   semanticLoading.value = true
   semanticError.value = false
   const q = keyword.value.trim()
@@ -175,21 +180,36 @@ async function runSemanticSearch(): Promise<void> {
     semanticLoading.value = false
     return
   }
+  const watchdog = window.setTimeout(() => {
+    if (semanticAbort === controller) {
+      semanticLoading.value = false
+      semanticError.value = true
+    }
+  }, 10_000)
   try {
-    const page = await fetchKnowledges({
-      keyword: q,
-      mode: 'semantic',
-      pageNo: 1,
-      pageSize: SEMANTIC_PAGE_SIZE,
-    })
-    if (current !== semanticGeneration) return
-    semanticItems.value = page.records
-    semanticTotal.value = page.total
+    const page = await fetchKnowledges(
+      {
+        keyword: q,
+        mode: 'semantic',
+        pageNo: 1,
+        pageSize: SEMANTIC_PAGE_SIZE,
+      },
+      controller.signal,
+    )
+    window.clearTimeout(watchdog)
+    if (controller.signal.aborted) return
+    semanticItems.value = page?.records ?? []
+    semanticTotal.value = page?.total ?? semanticItems.value.length
     semanticSearched.value = true
   } catch {
-    if (current === semanticGeneration) semanticError.value = true
+    window.clearTimeout(watchdog)
+    // 主动取消（新一次搜索已发起）不算失败
+    if (controller.signal.aborted) return
+    semanticError.value = true
   } finally {
-    if (current === semanticGeneration) semanticLoading.value = false
+    // 无条件退出骨架：任何落定（成功/失败/超时）都不允许停在 loading
+    semanticLoading.value = false
+    if (semanticAbort === controller) semanticAbort = null
   }
 }
 
@@ -517,7 +537,7 @@ onMounted(() => {
               >
                 命中 {{ knowledge.chunkCount }} 段
               </span>
-              <span>{{ formatDate(knowledge.publishedAt) }}</span>
+              <span v-if="knowledge.publishedAt">{{ formatDate(knowledge.publishedAt) }}</span>
               <span>{{ knowledge.readMinutes }} 分钟阅读</span>
             </div>
           </article>
