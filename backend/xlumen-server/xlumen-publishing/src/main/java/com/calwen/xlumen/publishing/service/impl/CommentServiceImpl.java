@@ -7,16 +7,22 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
+import com.calwen.xlumen.content.api.ContentApi;
+import com.calwen.xlumen.content.api.dto.EditorKnowledgeDTO;
 import com.calwen.xlumen.identity.api.WorkspaceApi;
 import com.calwen.xlumen.publishing.dto.CommentQueryDTO;
 import com.calwen.xlumen.publishing.dto.CommentVO;
 import com.calwen.xlumen.publishing.dto.CreateCommentDTO;
 import com.calwen.xlumen.publishing.dto.PageResult;
 import com.calwen.xlumen.publishing.entity.CommentEntity;
+import com.calwen.xlumen.publishing.event.CommentAiEchoRequestedEvent;
 import com.calwen.xlumen.publishing.mapper.CommentMapper;
 import com.calwen.xlumen.publishing.service.CommentReactionService;
 import com.calwen.xlumen.publishing.service.CommentService;
 import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +34,7 @@ import java.util.stream.Collectors;
 /**
  * 评论服务实现：列表/发表 + 批量统计防 N+1（评论数与赞/踩计数同模式聚合）。
  * 登录态接口的 workspaceId/userId/userName 全部来自 WorkspaceContext（JWT claims）。
+ * 发表评论命中 @小光 时进程内事件同步触发小光回复（@EventListener 同线程，生成失败不影响主流程）。
  *
  * @author calwen
  * @date 2026/8/12
@@ -35,7 +42,14 @@ import java.util.stream.Collectors;
 @Service
 public class CommentServiceImpl implements CommentService {
 
+    private static final Logger log = LoggerFactory.getLogger(CommentServiceImpl.class);
+
     private static final int STATUS_NORMAL = 1;
+
+    /** @小光 触发语（兼容半角/全角 @）。 */
+    private static final String AT_XIAO_GUANG = "@小光";
+
+    private static final String AT_XIAO_GUANG_FULL = "＠小光";
 
     @Resource
     private CommentMapper commentMapper;
@@ -45,6 +59,12 @@ public class CommentServiceImpl implements CommentService {
 
     @Resource
     private CommentReactionService commentReactionService;
+
+    @Resource
+    private ContentApi contentApi;
+
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     public PageResult<CommentVO> listComments(Long knowledgeId, CommentQueryDTO query) {
@@ -64,7 +84,9 @@ public class CommentServiceImpl implements CommentService {
         List<CommentVO> records = page.getRecords().stream()
                 .map(c -> CommentVO.builder()
                         .id(c.getId()).knowledgeId(c.getKnowledgeId()).parentId(c.getParentId())
-                        .userName(c.getUserName()).content(c.getContent()).createdAt(c.getCreatedAt())
+                        .userName(c.getUserName()).content(c.getContent())
+                        .isAi(c.getIsAi() != null && c.getIsAi() == 1)
+                        .citationsJson(c.getCitationsJson()).createdAt(c.getCreatedAt())
                         .likeCount(likeCounts.getOrDefault(c.getId(), 0L))
                         .dislikeCount(dislikeCounts.getOrDefault(c.getId(), 0L))
                         .myReaction(userId == null ? null : myReactions.get(c.getId())).build())
@@ -94,9 +116,45 @@ public class CommentServiceImpl implements CommentService {
         // 不手动赋值则返回 VO 的 createdAt 为 null（前端「xx 天前」把 null 当 1970）。
         comment.setCreatedAt(LocalDateTime.now());
         commentMapper.insert(comment);
+        triggerAiEcho(comment);
         return CommentVO.builder()
                 .id(comment.getId()).knowledgeId(comment.getKnowledgeId()).parentId(comment.getParentId())
-                .userName(comment.getUserName()).content(comment.getContent()).createdAt(comment.getCreatedAt()).build();
+                .userName(comment.getUserName()).content(comment.getContent())
+                .isAi(false).createdAt(comment.getCreatedAt()).build();
+    }
+
+    /**
+     * 命中 @小光（兼容半角/全角 @）→ 发布进程内事件触发小光回复。
+     * 同步执行且全程吞异常：生成失败绝不影响评论主流程（先落评论行，回复失败仅少一条机器回复）。
+     */
+    private void triggerAiEcho(CommentEntity comment) {
+        if (!isAiEchoRequest(comment.getContent())) {
+            return;
+        }
+        try {
+            EditorKnowledgeDTO knowledge = contentApi.getEditorKnowledge(
+                    comment.getWorkspaceId(), comment.getKnowledgeId());
+            eventPublisher.publishEvent(CommentAiEchoRequestedEvent.builder()
+                    .workspaceId(comment.getWorkspaceId())
+                    .knowledgeId(comment.getKnowledgeId())
+                    .userId(comment.getUserId())
+                    .knowledgeTitle(knowledge == null ? null : knowledge.getTitle())
+                    .knowledgeContent(knowledge == null ? null : knowledge.getContent())
+                    .commentId(comment.getId())
+                    .commentContent(comment.getContent())
+                    .username(comment.getUserName())
+                    .build());
+        } catch (Exception e) {
+            log.warn("触发小光评论回复失败 commentId={}", comment.getId(), e);
+        }
+    }
+
+    /** @小光 触发判定：半角/全角 @ 均兼容（正文已在发表时 trim，尾部空白不参与匹配）。 */
+    private boolean isAiEchoRequest(String content) {
+        if (StrUtil.isBlank(content)) {
+            return false;
+        }
+        return content.contains(AT_XIAO_GUANG) || content.contains(AT_XIAO_GUANG_FULL);
     }
 
     @Override

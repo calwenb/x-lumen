@@ -52,6 +52,12 @@ public class AssistServiceImpl implements AssistService {
                     + "用 Markdown 分条列出问题点与修复建议（含关键代码示意）。";
             case "code_test" -> "你是小光，一名测试工程师。请为给定代码生成可运行的单元测试，"
                     + "包含必要的 import、测试用例与断言，用与代码一致的编程语言代码块输出。";
+            case "kb_insight" -> "你是小光，一名知识库运营专家。请根据给定的知识文档列表，"
+                    + "输出知识库主题概览与新增内容要点，用 Markdown 紧凑输出：顶部一句话总结，"
+                    + "再分主题列出要点（每点一行），最后给出新增或亮点内容小结，不要输出与列表无关的内容。";
+            case "kb_cluster" -> "你是小光，一名知识聚类分析专家。给定输入为「编号. 标题——摘要」列表行，"
+                    + "请把主题相近的内容聚为一类，输出一个严格的 JSON 数组，每项为 {\"topic\":\"主题名\",\"ids\":[编号...]}，"
+                    + "只输出 JSON 数组本身，不要包含任何解释或 Markdown 围栏。";
             default -> throw new IllegalArgumentException("未知辅助能力：" + action);
         };
     }

@@ -8,4 +8,5 @@ export const SseEventName = {
   error: 'error',
   citation: 'citation',
   tool: 'tool',
+  followups: 'followups',
 } as const

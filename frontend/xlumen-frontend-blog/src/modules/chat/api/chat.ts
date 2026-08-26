@@ -59,6 +59,8 @@ export interface ChatStreamCallbacks {
   onChunk: (text: string) => void
   onTool: (event: ToolEvent) => void
   onCitations: (citations: Citation[]) => void
+  /** 追问建议：本次回答下方的可点击推荐问题（后端 followups 事件）。 */
+  onFollowups?: (questions: string[]) => void
   onDone: (result: { conversationId: string; messageId: string }) => void
 }
 
@@ -88,7 +90,9 @@ export async function fetchConversations(): Promise<Conversation[]> {
 
 /** 会话消息历史：TOOL 行不单独占消息位（按 tool_call_id 归并进 assistant 的工具面板）。 */
 export async function fetchMessages(conversationId: string): Promise<ChatMessage[]> {
-  const { data } = await http.get<ApiResponse<RawMessage[]>>(`/chat/conversations/${conversationId}/messages`)
+  const { data } = await http.get<ApiResponse<RawMessage[]>>(
+    `/chat/conversations/${conversationId}/messages`,
+  )
   return unwrap(data)
     .filter((message) => message.role !== 'TOOL')
     .map((message) => ({
@@ -112,6 +116,10 @@ export interface ChatScope {
   kbId?: string
   /** 是否检索全部可见库（可空=true）。 */
   allVisible?: boolean
+  /** 限定检索的知识 ID 列表（多文档对比；空=全部可见）。 */
+  knowledgeIds?: string[]
+  /** 限定检索的知识库 ID 列表（多库对比；空=全部可见）。 */
+  kbIds?: string[]
 }
 
 /** 流式对话：chunk 文本增量 / tool 工具过程 / citation 引用 / done 会话归属。 */
@@ -127,6 +135,10 @@ export function streamChat(
       ...(body.conversationId ? { conversationId: body.conversationId } : {}),
       ...(body.kbId ? { kbId: body.kbId } : {}),
       ...(body.allVisible !== undefined ? { allVisible: body.allVisible } : {}),
+      ...(body.knowledgeIds && body.knowledgeIds.length > 0
+        ? { knowledgeIds: body.knowledgeIds }
+        : {}),
+      ...(body.kbIds && body.kbIds.length > 0 ? { kbIds: body.kbIds } : {}),
     },
     callbacks,
     signal,
@@ -143,7 +155,11 @@ export function streamKnowledgeAsk(
 ): Promise<void> {
   return runChatStream(
     `/chat/knowledge/${knowledgeId}/ask`,
-    { query, ...(scope?.kbId ? { kbId: scope.kbId } : {}), ...(scope?.allVisible !== undefined ? { allVisible: scope.allVisible } : {}) },
+    {
+      query,
+      ...(scope?.kbId ? { kbId: scope.kbId } : {}),
+      ...(scope?.allVisible !== undefined ? { allVisible: scope.allVisible } : {}),
+    },
     callbacks,
     signal,
   )
@@ -192,6 +208,17 @@ export function parseToolCalls(json: string): ToolCallRecord[] {
   }
 }
 
+/** 解析追问建议 JSON（data 为字符串数组，如 ["追问1","追问2"]；容错：非法 JSON 返回空数组）。 */
+export function parseFollowups(json: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(json)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((item): item is string => typeof item === 'string' && item.trim() !== '')
+  } catch {
+    return []
+  }
+}
+
 /** 解析工具过程事件（SSE tool 事件负载）。 */
 export function parseToolEvent(data: string): ToolEvent {
   try {
@@ -229,6 +256,9 @@ async function runChatStream(
           break
         case SseEventName.citation:
           callbacks.onCitations(parseCitations(event.data))
+          break
+        case SseEventName.followups:
+          callbacks.onFollowups?.(parseFollowups(event.data))
           break
         case SseEventName.done: {
           const parsed = JSON.parse(event.data) as { conversationId?: string; messageId?: string }

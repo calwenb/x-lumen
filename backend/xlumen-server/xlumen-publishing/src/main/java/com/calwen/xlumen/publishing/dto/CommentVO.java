@@ -35,6 +35,12 @@ public class CommentVO {
     /** 评论内容。 */
     private String content;
 
+    /** AI 自动回复标识：1 小光回复 0 人工（前端小光徽标用）。 */
+    private Boolean isAi;
+
+    /** AI 回复引用溯源（JSON 数组：命中片段 knowledgeId/title/headingAnchor/chunkText/score）。 */
+    private String citationsJson;
+
     /** 创建时间。 */
     private LocalDateTime createdAt;
 

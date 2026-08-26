@@ -20,7 +20,8 @@ import lombok.NoArgsConstructor;
 public class AssistDTO {
 
     /** 能力：continue 续写 / polish 润色 / titles 标题生成 / spellfix 错别字修正 /
-     *  code_explain 代码解释 / code_bug 找 bug / code_test 生成测试。 */
+     *  code_explain 代码解释 / code_bug 找 bug / code_test 生成测试 /
+     *  kb_insight 库主题概览 / kb_cluster 库内容聚类（输入编号列表行）。 */
     @NotBlank(message = "能力不能为空")
     private String action;
 

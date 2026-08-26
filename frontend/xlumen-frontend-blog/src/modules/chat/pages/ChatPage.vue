@@ -2,8 +2,9 @@
 // AI 助理（B00/D01 合一）：左侧会话列表（登录可见）+ 右侧消息流（流式打字 + 引用溯源）。
 // 访客无会话功能，单次问答；登录用户可选会话/新对话，回答附带 [序号] 引用卡片。
 // KB-3 检索范围选择器（决策 D13/D16）：全部可见库（默认）/ 指定知识库；访客隐藏选择器默认全部。
-import { nextTick, onMounted, reactive, ref } from 'vue'
-import { Plus, UserFilled } from '@element-plus/icons-vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { Collection, Plus, UserFilled } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 import { useSessionStore } from '@/stores/session'
 import {
@@ -14,11 +15,21 @@ import {
 } from '@/modules/chat/api/chat'
 import { fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
+import { fetchKnowledges } from '@/modules/publishing/api/public'
 import CitationCard from '@/modules/chat/components/CitationCard.vue'
+import FollowupChips from '@/modules/chat/components/FollowupChips.vue'
 import { activeTools, doneTools } from '@/modules/chat/utils/toolPanel'
+import { buildDraftContent, buildDraftTitle, saveChatDraft } from '@/modules/chat/utils/draft'
 
-import type { ChatMessage, Citation, Conversation, ToolCallRecord, ToolEvent } from '@/modules/chat/api/chat'
+import type {
+  ChatMessage,
+  Citation,
+  Conversation,
+  ToolCallRecord,
+  ToolEvent,
+} from '@/modules/chat/api/chat'
 import type { KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
+import type { KnowledgeCard } from '@/modules/publishing/api/public'
 
 interface ChatItem {
   id: string
@@ -29,8 +40,15 @@ interface ChatItem {
   tools: ToolEvent[]
   /** 历史回放的工具调用记录（来源 toolCallsJson）。 */
   toolCalls: ToolCallRecord[]
+  /** 本次回答下方的追问建议（后端 followups 事件）。 */
+  followups: string[]
+  /** 本条回答关联的用户问题（存为知识草稿时作标题）。 */
+  question: string
   streaming: boolean
 }
+
+/** 多文档对比：单次最多勾选数量。 */
+const COMPARE_LIMIT = 10
 
 const session = useSessionStore()
 
@@ -49,6 +67,49 @@ const scopeKbId = ref('')
 const knowledgeBases = ref<KnowledgeBase[]>([])
 const basesLoading = ref(false)
 
+// 多文档对比：勾选可见知识（上限 COMPARE_LIMIT 篇），确认后随本轮提问传给检索
+const compareDialogVisible = ref(false)
+const compareLoading = ref(false)
+const compareKeyword = ref('')
+const compareOptions = ref<KnowledgeCard[]>([])
+const compareSelection = ref<string[]>([])
+const selectedKnowledgeIds = ref<string[]>([])
+
+const filteredCompareOptions = computed(() => {
+  const keyword = compareKeyword.value.trim().toLowerCase()
+  if (!keyword) return compareOptions.value
+  return compareOptions.value.filter(
+    (item) =>
+      item.title.toLowerCase().includes(keyword) || item.kbName.toLowerCase().includes(keyword),
+  )
+})
+
+/** 打开对比面板：已有选项直接复用，首次拉取可见知识一页（50 条）。 */
+async function openCompareDialog(): Promise<void> {
+  compareDialogVisible.value = true
+  compareKeyword.value = ''
+  compareSelection.value = [...selectedKnowledgeIds.value]
+  if (compareOptions.value.length > 0) return
+  compareLoading.value = true
+  try {
+    const page = await fetchKnowledges({ pageNo: 1, pageSize: 50 })
+    compareOptions.value = page.records
+  } catch {
+    compareOptions.value = []
+  } finally {
+    compareLoading.value = false
+  }
+}
+
+function confirmCompare(): void {
+  selectedKnowledgeIds.value = [...compareSelection.value]
+  compareDialogVisible.value = false
+}
+
+function clearCompare(): void {
+  selectedKnowledgeIds.value = []
+}
+
 function toChatItem(message: ChatMessage): ChatItem {
   return {
     id: message.id,
@@ -57,6 +118,8 @@ function toChatItem(message: ChatMessage): ChatItem {
     citations: message.citations,
     tools: [],
     toolCalls: message.toolCalls,
+    followups: [],
+    question: '',
     streaming: false,
   }
 }
@@ -92,6 +155,12 @@ async function selectConversation(id: string): Promise<void> {
   try {
     const history = await fetchMessages(id)
     messages.value = history.map(toChatItem)
+    // 历史回放：为每条 assistant 消息关联其前置用户问题（存草稿时的标题来源）
+    let lastQuestion = ''
+    for (const message of messages.value) {
+      if (message.role === 'user') lastQuestion = message.content
+      else message.question = lastQuestion
+    }
   } catch {
     messages.value = []
   }
@@ -132,6 +201,8 @@ async function send(): Promise<void> {
     citations: [],
     tools: [],
     toolCalls: [],
+    followups: [],
+    question: '',
     streaming: false,
   })
   // 须用 reactive 代理后再入列，onChunk 持有的引用才能触发流式重渲染
@@ -142,6 +213,8 @@ async function send(): Promise<void> {
     citations: [],
     tools: [],
     toolCalls: [],
+    followups: [],
+    question: query,
     streaming: true,
   })
   messages.value.push(assistant)
@@ -157,6 +230,10 @@ async function send(): Promise<void> {
         ...(currentId.value ? { conversationId: currentId.value } : {}),
         // KB-3 检索范围：指定知识库时限定单库；默认不传=全部可见库
         ...(scopeMode.value === 'kb' && scopeKbId.value ? { kbId: scopeKbId.value } : {}),
+        // 多文档对比：勾选了对比文档时限定检索范围
+        ...(selectedKnowledgeIds.value.length > 0
+          ? { knowledgeIds: selectedKnowledgeIds.value }
+          : {}),
       },
       {
         onChunk: (text) => {
@@ -169,6 +246,10 @@ async function send(): Promise<void> {
         },
         onCitations: (citations) => {
           assistant.citations = citations
+        },
+        onFollowups: (followups) => {
+          assistant.followups = followups
+          scrollToBottom()
         },
         onDone: (result) => {
           newConversationId = result.conversationId
@@ -188,6 +269,31 @@ async function send(): Promise<void> {
     assistant.streaming = false
     sending.value = false
     scrollToBottom()
+  }
+}
+
+/** 追问 chips 点击：以该文本作为新问题发起一轮提问。 */
+function sendFromChip(question: string): void {
+  draft.value = question
+  void send()
+}
+
+const savingDraftId = ref<string | null>(null)
+
+/** 将回答正文（含引用来源清单）存为新知识草稿。 */
+async function saveAsDraft(message: ChatItem): Promise<void> {
+  if (!session.loggedIn || savingDraftId.value) return
+  savingDraftId.value = message.id
+  try {
+    await saveChatDraft(
+      buildDraftTitle(message.question),
+      buildDraftContent(message.content, message.citations),
+    )
+    ElMessage.success('已存入草稿，可到创作中心完善')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '存入草稿失败')
+  } finally {
+    savingDraftId.value = null
   }
 }
 
@@ -249,6 +355,15 @@ onMounted(() => {
     </aside>
 
     <section class="chat__main">
+      <div class="chat__toolbar">
+        <el-button size="small" :icon="Collection" @click="openCompareDialog">对比文档</el-button>
+        <span v-if="selectedKnowledgeIds.length > 0" class="chat__compare-badge">
+          已选择对比 {{ selectedKnowledgeIds.length }} 篇
+        </span>
+        <el-button v-if="selectedKnowledgeIds.length > 0" size="small" text @click="clearCompare"
+          >清除</el-button
+        >
+      </div>
       <div ref="listEl" class="chat__messages">
         <div v-if="messages.length === 0" class="chat__empty">
           <div class="chat__empty-avatar" aria-hidden="true">小光</div>
@@ -261,7 +376,11 @@ onMounted(() => {
           class="chat-message"
           :class="`chat-message--${message.role}`"
         >
-          <div v-if="message.role === 'assistant'" class="chat-message__avatar chat-message__avatar--ai" aria-hidden="true">
+          <div
+            v-if="message.role === 'assistant'"
+            class="chat-message__avatar chat-message__avatar--ai"
+            aria-hidden="true"
+          >
             小光
           </div>
           <div class="chat-message__bubble">
@@ -273,12 +392,7 @@ onMounted(() => {
               v-html="renderMarkdown(message.content)"
             ></div>
             <p v-else class="chat-message__text">{{ message.content }}</p>
-            <span
-              v-if="message.streaming"
-              class="chat-message__cursor"
-              aria-hidden="true"
-              >▍</span
-            >
+            <span v-if="message.streaming" class="chat-message__cursor" aria-hidden="true">▍</span>
             <!-- 工具过程：进行中状态行（正在检索） -->
             <div
               v-if="message.role === 'assistant' && activeTools(message.tools).length > 0"
@@ -289,7 +403,9 @@ onMounted(() => {
                 :key="`active-${tool.seq}`"
                 class="chat-message__tool-line"
               >
-                {{ tool.name === 'knowledge.search' ? '正在检索知识库…' : `正在调用 ${tool.name}…` }}
+                {{
+                  tool.name === 'knowledge.search' ? '正在检索知识库…' : `正在调用 ${tool.name}…`
+                }}
               </span>
             </div>
             <!-- 工具轨迹：done 面板（流式过程）+ 历史回放 -->
@@ -310,7 +426,9 @@ onMounted(() => {
                   <span class="chat-message__tool-name">{{ tool.name }}</span>
                   <span v-if="tool.ok === false" class="chat-message__tool-status">失败</span>
                   <span v-else class="chat-message__tool-status">完成</span>
-                  <span v-if="tool.summary" class="chat-message__tool-summary">{{ tool.summary }}</span>
+                  <span v-if="tool.summary" class="chat-message__tool-summary">{{
+                    tool.summary
+                  }}</span>
                   <span v-if="tool.durationMs != null" class="chat-message__tool-duration">
                     {{ tool.durationMs }}ms
                   </span>
@@ -338,8 +456,38 @@ onMounted(() => {
                 :index="index + 1"
               />
             </div>
+            <!-- 追问 chips：本次回答下方可点击的追问建议 -->
+            <FollowupChips
+              v-if="message.role === 'assistant' && message.followups.length > 0"
+              :questions="message.followups"
+              :disabled="sending"
+              @select="sendFromChip"
+            />
+            <!-- 存为知识草稿：登录用户可将回答一键转为创作中心草稿 -->
+            <div
+              v-if="
+                session.loggedIn &&
+                message.role === 'assistant' &&
+                message.content &&
+                !message.streaming
+              "
+              class="chat-message__draft"
+            >
+              <button
+                type="button"
+                class="chat-message__draft-btn"
+                :disabled="savingDraftId === message.id"
+                @click="saveAsDraft(message)"
+              >
+                {{ savingDraftId === message.id ? '存入中…' : '存为知识草稿' }}
+              </button>
+            </div>
           </div>
-          <div v-if="message.role === 'user'" class="chat-message__avatar chat-message__avatar--user" aria-hidden="true">
+          <div
+            v-if="message.role === 'user'"
+            class="chat-message__avatar chat-message__avatar--user"
+            aria-hidden="true"
+          >
             <el-icon><UserFilled /></el-icon>
           </div>
         </div>
@@ -363,6 +511,49 @@ onMounted(() => {
         </el-button>
       </form>
     </section>
+
+    <!-- 多文档对比：勾选可见知识，确认后限定本轮提问的检索范围 -->
+    <el-dialog
+      v-model="compareDialogVisible"
+      title="选择对比文档"
+      width="560px"
+      @closed="compareKeyword = ''"
+    >
+      <el-input v-model="compareKeyword" placeholder="搜索知识标题 / 知识库…" clearable />
+      <div class="compare-list">
+        <p v-if="compareLoading" class="compare-list__hint">知识加载中…</p>
+        <p v-else-if="compareOptions.length === 0" class="compare-list__hint">暂无公开可见知识</p>
+        <p v-else-if="filteredCompareOptions.length === 0" class="compare-list__hint">
+          未找到匹配的知识
+        </p>
+        <el-checkbox-group
+          v-else
+          v-model="compareSelection"
+          :max="COMPARE_LIMIT"
+          class="compare-list__group"
+        >
+          <el-checkbox
+            v-for="item in filteredCompareOptions"
+            :key="item.id"
+            :value="item.id"
+            border
+            class="compare-list__item"
+          >
+            <span class="compare-list__title">{{ item.title }}</span>
+            <span class="compare-list__kb">{{ item.kbName }}</span>
+          </el-checkbox>
+        </el-checkbox-group>
+      </div>
+      <template #footer>
+        <span class="compare-list__hint"
+          >已选 {{ compareSelection.length }}/{{ COMPARE_LIMIT }} 篇</span
+        >
+        <el-button @click="compareDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="compareSelection.length === 0" @click="confirmCompare"
+          >确认对比</el-button
+        >
+      </template>
+    </el-dialog>
   </main>
 </template>
 
@@ -453,6 +644,24 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+.chat__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
+  padding: var(--xl-space-2) var(--xl-space-4);
+  border-bottom: 1px solid var(--xl-border);
+  background: var(--xl-bg-surface);
+}
+
+.chat__compare-badge {
+  padding: 2px 10px;
+  border: 1px solid color-mix(in srgb, var(--xl-color-ai) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xl-color-ai) 12%, transparent);
+  color: var(--xl-color-ai);
+  font-size: 12px;
 }
 
 .chat__messages {
@@ -747,6 +956,77 @@ onMounted(() => {
   flex-direction: column;
   gap: 6px;
   margin-top: 10px;
+}
+
+/* 存为知识草稿：助手消息末尾的小按钮（仅登录可见） */
+.chat-message__draft {
+  margin-top: 10px;
+}
+
+.chat-message__draft-btn {
+  padding: 3px 10px;
+  border: 1px solid var(--xl-border);
+  border-radius: 999px;
+  background: var(--xl-bg-surface);
+  color: var(--xl-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chat-message__draft-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chat-message__draft-btn:hover:not(:disabled) {
+  border-color: var(--xl-color-ai);
+  color: var(--xl-color-ai);
+}
+
+/* 多文档对比弹窗：可见知识勾选列表 */
+.compare-list {
+  margin-top: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.compare-list__hint {
+  margin: 0;
+  padding: 6px 0;
+  color: var(--xl-text-muted);
+  font-size: 13px;
+}
+
+.compare-list__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compare-list__item {
+  width: 100%;
+  margin-right: 0;
+}
+
+.compare-list__item :deep(.el-checkbox__label) {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.compare-list__title {
+  color: var(--xl-text-primary);
+  font-size: 13px;
+  overflow-wrap: break-word;
+}
+
+.compare-list__kb {
+  flex-shrink: 0;
+  color: var(--xl-text-muted);
+  font-size: 12px;
 }
 
 .chat__composer {

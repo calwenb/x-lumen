@@ -12,8 +12,11 @@ import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.mapper.ChatConversationMapper;
 import com.calwen.xlumen.ai.mapper.ChatMessageMapper;
 import com.calwen.xlumen.ai.prompt.PromptTemplates;
+import com.calwen.xlumen.ai.service.ChatMemoryService;
 import com.calwen.xlumen.ai.service.ChatRuntime;
 import com.calwen.xlumen.ai.service.ChatService;
+import com.calwen.xlumen.ai.service.FollowupGenerator;
+import com.calwen.xlumen.ai.service.QuestionGapService;
 import com.calwen.xlumen.ai.service.PromptResolver;
 import com.calwen.xlumen.ai.service.SceneModel;
 import com.calwen.xlumen.ai.service.tool.AgentToolContext;
@@ -74,19 +77,28 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageMapper messageMapper;
     private final ThreadPoolTaskExecutor chatStreamExecutor;
     private final PromptResolver promptResolver;
+    private final ChatMemoryService chatMemoryService;
+    private final QuestionGapService questionGapService;
+    private final FollowupGenerator followupGenerator;
 
     public ChatServiceImpl(WorkspaceApi workspaceApi,
                            ChatRuntime chatRuntime,
                            ChatConversationMapper conversationMapper,
                            ChatMessageMapper messageMapper,
                            @Qualifier("chatStreamExecutor") ThreadPoolTaskExecutor chatStreamExecutor,
-                           PromptResolver promptResolver) {
+                           PromptResolver promptResolver,
+                           ChatMemoryService chatMemoryService,
+                           QuestionGapService questionGapService,
+                           FollowupGenerator followupGenerator) {
         this.workspaceApi = workspaceApi;
         this.chatRuntime = chatRuntime;
         this.conversationMapper = conversationMapper;
         this.messageMapper = messageMapper;
         this.chatStreamExecutor = chatStreamExecutor;
         this.promptResolver = promptResolver;
+        this.chatMemoryService = chatMemoryService;
+        this.questionGapService = questionGapService;
+        this.followupGenerator = followupGenerator;
     }
 
     @Override
@@ -144,7 +156,7 @@ public class ChatServiceImpl implements ChatService {
                           ChatRequestDTO dto, Long knowledgeId, List<ChatMessageEntity> history,
                           SseEmitter emitter) {
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(promptResolver.resolve(workspaceId, AiScene.QA)));
+        messages.add(new SystemMessage(resolveSystemPrompt(workspaceId, userId)));
         messages.addAll(replayHistory(history));
         messages.add(new UserMessage(dto.getQuery()));
 
@@ -156,6 +168,7 @@ public class ChatServiceImpl implements ChatService {
                 .userId(userId)
                 .conversationId(conversation.getId())
                 .kbId(dto.getKbId())
+                .knowledgeIds(dto.getKnowledgeIds())
                 .citationCollector(results -> {
                     for (SearchResultDTO r : results) {
                         if (r != null && r.getKnowledgeId() != null) {
@@ -188,7 +201,46 @@ public class ChatServiceImpl implements ChatService {
         send(emitter, SseEventName.CITATION, citationsJson);
         ChatMessageEntity assistant = saveMessage(conversation.getId(), workspaceId, userId,
                 "ASSISTANT", sb.toString(), citationsJson, null, null, null);
+        // 收尾增强（记忆写回/知识缺口/相关追问）：失败静默跳过，不影响 done
+        try {
+            if (userId != null) {
+                if (citationIndex.isEmpty()) {
+                    questionGapService.recordUnmatched(workspaceId, userId, conversation.getId(), dto.getQuery());
+                }
+                String summary = answerSummary(sb.toString());
+                chatMemoryService.appendMemory(workspaceId, userId, dto.getQuery(), summary);
+                List<String> followups = followupGenerator.generate(workspaceId, dto.getQuery(), summary);
+                if (!followups.isEmpty()) {
+                    send(emitter, SseEventName.FOLLOWUPS, JSONUtil.toJsonStr(followups));
+                    questionGapService.recordFollowups(workspaceId, userId, conversation.getId(), followups);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("对话收尾增强处理失败（不阻断主流程）", e);
+        }
         sendDone(emitter, conversation, assistant);
+    }
+
+    /** QA System Prompt：resolver 输出为基础，登录用户存在长期记忆时附加（不替换）。 */
+    private String resolveSystemPrompt(Long workspaceId, Long userId) {
+        String base = promptResolver.resolve(workspaceId, AiScene.QA);
+        if (userId == null) {
+            return base;
+        }
+        String memory = chatMemoryService.loadMemory(workspaceId, userId);
+        if (StrUtil.isBlank(memory)) {
+            return base;
+        }
+        return base + "\n\n过往对话记忆：\n" + memory;
+    }
+
+    /** 回答摘要（去空白折叠后取前 200 字），供记忆写回与追问生成。 */
+    private String answerSummary(String answer) {
+        if (answer == null) {
+            return "";
+        }
+        String s = answer.trim().replaceAll("\\s+", " ");
+        return s.length() > 200 ? s.substring(0, 200) : s;
     }
 
     /** 工具轨迹落库：每个工具调用一条 assistant 行（tool_calls_json 单调用）+ 一条 tool 行。 */

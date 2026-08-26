@@ -41,6 +41,12 @@ public class CommentEntity {
     /** 评论内容。 */
     private String content;
 
+    /** AI 自动回复标识：1 小光回复 0 人工。 */
+    private Integer isAi;
+
+    /** AI 回复引用溯源（JSON 数组：命中片段 knowledgeId/title/headingAnchor/chunkText/score）。 */
+    private String citationsJson;
+
     /** 状态：1 正常 0 删除。 */
     private Integer status;
 

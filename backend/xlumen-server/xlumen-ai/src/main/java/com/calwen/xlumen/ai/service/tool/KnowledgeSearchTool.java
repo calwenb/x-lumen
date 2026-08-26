@@ -91,12 +91,18 @@ public class KnowledgeSearchTool implements AgentTool {
             } else {
                 kbIds = visible == null ? List.of() : visible;
             }
-            List<SearchResultDTO> results = knowledgeApi.search(SearchRequestDTO.builder()
+            List<SearchResultDTO> results;
+            SearchRequestDTO.SearchRequestDTOBuilder searchBuilder = SearchRequestDTO.builder()
                     .workspaceId(ctx.getWorkspaceId())
                     .query(query)
                     .kbIds(kbIds)
-                    .topK(topK)
-                    .build());
+                    .topK(topK);
+            List<Long> knowledgeIds = ctx.getKnowledgeIds();
+            if (knowledgeIds != null && knowledgeIds.size() == 1) {
+                // 单篇精确限定（多篇对比保持可见库检索，对比语义由请求方表达）
+                searchBuilder.knowledgeId(knowledgeIds.get(0));
+            }
+            results = knowledgeApi.search(searchBuilder.build());
             JSONArray data = new JSONArray();
             for (SearchResultDTO r : results) {
                 data.add(JSONUtil.createObj()

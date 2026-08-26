@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS `eng_comment` (
     `user_name`    VARCHAR(64)   NOT NULL DEFAULT '' COMMENT '评论用户名（冗余展示字段）',
     `parent_id`    BIGINT        NULL COMMENT '回复的评论 ID（NULL 为顶级评论）',
     `content`      VARCHAR(1000) NOT NULL COMMENT '评论内容',
+    `is_ai`        TINYINT       NOT NULL DEFAULT 0 COMMENT 'AI 自动回复标识：1 小光回复 0 人工',
+    `citations_json` JSON         NULL COMMENT 'AI 回复引用溯源（JSON 数组：命中片段 knowledgeId/title/headingAnchor/chunkText/score）',
     `status`       TINYINT       NOT NULL DEFAULT 1 COMMENT '状态：1 正常 0 删除',
     `created_at`   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),

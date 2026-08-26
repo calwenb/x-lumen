@@ -4,12 +4,20 @@
 // 当前导航项高亮用 router-link-exact-active（首页 / 为全部路由父级，router-link-active 会全站匹配误高亮）。
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChatDotRound, Collection, EditPen, HomeFilled, Monitor, Search } from '@element-plus/icons-vue'
+import {
+  ChatDotRound,
+  Collection,
+  EditPen,
+  HomeFilled,
+  Monitor,
+  Search,
+} from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import NotificationBell from '@/modules/notification/components/NotificationBell.vue'
+import FloatingAssistant from '@/modules/chat/components/FloatingAssistant.vue'
 
 const router = useRouter()
 const session = useSessionStore()
@@ -156,6 +164,8 @@ function handleNavCommand(command: string): void {
       </div>
     </header>
     <RouterView />
+    <!-- 全站悬浮小光：登录/访客均可用，右下角悬浮球 -->
+    <FloatingAssistant />
   </div>
 </template>
 

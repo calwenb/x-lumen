@@ -29,4 +29,7 @@ public final class SseEventName {
 
     /** 工具调用过程事件（Q）。 */
     public static final String TOOL = "tool";
+
+    /** 相关追问（JSON 数组文本）。 */
+    public static final String FOLLOWUPS = "followups";
 }

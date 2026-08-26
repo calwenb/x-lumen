@@ -27,6 +27,8 @@ export interface CommentItem {
   dislikeCount: number
   myReaction: 'LIKE' | 'DISLIKE' | null
   createdAt: string
+  /** 本条评论是否为「小光 AI 回复」（后端按评论来源标记，缺失默认为普通用户评论）。 */
+  isAi: boolean
 }
 
 /** 收藏卡片（B23）：KnowledgeCard 字段 + 收藏时间。 */
@@ -55,9 +57,12 @@ export async function fetchComments(
   pageNo = 1,
   pageSize = 50,
 ): Promise<PageResult<CommentItem>> {
-  const { data } = await http.get<ApiResponse<PageResult<CommentItem>>>(knowledgeUrl(knowledgeId, '/comments'), {
-    params: { pageNo, pageSize },
-  })
+  const { data } = await http.get<ApiResponse<PageResult<CommentItem>>>(
+    knowledgeUrl(knowledgeId, '/comments'),
+    {
+      params: { pageNo, pageSize },
+    },
+  )
   const page = unwrap(data)
   return {
     total: Number(page.total),
@@ -71,15 +76,19 @@ export async function fetchComments(
       likeCount: toNumber(comment.likeCount),
       dislikeCount: toNumber(comment.dislikeCount),
       myReaction: comment.myReaction ?? null,
+      isAi: comment.isAi ?? false,
     })),
   }
 }
 
 /** 发表评论（需登录）。 */
 export async function createComment(knowledgeId: string, content: string): Promise<CommentItem> {
-  const { data } = await http.post<ApiResponse<CommentItem>>(knowledgeUrl(knowledgeId, '/comments'), {
-    content,
-  })
+  const { data } = await http.post<ApiResponse<CommentItem>>(
+    knowledgeUrl(knowledgeId, '/comments'),
+    {
+      content,
+    },
+  )
   const comment = unwrap(data)
   return {
     ...comment,
@@ -89,6 +98,7 @@ export async function createComment(knowledgeId: string, content: string): Promi
     likeCount: toNumber(comment.likeCount),
     dislikeCount: toNumber(comment.dislikeCount),
     myReaction: comment.myReaction ?? null,
+    isAi: comment.isAi ?? false,
   }
 }
 
@@ -100,7 +110,9 @@ export async function toggleLike(knowledgeId: string): Promise<ReactionResult> {
 
 /** 点踩 toggle（需登录）：与点赞互斥，返回切换后的反应状态。 */
 export async function toggleDislike(knowledgeId: string): Promise<ReactionResult> {
-  const { data } = await http.post<ApiResponse<ReactionResult>>(knowledgeUrl(knowledgeId, '/dislike'))
+  const { data } = await http.post<ApiResponse<ReactionResult>>(
+    knowledgeUrl(knowledgeId, '/dislike'),
+  )
   return unwrap(data)
 }
 

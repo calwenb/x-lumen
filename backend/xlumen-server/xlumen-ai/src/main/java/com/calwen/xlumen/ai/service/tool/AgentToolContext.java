@@ -35,6 +35,9 @@ public class AgentToolContext {
     /** 会话锁定的知识库，可空）。 */
     private Long kbId;
 
+    /** 限定对比的知识 ID 列表（可空；单篇时 knowledge.search 精确限定该篇）。 */
+    private List<Long> knowledgeIds;
+
     /** ChatRuntime 注入的引用证据收集器：knowledge.search 命中结果同时上报，聚合进 citation 事件。 */
     private Consumer<List<SearchResultDTO>> citationCollector;
 }

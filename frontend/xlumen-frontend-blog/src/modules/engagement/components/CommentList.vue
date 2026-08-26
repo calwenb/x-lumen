@@ -7,7 +7,12 @@ import { ElMessage } from 'element-plus'
 
 import { useSessionStore } from '@/stores/session'
 
-import { createComment, fetchComments, toggleCommentDislike, toggleCommentLike } from '@/modules/engagement/api/engagement'
+import {
+  createComment,
+  fetchComments,
+  toggleCommentDislike,
+  toggleCommentLike,
+} from '@/modules/engagement/api/engagement'
 
 import type { CommentItem } from '@/modules/engagement/api/engagement'
 
@@ -81,7 +86,11 @@ async function submit(): Promise<void> {
 onMounted(load)
 
 /** 评论反应迁移：from 移除旧计数，to 计入新计数（null 侧不计数）。 */
-function applyCommentTransition(comment: CommentItem, from: MyReaction | null, to: MyReaction | null): void {
+function applyCommentTransition(
+  comment: CommentItem,
+  from: MyReaction | null,
+  to: MyReaction | null,
+): void {
   if (from === 'LIKE') comment.likeCount -= 1
   else if (from === 'DISLIKE') comment.dislikeCount -= 1
   if (to === 'LIKE') comment.likeCount += 1
@@ -101,7 +110,10 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
   applyCommentTransition(comment, original, guess)
   comment.myReaction = guess
   try {
-    const result = target === 'LIKE' ? await toggleCommentLike(comment.id) : await toggleCommentDislike(comment.id)
+    const result =
+      target === 'LIKE'
+        ? await toggleCommentLike(comment.id)
+        : await toggleCommentDislike(comment.id)
     const final = result.reaction === 'NONE' ? null : result.reaction
     if (final !== comment.myReaction) {
       applyCommentTransition(comment, comment.myReaction, final)
@@ -131,7 +143,10 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
       <ul v-else class="comment-list">
         <li v-for="comment in comments" :key="comment.id" class="comment-item">
           <div class="comment-item__head">
-            <span class="comment-item__user">{{ comment.userName }}</span>
+            <span class="comment-item__user">
+              {{ comment.userName }}
+              <span v-if="comment.isAi" class="comment-item__ai-badge">小光 AI 回复</span>
+            </span>
             <span class="comment-item__time">{{ formatTime(comment.createdAt) }}</span>
           </div>
           <p class="comment-item__content">{{ comment.content }}</p>
@@ -227,9 +242,25 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
 }
 
 .comment-item__user {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--xl-space-2);
   color: var(--xl-color-primary);
   font-size: 13px;
   font-weight: 600;
+}
+
+/* 「小光 AI 回复」凹形小徽标（AI 色） */
+.comment-item__ai-badge {
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--xl-color-ai) 45%, transparent);
+  border-radius: 999px;
+  background: var(--xl-bg-surface);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--xl-color-ai) 18%, transparent);
+  color: var(--xl-color-ai);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.6;
 }
 
 .comment-item__time {
