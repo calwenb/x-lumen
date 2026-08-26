@@ -7,12 +7,10 @@ import { Document, Monitor, Operation, Setting, User, View } from '@element-plus
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import { useSessionStore } from '@/stores/session'
-import { useTheme } from '@/composables/useTheme'
 
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
-const { isDark, toggleTheme } = useTheme()
 
 const showShell = computed(() => !route.meta.guest)
 
@@ -54,9 +52,7 @@ async function handleLogout(): Promise<void> {
           <span>审计日志</span>
         </el-menu-item>
       </el-menu>
-      <div class="app-sidebar__footer">
-        <button type="button" class="app-sidebar__theme" @click="toggleTheme">{{ isDark ? '☀' : '☾' }}</button>
-        <span class="app-sidebar__user">
+      <div class="app-sidebar__footer">        <span class="app-sidebar__user">
           <el-icon><User /></el-icon>
           {{ session.snapshot?.username }}
         </span>
