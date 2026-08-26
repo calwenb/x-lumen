@@ -17,6 +17,8 @@ import {
   updateKnowledgeBase,
 } from '@/modules/knowledge/api/knowledgeBase'
 import { fetchKnowledges } from '@/modules/publishing/api/public'
+import { assistAction } from '@/modules/ai/api/assist'
+import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import DirectoryTreeContextMenu from '@/modules/knowledge/components/DirectoryTreeContextMenu.vue'
 import { useInfinitePage } from '@/composables/useInfinitePage'
 
@@ -88,6 +90,33 @@ const infinite = useInfinitePage<KnowledgeCard>({
 
 const knowledges = infinite.items
 const loading = infinite.loading
+
+/** AI 库洞察：基于当前可见文档列表生成主题概览（复用 assist kb_insight，登录可用）。 */
+const insight = ref('')
+const insightLoading = ref(false)
+const insightError = ref('')
+const insightHtml = computed(() => (insight.value ? renderMarkdown(insight.value) : ''))
+const docCount = computed(() => knowledges.value.length)
+
+async function loadInsight(): Promise<void> {
+  if (!session.loggedIn || knowledges.value.length < 2) {
+    insight.value = ''
+    return
+  }
+  insightLoading.value = true
+  insightError.value = ''
+  const lines = knowledges.value
+    .slice(0, 50)
+    .map((k, i) => `${i + 1}. ${k.title}——${(k.summary || '').slice(0, 80)}`)
+    .join('\n')
+  try {
+    insight.value = await assistAction({ action: 'kb_insight', content: lines })
+  } catch (e) {
+    insightError.value = (e as Error).message || 'AI 洞察生成失败，请稍后重试'
+  } finally {
+    insightLoading.value = false
+  }
+}
 const loadError = infinite.error
 
 /** 登录态下匹配自己的库：命中则加载库详情 + 目录树（库主模式），否则保持访客占位。 */
@@ -251,6 +280,21 @@ onMounted(async () => {
       </div>
       <p v-if="kbDetail && kbDetail.intro" class="kb-detail__intro">{{ kbDetail.intro }}</p>
     </header>
+
+    <section v-if="session.loggedIn" class="kb-detail__insight">
+      <div class="kb-detail__insight-head">
+        <span class="kb-detail__insight-title">AI 库洞察</span>
+        <el-button size="small" text type="primary" :loading="insightLoading" @click="loadInsight">
+          {{ insight ? '重新生成' : '生成洞察' }}
+        </el-button>
+      </div>
+      <div v-if="insightLoading" class="kb-detail__insight-body">小光正在分析该库内容…</div>
+      <div v-else-if="insightError" class="kb-detail__insight-error">{{ insightError }}</div>
+      <div v-else-if="insight" class="kb-detail__insight-body markdown-body" v-html="insightHtml"></div>
+      <div v-else class="kb-detail__insight-body kb-detail__insight-body--hint">
+        基于库内 {{ docCount }} 篇知识生成主题概览与亮点，登录后可用。
+      </div>
+    </section>
 
     <div class="kb-detail__layout">
       <aside v-if="isOwner" class="kb-detail__side">
@@ -709,4 +753,40 @@ onMounted(async () => {
     margin-left: 0;
   }
 }
+.kb-detail__insight {
+  margin: var(--xl-space-4) 0;
+  padding: var(--xl-space-4);
+  border: 1px solid var(--xl-border);
+  border-left: 3px solid var(--xl-color-ai);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+}
+
+.kb-detail__insight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--xl-space-2);
+}
+
+.kb-detail__insight-title {
+  font-weight: 600;
+  color: var(--xl-color-ai);
+}
+
+.kb-detail__insight-body {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--xl-text-secondary);
+}
+
+.kb-detail__insight-body--hint {
+  color: var(--xl-text-muted);
+}
+
+.kb-detail__insight-error {
+  color: var(--xl-color-danger);
+  font-size: 13px;
+}
+
 </style>

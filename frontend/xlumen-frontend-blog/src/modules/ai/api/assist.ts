@@ -15,6 +15,7 @@ export type AssistAction =
   | 'code_test'
   /** 知识地图聚类：content 为「序号. 标题——摘要」多行文本，返回主题 JSON 数组。 */
   | 'kb_cluster'
+  | 'kb_insight'
   /** 图片讲解：imageUrl 为绝对图片地址（http(s)），返回讲解 Markdown 文本。 */
   | 'image_explain'
 
