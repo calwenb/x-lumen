@@ -147,6 +147,12 @@ const router = createRouter({
       component: () => import('@/modules/knowledge/pages/IndexStatusPage.vue'),
       meta: { authenticated: true, title: 'RAG 索引' },
     },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/modules/blog/pages/NotFoundPage.vue'),
+      meta: { title: '页面不存在' },
+    },
   ],
 })
 

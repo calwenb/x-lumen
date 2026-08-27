@@ -57,6 +57,12 @@ const router = createRouter({
       component: () => import('@/modules/audit/pages/AuditLogPage.vue'),
       meta: { authenticated: true, title: '审计日志' },
     },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/modules/workspace/pages/NotFoundPage.vue'),
+      meta: { title: '页面不存在' },
+    },
   ],
 })
 

@@ -16,7 +16,17 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
-## 2026/8/27 10:58 · ZCode（V2 收尾项：TTS/图片讲解换便宜模型 + SMTP 启用真实发信）
+## 2026/8/28 07:27 · ZCode（全功能黑盒巡检 1080p + 修复 404 路由盲区）
+
+> 影响文档：docs/ai/QA.md（无·测试记录）、docs/ai/STATUS.md（§7 最近变更随本条目更新） · 决策摘要：无
+
+- **测试范围**：按 QA.md §5 全模块巡检（1080p，qa_ft_0828 / qa_ft2_0828 测试账号）：身份多租户 / 博客公开阅读 / 互动反馈 / 内容管理 / 知识库体系 / 审核发布 / AI 对话 / AI 写作 / AI 内容增值 / RAG 索引 / 管理后台 / 多用户可见性，另覆盖 V2 页（知识地图、站点更新日志、搜索双线）。
+- **全部通过项**：注册/登录/登出/再登录；详情页渲染（TOC/AI 摘要块）；赞踩互斥、收藏 toggle、评论发表、读者纠错（追踪号）；建库（公开/私有）、目录树、编辑器保存草稿、发布→自动 AI 审核→自动发布→消息中心通知→审核中心；AI 对话流式+工具调用（knowledge.list/getDirectoryTree/search）+ 引用计数；AI 写作「大纲→分章→自审→修订」四步生成完成（含"保存为新知识"）；管理后台（空间设置、模型配置空态、审计日志 KNOWLEDGE_PUBLISH、AI 调用追踪 13 次 0 失败）；多用户可见性（公开知识跨空间可见、私有库 404「知识库不存在或无权访问」+ 前端"知识库不可访问"fallback）；回收站（删库→恢复）；站点更新日志页。
+- **发现并修复缺陷**：**blog 与 admin 前端均无 404 兜底路由**——访问不存在的路径（如 `/map` 误为 `/knowledge-map`）时 Vue Router 无匹配路由、无 fallback，渲染空白页（Vue Router warn `No match found`），与 BUG-029 同类路由盲区。修复：新增 `NotFoundPage.vue`（blog `/modules/blog/pages`、admin `/modules/workspace/pages`，匹配 V2 设计系统）+ 两端 router 追加 `path: '/:pathMatch(.*)*'` catch-all。
+- **排除项（非缺陷）**：①AI 对话「切片为空跳过索引」— 因测试用 fill 填充正文时换行丢失为字面 `\n`（整篇变单行，chunking 按标题切分产出空），非产品问题；存量 9 篇已发布知识均有 ACTIVE 索引（8-21 补跑），RAG 链路正常。②登录态在整页刷新后丢失（M02 约束，刷新令牌不持久化，预期）。③向量语义/问小光搜索未登录禁用（D25 预期）。
+- **验证**：blog 与 admin 均 `typecheck`/`lint` 通过（0 errors）；浏览器复测 `/knowledge-map` 渲染 404 页、admin `/foo` 渲染 404 页。测试数据（qa_ft_0828 / qa_ft2_0828 及知识/库）保留在 xlumen_dev。
+
+
 
 > 影响文档：docs/frontend/FRONTEND.md（无·纯后端与配置）、docs/ai/STATUS.md（§6 遗留说明随本条目闭合） · 决策摘要：无
 
