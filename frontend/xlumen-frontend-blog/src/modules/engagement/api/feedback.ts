@@ -18,8 +18,14 @@ export interface FeedbackResult {
 }
 
 /** 提交读者纠错（匿名可提交）。 */
-export async function submitFeedback(knowledgeId: string, payload: FeedbackRequest): Promise<FeedbackResult> {
-  const { data } = await http.post<ApiResponse<FeedbackResult>>(`/public/knowledge/${knowledgeId}/feedback`, payload)
+export async function submitFeedback(
+  knowledgeId: string,
+  payload: FeedbackRequest,
+): Promise<FeedbackResult> {
+  const { data } = await http.post<ApiResponse<FeedbackResult>>(
+    `/public/knowledge/${knowledgeId}/feedback`,
+    payload,
+  )
   const result = unwrap(data)
   return {
     trackNo: String(result.trackNo ?? ''),

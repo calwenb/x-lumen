@@ -111,7 +111,7 @@ async function startStreaming(id: string): Promise<void> {
   controller = new AbortController()
   try {
     await streamSse(
-      `/ai/tasks/${id}/events`,
+      `/tasks/${id}/events`,
       { method: 'GET', signal: controller.signal },
       (event) => {
         handleEvent(id, event)
@@ -139,7 +139,14 @@ function handleEvent(id: string, event: SseEvent): void {
     return
   }
   if (event.event === SseEventName.chunk) {
-    streamText.value += event.data
+    // chunk 事件 data 为 JSON { taskId, sequence, content }，解析 content 增量而非展示原始 JSON。
+    try {
+      const parsed = JSON.parse(event.data) as { content?: string }
+      if (typeof parsed.content === 'string') streamText.value += parsed.content
+      else streamText.value += event.data
+    } catch {
+      streamText.value += event.data
+    }
     return
   }
   if (event.event === SseEventName.error) {
@@ -312,11 +319,7 @@ onBeforeUnmount(() => {
     <div v-if="phase === 'submitting' || phase === 'streaming'" class="ai-write__progress">
       <AiTaskProgress :status="phase === 'submitting' ? 'submitting' : 'streaming'" />
       <div v-if="phase === 'streaming'" class="ai-write__steps">
-        <el-progress
-          :percentage="taskProgress"
-          :stroke-width="6"
-          :format="() => stepLabel"
-        />
+        <el-progress :percentage="taskProgress" :stroke-width="6" :format="() => stepLabel" />
       </div>
       <pre
         v-if="phase === 'streaming'"
@@ -331,12 +334,51 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <section v-if="phase === 'done'" class="ai-write__result">
-      <AiTaskProgress status="done" />
-      <h2 class="ai-write__result-title">{{ resultTitle }}</h2>
-      <div class="ai-write__preview markdown-body" v-html="renderedResult" />
-      <div class="ai-write__result-actions">
+    <section v-if="phase === 'done'" class="ai-write__done">
+      <aside class="ai-write__task-rail">
+        <h2 class="ai-write__rail-title">AI 写作</h2>
+        <p class="ai-write__rail-intro">小光根据主题或草稿生成完整知识</p>
+
+        <div class="ai-write__input-summary">
+          <span class="ai-write__input-label">本次输入</span>
+          <p class="ai-write__input-text">
+            {{ mode === 'topic' ? topic : mode === 'draft' ? draft : contentTitle || contentBody }}
+          </p>
+        </div>
+
+        <ul class="ai-write__steps">
+          <li class="ai-write__step ai-write__step--done">
+            <span class="ai-write__step-check" aria-hidden="true">✓</span>
+            <span class="ai-write__step-name">大纲</span>
+          </li>
+          <li class="ai-write__step ai-write__step--done">
+            <span class="ai-write__step-check" aria-hidden="true">✓</span>
+            <span class="ai-write__step-name">分章</span>
+          </li>
+          <li class="ai-write__step ai-write__step--done">
+            <span class="ai-write__step-check" aria-hidden="true">✓</span>
+            <span class="ai-write__step-name">自审</span>
+          </li>
+          <li class="ai-write__step ai-write__step--done">
+            <span class="ai-write__step-check" aria-hidden="true">✓</span>
+            <span class="ai-write__step-name">修订</span>
+          </li>
+        </ul>
+
+        <el-button class="ai-write__rewrite" @click="reset">重新写作</el-button>
+      </aside>
+
+      <div class="ai-write__canvas">
+        <AiTaskProgress status="done" />
+        <h2 class="ai-write__result-title">{{ resultTitle }}</h2>
+        <div class="ai-write__preview markdown-body" v-html="renderedResult" />
+        <p v-if="saveMessage" class="ai-write__message" role="status">{{ saveMessage }}</p>
+      </div>
+
+      <div class="ai-write__saveband">
+        <label class="ai-write__saveband-label" for="ai-write-kb">所属知识库</label>
         <el-select
+          id="ai-write-kb"
           v-model="kbId"
           class="ai-write__kb"
           placeholder="所属知识库（必选）"
@@ -344,21 +386,19 @@ onBeforeUnmount(() => {
         >
           <el-option v-for="kb in knowledgeBases" :key="kb.id" :label="kb.name" :value="kb.id" />
         </el-select>
-        <el-button type="primary" :loading="saving" @click="saveAsKnowledge">
+        <el-button type="primary" class="ai-write__save" :loading="saving" @click="saveAsKnowledge">
           {{ saving ? '保存中' : '保存为新知识' }}
         </el-button>
-        <el-button @click="reset">重新写作</el-button>
       </div>
-      <p v-if="saveMessage" class="ai-write__message" role="status">{{ saveMessage }}</p>
     </section>
   </main>
 </template>
 
 <style scoped>
 .ai-write {
-  max-width: 860px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 32px 20px 64px;
+  padding: 40px var(--xl-content-pad) 64px;
 }
 
 .ai-write__header {
@@ -479,16 +519,12 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 
-.ai-write__result {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .ai-write__result-title {
   margin: 0;
-  font-size: 22px;
-  line-height: 1.4;
+  font-size: var(--xl-fs-h2);
+  font-weight: var(--xl-fs-h2-w);
+  line-height: var(--xl-fs-h2-lh);
+  letter-spacing: var(--xl-fs-h2-track);
 }
 
 .ai-write__preview {
@@ -497,12 +533,179 @@ onBeforeUnmount(() => {
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
   box-shadow: var(--xl-shadow-sm);
+  overflow-y: auto;
+  max-height: 62vh;
+  flex: 1;
 }
 
 .ai-write__message {
   margin: 0;
   color: var(--xl-text-secondary);
   font-size: 13px;
+}
+
+/* 完成态（B11-S）：36/64 任务工作台 */
+.ai-write__done {
+  display: grid;
+  grid-template-columns: 36fr 64fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--xl-space-6);
+  align-items: stretch;
+}
+
+.ai-write__task-rail {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-4);
+  padding: var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+.ai-write__rail-title {
+  margin: 0;
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
+  color: var(--xl-text-primary);
+}
+
+.ai-write__rail-intro {
+  margin: 0;
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ai-write__input-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-1);
+  padding: var(--xl-space-3);
+  border-radius: var(--xl-radius-sm);
+  background: var(--xl-bg-secondary);
+}
+
+.ai-write__input-label {
+  color: var(--xl-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-write__input-text {
+  margin: 0;
+  color: var(--xl-text-primary);
+  font-size: 13px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ai-write__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-write__step {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
+  padding: var(--xl-space-2) var(--xl-space-3);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius);
+  background: var(--xl-bg-surface);
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+}
+
+.ai-write__step-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--xl-color-ai) 12%, transparent);
+  color: var(--xl-color-ai);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.ai-write__step--done {
+  border-color: color-mix(in srgb, var(--xl-color-ai) 28%, var(--xl-border));
+}
+
+.ai-write__step--done .ai-write__step-name {
+  color: var(--xl-text-primary);
+}
+
+.ai-write__rewrite {
+  margin-top: auto;
+}
+
+.ai-write__canvas {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-4);
+}
+
+.ai-write__saveband {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-3);
+  padding: var(--xl-space-4) var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+.ai-write__saveband-label {
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-write__kb {
+  width: 280px;
+}
+
+.ai-write__save {
+  margin-left: auto;
+}
+
+@media (width <= 900px) {
+  .ai-write__done {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .ai-write__task-rail,
+  .ai-write__canvas,
+  .ai-write__saveband {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .ai-write__kb {
+    width: 100%;
+  }
 }
 
 /* Markdown 预览样式（B11）：与设计 token 对齐 */

@@ -22,10 +22,18 @@ const labels: Record<AiTaskStatus, string> = {
       class="ai-task-progress__spinner"
       aria-hidden="true"
     />
-    <span v-else class="ai-task-progress__mark" :class="`ai-task-progress__mark--${props.status}`" aria-hidden="true">
+    <span
+      v-else
+      class="ai-task-progress__mark"
+      :class="`ai-task-progress__mark--${props.status}`"
+      aria-hidden="true"
+    >
       {{ props.status === 'done' ? '✓' : '✕' }}
     </span>
-    <span class="ai-task-progress__text" :class="{ 'ai-task-progress__text--error': props.status === 'error' }">
+    <span
+      class="ai-task-progress__text"
+      :class="{ 'ai-task-progress__text--error': props.status === 'error' }"
+    >
       {{ props.error ?? labels[props.status] }}
     </span>
   </div>

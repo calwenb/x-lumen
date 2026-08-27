@@ -35,6 +35,17 @@ watch(
   },
 )
 
+// 同篇知识存在两处收藏按钮（正文操作带 + 右侧操作轨），父组件会把一处的结果回传为 props，
+// 这里跟随最新 props 保持两处一致；pending 中不覆盖乐观更新。
+watch(
+  () => `${props.initial}:${props.count}`,
+  () => {
+    if (pending.value) return
+    favorited.value = props.initial
+    count.value = props.count
+  },
+)
+
 async function handleClick(): Promise<void> {
   if (!session.loggedIn) {
     await router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })

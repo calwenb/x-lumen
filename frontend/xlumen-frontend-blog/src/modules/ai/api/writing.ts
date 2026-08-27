@@ -38,14 +38,15 @@ interface RawTask {
 
 /** 提交写作任务。 */
 export async function submitWriting(payload: WritingRequest): Promise<WritingTaskSubmitted> {
-  const { data } = await http.post<ApiResponse<WritingTaskSubmitted>>('/ai/writing', payload)
+  const { data } = await http.post<ApiResponse<number | string>>('/ai/writing', payload)
+  // 后端返回 taskId 原始值（ApiResponse<Long> 序列化为 String），非 { taskId } 对象。
   const result = unwrap(data)
-  return { taskId: String(result.taskId) }
+  return { taskId: String(result) }
 }
 
 /** 查询写作任务详情（流结束后回拉最终结果）。 */
 export async function fetchWritingTask(taskId: string): Promise<AiWritingTask> {
-  const { data } = await http.get<ApiResponse<RawTask>>(`/ai/tasks/${taskId}`)
+  const { data } = await http.get<ApiResponse<RawTask>>(`/tasks/${taskId}`)
   const task = unwrap(data)
   return {
     id: String(task.taskId),
@@ -58,5 +59,5 @@ export async function fetchWritingTask(taskId: string): Promise<AiWritingTask> {
 
 /** 重试失败任务。 */
 export async function retryWritingTask(taskId: string): Promise<void> {
-  await http.post<ApiResponse<unknown>>(`/ai/tasks/${taskId}/retry`)
+  await http.post<ApiResponse<unknown>>(`/tasks/${taskId}/retry`)
 }

@@ -6,13 +6,14 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { RouterLink, useRoute } from 'vue-router'
-import { ArrowDown, Headset } from '@element-plus/icons-vue'
+import { ArrowDown, ChatDotRound, EditPen, Headset } from '@element-plus/icons-vue'
 
 import CommentList from '@/modules/engagement/components/CommentList.vue'
 import FavoriteButton from '@/modules/engagement/components/FavoriteButton.vue'
 import FeedbackDialog from '@/modules/engagement/components/FeedbackDialog.vue'
 import ReactionBar from '@/modules/engagement/components/ReactionBar.vue'
 import KnowledgeQaDialog from '@/modules/chat/components/KnowledgeQaDialog.vue'
+import InitialAvatar from '@/components/InitialAvatar.vue'
 import { assistAction, explainTerm } from '@/modules/ai/api/assist'
 import { useSessionStore } from '@/stores/session'
 import { fetchKnowledge, fetchRelatedKnowledge, reportView } from '@/modules/publishing/api/public'
@@ -99,7 +100,6 @@ const showFeedback = ref(false)
 // 代码块 AI 解读（F-0607）：正文渲染后动态给每个 <pre><code> 包一个右上角操作条，
 // 不在 markdown 内插入 HTML；渲染结果在弹窗内展示 Markdown 并支持复制。
 const contentEl = ref<HTMLElement | null>(null)
-
 interface CodeAiAction {
   action: AssistAction
   label: string
@@ -432,11 +432,16 @@ function scrollToAnchor(anchor: string): void {
   document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-/** 赞/踩计数同步：ReactionBar 以服务端结果校正后回传。 */
-function onCountsChange(counts: { likeCount: number; dislikeCount: number }): void {
+/** 赞/踩计数同步：ReactionBar 以服务端结果校正后回传（含 reaction，供两处按钮组联动）。 */
+function onCountsChange(state: {
+  likeCount: number
+  dislikeCount: number
+  reaction: 'LIKE' | 'DISLIKE' | null
+}): void {
   if (!knowledge.value) return
-  knowledge.value.likeCount = counts.likeCount
-  knowledge.value.dislikeCount = counts.dislikeCount
+  knowledge.value.likeCount = state.likeCount
+  knowledge.value.dislikeCount = state.dislikeCount
+  knowledge.value.liked = state.reaction === 'LIKE'
 }
 
 /** 收藏状态同步。 */
@@ -510,20 +515,24 @@ watch(renderedHtml, () => {
       </aside>
 
       <article class="detail__knowledge">
+        <nav class="detail__crumb">
+          <RouterLink to="/knowledge-bases">知识库</RouterLink>
+          <span class="detail__crumb-sep">/</span>
+          <RouterLink :to="`/kb/${knowledge.kbId}`">{{ knowledge.kbName }}</RouterLink>
+          <span class="detail__crumb-sep">/</span>
+          <span class="detail__crumb-cur">{{ knowledge.title }}</span>
+        </nav>
         <header class="detail__header">
           <h1 class="detail__title">{{ knowledge.title }}</h1>
           <div class="detail__meta">
-            <span>{{ knowledge.authorName }}</span>
+            <InitialAvatar :name="knowledge.authorName" :size="24" />
+            <span class="detail__author">{{ knowledge.authorName }}</span>
             <span>发布于 {{ formatDate(knowledge.publishedAt) }}</span>
             <span v-if="updatedAt !== formatDate(knowledge.publishedAt)"
               >更新于 {{ updatedAt }}</span
             >
             <span>{{ knowledge.readMinutes }} 分钟阅读</span>
             <span>{{ knowledge.viewCount }} 阅读</span>
-            <el-button class="detail__listen" size="small" round @click="togglePlayer">
-              <el-icon class="detail__listen-icon"><Headset /></el-icon>
-              {{ playerOpen ? '收起语音' : '听知识' }}
-            </el-button>
           </div>
           <div class="detail__tags">
             <RouterLink
@@ -587,27 +596,59 @@ watch(renderedHtml, () => {
           v-html="renderedHtml"
         />
 
-        <div class="detail__actions">
-          <ReactionBar
-            :knowledge-id="knowledge.id"
-            :initial-reaction="knowledge.liked ? 'LIKE' : null"
-            :like-count="knowledge.likeCount"
-            :dislike-count="knowledge.dislikeCount"
-            @update:counts="onCountsChange"
-          />
-          <FavoriteButton
-            :knowledge-id="knowledge.id"
-            :initial="knowledge.favorited"
-            :count="knowledge.favoriteCount"
-            @update:state="onFavoriteChange"
-          />
-          <el-button plain @click="showQa = true">问「小光」</el-button>
-          <el-button plain @click="showFeedback = true">纠错反馈</el-button>
-          <span v-if="!session.loggedIn" class="detail__actions-hint"
-            >登录后可点赞、收藏与评论</span
-          >
+        <!-- B02-S 文末互动带：与右操作轨共用同一组动作 -->
+        <div class="detail__actions-band">
+          <span class="detail__actions-band-label">本文</span>
+          <div class="detail__actions-band-actions">
+            <ReactionBar
+              :knowledge-id="knowledge.id"
+              :initial-reaction="knowledge.liked ? 'LIKE' : null"
+              :like-count="knowledge.likeCount"
+              :dislike-count="knowledge.dislikeCount"
+              @update:counts="onCountsChange"
+            />
+            <FavoriteButton
+              :knowledge-id="knowledge.id"
+              :initial="knowledge.favorited"
+              :count="knowledge.favoriteCount"
+              @update:state="onFavoriteChange"
+            />
+            <el-button plain @click="showQa = true">问「小光」</el-button>
+            <el-button plain @click="showFeedback = true">纠错反馈</el-button>
+          </div>
         </div>
       </article>
+
+      <aside class="detail__rail">
+        <button type="button" class="detail__rail-item" @click="togglePlayer">
+          <el-icon class="detail__rail-icon"><Headset /></el-icon>
+          <span class="detail__rail-label">{{ playerOpen ? '收起语音' : '听知识' }}</span>
+        </button>
+        <FavoriteButton
+          class="detail__rail-item detail__rail-item--block"
+          :knowledge-id="knowledge.id"
+          :initial="knowledge.favorited"
+          :count="knowledge.favoriteCount"
+          @update:state="onFavoriteChange"
+        />
+        <button type="button" class="detail__rail-item" @click="showQa = true">
+          <el-icon class="detail__rail-icon"><ChatDotRound /></el-icon>
+          <span class="detail__rail-label">问「小光」</span>
+        </button>
+        <ReactionBar
+          class="detail__rail-item detail__rail-item--block"
+          :knowledge-id="knowledge.id"
+          :initial-reaction="knowledge.liked ? 'LIKE' : null"
+          :like-count="knowledge.likeCount"
+          :dislike-count="knowledge.dislikeCount"
+          @update:counts="onCountsChange"
+        />
+        <button type="button" class="detail__rail-item" @click="showFeedback = true">
+          <el-icon class="detail__rail-icon"><EditPen /></el-icon>
+          <span class="detail__rail-label">纠错反馈</span>
+        </button>
+        <span v-if="!session.loggedIn" class="detail__rail-hint">登录后可点赞、收藏与评论</span>
+      </aside>
     </div>
 
     <!-- 相关推荐：正文下方，无数据不渲染区块 -->
@@ -712,9 +753,9 @@ watch(renderedHtml, () => {
 
 <style scoped>
 .detail {
-  max-width: 1080px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
+  padding: var(--xl-space-8) var(--xl-content-pad) var(--xl-space-8);
 }
 
 .detail__state {
@@ -757,27 +798,23 @@ watch(renderedHtml, () => {
 
 .detail__layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 760px);
-  gap: var(--xl-space-6);
+  grid-template-columns: 200px minmax(0, 780px) 210px;
+  gap: 0;
   justify-content: center;
   align-items: start;
 }
 
-/* 目录为空时目录栏不渲染，必须退回单栏，否则正文被塞进 200px 的目录列 */
+/* 目录为空时退回「正文 + 操作轨」两栏（去掉左目录列） */
 .detail__layout--single {
-  grid-template-columns: minmax(0, 760px);
+  grid-template-columns: minmax(0, 780px) 210px;
 }
 
 .detail__toc {
   position: sticky;
-  top: 72px;
+  top: calc(var(--xl-header-h) + var(--xl-space-6));
   max-height: calc(100vh - 96px);
   overflow-y: auto;
-  padding: var(--xl-space-4);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
+  padding: var(--xl-space-4) var(--xl-space-3) var(--xl-space-4) 0;
 }
 
 .detail__toc-title {
@@ -823,11 +860,40 @@ watch(renderedHtml, () => {
 
 .detail__knowledge {
   min-width: 0;
-  padding: var(--xl-space-6);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
+  padding: var(--xl-space-4) var(--xl-space-8);
+  border-left: 1px solid var(--xl-border);
+  border-right: 1px solid var(--xl-border);
+}
+
+.detail__crumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--xl-space-1);
+  margin-bottom: var(--xl-space-3);
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.detail__crumb a {
+  color: var(--xl-text-secondary);
+  text-decoration: none;
+}
+
+.detail__crumb a:hover {
+  color: var(--xl-color-primary);
+}
+
+.detail__crumb-sep {
+  color: var(--xl-text-muted);
+}
+
+.detail__crumb-cur {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--xl-text-secondary);
 }
 
 .detail__header {
@@ -859,6 +925,100 @@ watch(renderedHtml, () => {
 
 .detail__tags a {
   text-decoration: none;
+}
+
+.detail__author {
+  color: var(--xl-text-primary);
+  font-weight: 500;
+}
+
+/* 右侧操作轨（B02）：听知识 / 收藏 / 问小光 / 点赞 / 纠错反馈 */
+.detail__rail {
+  position: sticky;
+  top: calc(var(--xl-header-h) + var(--xl-space-6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-3);
+  padding: var(--xl-space-4) 0 var(--xl-space-4) var(--xl-space-3);
+}
+
+.detail__rail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--xl-space-3) var(--xl-space-2);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-caption);
+  cursor: pointer;
+  transition:
+    border-color var(--xl-transition),
+    color var(--xl-transition),
+    box-shadow var(--xl-transition);
+}
+
+.detail__rail-item:hover {
+  border-color: var(--xl-color-primary);
+  color: var(--xl-color-primary);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+.detail__rail-icon {
+  font-size: 18px;
+}
+
+.detail__rail-label {
+  line-height: 1.3;
+}
+
+/* B02-S：文末互动带进入视口时右轨自然收束（平移出视口，避免重复按钮） */
+.detail__rail--collapsed {
+  transform: translateX(20px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.detail__rail {
+  transition:
+    transform var(--xl-transition),
+    opacity var(--xl-transition);
+}
+
+.detail__rail-hint {
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* B02-S 文末互动带：正文末端一条轻量动作条 */
+.detail__actions-band {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-4);
+  margin-top: var(--xl-space-8);
+  padding: var(--xl-space-4) var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+.detail__actions-band-label {
+  flex-shrink: 0;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-caption);
+  font-weight: var(--xl-fs-title-w);
+}
+
+.detail__actions-band-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--xl-space-3);
 }
 
 /* AI 摘要区块：header 与正文之间，浅色卡片（AI 色 token 化） */

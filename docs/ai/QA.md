@@ -63,6 +63,14 @@ AI 浏览器测试由**用户发起**（AI 不自行发起）：AI 用 browser-u
 - **雪花 ID**：URL 与接口中的知识/库 ID 为超长数字串（后端序列化为 String），复现步骤必须复制完整 ID，不得手工截断。
 - **页面级 fallback 验证**：测试私有资源访问（A 的私有 KB / 评论 / 知识）时，**先用同一浏览器匿名/换账号访问同一 URL**，确认是否是 404 / 403 / 静默回退到公共占位组件——后者极易被误判为「页面正常」（2026-08-21 BUG-030 教训）
 
+### 4.1 浏览器驱动选择（2026-08-27 全功能测试沉淀）
+
+- **本会话内置 browser-use IAB 点击不可用**：`tab.playwright.getByRole(...).click()` 对链接/按钮/tab 一律"Timeout waiting for locator"（`fill`/`key` 可用，唯独 `click` 不可用），历次 BUG-018~030 测试同样卡点击。**功能巡检改用 `agent-browser` CLI（真实 Chromium via CDP，`main` 会话即可，无需 IAB）**：`agent-browser open/snapshot -i/click @ref/fill/keyboard type/press Enter/screenshot`。refs 每次快照重排——**跨快照不能复用 ref，必须先重扫快照再取新 ref**（实例：编辑器里 `@e27` 从标题框被重排成库下拉项，导致标题实际为空）。
+- **原生 `type="submit"` 按钮点击不提交**：agent-browser 的 `click @ref`（及 `find role click`）对 `el-button native-type="submit"`（评论「发表评论」、编辑器「保存/发布」）不触发表单提交；**fallback 是 `focus @ref` + `press Enter`**（真实用户回车）。实例：先误判「评论发表失败」为缺陷，改 focus+Enter 后确认功能正常。
+- **`agent-browser open <url>` 首个会话会占用终端**：用 `&`/后台跑会挂起，但浏览器会话独立存活；后续 `agent-browser get/snapshot/click` 直接连已存活会话即可（配合 `timeout 25 agent-browser ...` 防挂）。
+- **JWT 15 分钟过期**：长测试中途会退回登录页（`/login?redirect=...`），需重新登录；不要误判为「会话丢失缺陷」。
+
+
 ## 5. 模块测试要点（入口速查）
 
 > 只列测试入口与链路骨架；验收基准统一为 PRODUCT §12 完成定义（正常、空数据、错误、无权限、冲突五类状态均可理解、可恢复），页面行为细节以 PROTOTYPE 对应小节为准。

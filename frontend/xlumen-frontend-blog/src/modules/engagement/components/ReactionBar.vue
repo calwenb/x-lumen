@@ -22,7 +22,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update:counts': [counts: { likeCount: number; dislikeCount: number }]
+  'update:counts': [state: { likeCount: number; dislikeCount: number; reaction: MyReaction | null }]
 }>()
 
 const router = useRouter()
@@ -37,6 +37,18 @@ watch(
   () => props.knowledgeId,
   () => {
     // 切换知识时同步新的初始状态（同篇知识的交互不触发本 watch，沿用既有结论）
+    reaction.value = props.initialReaction
+    likeCount.value = props.likeCount
+    dislikeCount.value = props.dislikeCount
+  },
+)
+
+// 同篇知识存在两处赞/踩组（正文操作带 + 右侧操作轨），父组件会把一处的结果回传为 props，
+// 这里跟随最新 props 保持两处计数与反应一致；pending 中不覆盖乐观更新。
+watch(
+  () => `${props.initialReaction}:${props.likeCount}:${props.dislikeCount}`,
+  () => {
+    if (pending.value) return
     reaction.value = props.initialReaction
     likeCount.value = props.likeCount
     dislikeCount.value = props.dislikeCount
@@ -64,7 +76,10 @@ async function react(target: MyReaction): Promise<void> {
   applyTransition(original, guess)
   reaction.value = guess
   try {
-    const result = target === 'LIKE' ? await toggleLike(props.knowledgeId) : await toggleDislike(props.knowledgeId)
+    const result =
+      target === 'LIKE'
+        ? await toggleLike(props.knowledgeId)
+        : await toggleDislike(props.knowledgeId)
     const final = result.reaction === 'NONE' ? null : result.reaction
     if (final !== reaction.value) {
       // 服务端校正：按迁移语义补偿计数差量
@@ -77,7 +92,11 @@ async function react(target: MyReaction): Promise<void> {
   } finally {
     pending.value = false
   }
-  emit('update:counts', { likeCount: likeCount.value, dislikeCount: dislikeCount.value })
+  emit('update:counts', {
+    likeCount: likeCount.value,
+    dislikeCount: dislikeCount.value,
+    reaction: reaction.value,
+  })
 }
 </script>
 
