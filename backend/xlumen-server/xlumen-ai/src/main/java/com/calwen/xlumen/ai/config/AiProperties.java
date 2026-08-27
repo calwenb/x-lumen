@@ -40,6 +40,10 @@ public class AiProperties {
     @Value("${XLUMEN_BAILIAN_MODEL_SUMMARY:qwen-plus}")
     private String bailianModelSummary;
 
+    /** 百炼默认模型：图片讲解（视觉模型，选便宜档）。 */
+    @Value("${XLUMEN_BAILIAN_MODEL_VISION:qwen3-vl-flash}")
+    private String bailianModelVision;
+
     /** DeepSeek API Key（不入日志/响应）。 */
     @Value("${XLUMEN_DEEPSEEK_API_KEY:}")
     private String deepseekApiKey;

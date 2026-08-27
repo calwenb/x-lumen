@@ -16,6 +16,26 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/8/27 10:58 · ZCode（V2 收尾项：TTS/图片讲解换便宜模型 + SMTP 启用真实发信）
+
+> 影响文档：docs/frontend/FRONTEND.md（无·纯后端与配置）、docs/ai/STATUS.md（§6 遗留说明随本条目闭合） · 决策摘要：无
+
+- **背景**：8-26 V2 交付遗留三项（CHANGELOG 2026/8/26 遗留说明）：F-0806 TTS 旧模型 qwen-tts 网关已下线（/audio/speech 404）；F-0809 图片讲解默认走文本模型 qwen-plus 不可见图片；F-0105 SMTP 账号未填走开发模式。用户 8-27 指示：TTS 与图片讲解用较便宜的模型；SMTP 已在 .env 配好。
+- **F-0806 语音合成（便宜档 qwen3-tts-flash）**：TtsController 硬编码 qwen-tts 改为 `@Value("${XLUMEN_BAILIAN_MODEL_TTS:qwen3-tts-flash}")` + `XLUMEN_TTS_VOICE`（默认 Cherry），.env 可换模型/发音人；端点或网关不可用时仍 501/503 优雅降级（实测网关 404 走降级，前端友好提示）。
+- **F-0809 图片讲解（便宜档视觉模型 qwen3-vl-flash）**：ChatRuntime 新增 `chatWithModel(ws, scene, modelName, messages, temp, maxTokens)`——凭证固定走百炼、模型名不经场景表解析，配额（WRITING 场景）与 ai_call_log 追踪照常埋点；AssistServiceImpl 对 `image_explain` 分支走该路径，模型取新增 `XLUMEN_BAILIAN_MODEL_VISION`（默认 qwen3-vl-flash）。实测真实图片 URL 讲解成功（ai_call_log 落 model=qwen3-vl-flash success=1）。
+- **F-0105 忘记密码（真实 SMTP 发信）**：application.yml 补 `spring.mail.*`（host/port/username/password 绑定 XLUMEN_MAIL_*，465 SSL），Boot 自动装配 JavaMailSender 生效；MailService 发送成功补 INFO 日志（`邮件已发送 to=...`）。实测 QQ SMTP 465 真实发信成功。
+- **配置**：config/.env.example 新增 `XLUMEN_BAILIAN_MODEL_VISION` / `XLUMEN_BAILIAN_MODEL_TTS` 两键；本地 .env 同步填入便宜档默认值。
+- **验证**：后端 `mvn -T 1C clean verify` 126 测试全绿（+1：chatWithModel 密钥缺失回退脚本模型）；fat jar 重启冒烟——SMTP 真实发信 ✓、图片讲解 qwen3-vl-flash 真实调用 ✓、TTS 网关不可用 503 优雅降级 ✓；冒烟临时账号已清理。
+
+## 2026/8/27 10:07 · ZCode（前端字阶整体提一档）
+
+> 影响文档：docs/frontend/FRONTEND.md（§10.1 Design Token 字阶）、frontend/xlumen-frontend-blog/src/styles/tokens.css、frontend/xlumen-frontend-admin/src/styles/tokens.css · 决策摘要：无
+
+- **背景**：用户反馈 1920×1080 下字体偏小。核实前端对分辨率无任何约束/缩放（viewport 标准写法，媒体查询仅按宽度做布局堆叠，字号全固定 px），属 V2 设计基线紧凑 → 决定整体提一档。
+- **字阶 token 更新（双端同步）**：H1 38→40 / H2 24→26 / Title 18→20 / 正文 14→15 / Caption 12→13；`element-theme.css` 补 EP 字体变量（--el-font-size-base 挂 --xl-fs-body，medium 16 / large 18 / small 13 / extra-small 12），Element Plus 组件与页面正文同步放大。
+- **全站硬编码字号收敛**：脚本按一档阶梯批量替换双端 src 全部 `font-size`（11→12、12→var(--xl-fs-caption)、13→14、14→var(--xl-fs-body)、15→16、16→18、17→18、18→20、20→22、22→24、24→26、26→28、28→30、30→32、38→40、40→42），共 40 文件；12/14px 收敛为 token 引用。层阶不变，仅整体放大；文章正文 .markdown-body 15→16px。
+- **验证**：双端 typecheck / lint / build / vitest 全绿。
+
 ## 2026/8/27 · ZCode（全功能黑盒测试 + 修复 3 项：AI 写作流断裂 / 详情页右轨交互不同步）
 
 > 影响文档：docs/frontend/FRONTEND.md（无·仅前端模块内修复）、docs/ai/QA.md（工具选择沉淀） · 决策摘要：无

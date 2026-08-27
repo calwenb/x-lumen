@@ -54,6 +54,7 @@ public class MailService {
             helper.setSubject(subject);
             helper.setText(body, false);
             mailSender.send(message);
+            log.info("邮件已发送 to={} subject={}", to, subject);
             return true;
         } catch (Exception e) {
             log.warn("邮件发送失败 to={}", to, e);

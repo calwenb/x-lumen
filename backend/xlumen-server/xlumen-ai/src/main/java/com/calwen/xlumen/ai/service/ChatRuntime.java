@@ -42,6 +42,22 @@ public interface ChatRuntime {
                 Double temperature, Integer maxTokens);
 
     /**
+     * 指定模型名的非流式对话（图片讲解等专用模型路径）：凭证固定走百炼，
+     * 模型名不经场景表解析、显式传入（如视觉模型 qwen3-vl-flash），
+     * 配额与调用追踪沿用给定场景。
+     *
+     * @param workspaceId 工作空间 ID
+     * @param scene       场景（配额/调用追踪用）
+     * @param modelName   模型名（如视觉模型）
+     * @param messages    Spring AI 消息列表
+     * @param temperature 采样温度（可空）
+     * @param maxTokens   最大生成 token 数（可空）
+     * @return 完整文本（可能为空串）
+     */
+    String chatWithModel(Long workspaceId, AiScene scene, String modelName, List<Message> messages,
+                         Double temperature, Integer maxTokens);
+
+    /**
      * 流式对话（无工具）：内容增量逐段回调，异常回调 onError（不抛出）。
      *
      * @param workspaceId 工作空间 ID

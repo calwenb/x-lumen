@@ -142,6 +142,41 @@ public class ChatRuntimeImpl implements ChatRuntime {
     }
 
     @Override
+    public String chatWithModel(Long workspaceId, AiScene scene, String modelName, List<Message> messages,
+                                Double temperature, Integer maxTokens) {
+        ChatModel model = providerModel("BAILIAN", aiProperties.getBailianBaseUrl(), aiProperties.getBailianApiKey());
+        String provider = "BAILIAN";
+        String key = provider + ":" + modelName;
+        checkCircuit(key);
+        quotaService.reserve(workspaceId, scene);
+        boolean degraded = model == scriptedChatModel;
+        long start = System.currentTimeMillis();
+        boolean success = false;
+        String errorMsg = "";
+        int tokensIn = 0;
+        int tokensOut = 0;
+        try {
+            ChatResponse response = model.call(new Prompt(messages, openAiOptions(modelName, temperature, maxTokens)));
+            recordSuccess(key);
+            success = true;
+            int[] usage = usageOf(response);
+            tokensIn = usage[0];
+            tokensOut = usage[1];
+            return textOf(response);
+        } catch (Exception e) {
+            quotaService.release(workspaceId, scene);
+            log.warn("AI 专用模型调用失败 provider={} model={}", provider, modelName, e);
+            recordFailure(key);
+            errorMsg = safeMessage(e);
+            throw new BizException(ErrorCode.SERVICE_UNAVAILABLE, CIRCUIT_MESSAGE);
+        } finally {
+            aiCallLogService.record(workspaceId, WorkspaceContext.userId(), scene, null, "CHAT",
+                    provider, modelName, promptHash(messages),
+                    tokensIn, tokensOut, System.currentTimeMillis() - start, success, degraded, errorMsg);
+        }
+    }
+
+    @Override
     public void chatStream(Long workspaceId, AiScene scene, List<Message> messages,
                            Double temperature, Integer maxTokens,
                            Consumer<String> onChunk, Consumer<Throwable> onError) {
@@ -407,7 +442,12 @@ public class ChatRuntimeImpl implements ChatRuntime {
 
     /** 逐请求 options：模型名按场景解析下发，temperature/maxTokens 可空。 */
     private OpenAiChatOptions openAiOptions(SceneModel sm, Double temperature, Integer maxTokens) {
-        OpenAiChatOptions.Builder builder = OpenAiChatOptions.builder().model(sm.getModel());
+        return openAiOptions(sm.getModel(), temperature, maxTokens);
+    }
+
+    /** 逐请求 options：显式模型名（专用模型路径），temperature/maxTokens 可空。 */
+    private OpenAiChatOptions openAiOptions(String model, Double temperature, Integer maxTokens) {
+        OpenAiChatOptions.Builder builder = OpenAiChatOptions.builder().model(model);
         if (temperature != null) {
             builder.temperature(temperature);
         }

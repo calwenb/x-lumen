@@ -26,7 +26,8 @@ import java.util.List;
 
 /**
  * 语音化端点（公开）：把知识标题+摘要转语音（TTS）。
- * 调用百炼 OpenAI 兼容 /audio/speech（qwen-tts）；端点或密钥不可用时返回 501，前端友好提示。
+ * 调用百炼 OpenAI 兼容 /audio/speech（默认 qwen3-tts-flash 便宜档，.env 可换）；
+ * 端点或密钥不可用时返回 501，前端友好提示。
  *
  * @author calwen
  * @date 2026/8/26
@@ -37,9 +38,15 @@ public class TtsController {
 
     private static final Logger log = LoggerFactory.getLogger(TtsController.class);
 
-    private static final String TTS_MODEL = "qwen-tts";
-    private static final String TTS_VOICE = "Cherry";
     private static final int TEXT_MAX = 500;
+
+    /** TTS 模型：默认便宜档 qwen3-tts-flash（.env XLUMEN_BAILIAN_MODEL_TTS 可换）。 */
+    @Value("${XLUMEN_BAILIAN_MODEL_TTS:qwen3-tts-flash}")
+    private String ttsModel;
+
+    /** 发音人：qwen-tts 系列默认 Cherry（.env XLUMEN_TTS_VOICE 可换）。 */
+    @Value("${XLUMEN_TTS_VOICE:Cherry}")
+    private String ttsVoice;
 
     @Resource
     private ContentApi contentApi;
@@ -73,8 +80,8 @@ public class TtsController {
                     .header("Authorization", "Bearer " + bailianApiKey)
                     .timeout(Duration.ofSeconds(30))
                     .POST(HttpRequest.BodyPublishers.ofString(
-                            "{\"model\":\"" + TTS_MODEL + "\",\"input\":\"" + jsonEscape(text)
-                                    + "\",\"voice\":\"" + TTS_VOICE + "\"}"))
+                            "{\"model\":\"" + ttsModel + "\",\"input\":\"" + jsonEscape(text)
+                                    + "\",\"voice\":\"" + ttsVoice + "\"}"))
                     .build();
             HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
             HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());

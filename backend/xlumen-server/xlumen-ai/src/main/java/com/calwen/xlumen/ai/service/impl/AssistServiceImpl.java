@@ -1,6 +1,7 @@
 package com.calwen.xlumen.ai.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import com.calwen.xlumen.ai.config.AiProperties;
 import com.calwen.xlumen.ai.dto.AssistDTO;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.service.AssistService;
@@ -19,6 +20,7 @@ import java.util.List;
 
 /**
  * AI 交互式辅助实现：按能力装配指令提示词，走 ChatRuntime 非流式（场景 WRITING，纳入配额与调用追踪）。
+ * 图片讲解走专用视觉模型（chatWithModel + AiProperties 视觉模型默认 qwen3-vl-flash），其余走场景解析模型。
  * 提示词为交互式固定指令（非写作多槽位主链路，不做后台配置）。
  *
  * @author calwen
@@ -27,21 +29,29 @@ import java.util.List;
 @Service
 public class AssistServiceImpl implements AssistService {
 
-    private final ChatRuntime chatRuntime;
+    private static final double TEMPERATURE = 0.5;
 
-    public AssistServiceImpl(ChatRuntime chatRuntime) {
+    private static final int MAX_TOKENS = 2048;
+
+    private final ChatRuntime chatRuntime;
+    private final AiProperties aiProperties;
+
+    public AssistServiceImpl(ChatRuntime chatRuntime, AiProperties aiProperties) {
         this.chatRuntime = chatRuntime;
+        this.aiProperties = aiProperties;
     }
 
     @Override
     public String assist(Long workspaceId, AssistDTO dto) {
         String action = dto.getAction().trim().toLowerCase();
         String system = systemFor(action);
-        Message user = "image_explain".equals(action)
-                ? imageMessage(dto)
-                : new UserMessage(buildUserText(dto));
+        if ("image_explain".equals(action)) {
+            return chatRuntime.chatWithModel(workspaceId, AiScene.WRITING, aiProperties.getBailianModelVision(),
+                    List.of(new SystemMessage(system), imageMessage(dto)), TEMPERATURE, MAX_TOKENS).trim();
+        }
+        Message user = new UserMessage(buildUserText(dto));
         return chatRuntime.chat(workspaceId, AiScene.WRITING,
-                List.of(new SystemMessage(system), user), 0.5, 2048).trim();
+                List.of(new SystemMessage(system), user), TEMPERATURE, MAX_TOKENS).trim();
     }
 
     /** 图片讲解消息：附媒体内容（模型需具备视觉能力，如 qwen-vl；文本模型会忽略图片按提示词作答）。 */

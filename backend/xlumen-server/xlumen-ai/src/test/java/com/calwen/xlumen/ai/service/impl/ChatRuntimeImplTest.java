@@ -106,6 +106,14 @@ class ChatRuntimeImplTest {
     }
 
     @Test
+    void chatWithModel_missingKey_scriptedFallback() {
+        // 无百炼密钥时，专用模型路径（图片讲解）回退脚本模型，不抛异常
+        String text = chatRuntime.chatWithModel(1L, AiScene.WRITING, "qwen3-vl-flash",
+                List.of(new UserMessage("图片讲解")), 0.5, 2048);
+        assertThat(text).contains("模拟文章标题");
+    }
+
+    @Test
     void chatStream_emitsDeltas() {
         List<String> chunks = new ArrayList<>();
         chatRuntime.chatStream(1L, AiScene.QA, List.of(new UserMessage("你好")), 0.7, 1024,
