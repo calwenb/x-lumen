@@ -63,7 +63,10 @@ test('互动与导航增强端到端验收', async ({ page }) => {
   await page.getByRole('button', { name: `${username} 账号菜单` }).click()
   await page.getByRole('menuitem', { name: '我的收藏' }).click()
   await expect(page.getByRole('link', { name: knowledgeTitle }).first()).toBeVisible()
-  await page.getByRole('button', { name: /取消收藏/ }).first().click()
+  await page
+    .getByRole('button', { name: /取消收藏/ })
+    .first()
+    .click()
   await expect(page.getByText(/还没有收藏|去知识库逛逛|空/).first()).toBeVisible()
 
   // --- 发表评论后点赞该评论 ---

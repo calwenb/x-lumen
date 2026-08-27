@@ -212,12 +212,6 @@ function discardPromptEdits(): void {
   promptEditorDraft.value = fresh
 }
 
-/** 弹窗遮罩/右上角关闭按取消处理。 */
-function onPromptEditorClose(done: () => void): void {
-  discardPromptEdits()
-  done()
-}
-
 function cancelPromptEditor(): void {
   discardPromptEdits()
   promptEditorRecord.value = null
@@ -287,168 +281,187 @@ onMounted(() => {
     <h1 class="models__title">模型配置</h1>
     <p class="models__hint">API Key 在服务器 .env 配置，界面不展示；每日配额为 0 表示不限</p>
 
-    <div v-if="loading" class="models__state" role="status">
-      <el-skeleton :rows="5" animated />
-    </div>
-    <div v-else-if="loadError" class="models__state">
-      <p>加载失败，请稍后重试。</p>
-      <el-button type="primary" plain @click="load()">重试</el-button>
-    </div>
-    <div v-else-if="configs.length === 0" class="models__state">
-      <el-icon class="models__state-icon"><Setting /></el-icon>
-      <p>暂无场景配置</p>
-    </div>
-    <template v-else>
-      <el-table
-        :data="configs"
-        class="models__table"
-        :header-cell-style="{ background: 'var(--xl-bg-secondary)' }"
-      >
-        <el-table-column label="场景" min-width="100">
-          <template #default="{ row }">{{ SCENE_LABELS[row.scene] ?? row.scene }}</template>
-        </el-table-column>
-        <el-table-column label="供应商" min-width="140">
-          <template #default="{ row }">
-            <el-select v-model="row.provider" class="models__select" aria-label="供应商">
-              <el-option
-                v-for="opt in providerOptions(row.provider)"
-                :key="opt.value"
-                :value="opt.value"
-                :label="opt.label"
-              />
-            </el-select>
-          </template>
-        </el-table-column>
-        <el-table-column label="模型" min-width="160">
-          <template #default="{ row }">
-            <el-input v-model="row.model" class="models__model-input" placeholder="模型名称" />
-          </template>
-        </el-table-column>
-        <el-table-column label="每日配额" min-width="130">
-          <template #default="{ row }">
-            <el-input-number
-              :model-value="row.dailyQuota"
-              :min="0"
-              :controls="false"
-              size="small"
-              class="models__quota-input"
-              aria-label="每日配额"
-              @update:model-value="(value: number | undefined) => updateQuota(row, value)"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="Prompt 配置" min-width="120">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="openPromptEditor(row)">编辑 Prompt</el-button>
-          </template>
-        </el-table-column>
-        <el-table-column label="更新时间" min-width="140">
-          <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="110">
-          <template #default="{ row }">
-            <el-button
-              type="primary"
-              plain
-              size="small"
-              :loading="savingScenes.has(row.scene)"
-              @click="save(row)"
-            >
-              {{ savingScenes.has(row.scene) ? '保存中' : '保存' }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <section class="models__test">
-        <h2 class="models__test-title">连通性测试</h2>
-        <div class="models__test-form">
-          <el-select v-model="testProvider" class="models__test-provider" aria-label="测试供应商">
-            <el-option
-              v-for="opt in PROVIDER_OPTIONS"
-              :key="opt.value"
-              :value="opt.value"
-              :label="opt.label"
-            />
-          </el-select>
-          <el-input v-model="testModel" class="models__test-model" placeholder="模型名称" />
-          <el-button
-            type="primary"
-            :loading="testing"
-            :disabled="testModel.trim() === ''"
-            @click="runTest"
-          >
-            {{ testing ? '测试中' : '测试' }}
-          </el-button>
+    <div class="models__layout">
+      <!-- A02 左侧 ~68%：配置表 + 底部连通性测试 -->
+      <div class="models__main">
+        <div v-if="loading" class="models__state" role="status">
+          <el-skeleton :rows="5" animated />
         </div>
-        <p
-          v-if="testResult"
-          class="models__test-result"
-          :class="testResult.ok ? 'models__test-result--ok' : 'models__test-result--fail'"
-          role="status"
-        >
-          {{ testResult.ok ? '连接成功' : '连接失败' }}：{{ testResult.message }}
-        </p>
-      </section>
-    </template>
+        <div v-else-if="loadError" class="models__state">
+          <p>加载失败，请稍后重试。</p>
+          <el-button type="primary" plain @click="load()">重试</el-button>
+        </div>
+        <div v-else-if="configs.length === 0" class="models__state">
+          <el-icon class="models__state-icon"><Setting /></el-icon>
+          <p>暂无场景配置</p>
+        </div>
+        <template v-else>
+          <el-table
+            :data="configs"
+            class="models__table"
+            :header-cell-style="{ background: 'var(--xl-bg-secondary)' }"
+          >
+            <el-table-column label="场景" min-width="100">
+              <template #default="{ row }">{{ SCENE_LABELS[row.scene] ?? row.scene }}</template>
+            </el-table-column>
+            <el-table-column label="供应商" min-width="140">
+              <template #default="{ row }">
+                <el-select v-model="row.provider" class="models__select" aria-label="供应商">
+                  <el-option
+                    v-for="opt in providerOptions(row.provider)"
+                    :key="opt.value"
+                    :value="opt.value"
+                    :label="opt.label"
+                  />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="模型" min-width="160">
+              <template #default="{ row }">
+                <el-input v-model="row.model" class="models__model-input" placeholder="模型名称" />
+              </template>
+            </el-table-column>
+            <el-table-column label="每日配额" min-width="130">
+              <template #default="{ row }">
+                <el-input-number
+                  :model-value="row.dailyQuota"
+                  :min="0"
+                  :controls="false"
+                  size="small"
+                  class="models__quota-input"
+                  aria-label="每日配额"
+                  @update:model-value="(value: number | undefined) => updateQuota(row, value)"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="Prompt 配置" min-width="120">
+              <template #default="{ row }">
+                <el-button type="primary" link @click="openPromptEditor(row)"
+                  >编辑 Prompt</el-button
+                >
+              </template>
+            </el-table-column>
+            <el-table-column label="更新时间" min-width="140">
+              <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="110">
+              <template #default="{ row }">
+                <el-button
+                  type="primary"
+                  plain
+                  size="small"
+                  :loading="savingScenes.has(row.scene)"
+                  @click="save(row)"
+                >
+                  {{ savingScenes.has(row.scene) ? '保存中' : '保存' }}
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
 
-    <el-dialog
-      v-model="promptEditorVisible"
-      :title="promptEditorTitle"
-      width="640px"
-      :before-close="onPromptEditorClose"
-    >
-      <div class="models__prompt-fields">
-        <template v-if="promptEditorScene === 'WRITING'">
-          <div v-for="slot in PROMPT_SLOTS" :key="slot.key" class="models__prompt-field">
-            <label class="models__prompt-label">{{ slot.label }}</label>
+          <section class="models__test">
+            <h2 class="models__test-title">连通性测试</h2>
+            <div class="models__test-form">
+              <el-select
+                v-model="testProvider"
+                class="models__test-provider"
+                aria-label="测试供应商"
+              >
+                <el-option
+                  v-for="opt in PROVIDER_OPTIONS"
+                  :key="opt.value"
+                  :value="opt.value"
+                  :label="opt.label"
+                />
+              </el-select>
+              <el-input v-model="testModel" class="models__test-model" placeholder="模型名称" />
+              <el-button
+                type="primary"
+                :loading="testing"
+                :disabled="testModel.trim() === ''"
+                @click="runTest"
+              >
+                {{ testing ? '测试中' : '测试' }}
+              </el-button>
+            </div>
+            <p
+              v-if="testResult"
+              class="models__test-result"
+              :class="testResult.ok ? 'models__test-result--ok' : 'models__test-result--fail'"
+              role="status"
+            >
+              {{ testResult.ok ? '连接成功' : '连接失败' }}：{{ testResult.message }}
+            </p>
+          </section>
+        </template>
+      </div>
+
+      <!-- A02 右侧 ~32%：Prompt 检查器（编辑 Prompt 时打开） -->
+      <aside v-if="promptEditorVisible" class="models__inspector" aria-label="Prompt 配置检查器">
+        <div class="models__inspector-head">
+          <h2 class="models__inspector-title">{{ promptEditorTitle }}</h2>
+          <button
+            type="button"
+            class="models__inspector-close"
+            aria-label="关闭"
+            @click="cancelPromptEditor"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="models__prompt-fields">
+          <template v-if="promptEditorScene === 'WRITING'">
+            <div v-for="slot in PROMPT_SLOTS" :key="slot.key" class="models__prompt-field">
+              <label class="models__prompt-label">{{ slot.label }}</label>
+              <el-input
+                v-model="promptEditorDraft.slots[slot.key]"
+                type="textarea"
+                :rows="5"
+                class="models__prompt-textarea"
+                placeholder="输入 Prompt 内容，留空表示不使用该槽位"
+                @input="markPromptDirty"
+              />
+            </div>
+            <p class="models__prompt-hint">
+              四个槽位内容保存为 JSON；全部留空并保存等同于恢复默认 Prompt
+            </p>
+          </template>
+          <div v-else class="models__prompt-field">
+            <label class="models__prompt-label">Prompt 内容</label>
             <el-input
-              v-model="promptEditorDraft.slots[slot.key]"
+              v-model="promptEditorDraft.text"
               type="textarea"
-              :rows="5"
+              :rows="8"
               class="models__prompt-textarea"
-              placeholder="输入 Prompt 内容，留空表示不使用该槽位"
+              placeholder="输入 Prompt 内容，留空并保存等同于恢复默认"
               @input="markPromptDirty"
             />
           </div>
-          <p class="models__prompt-hint">
-            四个槽位内容保存为 JSON；全部留空并保存等同于恢复默认 Prompt
-          </p>
-        </template>
-        <div v-else class="models__prompt-field">
-          <label class="models__prompt-label">Prompt 内容</label>
-          <el-input
-            v-model="promptEditorDraft.text"
-            type="textarea"
-            :rows="8"
-            class="models__prompt-textarea"
-            placeholder="输入 Prompt 内容，留空并保存等同于恢复默认"
-            @input="markPromptDirty"
-          />
         </div>
-      </div>
-      <template #footer>
-        <el-button :loading="savingScenes.has(promptEditorScene)" @click="restorePromptDefault">
-          恢复默认
-        </el-button>
-        <el-button @click="cancelPromptEditor">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="savingScenes.has(promptEditorScene)"
-          @click="savePromptEditor"
-        >
-          保存
-        </el-button>
-      </template>
-    </el-dialog>
+
+        <div class="models__inspector-footer">
+          <el-button :loading="savingScenes.has(promptEditorScene)" @click="restorePromptDefault">
+            恢复默认
+          </el-button>
+          <el-button @click="cancelPromptEditor">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="savingScenes.has(promptEditorScene)"
+            @click="savePromptEditor"
+          >
+            保存
+          </el-button>
+        </div>
+      </aside>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .models {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: var(--xl-space-8) var(--xl-space-4);
+  width: 100%;
+  padding: var(--xl-space-8) var(--xl-content-pad);
 }
 
 .models__title {
@@ -461,6 +474,18 @@ onMounted(() => {
   margin: var(--xl-space-1) 0 var(--xl-space-6);
   color: var(--xl-text-muted);
   font-size: 13px;
+}
+
+/* A02 主从：左侧 ~68% 主区 + 右侧 ~32% Prompt 检查器 */
+.models__layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--xl-space-6);
+}
+
+.models__main {
+  flex: 1;
+  min-width: 0;
 }
 
 .models__state {
@@ -554,8 +579,52 @@ onMounted(() => {
   color: var(--xl-color-danger);
 }
 
+/* A02 右侧 Prompt 检查器 ~32% */
+.models__inspector {
+  width: 32%;
+  min-width: 320px;
+  position: sticky;
+  top: var(--xl-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-4);
+  padding: var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+.models__inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--xl-space-2);
+}
+
+.models__inspector-title {
+  margin: 0;
+  color: var(--xl-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.models__inspector-close {
+  border: none;
+  background: transparent;
+  color: var(--xl-text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.models__inspector-close:hover {
+  color: var(--xl-text-primary);
+}
+
 .models__prompt-fields {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--xl-space-4);
 }
 
@@ -579,5 +648,14 @@ onMounted(() => {
   margin: 0;
   color: var(--xl-text-muted);
   font-size: 12px;
+}
+
+.models__inspector-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--xl-space-3);
+  margin-top: auto;
+  padding-top: var(--xl-space-4);
+  border-top: 1px solid var(--xl-border);
 }
 </style>

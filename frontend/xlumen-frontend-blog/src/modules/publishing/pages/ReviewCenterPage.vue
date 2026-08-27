@@ -250,199 +250,250 @@ onMounted(() => {
 
 <template>
   <main class="review-center">
-    <header class="review-center__header">
-      <h1 class="review-center__title">审核中心</h1>
-      <p class="review-center__intro">双闸门审核：先看「小光」的 AI 审校意见，再人工通过或驳回。</p>
-    </header>
-
-    <div class="review-center__filters">
-      <el-select v-model="filterStatus" class="review-center__select" aria-label="状态筛选">
-        <el-option
-          v-for="option in STATUS_OPTIONS"
-          :key="option.value"
-          :value="option.value"
-          :label="option.label"
-        />
-      </el-select>
-      <el-button type="primary" plain @click="applyFilters">筛选</el-button>
-    </div>
-
-    <div v-if="loading" class="review-center__state">
-      <el-skeleton :rows="4" animated />
-    </div>
-    <div v-else-if="loadError" class="review-center__state">
-      <p>加载失败，请稍后重试</p>
-      <el-button type="primary" plain size="small" @click="load(pageNo)">重试</el-button>
-    </div>
-    <div v-else-if="reviews.length === 0" class="review-center__state">暂无审核记录。</div>
-    <template v-else>
-      <ul class="review-center__list">
-        <li v-for="review in reviews" :key="review.id" class="review-item">
-          <button
-            type="button"
-            class="review-item__main"
-            :class="{ 'review-item__main--active': selectedId === review.id }"
-            @click="select(review.id)"
-          >
-            <span class="review-item__title">{{ review.knowledgeTitle }}</span>
-            <span class="review-item__meta">
-              <el-tag
-                :type="
-                  review.status === 'PENDING'
-                    ? 'warning'
-                    : review.status === 'APPROVED'
-                      ? 'success'
-                      : 'danger'
-                "
-                size="small"
-                effect="light"
-              >
-                {{ STATUS_LABELS[review.status] ?? review.status }}
-              </el-tag>
-              <span>v{{ review.version }}</span>
-              <span>{{ formatTime(review.updatedAt) }}</span>
-            </span>
-          </button>
-        </li>
-      </ul>
-      <Pagination :page-no="pageNo" :page-size="PAGE_SIZE" :total="total" @change="load" />
-    </template>
-
-    <section v-if="selectedId" class="review-detail">
-      <div v-if="detailLoading" class="review-detail__state">详情加载中…</div>
-      <div v-else-if="detailError" class="review-detail__state">
-        详情加载失败
-        <button type="button" class="review-center__retry" @click="select(selectedId)">重试</button>
-      </div>
-      <template v-else-if="selected">
-        <header class="review-detail__header">
-          <h2 class="review-detail__title">{{ selected.knowledgeTitle }}</h2>
-          <button type="button" class="review-detail__close" @click="closeDetail">收起</button>
+    <div class="review-center__layout">
+      <!-- 审核队列（34%） -->
+      <aside class="review-center__queue">
+        <header class="review-center__queue-head">
+          <h1 class="review-center__title">审核中心</h1>
+          <p class="review-center__intro">
+            双闸门审核：先看「小光」的 AI 审校意见，再人工通过或驳回。
+          </p>
         </header>
 
-        <h3 class="review-detail__subtitle">AI 审校问题（{{ issues.length }}）</h3>
-        <p v-if="issues.length === 0" class="review-detail__hint">暂无 AI 审校问题。</p>
-        <ul v-else class="review-detail__issues">
-          <li
-            v-for="(issue, index) in issues"
-            :key="index"
-            class="review-issue"
-            :class="`review-issue--${issue.severity}`"
-          >
-            <div class="review-issue__head">
-              <span class="review-issue__severity">{{
-                SEVERITY_LABELS[issue.severity] ?? issue.severity
-              }}</span>
-              <span v-if="issue.position" class="review-issue__position">{{ issue.position }}</span>
-            </div>
-            <p v-if="issue.evidence" class="review-issue__evidence">原文：{{ issue.evidence }}</p>
-            <!-- 事实核对：库内证据引用（有证据字段才显示） -->
-            <p v-if="issue.evidenceQuote" class="review-issue__evidence">
-              库内证据：{{ issue.evidenceQuote }}
-              <RouterLink
-                v-if="issue.evidenceKnowledgeId"
-                class="review-issue__evidence-link"
-                :to="`/knowledge/${issue.evidenceKnowledgeId}`"
-                >查看原文 →</RouterLink
+        <div class="review-center__filters">
+          <el-select v-model="filterStatus" class="review-center__select" aria-label="状态筛选">
+            <el-option
+              v-for="option in STATUS_OPTIONS"
+              :key="option.value"
+              :value="option.value"
+              :label="option.label"
+            />
+          </el-select>
+          <el-button type="primary" plain @click="applyFilters">筛选</el-button>
+        </div>
+
+        <div v-if="loading" class="review-center__state">
+          <el-skeleton :rows="4" animated />
+        </div>
+        <div v-else-if="loadError" class="review-center__state">
+          <p>加载失败，请稍后重试</p>
+          <el-button type="primary" plain size="small" @click="load(pageNo)">重试</el-button>
+        </div>
+        <div v-else-if="reviews.length === 0" class="review-center__state">暂无审核记录。</div>
+        <template v-else>
+          <ul class="review-center__list">
+            <li v-for="review in reviews" :key="review.id" class="review-item">
+              <button
+                type="button"
+                class="review-item__main"
+                :class="{ 'review-item__main--active': selectedId === review.id }"
+                @click="select(review.id)"
               >
-            </p>
-            <p v-if="issue.suggestion" class="review-issue__suggestion">
-              建议：{{ issue.suggestion }}
-            </p>
-          </li>
-        </ul>
+                <span class="review-item__title">{{ review.knowledgeTitle }}</span>
+                <span class="review-item__meta">
+                  <el-tag
+                    :type="
+                      review.status === 'PENDING'
+                        ? 'warning'
+                        : review.status === 'APPROVED'
+                          ? 'success'
+                          : 'danger'
+                    "
+                    size="small"
+                    effect="light"
+                  >
+                    {{ STATUS_LABELS[review.status] ?? review.status }}
+                  </el-tag>
+                  <span>v{{ review.version }}</span>
+                  <span>{{ formatTime(review.updatedAt) }}</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+          <Pagination :page-no="pageNo" :page-size="PAGE_SIZE" :total="total" @change="load" />
+        </template>
+      </aside>
 
-        <div v-if="selected.status === 'REJECTED'" class="review-detail__reject-info">
-          <p><strong>驳回原因：</strong>{{ selected.rejectReason }}</p>
-          <p><strong>驳回位置：</strong>{{ selected.rejectPosition }}</p>
-          <p><strong>期望修改：</strong>{{ selected.rejectExpectation }}</p>
+      <!-- 审阅画布（66%） -->
+      <section class="review-center__canvas">
+        <div v-if="!selectedId" class="review-center__placeholder">
+          从左侧选择一条审核记录，查看 AI 审校意见并处理。
         </div>
-
-        <div v-if="selected.status === 'APPROVED'" class="review-detail__actions">
-          <el-button type="success" :loading="acting" @click="publish">
-            {{ acting ? '处理中' : '发布' }}
-          </el-button>
-          <p class="review-detail__hint">已通过审核，发布后知识在所属库中公开可见。</p>
+        <div v-else-if="detailLoading" class="review-center__placeholder">详情加载中…</div>
+        <div v-else-if="detailError" class="review-center__placeholder">
+          详情加载失败
+          <button type="button" class="review-center__retry" @click="select(selectedId)">
+            重试
+          </button>
         </div>
+        <template v-else-if="selected">
+          <header class="review-detail__header">
+            <h2 class="review-detail__title">{{ selected.knowledgeTitle }}</h2>
+            <div class="review-detail__header-actions">
+              <RouterLink class="review-detail__view" :to="`/knowledge/${selected.knowledgeId}`"
+                >查看原文</RouterLink
+              >
+              <button type="button" class="review-detail__close" @click="closeDetail">收起</button>
+            </div>
+          </header>
 
-        <div v-if="selected.status === 'PENDING'" class="review-detail__actions">
-          <el-button type="primary" :loading="acting" @click="approve">
-            {{ acting ? '处理中' : '通过' }}
-          </el-button>
+          <h3 class="review-detail__subtitle">AI 审校问题（{{ issues.length }}）</h3>
+          <p v-if="issues.length === 0" class="review-detail__hint">暂无 AI 审校问题。</p>
+          <ul v-else class="review-detail__issues">
+            <li
+              v-for="(issue, index) in issues"
+              :key="index"
+              class="review-issue"
+              :class="`review-issue--${issue.severity}`"
+            >
+              <div class="review-issue__head">
+                <span class="review-issue__severity">{{
+                  SEVERITY_LABELS[issue.severity] ?? issue.severity
+                }}</span>
+                <span v-if="issue.position" class="review-issue__position">{{
+                  issue.position
+                }}</span>
+              </div>
+              <p v-if="issue.evidence" class="review-issue__evidence">原文：{{ issue.evidence }}</p>
+              <p v-if="issue.evidenceQuote" class="review-issue__evidence">
+                库内证据：{{ issue.evidenceQuote }}
+                <RouterLink
+                  v-if="issue.evidenceKnowledgeId"
+                  class="review-issue__evidence-link"
+                  :to="`/knowledge/${issue.evidenceKnowledgeId}`"
+                  >查看原文 →</RouterLink
+                >
+              </p>
+              <p v-if="issue.suggestion" class="review-issue__suggestion">
+                建议：{{ issue.suggestion }}
+              </p>
+            </li>
+          </ul>
 
-          <form class="review-detail__reject-form" @submit.prevent="reject">
-            <label class="review-detail__field">
-              <span class="review-detail__label">驳回原因 *</span>
-              <textarea
-                v-model="rejectReason"
-                class="review-detail__textarea"
-                rows="2"
-                placeholder="例如：结论与正文矛盾"
-              />
-            </label>
-            <label class="review-detail__field">
-              <span class="review-detail__label">位置 *</span>
-              <input
-                v-model="rejectPosition"
-                class="review-detail__input"
-                type="text"
-                placeholder="例如：第二节「小结」段落"
-              />
-            </label>
-            <label class="review-detail__field">
-              <span class="review-detail__label">期望修改 *</span>
-              <textarea
-                v-model="rejectExpectation"
-                class="review-detail__textarea"
-                rows="2"
-                placeholder="例如：补充数据来源并修正结论"
-              />
-            </label>
-            <el-button type="danger" plain :loading="acting" native-type="submit">驳回</el-button>
-          </form>
-        </div>
+          <div v-if="selected.status === 'REJECTED'" class="review-detail__reject-info">
+            <p><strong>驳回原因：</strong>{{ selected.rejectReason }}</p>
+            <p><strong>驳回位置：</strong>{{ selected.rejectPosition }}</p>
+            <p><strong>期望修改：</strong>{{ selected.rejectExpectation }}</p>
+          </div>
 
-        <p v-if="actionMessage" class="review-detail__message" role="status">{{ actionMessage }}</p>
-        <p v-if="actionError" class="review-detail__action-error" role="alert">{{ actionError }}</p>
-      </template>
-    </section>
+          <div v-if="selected.status === 'APPROVED'" class="review-detail__decision">
+            <div class="review-detail__decision-head">
+              <el-button type="success" :loading="acting" @click="publish">
+                {{ acting ? '处理中' : '发布' }}
+              </el-button>
+              <p class="review-detail__hint">已通过审核，发布后知识在所属库中公开可见。</p>
+            </div>
+          </div>
+
+          <div v-if="selected.status === 'PENDING'" class="review-detail__decision">
+            <div class="review-detail__decision-head">
+              <el-button type="primary" :loading="acting" @click="approve">
+                {{ acting ? '处理中' : '通过' }}
+              </el-button>
+              <p class="review-detail__hint">通过后进入发布，驳回则填入下方三要素。</p>
+            </div>
+
+            <form class="review-detail__reject-form" @submit.prevent="reject">
+              <label class="review-detail__field">
+                <span class="review-detail__label">驳回原因 *</span>
+                <textarea
+                  v-model="rejectReason"
+                  class="review-detail__textarea"
+                  rows="2"
+                  placeholder="例如：结论与正文矛盾"
+                />
+              </label>
+              <label class="review-detail__field">
+                <span class="review-detail__label">位置 *</span>
+                <input
+                  v-model="rejectPosition"
+                  class="review-detail__input"
+                  type="text"
+                  placeholder="例如：第二节「小结」段落"
+                />
+              </label>
+              <label class="review-detail__field">
+                <span class="review-detail__label">期望修改 *</span>
+                <textarea
+                  v-model="rejectExpectation"
+                  class="review-detail__textarea"
+                  rows="2"
+                  placeholder="例如：补充数据来源并修正结论"
+                />
+              </label>
+              <el-button type="danger" plain :loading="acting" native-type="submit">驳回</el-button>
+            </form>
+          </div>
+
+          <p v-if="actionMessage" class="review-detail__message" role="status">
+            {{ actionMessage }}
+          </p>
+          <p v-if="actionError" class="review-detail__action-error" role="alert">
+            {{ actionError }}
+          </p>
+        </template>
+      </section>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .review-center {
-  max-width: 960px;
+  max-width: var(--xl-container);
   margin: 0 auto;
-  padding: 32px 20px 64px;
+  padding: 40px var(--xl-content-pad) 64px;
 }
 
-.review-center__header {
-  margin-bottom: 20px;
+.review-center__layout {
+  display: grid;
+  grid-template-columns: 34fr 66fr;
+  gap: var(--xl-space-6);
+  align-items: start;
+}
+
+/* 左：审核队列 */
+.review-center__queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-4);
+  padding: var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+.review-center__queue-head {
+  margin-bottom: 0;
 }
 
 .review-center__title {
   margin: 0;
-  font-size: 24px;
+  font-size: var(--xl-fs-h2);
+  font-weight: var(--xl-fs-h2-w);
+  line-height: var(--xl-fs-h2-lh);
+  letter-spacing: var(--xl-fs-h2-track);
+  color: var(--xl-text-primary);
 }
 
 .review-center__intro {
-  margin: 8px 0 0;
+  margin: var(--xl-space-2) 0 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .review-center__filters {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
 }
 
 .review-center__select {
-  width: 140px;
+  width: 150px;
 }
 
 .review-center__state {
-  padding: 48px 0;
+  padding: 32px 0;
   text-align: center;
   color: var(--xl-text-secondary);
   font-size: 14px;
@@ -466,27 +517,25 @@ onMounted(() => {
   flex-direction: column;
   gap: 6px;
   width: 100%;
-  padding: 14px 18px;
+  padding: 14px 16px;
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
   color: var(--xl-text-primary);
   text-align: left;
   cursor: pointer;
   transition:
     box-shadow var(--xl-transition),
-    transform var(--xl-transition),
     border-color var(--xl-transition);
 }
 
 .review-item__main:hover {
-  box-shadow: var(--xl-shadow-md);
-  transform: translateY(-1px);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .review-item__main--active {
   border-color: var(--xl-color-primary);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .review-item__title {
@@ -503,32 +552,70 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.review-detail {
-  margin-top: 24px;
-  padding: 20px;
+/* 右：审阅画布 */
+.review-center__canvas {
+  position: sticky;
+  top: calc(var(--xl-header-h) + var(--xl-space-6));
+  min-width: 0;
+  padding: var(--xl-space-6);
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
   box-shadow: var(--xl-shadow-sm);
 }
 
-.review-detail__state {
-  padding: 32px 0;
+.review-center__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--xl-space-3);
+  min-height: 320px;
   text-align: center;
   color: var(--xl-text-secondary);
   font-size: 14px;
+}
+
+.review-center__retry {
+  padding: 5px 14px;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-sm);
+  background: transparent;
+  color: var(--xl-color-primary);
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .review-detail__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: var(--xl-space-4);
+  margin-bottom: var(--xl-space-4);
 }
 
 .review-detail__title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--xl-fs-title);
+  line-height: var(--xl-fs-title-lh);
+  overflow-wrap: break-word;
+}
+
+.review-detail__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-3);
+  flex-shrink: 0;
+}
+
+.review-detail__view {
+  color: var(--xl-color-primary);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.review-detail__view:hover {
+  text-decoration: underline;
 }
 
 .review-detail__close {
@@ -545,6 +632,7 @@ onMounted(() => {
 }
 
 .review-detail__hint {
+  margin: 0;
   color: var(--xl-text-secondary);
   font-size: 13px;
 }
@@ -643,10 +731,20 @@ onMounted(() => {
   margin-bottom: 0;
 }
 
-.review-detail__actions {
+.review-detail__decision {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--xl-space-4);
+  margin-top: var(--xl-space-4);
+  padding-top: var(--xl-space-4);
+  border-top: 1px solid var(--xl-border);
+}
+
+.review-detail__decision-head {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-4);
+  flex-wrap: wrap;
 }
 
 .review-detail__reject-form {
@@ -701,5 +799,15 @@ onMounted(() => {
   margin: 12px 0 0;
   color: var(--xl-color-danger, #d03050);
   font-size: 13px;
+}
+
+@media (width <= 900px) {
+  .review-center__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .review-center__canvas {
+    position: static;
+  }
 }
 </style>

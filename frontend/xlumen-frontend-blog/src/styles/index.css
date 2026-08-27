@@ -8,12 +8,37 @@ body {
   background-color: var(--xl-bg-page);
   color: var(--xl-text-primary);
   font-family: var(--xl-font-sans);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: var(--xl-fs-body);
+  line-height: var(--xl-fs-body-lh);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #app {
   min-height: 100vh;
+}
+
+/* 标题层级基线（V2 字体体系，FRONTEND.md §10.1）；业务页可局部覆盖 */
+h1 {
+  font-size: var(--xl-fs-h1);
+  font-weight: var(--xl-fs-h1-w);
+  line-height: var(--xl-fs-h1-lh);
+  letter-spacing: var(--xl-fs-h1-track);
+}
+
+h2 {
+  font-size: var(--xl-fs-h2);
+  font-weight: var(--xl-fs-h2-w);
+  line-height: var(--xl-fs-h2-lh);
+  letter-spacing: var(--xl-fs-h2-track);
+}
+
+/* 内容容器：全站页面统一版心（V2 设计系统） */
+.xl-container {
+  width: 100%;
+  max-width: var(--xl-container);
+  margin: 0 auto;
+  padding: 0 var(--xl-content-pad);
 }
 
 /* 键盘焦点可见环：主色 outline，统一全站交互反馈 */

@@ -7,6 +7,7 @@ import { Lock, User } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 import type { SessionSnapshot } from '@/stores/session'
+import XlLogo from '@/components/XlLogo.vue'
 
 import { loginApi, logoutApi } from '../api/auth'
 
@@ -57,110 +58,145 @@ async function submit(): Promise<void> {
 
 <template>
   <main class="login">
-    <div class="login__card">
-      <div class="login__brand">
-        <span class="login__logo" aria-hidden="true" />
-        <h1 class="login__title">xLumen 管理后台</h1>
+    <!-- A00 左侧：深 Ink 品牌面，反白 Logo + 双 Indigo 光柱 -->
+    <section class="login__brand-panel" aria-label="xLumen 管理后台">
+      <div class="login__pillars" aria-hidden="true">
+        <span class="login__pillar login__pillar--left" />
+        <span class="login__pillar login__pillar--right" />
       </div>
-      <p class="login__subtitle">仅限空间所有者与管理员登录</p>
-      <el-form class="login__form" label-position="top" size="large" @submit.prevent="submit">
-        <el-form-item label="用户名">
-          <el-input
-            v-model="username"
-            name="username"
-            placeholder="请输入用户名"
-            :prefix-icon="User"
-            autocomplete="username"
+      <div class="login__brand-content">
+        <XlLogo variant="full" reverse :size="46" wordmark="xLumen" />
+        <h1 class="login__title">xLumen 管理后台</h1>
+        <p class="login__subtitle">仅限空间所有者与管理员登录</p>
+      </div>
+    </section>
+
+    <!-- A00 右侧：Paper 背景，约 420px 无厚重阴影表单 -->
+    <section class="login__form-panel">
+      <div class="login__form-wrap">
+        <el-form class="login__form" label-position="top" size="large" @submit.prevent="submit">
+          <el-form-item label="用户名">
+            <el-input
+              v-model="username"
+              name="username"
+              placeholder="请输入用户名"
+              :prefix-icon="User"
+              autocomplete="username"
+            />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input
+              v-model="password"
+              name="password"
+              type="password"
+              show-password
+              placeholder="请输入密码"
+              :prefix-icon="Lock"
+              autocomplete="current-password"
+              @keyup.enter="submit"
+            />
+          </el-form-item>
+          <el-alert
+            v-if="errorMessage"
+            :title="errorMessage"
+            type="error"
+            :closable="false"
+            show-icon
+            class="login__error"
           />
-        </el-form-item>
-        <el-form-item label="密码">
-          <el-input
-            v-model="password"
-            name="password"
-            type="password"
-            show-password
-            placeholder="请输入密码"
-            :prefix-icon="Lock"
-            autocomplete="current-password"
-            @keyup.enter="submit"
-          />
-        </el-form-item>
-        <el-alert
-          v-if="errorMessage"
-          :title="errorMessage"
-          type="error"
-          :closable="false"
-          show-icon
-          class="login__error"
-        />
-        <el-button type="primary" native-type="submit" class="login__submit" :loading="loading">
-          {{ loading ? '登录中…' : '登 录' }}
-        </el-button>
-      </el-form>
-    </div>
+          <el-button type="primary" native-type="submit" class="login__submit" :loading="loading">
+            {{ loading ? '登录中…' : '登 录' }}
+          </el-button>
+        </el-form>
+      </div>
+    </section>
   </main>
 </template>
 
 <style scoped>
 .login {
   display: flex;
-  align-items: center;
-  justify-content: center;
   min-height: 100vh;
-  padding: var(--xl-space-4);
-  background:
-    radial-gradient(
-      1200px 600px at 15% -10%,
-      color-mix(in srgb, var(--xl-color-primary) 12%, transparent),
-      transparent 60%
-    ),
-    radial-gradient(
-      1000px 500px at 110% 110%,
-      color-mix(in srgb, var(--xl-color-ai) 10%, transparent),
-      transparent 55%
-    ),
-    var(--xl-bg-page);
 }
 
-.login__card {
-  width: 100%;
-  max-width: 400px;
-  padding: var(--xl-space-8) var(--xl-space-6);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-lg);
-}
-
-.login__brand {
+/* A00 左侧 44%：深 Ink 品牌面 */
+.login__brand-panel {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--xl-space-2);
+  width: 44%;
+  overflow: hidden;
+  background: var(--xl-text-primary);
 }
 
-.login__logo {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
+/* 两条低对比 Indigo 纵向光柱，作为空间结构 */
+.login__pillars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 16%;
+}
+
+.login__pillar {
+  width: 64px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--xl-color-primary) 28%, transparent),
+    color-mix(in srgb, var(--xl-color-primary) 6%, transparent)
+  );
+  filter: blur(1px);
+}
+
+.login__brand-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--xl-space-4);
+  text-align: center;
+  color: #fff;
 }
 
 .login__title {
   margin: 0;
-  color: var(--xl-text-primary);
-  font-size: 24px;
-  text-align: center;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .login__subtitle {
-  margin: var(--xl-space-2) 0 var(--xl-space-6);
-  color: var(--xl-text-secondary);
-  text-align: center;
+  margin: 0;
+  color: color-mix(in srgb, #fff 62%, transparent);
+  font-size: 14px;
+}
+
+/* A00 右侧 56%：Paper 背景 + 约 420px 表单 */
+.login__form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56%;
+  padding: var(--xl-space-8) var(--xl-space-4);
+  background: var(--xl-bg-page);
+}
+
+.login__form-wrap {
+  width: 100%;
+  max-width: 420px;
+}
+
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-2);
 }
 
 .login__error {
-  margin-bottom: var(--xl-space-4);
+  margin: var(--xl-space-1) 0;
 }
 
 .login__submit {

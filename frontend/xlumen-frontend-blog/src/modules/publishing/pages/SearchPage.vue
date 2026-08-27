@@ -364,19 +364,42 @@ onMounted(() => {
 
 <template>
   <main class="search">
-    <div class="search__modes" aria-label="检索模式">
-      <el-radio-group :model-value="mode" @change="onModeChange">
-        <el-radio value="keyword">关键词</el-radio>
+    <!-- 顶部搜索命令条：小型模式切换 + 大搜索框（关键词/向量语义共用） -->
+    <header class="search__head">
+      <el-radio-group :model-value="mode" class="search__modes" @change="onModeChange">
+        <el-radio-button value="keyword">关键词</el-radio-button>
         <el-tooltip content="登录后可用语义检索（向量相似度）" :disabled="session.loggedIn">
-          <el-radio value="semantic" :disabled="!session.loggedIn">向量语义</el-radio>
+          <el-radio-button value="semantic" :disabled="!session.loggedIn">向量语义</el-radio-button>
         </el-tooltip>
         <el-tooltip content="登录后可用「问小光」自然语言问答" :disabled="session.loggedIn">
-          <el-radio value="ask" :disabled="!session.loggedIn">问小光</el-radio>
+          <el-radio-button value="ask" :disabled="!session.loggedIn">问小光</el-radio-button>
         </el-tooltip>
       </el-radio-group>
-    </div>
 
-    <div v-if="modeLocked" class="search__state">
+      <form
+        v-if="mode !== 'ask'"
+        class="search__command"
+        :class="{ 'search__command--semantic': mode === 'semantic' }"
+        @submit.prevent="onSearchSubmit"
+      >
+        <el-input
+          v-model="keyword"
+          class="search__input"
+          :placeholder="
+            mode === 'semantic' ? '输入关键词，按向量相似度检索…' : '搜索知识标题或摘要…'
+          "
+          aria-label="搜索关键词"
+          clearable
+          size="large"
+        />
+        <el-button type="primary" native-type="submit" class="search__submit" size="large">
+          搜索
+        </el-button>
+      </form>
+    </header>
+
+    <!-- 未登录访问向量语义/问小光：仅提示登录，不伪造结果 -->
+    <div v-if="modeLocked" class="search__state search__state--locked">
       <p class="search__state-text">
         {{
           mode === 'ask'
@@ -387,69 +410,73 @@ onMounted(() => {
       <RouterLink class="search__reset" to="/login?redirect=/search">去登录</RouterLink>
     </div>
 
-    <template v-else-if="mode === 'ask'">
-      <form class="search__form" @submit.prevent="askQuestion">
-        <el-input
-          v-model="question"
-          class="search__input"
-          placeholder="输入你的问题…"
-          aria-label="问题内容"
-          clearable
-        />
-        <el-button
-          type="primary"
-          native-type="submit"
-          class="search__submit"
-          :disabled="asking || !question.trim()"
-        >
-          {{ asking ? '回答中…' : '提问' }}
-        </el-button>
-      </form>
-
-      <div v-if="answer.content || answer.citations.length > 0 || asking" class="ask">
-        <div class="ask__answer markdown-body" v-html="renderMarkdown(answer.content)"></div>
-        <span v-if="asking" class="ask__cursor" aria-hidden="true">▍</span>
-        <div v-if="activeTools(answer.tools).length > 0" class="ask__tool-line">
-          正在检索知识库…
-        </div>
-        <p v-if="doneTools(answer.tools).length > 0" class="ask__tools">
-          共调用 {{ doneTools(answer.tools).length }} 个工具
-        </p>
-        <div v-if="answer.citations.length > 0" class="ask__citations">
-          <CitationCard
-            v-for="(citation, index) in answer.citations"
-            :key="`${citation.knowledgeId}-${citation.chunkSeq}-${index}`"
-            :citation="citation"
-            :index="index + 1"
+    <!-- 问小光：30/70 单次问答舞台 -->
+    <div v-else-if="mode === 'ask'" class="ask__stage">
+      <aside class="ask__rail">
+        <form class="ask__form" @submit.prevent="askQuestion">
+          <el-input
+            v-model="question"
+            class="ask__input"
+            placeholder="输入你的问题…"
+            aria-label="问题内容"
+            clearable
           />
-        </div>
-        <el-button
-          v-if="!asking && (answer.content || answer.citations.length > 0)"
-          type="primary"
-          plain
-          size="small"
-          class="ask__reset"
-          @click="resetAsk"
-        >
-          重新提问
-        </el-button>
-      </div>
-      <p v-else class="search__hint">输入问题，「小光」将基于本站知识作答并附带可溯源的引用。</p>
-    </template>
+          <el-button
+            type="primary"
+            native-type="submit"
+            class="ask__submit"
+            :disabled="asking || !question.trim()"
+          >
+            {{ asking ? '回答中…' : '提问' }}
+          </el-button>
+        </form>
+        <p class="ask__note">仅单次问答，不保留历史会话。</p>
+      </aside>
 
-    <template v-else>
-      <form class="search__form" @submit.prevent="onSearchSubmit">
-        <el-input
-          v-model="keyword"
-          class="search__input"
-          :placeholder="
-            mode === 'semantic' ? '输入关键词，按向量相似度检索…' : '搜索知识标题或摘要…'
-          "
-          aria-label="搜索关键词"
-          clearable
-        />
-        <template v-if="mode === 'keyword'">
-          <el-select v-model="kbId" class="search__select" aria-label="按知识库筛选">
+      <section class="ask__panel">
+        <span class="ask__star" aria-hidden="true">✦</span>
+        <div
+          v-if="answer.content || answer.citations.length > 0 || asking"
+          class="ask__answer-body"
+        >
+          <div class="ask__answer markdown-body" v-html="renderMarkdown(answer.content)"></div>
+          <span v-if="asking" class="ask__cursor" aria-hidden="true">▍</span>
+          <div v-if="activeTools(answer.tools).length > 0" class="ask__tool-line">
+            正在检索知识库…
+          </div>
+          <p v-if="doneTools(answer.tools).length > 0" class="ask__tools">
+            共调用 {{ doneTools(answer.tools).length }} 个工具
+          </p>
+          <div v-if="answer.citations.length > 0" class="ask__citations">
+            <CitationCard
+              v-for="(citation, index) in answer.citations"
+              :key="`${citation.knowledgeId}-${citation.chunkSeq}-${index}`"
+              :citation="citation"
+              :index="index + 1"
+            />
+          </div>
+          <el-button
+            v-if="!asking && (answer.content || answer.citations.length > 0)"
+            type="primary"
+            plain
+            size="small"
+            class="ask__reset"
+            @click="resetAsk"
+          >
+            重新提问
+          </el-button>
+        </div>
+        <p v-else class="ask__hint">输入问题，「小光」将基于本站知识作答并附带可溯源的引用。</p>
+      </section>
+    </div>
+
+    <!-- 关键词 / 向量语义 -->
+    <div v-else class="search__layout">
+      <!-- 关键词：约 220px 左侧筛选轨 -->
+      <aside v-if="mode === 'keyword'" class="search__rail">
+        <form class="search__filters" @submit.prevent="onSearchSubmit">
+          <label class="search__filter-label">知识库</label>
+          <el-select v-model="kbId" class="search__select" aria-label="按知识库筛选" size="large">
             <el-option value="" label="全部知识库" />
             <el-option
               v-for="item in knowledgeBases"
@@ -458,11 +485,13 @@ onMounted(() => {
               :label="item.name"
             />
           </el-select>
+          <label class="search__filter-label">目录</label>
           <el-select
             v-model="directoryId"
             class="search__select"
             aria-label="按目录筛选"
             :disabled="!kbId"
+            size="large"
           >
             <el-option value="" label="全部目录" />
             <el-option
@@ -472,7 +501,8 @@ onMounted(() => {
               :label="item.label"
             />
           </el-select>
-          <el-select v-model="tag" class="search__select" aria-label="按标签筛选">
+          <label class="search__filter-label">标签</label>
+          <el-select v-model="tag" class="search__select" aria-label="按标签筛选" size="large">
             <el-option value="" label="全部标签" />
             <el-option
               v-for="item in tags"
@@ -481,126 +511,312 @@ onMounted(() => {
               :label="`${item.name}（${item.count}）`"
             />
           </el-select>
-        </template>
-        <el-button type="primary" native-type="submit" class="search__submit">搜索</el-button>
-      </form>
+        </form>
+        <p v-if="!session.loggedIn" class="search__rail-hint">登录后可查看知识库/目录筛选。</p>
+      </aside>
 
-      <p v-if="mode === 'keyword' && !session.loggedIn" class="search__hint">
-        登录后可查看知识库/目录筛选。
-      </p>
-
-      <div v-if="listLoading" class="search__state">
-        <div v-for="i in 3" :key="i" class="search__skeleton" aria-hidden="true" />
-      </div>
-      <div v-else-if="listError" class="search__state">
-        <p class="search__state-text">搜索失败</p>
-        <el-button type="primary" plain @click="retryList()">重试</el-button>
-      </div>
-      <div v-else-if="results.length === 0" class="search__state">
-        <p class="search__state-text">
-          <template v-if="mode === 'semantic' && !semanticSearched"
-            >输入关键词开始向量语义检索。</template
-          >
-          <template v-else-if="mode === 'semantic'"
-            >没有找到语义相关知识，试试更换关键词。</template
-          >
-          <template v-else>没有找到相关知识，试试清空筛选或更换关键词。</template>
-        </p>
-        <RouterLink
-          v-if="mode !== 'semantic' || semanticSearched"
-          class="search__reset"
-          to="/search"
-        >
-          清空筛选
-        </RouterLink>
-      </div>
-      <template v-else>
-        <p class="search__summary">
-          {{
-            mode === 'semantic' ? `找到 ${listTotal} 篇语义相关知识` : `共 ${listTotal} 篇相关知识`
-          }}
-        </p>
-        <div class="search__cards">
-          <article v-for="knowledge in results" :key="knowledge.id" class="search-card">
-            <RouterLink class="search-card__title" :to="cardHref(knowledge)">
-              <span v-html="highlight(knowledge.title, keyword)" />
-            </RouterLink>
-            <p class="search-card__summary" v-html="highlight(knowledge.summary, keyword)" />
-            <div class="search-card__meta">
-              <span v-if="knowledge.kbName" class="search-card__kb">{{ knowledge.kbName }}</span>
-              <span v-if="mode === 'semantic'" class="search-card__badge">
-                相关度 {{ formatScore(knowledge.semanticScore) }}
-              </span>
-              <span
-                v-if="mode === 'semantic' && knowledge.chunkCount != null"
-                class="search-card__badge"
-              >
-                命中 {{ knowledge.chunkCount }} 段
-              </span>
-              <span v-if="knowledge.publishedAt">{{ formatDate(knowledge.publishedAt) }}</span>
-              <span>{{ knowledge.readMinutes }} 分钟阅读</span>
-            </div>
-          </article>
+      <!-- 结果画布（关键词右区 / 向量语义居中 ~920px） -->
+      <section class="search__canvas" :class="{ 'search__canvas--semantic': mode === 'semantic' }">
+        <div v-if="listLoading" class="search__state">
+          <div v-for="i in 3" :key="i" class="search__skeleton" aria-hidden="true" />
         </div>
-        <template v-if="mode === 'keyword'">
-          <div ref="sentinel" class="search__sentinel" aria-hidden="true" />
-          <div v-if="infinite.loadingMore" class="search__load-more" role="status">加载更多…</div>
-          <div v-else-if="infinite.loadMoreError" class="search__load-more">
-            <el-button type="primary" plain size="small" @click="infinite.retryMore()"
-              >重试加载</el-button
+        <div v-else-if="listError" class="search__state">
+          <p class="search__state-text">搜索失败</p>
+          <el-button type="primary" plain @click="retryList()">重试</el-button>
+        </div>
+        <div v-else-if="results.length === 0" class="search__state">
+          <p class="search__state-text">
+            <template v-if="mode === 'semantic' && !semanticSearched"
+              >输入关键词开始向量语义检索。</template
             >
+            <template v-else-if="mode === 'semantic'"
+              >没有找到语义相关知识，试试更换关键词。</template
+            >
+            <template v-else>没有找到相关知识，试试清空筛选或更换关键词。</template>
+          </p>
+          <RouterLink
+            v-if="mode !== 'semantic' || semanticSearched"
+            class="search__reset"
+            to="/search"
+          >
+            清空筛选
+          </RouterLink>
+        </div>
+        <template v-else>
+          <p class="search__summary">
+            {{
+              mode === 'semantic'
+                ? `找到 ${listTotal} 篇语义相关知识`
+                : `共 ${listTotal} 篇相关知识`
+            }}
+          </p>
+          <div class="search__list">
+            <article v-for="knowledge in results" :key="knowledge.id" class="search-row">
+              <RouterLink class="search-row__title" :to="cardHref(knowledge)">
+                <span v-html="highlight(knowledge.title, keyword)" />
+              </RouterLink>
+              <p class="search-row__summary" v-html="highlight(knowledge.summary, keyword)" />
+              <div class="search-row__meta">
+                <span v-if="knowledge.kbName" class="search-row__kb">{{ knowledge.kbName }}</span>
+                <span v-if="mode === 'semantic'" class="search-row__badge search-row__badge--score">
+                  相关度 {{ formatScore(knowledge.semanticScore) }}
+                </span>
+                <span
+                  v-if="mode === 'semantic' && knowledge.chunkCount != null"
+                  class="search-row__badge"
+                >
+                  命中 {{ knowledge.chunkCount }} 段
+                </span>
+                <span v-if="knowledge.publishedAt">{{ formatDate(knowledge.publishedAt) }}</span>
+                <span>{{ knowledge.readMinutes }} 分钟阅读</span>
+              </div>
+            </article>
           </div>
-          <div v-else-if="!infinite.hasMore" class="search__load-more">已加载全部知识</div>
+          <template v-if="mode === 'keyword'">
+            <div ref="sentinel" class="search__sentinel" aria-hidden="true" />
+            <div v-if="infinite.loadingMore" class="search__load-more" role="status">加载更多…</div>
+            <div v-else-if="infinite.loadMoreError" class="search__load-more">
+              <el-button type="primary" plain size="small" @click="infinite.retryMore()"
+                >重试加载</el-button
+              >
+            </div>
+            <div v-else-if="!infinite.hasMore" class="search__load-more">已加载全部知识</div>
+          </template>
         </template>
-      </template>
-    </template>
+      </section>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .search {
-  max-width: 720px;
+  width: min(calc(100% - 48px), var(--xl-container));
   margin: 0 auto;
-  padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
+  padding: var(--xl-space-8) var(--xl-content-pad) var(--xl-space-8);
+  box-sizing: border-box;
+}
+
+/* ===== 顶部搜索命令条 ===== */
+.search__head {
+  padding-bottom: var(--xl-space-6);
+  border-bottom: 1px solid var(--xl-border);
 }
 
 .search__modes {
-  margin-bottom: var(--xl-space-4);
+  margin-bottom: var(--xl-space-6);
 }
 
-.search__form {
+.search__modes :deep(.el-radio-group) {
+  gap: var(--xl-space-1);
+}
+
+.search__modes :deep(.el-radio-button__inner) {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--xl-text-secondary);
+  font-family: var(--xl-font-sans);
+  font-size: var(--xl-fs-body);
+  font-weight: 500;
+  transition:
+    color var(--xl-transition),
+    background var(--xl-transition);
+}
+
+.search__modes :deep(.el-radio-button__inner:hover) {
+  color: var(--xl-color-primary);
+}
+
+.search__modes :deep(.el-radio-button.is-active .el-radio-button__inner) {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xl-color-primary) 12%, transparent);
+  color: var(--xl-color-primary);
+  font-weight: var(--xl-fs-title-w);
+}
+
+.search__modes :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xl-color-primary) 12%, transparent);
+  color: var(--xl-color-primary);
+}
+
+.search__command {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--xl-space-2);
-  margin-bottom: var(--xl-space-4);
+  gap: var(--xl-space-3);
+  align-items: center;
+}
+
+.search__command--semantic {
+  max-width: 920px;
+  margin: 0 auto;
 }
 
 .search__input {
   flex: 1;
-  min-width: 180px;
 }
 
-.search__select {
-  width: 150px;
+.search__input :deep(.el-input__wrapper) {
+  border-radius: var(--xl-radius);
+  background: var(--xl-bg-surface);
+  box-shadow: none;
+  border: 1px solid var(--xl-border);
+}
+
+.search__input :deep(.el-input__wrapper.is-focus),
+.search__input :deep(.el-input__wrapper:hover) {
+  border-color: var(--xl-color-primary);
 }
 
 .search__submit {
   flex-shrink: 0;
+  border-radius: var(--xl-radius);
+  padding-left: 22px;
+  padding-right: 22px;
 }
 
-.search__hint {
-  margin-top: calc(-1 * var(--xl-space-2));
-  margin-bottom: var(--xl-space-4);
+/* ===== 关键词筛选轨 + 结果画布 ===== */
+.search__layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--xl-space-8);
+  align-items: start;
+  margin-top: var(--xl-space-6);
+}
+
+.search__rail {
+  position: sticky;
+  top: calc(var(--xl-header-h) + var(--xl-space-6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-3);
+}
+
+.search__filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-3);
+}
+
+.search__filter-label {
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-caption);
+  font-weight: 600;
+}
+
+.search__select {
+  width: 100%;
+}
+
+.search__rail-hint {
+  margin: 0;
+  padding: var(--xl-space-3);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
+  line-height: 1.7;
 }
 
+.search__canvas {
+  min-width: 0;
+}
+
+.search__canvas--semantic {
+  max-width: 920px;
+  margin: 0 auto;
+  padding-top: var(--xl-space-6);
+}
+
+.search__summary {
+  margin: 0 0 var(--xl-space-4);
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+/* 扁平结果行 */
+.search__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-row {
+  padding: var(--xl-space-4) 0;
+  border-bottom: 1px solid var(--xl-border);
+}
+
+.search-row:last-child {
+  border-bottom: none;
+}
+
+.search-row__title {
+  color: var(--xl-text-primary);
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
+  text-decoration: none;
+  transition: color var(--xl-transition);
+}
+
+.search-row__title:hover {
+  color: var(--xl-color-primary);
+}
+
+.search-row__summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin: var(--xl-space-2) 0;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-body);
+  line-height: 1.7;
+}
+
+.search-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--xl-space-3);
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.search-row__kb {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
+  color: var(--xl-color-primary);
+}
+
+.search-row__badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xl-color-ai) 10%, transparent);
+  color: var(--xl-color-ai);
+}
+
+.search-row__badge--score {
+  font-weight: 600;
+}
+
+:deep(mark) {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--xl-color-primary) 18%, transparent);
+  color: inherit;
+}
+
+/* ===== 状态区 ===== */
 .search__state {
   display: flex;
   flex-direction: column;
   gap: var(--xl-space-3);
   align-items: center;
   padding: var(--xl-space-8) 0;
+}
+
+.search__state--locked {
+  padding: var(--xl-space-10) 0;
 }
 
 .search__skeleton {
@@ -610,9 +826,24 @@ onMounted(() => {
   background: color-mix(in srgb, var(--xl-border) 60%, transparent);
 }
 
-.search__cards {
-  column-count: 2;
-  column-gap: var(--xl-space-4);
+.search__state-text {
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-body);
+  text-align: center;
+}
+
+.search__reset {
+  padding: 6px 18px;
+  border: 1px solid var(--xl-color-primary);
+  border-radius: var(--xl-radius);
+  background: transparent;
+  color: var(--xl-color-primary);
+  font-size: var(--xl-fs-caption);
+  text-decoration: none;
+}
+
+.search__reset:hover {
+  background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
 }
 
 .search__sentinel {
@@ -623,118 +854,82 @@ onMounted(() => {
   min-height: 34px;
   padding: 14px 0 4px;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   text-align: center;
 }
 
-.search__state-text {
-  color: var(--xl-text-secondary);
-  font-size: 14px;
+/* ===== 问小光 30/70 舞台 ===== */
+.ask__stage {
+  display: grid;
+  grid-template-columns: 30% minmax(0, 1fr);
+  gap: var(--xl-space-8);
+  align-items: start;
+  margin-top: var(--xl-space-6);
 }
 
-.search__reset {
-  padding: 6px 16px;
-  border: 1px solid var(--xl-color-primary);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--xl-color-primary);
-  font-size: 13px;
-  text-decoration: none;
-}
-
-.search__reset:hover {
-  background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
-}
-
-.search__summary {
-  color: var(--xl-text-muted);
-  font-size: 13px;
-}
-
-.search-card {
-  break-inside: avoid;
-  padding: var(--xl-space-4) var(--xl-space-6);
-  margin-bottom: var(--xl-space-4);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
-  transition:
-    box-shadow var(--xl-transition),
-    transform var(--xl-transition);
-}
-
-.search-card:hover {
-  box-shadow: var(--xl-shadow-md);
-  transform: translateY(-2px);
-}
-
-@media (width <= 640px) {
-  .search__cards {
-    column-count: 1;
-  }
-}
-
-.search-card__title {
-  color: var(--xl-text-primary);
-  font-size: 17px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.search-card__title:hover {
-  color: var(--xl-color-primary);
-}
-
-.search-card__summary {
-  margin: var(--xl-space-2) 0;
-  color: var(--xl-text-secondary);
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.search-card__meta {
+.ask__rail {
+  position: sticky;
+  top: calc(var(--xl-header-h) + var(--xl-space-6));
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--xl-space-4);
+}
+
+.ask__form {
+  display: flex;
+  flex-direction: column;
   gap: var(--xl-space-3);
-  align-items: center;
-  color: var(--xl-text-muted);
-  font-size: 12px;
 }
 
-.search-card__kb {
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
-  color: var(--xl-color-primary);
-}
-
-.search-card__badge {
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--xl-color-ai) 10%, transparent);
-  color: var(--xl-color-ai);
-}
-
-:deep(mark) {
-  padding: 0 2px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--xl-color-primary) 18%, transparent);
-  color: inherit;
-}
-
-.ask {
-  padding: var(--xl-space-4) var(--xl-space-6);
+.ask__input :deep(.el-input__wrapper) {
+  border-radius: var(--xl-radius);
+  background: var(--xl-bg-surface);
+  box-shadow: none;
   border: 1px solid var(--xl-border);
-  border-left: 3px solid var(--xl-color-ai);
+}
+
+.ask__input :deep(.el-input__wrapper.is-focus),
+.ask__input :deep(.el-input__wrapper:hover) {
+  border-color: var(--xl-color-primary);
+}
+
+.ask__submit {
+  border-radius: var(--xl-radius);
+}
+
+.ask__note {
+  margin: 0;
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.ask__panel {
+  position: relative;
+  min-height: 220px;
+  padding: var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-left: 2px solid var(--xl-color-ai);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
+}
+
+.ask__star {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  color: var(--xl-color-ai);
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.ask__answer-body {
+  min-height: 120px;
 }
 
 .ask__answer {
   color: var(--xl-text-primary);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: var(--xl-fs-body);
+  line-height: 1.8;
   overflow-wrap: break-word;
 }
 
@@ -745,7 +940,7 @@ onMounted(() => {
 .ask__tool-line {
   margin-top: 6px;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .ask__tool-line::before {
@@ -756,7 +951,7 @@ onMounted(() => {
 .ask__tools {
   margin-top: 6px;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .ask__citations {
@@ -770,7 +965,14 @@ onMounted(() => {
   margin-top: var(--xl-space-3);
 }
 
-/* Markdown 回答体：块级标签自带分段，白底容器内直接铺排 */
+.ask__hint {
+  margin: 0;
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-body);
+  line-height: 1.7;
+}
+
+/* ===== Markdown 回答体 ===== */
 .markdown-body :deep(p) {
   margin: 0.6em 0;
 }
@@ -824,5 +1026,23 @@ onMounted(() => {
   padding: 0 var(--xl-space-3);
   border-left: 3px solid var(--xl-color-primary);
   color: var(--xl-text-secondary);
+}
+
+@media (width <= 900px) {
+  .search__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .search__rail {
+    position: static;
+  }
+
+  .ask__stage {
+    grid-template-columns: 1fr;
+  }
+
+  .ask__rail {
+    position: static;
+  }
 }
 </style>

@@ -20,6 +20,7 @@ import { fetchKnowledges } from '@/modules/publishing/api/public'
 import { assistAction } from '@/modules/ai/api/assist'
 import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import DirectoryTreeContextMenu from '@/modules/knowledge/components/DirectoryTreeContextMenu.vue'
+import InitialAvatar from '@/components/InitialAvatar.vue'
 import { useInfinitePage } from '@/composables/useInfinitePage'
 
 import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
@@ -80,7 +81,8 @@ function formatDate(iso: string): string {
 const infinite = useInfinitePage<KnowledgeCard>({
   sentinel,
   pageSize: PAGE_SIZE,
-  loadPage: (pageNo, pageSize) => fetchKnowledges({
+  loadPage: (pageNo, pageSize) =>
+    fetchKnowledges({
       kbId: kbId.value,
       ...(selectedDirectoryId.value ? { directoryId: selectedDirectoryId.value } : {}),
       pageNo,
@@ -237,150 +239,182 @@ onMounted(async () => {
       <RouterLink class="kb-detail__back-link" to="/knowledge-bases">返回知识库列表</RouterLink>
     </div>
     <template v-else>
+      <!-- 库封面标题带 -->
       <header class="kb-detail__header">
-      <div class="kb-detail__bar">
         <button type="button" class="kb-detail__back" aria-label="返回" @click="router.back()">
           <el-icon><ArrowLeft /></el-icon>
           返回
         </button>
-        <div v-if="kbDetail" class="kb-detail__title-row">
-          <h1 class="kb-detail__title">{{ kbDetail.name }}</h1>
-          <el-tag
-            :type="kbDetail.visibility === 1 ? 'success' : 'info'"
-            effect="plain"
-            size="small"
-          >
-            <el-icon class="kb-detail__tag-icon">
-              <Lock v-if="kbDetail.visibility === 0" />
-              <Unlock v-else />
-            </el-icon>
-            {{ visibilityText }}
-          </el-tag>
-          <div class="kb-detail__stats">
-            知识 {{ kbDetail.knowledgeCount }} · 目录 {{ directoryCount }}
+        <div class="kb-detail__band">
+          <div class="kb-detail__cover">
+            <span class="kb-detail__cover-text">{{ (kbDetail?.name || '知').slice(0, 1) }}</span>
           </div>
-        </div>
-        <div v-else class="kb-detail__title-row">
-          <h1 class="kb-detail__title">公开知识库</h1>
-          <el-tag type="success" effect="plain" size="small">
-            <el-icon class="kb-detail__tag-icon"><Unlock /></el-icon>
-            公开
-          </el-tag>
-        </div>
-        <div v-if="isOwner && kbDetail" class="kb-detail__owner-actions">
-          <el-button size="small" plain @click="openEdit">
-            <el-icon><Edit /></el-icon>
-            编辑库资料
-          </el-button>
-          <el-button size="small" type="primary" @click="dirVisible = true">
-            <el-icon><Plus /></el-icon>
-            新建目录
-          </el-button>
-        </div>
-      </div>
-      <p v-if="kbDetail && kbDetail.intro" class="kb-detail__intro">{{ kbDetail.intro }}</p>
-    </header>
-
-    <section v-if="session.loggedIn" class="kb-detail__insight">
-      <div class="kb-detail__insight-head">
-        <span class="kb-detail__insight-title">AI 库洞察</span>
-        <el-button size="small" text type="primary" :loading="insightLoading" @click="loadInsight">
-          {{ insight ? '重新生成' : '生成洞察' }}
-        </el-button>
-      </div>
-      <div v-if="insightLoading" class="kb-detail__insight-body">小光正在分析该库内容…</div>
-      <div v-else-if="insightError" class="kb-detail__insight-error">{{ insightError }}</div>
-      <div v-else-if="insight" class="kb-detail__insight-body markdown-body" v-html="insightHtml"></div>
-      <div v-else class="kb-detail__insight-body kb-detail__insight-body--hint">
-        基于库内 {{ docCount }} 篇知识生成主题概览与亮点，登录后可用。
-      </div>
-    </section>
-
-    <div class="kb-detail__layout">
-      <aside v-if="isOwner" class="kb-detail__side">
-        <button
-          type="button"
-          class="kb-detail__all"
-          :class="{ 'kb-detail__all--active': selectedDirectoryId === '' }"
-          @click="selectDirectory('')"
-          @contextmenu="dirMenu?.open($event)"
-        >
-          <el-icon><Collection /></el-icon>
-          全部知识
-        </button>
-        <el-tree
-          :data="directories"
-          node-key="id"
-          :props="{ label: 'name', children: 'children' }"
-          :expand-on-click-node="false"
-          default-expand-all
-          class="kb-detail__tree"
-          @node-click="(data: DirectoryNode) => selectDirectory(data.id)"
-          @node-contextmenu="
-            (event: MouseEvent, data: DirectoryNode) =>
-              dirMenu?.open(event, { id: data.id, name: data.name })
-          "
-        >
-          <template #default="{ data }">
-            <span
-              class="kb-detail__dir"
-              :class="{ 'kb-detail__dir--active': data.id === selectedDirectoryId }"
-            >
-              <el-icon class="kb-detail__dir-icon"><Folder /></el-icon>
-              <span class="kb-detail__dir-name">{{ data.name }}</span>
-              <span class="kb-detail__dir-count">{{ data.knowledgeCount }}</span>
-            </span>
-          </template>
-        </el-tree>
-      </aside>
-
-      <section class="kb-detail__main">
-        <div v-if="loading" class="kb-detail__state">
-          <div v-for="i in 3" :key="i" class="kb-detail__skeleton" aria-hidden="true" />
-        </div>
-        <div v-else-if="loadError" class="kb-detail__state">
-          <p class="kb-detail__state-text">知识加载失败</p>
-          <el-button type="primary" plain @click="infinite.retry()">重试</el-button>
-        </div>
-        <template v-else>
-          <div v-if="knowledges.length === 0" class="kb-detail__state">
-            <el-icon class="kb-detail__state-icon"><Collection /></el-icon>
-            <p class="kb-detail__state-text">这个视图下还没有知识。</p>
-          </div>
-          <article v-for="knowledge in knowledges" v-else :key="knowledge.id" class="kb-card">
-            <RouterLink class="kb-card__title" :to="`/knowledge/${knowledge.id}`">
-              {{ knowledge.title }}
-            </RouterLink>
-            <p class="kb-card__summary">{{ knowledge.summary }}</p>
-            <div class="kb-card__meta">
-              <span class="kb-card__badge">{{ knowledge.kbName }}</span>
-              <span>{{ knowledge.authorName }}</span>
-              <span>{{ formatDate(knowledge.publishedAt) }}</span>
-              <span>{{ knowledge.readMinutes }} 分钟阅读</span>
-              <span>{{ knowledge.viewCount }} 阅读</span>
-              <span>{{ knowledge.commentCount }} 评论</span>
-              <span>{{ knowledge.likeCount }} 点赞</span>
-            </div>
-            <div v-if="knowledge.tags.length > 0" class="kb-card__tags">
-              <RouterLink
-                v-for="tag in knowledge.tags"
-                :key="tag"
-                class="kb-card__tag"
-                :to="`/search?tag=${encodeURIComponent(tag)}`"
+          <div class="kb-detail__head-main">
+            <div class="kb-detail__title-row">
+              <h1 class="kb-detail__title">
+                {{ kbDetail ? kbDetail.name : '公开知识库' }}
+              </h1>
+              <el-tag
+                :type="kbDetail && kbDetail.visibility === 1 ? 'success' : 'info'"
+                effect="plain"
+                size="small"
               >
-                # {{ tag }}
-              </RouterLink>
+                <el-icon class="kb-detail__tag-icon">
+                  <Lock v-if="kbDetail && kbDetail.visibility === 0" />
+                  <Unlock v-else />
+                </el-icon>
+                {{ kbDetail ? visibilityText : '公开' }}
+              </el-tag>
             </div>
-          </article>
-          <div ref="sentinel" class="kb-detail__sentinel" aria-hidden="true" />
-          <div v-if="infinite.loadingMore" class="kb-detail__load-more" role="status">加载更多…</div>
-          <div v-else-if="infinite.loadMoreError" class="kb-detail__load-more">
-            <el-button type="primary" plain size="small" @click="infinite.retryMore()">重试加载</el-button>
+            <p v-if="kbDetail && kbDetail.intro" class="kb-detail__intro">{{ kbDetail.intro }}</p>
           </div>
-          <div v-else-if="!infinite.hasMore" class="kb-detail__load-more">已加载全部知识</div>
-        </template>
+          <div class="kb-detail__head-side">
+            <div class="kb-detail__stats">
+              知识 {{ kbDetail?.knowledgeCount ?? 0 }} · 目录 {{ directoryCount }}
+            </div>
+            <div v-if="isOwner && kbDetail" class="kb-detail__owner-actions">
+              <el-button size="small" plain @click="openEdit">
+                <el-icon><Edit /></el-icon>
+                编辑库资料
+              </el-button>
+              <el-button size="small" type="primary" @click="dirVisible = true">
+                <el-icon><Plus /></el-icon>
+                新建目录
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- AI 库洞察：薄型带（登录态，未生成时提示 + 生成洞察） -->
+      <section v-if="session.loggedIn" class="kb-detail__insight">
+        <div class="kb-detail__insight-head">
+          <span class="kb-detail__insight-title">✦ AI 库洞察</span>
+          <el-button
+            size="small"
+            text
+            type="primary"
+            :loading="insightLoading"
+            @click="loadInsight"
+          >
+            {{ insight ? '重新生成' : '生成洞察' }}
+          </el-button>
+        </div>
+        <div v-if="insightLoading" class="kb-detail__insight-body">小光正在分析该库内容…</div>
+        <div v-else-if="insightError" class="kb-detail__insight-error">{{ insightError }}</div>
+        <div
+          v-else-if="insight"
+          class="kb-detail__insight-body markdown-body"
+          v-html="insightHtml"
+        ></div>
+        <div v-else class="kb-detail__insight-body kb-detail__insight-body--hint">
+          基于库内 {{ docCount }} 篇知识生成主题概览与亮点，登录后可用。
+        </div>
       </section>
-    </div>
+
+      <div class="kb-detail__layout">
+        <aside v-if="isOwner" class="kb-detail__side">
+          <button
+            type="button"
+            class="kb-detail__all"
+            :class="{ 'kb-detail__all--active': selectedDirectoryId === '' }"
+            @click="selectDirectory('')"
+            @contextmenu="dirMenu?.open($event)"
+          >
+            <el-icon><Collection /></el-icon>
+            全部知识
+          </button>
+          <el-tree
+            :data="directories"
+            node-key="id"
+            :props="{ label: 'name', children: 'children' }"
+            :expand-on-click-node="false"
+            default-expand-all
+            class="kb-detail__tree"
+            @node-click="(data: DirectoryNode) => selectDirectory(data.id)"
+            @node-contextmenu="
+              (event: MouseEvent, data: DirectoryNode) =>
+                dirMenu?.open(event, { id: data.id, name: data.name })
+            "
+          >
+            <template #default="{ data }">
+              <span
+                class="kb-detail__dir"
+                :class="{ 'kb-detail__dir--active': data.id === selectedDirectoryId }"
+              >
+                <el-icon class="kb-detail__dir-icon"><Folder /></el-icon>
+                <span class="kb-detail__dir-name">{{ data.name }}</span>
+                <span class="kb-detail__dir-count">{{ data.knowledgeCount }}</span>
+              </span>
+            </template>
+          </el-tree>
+        </aside>
+
+        <!-- 知识流：行式列表（标题 / 摘要 / 库名 / 首字头像 / 日期 / 阅读时长 / 阅读量 / 标签） -->
+        <section class="kb-detail__main">
+          <div v-if="loading" class="kb-detail__state">
+            <div v-for="i in 3" :key="i" class="kb-detail__skeleton" aria-hidden="true" />
+          </div>
+          <div v-else-if="loadError" class="kb-detail__state">
+            <p class="kb-detail__state-text">知识加载失败</p>
+            <el-button type="primary" plain @click="infinite.retry()">重试</el-button>
+          </div>
+          <template v-else>
+            <div v-if="knowledges.length === 0" class="kb-detail__state">
+              <el-icon class="kb-detail__state-icon"><Collection /></el-icon>
+              <p class="kb-detail__state-text">这个视图下还没有知识。</p>
+            </div>
+            <div v-else class="kb-detail__list">
+              <article v-for="knowledge in knowledges" :key="knowledge.id" class="kb-row">
+                <div class="kb-row__head">
+                  <RouterLink class="kb-row__title" :to="`/knowledge/${knowledge.id}`">
+                    {{ knowledge.title }}
+                  </RouterLink>
+                  <RouterLink
+                    v-if="knowledge.kbName"
+                    class="kb-row__badge"
+                    :to="`/kb/${knowledge.kbId}`"
+                    @click.stop
+                  >
+                    {{ knowledge.kbName }}
+                  </RouterLink>
+                </div>
+                <p class="kb-row__summary">{{ knowledge.summary }}</p>
+                <div class="kb-row__meta">
+                  <InitialAvatar :name="knowledge.authorName" :size="22" />
+                  <span class="kb-row__author">{{ knowledge.authorName }}</span>
+                  <span>{{ formatDate(knowledge.publishedAt) }}</span>
+                  <span>{{ knowledge.readMinutes }} 分钟阅读</span>
+                  <span>{{ knowledge.viewCount }} 阅读</span>
+                  <span>{{ knowledge.commentCount }} 评论</span>
+                  <span>{{ knowledge.likeCount }} 点赞</span>
+                </div>
+                <div v-if="knowledge.tags.length > 0" class="kb-row__tags">
+                  <RouterLink
+                    v-for="tag in knowledge.tags"
+                    :key="tag"
+                    class="kb-row__tag"
+                    :to="`/search?tag=${encodeURIComponent(tag)}`"
+                    @click.stop
+                  >
+                    {{ tag }}
+                  </RouterLink>
+                </div>
+              </article>
+            </div>
+            <div ref="sentinel" class="kb-detail__sentinel" aria-hidden="true" />
+            <div v-if="infinite.loadingMore" class="kb-detail__load-more" role="status">
+              加载更多…
+            </div>
+            <div v-else-if="infinite.loadMoreError" class="kb-detail__load-more">
+              <el-button type="primary" plain size="small" @click="infinite.retryMore()"
+                >重试加载</el-button
+              >
+            </div>
+            <div v-else-if="!infinite.hasMore" class="kb-detail__load-more">已加载全部知识</div>
+          </template>
+        </section>
+      </div>
     </template>
 
     <el-dialog v-model="editVisible" title="编辑库资料" width="440px">
@@ -438,43 +472,71 @@ onMounted(async () => {
 
 <style scoped>
 .kb-detail {
-  max-width: 1080px;
+  width: min(calc(100% - 48px), var(--xl-container));
   margin: 0 auto;
-  padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
+  padding: var(--xl-space-8) var(--xl-content-pad) var(--xl-space-8);
+  box-sizing: border-box;
 }
 
+/* ===== 库封面标题带 ===== */
 .kb-detail__header {
-  padding: var(--xl-space-4) var(--xl-space-6);
-  margin-bottom: var(--xl-space-6);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
-}
-
-.kb-detail__bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--xl-space-3);
+  padding: var(--xl-space-4) 0 var(--xl-space-6);
+  border-bottom: 1px solid var(--xl-border);
 }
 
 .kb-detail__back {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 12px;
+  margin-bottom: var(--xl-space-4);
+  padding: 4px 8px;
   border: none;
   border-radius: var(--xl-radius-sm);
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   cursor: pointer;
 }
 
 .kb-detail__back:hover {
   background: var(--xl-bg-secondary);
   color: var(--xl-color-primary);
+}
+
+.kb-detail__band {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--xl-space-6);
+  align-items: center;
+}
+
+.kb-detail__cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 104px;
+  height: 104px;
+  flex-shrink: 0;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--xl-color-primary) 16%, transparent),
+    var(--xl-bg-surface)
+  );
+}
+
+.kb-detail__cover-text {
+  color: color-mix(in srgb, var(--xl-color-primary) 78%, var(--xl-text-primary));
+  font-size: 38px;
+  font-weight: 700;
+}
+
+.kb-detail__head-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-2);
 }
 
 .kb-detail__title-row {
@@ -487,7 +549,8 @@ onMounted(async () => {
 .kb-detail__title {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 24px;
+  font-size: var(--xl-fs-h2);
+  font-weight: var(--xl-fs-h2-w);
 }
 
 .kb-detail__tag-icon {
@@ -495,39 +558,96 @@ onMounted(async () => {
   vertical-align: -2px;
 }
 
+.kb-detail__intro {
+  margin: 0;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-body);
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kb-detail__head-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--xl-space-4);
+  flex-shrink: 0;
+}
+
 .kb-detail__stats {
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
 }
 
 .kb-detail__owner-actions {
-  margin-left: auto;
   display: flex;
   gap: var(--xl-space-2);
 }
 
-.kb-detail__intro {
-  margin: var(--xl-space-3) 0 0;
-  color: var(--xl-text-secondary);
-  font-size: 14px;
-  line-height: 1.7;
+/* ===== AI 库洞察：薄带 ===== */
+.kb-detail__insight {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--xl-space-4);
+  margin: var(--xl-space-6) 0;
+  padding: var(--xl-space-3) var(--xl-space-4);
+  border: 1px solid var(--xl-border);
+  border-left: 2px solid var(--xl-color-ai);
+  border-radius: var(--xl-radius);
+  background: var(--xl-bg-surface);
 }
 
+.kb-detail__insight-head {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--xl-space-2);
+}
+
+.kb-detail__insight-title {
+  font-weight: var(--xl-fs-title-w);
+  color: var(--xl-color-ai);
+}
+
+.kb-detail__insight-body {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--xl-fs-body);
+  line-height: 1.7;
+  color: var(--xl-text-secondary);
+}
+
+.kb-detail__insight-body--hint {
+  color: var(--xl-text-muted);
+}
+
+.kb-detail__insight-error {
+  flex: 1;
+  min-width: 0;
+  color: var(--xl-color-danger);
+  font-size: var(--xl-fs-caption);
+}
+
+/* ===== 目录导航轨 + 知识流 ===== */
 .kb-detail__layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--xl-space-6);
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: var(--xl-space-8);
   align-items: start;
+  margin-top: var(--xl-space-6);
 }
 
 .kb-detail__side {
   position: sticky;
-  top: 72px;
+  top: calc(var(--xl-header-h) + var(--xl-space-6));
   padding: var(--xl-space-4);
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
 }
 
 .kb-detail__all {
@@ -540,7 +660,7 @@ onMounted(async () => {
   border-radius: var(--xl-radius-sm);
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   text-align: left;
   cursor: pointer;
 }
@@ -573,7 +693,7 @@ onMounted(async () => {
   width: 100%;
   padding-right: 4px;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
 }
 
 .kb-detail__dir--active {
@@ -607,11 +727,16 @@ onMounted(async () => {
   min-width: 0;
 }
 
+/* ===== 状态区 ===== */
 .kb-detail__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--xl-space-3);
   padding: var(--xl-space-8) 0;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .kb-detail__state p {
@@ -639,7 +764,7 @@ onMounted(async () => {
 .kb-detail__back-link {
   color: var(--xl-color-primary);
   text-decoration: none;
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .kb-detail__state-icon {
@@ -657,7 +782,7 @@ onMounted(async () => {
   min-height: 34px;
   padding: 14px 0 4px;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   text-align: center;
 }
 
@@ -668,79 +793,104 @@ onMounted(async () => {
   background: color-mix(in srgb, var(--xl-border) 60%, transparent);
 }
 
-.kb-card {
-  padding: var(--xl-space-4) var(--xl-space-6);
-  margin-bottom: var(--xl-space-4);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
-  transition:
-    box-shadow var(--xl-transition),
-    transform var(--xl-transition);
+/* ===== 行式知识流 ===== */
+.kb-detail__list {
+  display: flex;
+  flex-direction: column;
 }
 
-.kb-card:hover {
-  box-shadow: var(--xl-shadow-md);
-  transform: translateY(-2px);
+.kb-row {
+  padding: var(--xl-space-4) 0;
+  border-bottom: 1px solid var(--xl-border);
 }
 
-.kb-card__title {
+.kb-row:last-child {
+  border-bottom: none;
+}
+
+.kb-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--xl-space-3);
+}
+
+.kb-row__title {
   color: var(--xl-text-primary);
-  font-size: 17px;
-  font-weight: 600;
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
   text-decoration: none;
+  transition: color var(--xl-transition);
 }
 
-.kb-card__title:hover {
+.kb-row__title:hover {
   color: var(--xl-color-primary);
 }
 
-.kb-card__summary {
+.kb-row__badge {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
+  color: var(--xl-color-primary);
+  font-size: var(--xl-fs-caption);
+  text-decoration: none;
+}
+
+.kb-row__summary {
   margin: var(--xl-space-2) 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
 }
 
-.kb-card__meta {
+.kb-row__meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--xl-space-3);
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
-.kb-card__badge {
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
-  color: var(--xl-color-primary);
+.kb-row__author {
+  color: var(--xl-text-secondary);
+  font-weight: 500;
 }
 
-.kb-card__tags {
+.kb-row__tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--xl-space-2);
   margin-top: var(--xl-space-3);
 }
 
-.kb-card__tag {
+.kb-row__tag {
   padding: 2px 10px;
   border-radius: 999px;
   background: var(--xl-bg-secondary);
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   text-decoration: none;
 }
 
-.kb-card__tag:hover {
+.kb-row__tag:hover {
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
 }
 
-@media (width <= 800px) {
+@media (width <= 900px) {
+  .kb-detail__band {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .kb-detail__head-side {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
   .kb-detail__layout {
     grid-template-columns: 1fr;
   }
@@ -748,45 +898,5 @@ onMounted(async () => {
   .kb-detail__side {
     position: static;
   }
-
-  .kb-detail__owner-actions {
-    margin-left: 0;
-  }
 }
-.kb-detail__insight {
-  margin: var(--xl-space-4) 0;
-  padding: var(--xl-space-4);
-  border: 1px solid var(--xl-border);
-  border-left: 3px solid var(--xl-color-ai);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-}
-
-.kb-detail__insight-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--xl-space-2);
-}
-
-.kb-detail__insight-title {
-  font-weight: 600;
-  color: var(--xl-color-ai);
-}
-
-.kb-detail__insight-body {
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--xl-text-secondary);
-}
-
-.kb-detail__insight-body--hint {
-  color: var(--xl-text-muted);
-}
-
-.kb-detail__insight-error {
-  color: var(--xl-color-danger);
-  font-size: 13px;
-}
-
 </style>

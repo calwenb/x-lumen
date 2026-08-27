@@ -16,6 +16,27 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/8/27 · ZCode（全功能黑盒测试 + 修复 3 项：AI 写作流断裂 / 详情页右轨交互不同步）
+
+> 影响文档：docs/frontend/FRONTEND.md（无·仅前端模块内修复）、docs/ai/QA.md（工具选择沉淀） · 决策摘要：无
+
+- **测试范围**：按 docs/ai/QA.md 第 5 节模块顺序以内置浏览器（agent-browser，1080p 视口）全功能巡检——身份/多租户、博客公开阅读、互动反馈、内容管理、知识库体系（建库/目录）、审核与发布（AI 审核弹窗→发布成功）、AI 对话（流式/Agent 工具循环/追问）、AI 写作、AI 摘要、管理后台（空间/模型/AI 追踪/动态/审计）、多用户可见性、回收站/发布管理页。全程使用 qa_ft_20260827 / qa_ft2_20260827 新建测试账号。
+- **BUG-031 · AI 写作结果流断裂（404/400，已修复）**：`writing.ts` 任务 URL 用 `/ai/tasks/{id}`，而 TaskController 挂 `/api/v1/tasks`（无 `/api/v1/ai/tasks`），导致 SSE `/ai/tasks/{id}/events`、`GET /ai/tasks/{id}`、`/ai/tasks/{id}/retry` 全部 404。又因 `WritingController` 返回 `ApiResponse<Long>`（原始 taskId 字符串），`submitWriting` 取 `result.taskId` 得 `undefined`，SSE 再报 400。修复：3 处 URL 改 `/tasks/{taskId}`，`submitWriting` 改 `String(result)`。
+- **BUG-031 附带 · AI 写作展示原始 JSON（已修复）**：SSE 链路曾因 URL 错误未连通，展示解析缺陷被掩盖。修复 `AiWritePage.handleEvent` chunk 分支从 `streamText += event.data`（原始 JSON）改为 `JSON.parse(event.data).content`。修复后 AI 写作流式输出清晰 Markdown（多章长文）。
+- **BUG-032 · 详情页右轨赞/踩/收藏不同步（已修复）**：同篇知识存在正文操作带 + 右侧操作轨两处 ReactionBar/FavoriteButton，组件仅 watch `knowledgeId`，一处状态变化不回传 props，右轨计数/高亮滞后（如正文「已赞 1」、右轨仍「赞 0」）。修复：ReactionBar/FavoriteButton 增加 props（initial/initialReaction/count）watch 在非 pending 时回同步；ReactionBar 的 `update:counts` 载荷扩展携带 `reaction`，父组件 `onCountsChange` 同步 `knowledge.liked`。验证：点赞/收藏正文后右轨即时一致。
+- **遗留事项（非缺陷）**：① 存量已发布知识（如 qodet_test 的「JDK 21 + Spring Boot 3」）RAG 索引为 null，AI 对话检索未命中——属 BUG-004 已知「Milvus 就绪后存量 reindex 补跑」缺口，非新缺陷；新发布知识已正常建索引（chunkCount=1/ACTIVE）。② `/knowledge-bases` 页「全平台公开知识库聚合将在 V2 提供」文案与 V2 已交付状态不符，属契约文案，留待用户决策是否更新。③ 测试数据（qa_ft/q a_ft2 账号、qa测试公开库/qa私有库、API创建测试知识/qa私有库测试知识、若干评论）保留在 xlumen_dev，命名带 qa_ 前缀，清理需用户明确要求。
+- **验证**：博客 `vue-tsc --noEmit`、`eslint`（0 errors）、`vite build`、`vitest run`（7 文件 19 用例）全绿；浏览器复测 AI 写作流式 Markdown、右轨交互同步均通过。
+
+
+
+> 影响文档：docs/frontend/FRONTEND.md（§10.1 Design Token 值） · 决策摘要：D19（UI 统一入口/品牌色突出）
+
+- **设计系统**：新增品牌组件 `XlLogo`（SVG 双光柱+四角星+隐藏X+字标）、`InitialAvatar`（首字圆头像）、`SegmentedControl`（关键词/向量语义/问小光三态）；`tokens.css` 对齐 V2 调色板（Ink #162033、Success #2E8B68、Warning #B7791F、Danger #C94B50，并把 Success 与 AI Teal 拆开）并新增字体层级/容器/头部高度 token；`index.css` 全局标题层级与 `.xl-container` 版心；`element-theme.css` 映射新语义色。
+- **全局壳**：博客 64px 吸顶头部（Logo / 发现·知识库·动态·创作中心·AI小光+Teal星 / 搜索胶囊 / 主题图标仅视觉·固定浅色 / 通知铃 / 写知识 CTA / 头像）；后台左固定侧栏品牌化（XlLogo + 用户名/登出）；修复 `/studio/knowledge` 被 knowledge-list 与 index-status 重复注册，RAG 索引页拆到 `/studio/index-status`。
+- **博客页面**（按 V2 规范重排版式，功能/数据/交互真值不变）：B01 首页（AI 光带入口 + 探索轨 + 细分隔线知识流）、B02 知识详情（阅读中轴：目录/正文/右操作轨 + 面包屑 + AI 摘要/导读）、B00 AI 小光（会话/对话/本轮过程三栏）、B09 工作台、B08 编辑器、B11 AI 写作、B12 审核中心、B13 发布管理、B03 搜索三态、B16 知识库发现、B20 知识库详情、B24 知识地图、B25 动态、B26 关于、B23 收藏、B06 登录、B10 知识管理、B22 我的知识库、B21 回收站、B14 RAG 索引状态。
+- **后台页面**：A00 登录（44/56 秩序化分栏）、A01 空间设置、A02 模型与 Prompt 配置（配置表 + Prompt 侧栏检查器）、A03 AI 调用追踪（统计带 + 吸顶表头）、A04 站点更新日志、A05 审计日志（日志表 + 详情检查器）。
+- **验证**：双端 `pnpm typecheck`、`pnpm lint`（0 errors）、`pnpm build` 全绿；用内置浏览器 1080p 抽查首页/AI 对话/关于/搜索/知识库，版式符合 V2 规范。后端未启动，数据填充态未逐一截图（以 UI 规范 + 图为准）。遗留：G01-G05 全局浮层（悬浮小光/通知/导览/纠错/空态）样式待统一；暗色未启用（固定浅色，主题图标仅视觉）。
+
 ## 2026/8/26 · ZCode（V2 全量实施交付：批次 0~5，28 项功能 + 工程项 IDEA-027）
 
 > 影响文档：docs/product/PRODUCT.md（V2 全部交付状态）、docs/ai/STATUS.md §3/§4/§5/§7 · 决策摘要：D19~D27 全部落地（D20 Spring AI 迁移为旧）

@@ -73,23 +73,27 @@ watch([intro, forceReview], () => {
       <p>加载失败，请稍后重试。</p>
       <el-button type="primary" plain @click="load()">重试</el-button>
     </div>
-    <el-form v-else label-position="top" class="settings__card" @submit.prevent="save">
+    <el-form v-else label-position="top" class="settings__form" @submit.prevent="save">
       <el-form-item label="空间名">
         <el-input :model-value="name" disabled />
       </el-form-item>
       <el-form-item label="空间标识（slug）">
         <el-input :model-value="slug" disabled class="settings__slug" />
       </el-form-item>
+
+      <div class="settings__divider" aria-hidden="true" />
+
       <el-form-item label="空间简介">
         <el-input
           v-model="intro"
           type="textarea"
-          :rows="4"
+          :rows="5"
           maxlength="500"
           show-word-limit
           placeholder="介绍你的空间…"
         />
       </el-form-item>
+
       <!-- 旧 forceReview 字段继续随表单保存以支持回退，但暂不向用户展示。 -->
       <div class="settings__actions">
         <el-button type="primary" native-type="submit" :loading="saving">
@@ -103,18 +107,21 @@ watch([intro, forceReview], () => {
 
 <style scoped>
 .settings {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: var(--xl-space-8) var(--xl-space-4);
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: var(--xl-space-4);
+  padding: var(--xl-space-8) var(--xl-content-pad);
 }
 
 .settings__title {
-  margin: 0 0 var(--xl-space-6);
+  grid-column: 1 / -1;
+  margin: 0 0 var(--xl-space-4);
   color: var(--xl-text-primary);
   font-size: 22px;
 }
 
 .settings__state {
+  grid-column: 1 / -1;
   padding: 48px 0;
   text-align: center;
   color: var(--xl-text-secondary);
@@ -125,36 +132,29 @@ watch([intro, forceReview], () => {
   text-align: left;
 }
 
-.settings__card {
+/* A01：表单从第 2 栏开始，宽约 7 栏，右侧保留大面积安静留白 */
+.settings__form {
+  grid-column: 2 / span 7;
   display: flex;
   flex-direction: column;
-  gap: var(--xl-space-4);
-  padding: var(--xl-space-6);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
+  gap: var(--xl-space-2);
 }
 
 .settings__slug :deep(.el-input__inner) {
   font-family: var(--xl-font-mono);
 }
 
-.settings__switch-row {
-  display: flex;
-  align-items: center;
-  gap: var(--xl-space-3);
-}
-
-.settings__switch-hint {
-  color: var(--xl-text-secondary);
-  font-size: 13px;
+.settings__divider {
+  height: 1px;
+  margin: var(--xl-space-4) 0;
+  background: var(--xl-border);
 }
 
 .settings__actions {
   display: flex;
   align-items: center;
   gap: var(--xl-space-4);
+  margin-top: var(--xl-space-2);
 }
 
 .settings__saved {

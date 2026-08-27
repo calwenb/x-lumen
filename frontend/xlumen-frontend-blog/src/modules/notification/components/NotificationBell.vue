@@ -132,7 +132,12 @@ async function openStream(): Promise<void> {
 /** 未读消息取前 3 条内容做角标文案。 */
 function unreadPreview(): string {
   const unread = items.value.filter((item) => !item.read)
-  return unread.slice(0, 3).map((item) => item.content).join('；') || ''
+  return (
+    unread
+      .slice(0, 3)
+      .map((item) => item.content)
+      .join('；') || ''
+  )
 }
 
 onBeforeUnmount(() => {
@@ -162,7 +167,12 @@ timer = window.setInterval(() => void refresh(), 30_000)
         :max="99"
         class="noti-bell__badge"
       >
-        <button type="button" class="noti-bell" aria-label="消息中心" :title="unreadPreview() || '消息中心'">
+        <button
+          type="button"
+          class="noti-bell"
+          aria-label="消息中心"
+          :title="unreadPreview() || '消息中心'"
+        >
           <el-icon><Bell /></el-icon>
         </button>
       </el-badge>
@@ -202,7 +212,9 @@ timer = window.setInterval(() => void refresh(), 30_000)
         </li>
       </ul>
       <footer class="noti-panel__footer">
-        <RouterLink class="noti-panel__more" :to="{ name: 'review-center' }">查看审核中心 →</RouterLink>
+        <RouterLink class="noti-panel__more" :to="{ name: 'review-center' }"
+          >查看审核中心 →</RouterLink
+        >
       </footer>
     </div>
   </el-popover>

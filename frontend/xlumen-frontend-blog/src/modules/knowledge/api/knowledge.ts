@@ -44,7 +44,10 @@ interface RawIndexStatus {
 
 /** RAG 检索测试。 */
 export async function retrievalTest(query: string, topK: number): Promise<RetrievalItem[]> {
-  const { data } = await http.post<ApiResponse<RawRetrievalItem[]>>('/knowledge/retrieval-test', { query, topK })
+  const { data } = await http.post<ApiResponse<RawRetrievalItem[]>>('/knowledge/retrieval-test', {
+    query,
+    topK,
+  })
   return unwrap(data).map((item) => ({
     knowledgeId: String(item.knowledgeId),
     title: item.title ?? '',
@@ -58,7 +61,9 @@ export async function retrievalTest(query: string, topK: number): Promise<Retrie
 
 /** 知识索引状态查询（未建立索引返回 null）。 */
 export async function fetchIndexStatus(knowledgeId: string): Promise<IndexStatus | null> {
-  const { data } = await http.get<ApiResponse<RawIndexStatus | null>>(`/knowledge/${knowledgeId}/index-status`)
+  const { data } = await http.get<ApiResponse<RawIndexStatus | null>>(
+    `/knowledge/${knowledgeId}/index-status`,
+  )
   const status = unwrap(data)
   if (!status) return null
   return {

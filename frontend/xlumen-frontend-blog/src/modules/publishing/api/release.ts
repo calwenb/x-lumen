@@ -85,7 +85,10 @@ export async function createRelease(payload: ReleaseRequest): Promise<ReleaseSub
 }
 
 /** 分页查询发布记录。 */
-export async function fetchReleases(query: { pageNo: number; pageSize: number }): Promise<PageResult<ReleaseVO>> {
+export async function fetchReleases(query: {
+  pageNo: number
+  pageSize: number
+}): Promise<PageResult<ReleaseVO>> {
   const { data } = await http.get<ApiResponse<RawReleasePage>>('/releases', { params: query })
   const page = unwrap(data)
   return {

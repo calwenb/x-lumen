@@ -156,7 +156,7 @@ onMounted(() => {
         知识地图
       </h1>
       <p class="map__desc">总览全部公开知识：已登录时 AI 按主题自动聚类，否则按知识库归档展示。</p>
-      <p v-if="clustering" class="map__hint" role="status">AI 正在为主题聚类…</p>
+      <p v-if="clustering" class="map__hint" role="status">✦ 小光正在为主题聚类…</p>
     </header>
 
     <div v-if="loading" class="map__state">
@@ -169,65 +169,70 @@ onMounted(() => {
     <div v-else-if="knowledgeCount === 0" class="map__state">
       <p class="map__state-text">还没有公开知识，敬请期待。</p>
     </div>
-    <template v-else>
-      <section v-if="useThemeView" class="map__grid">
-        <article v-for="group in themeGroups" :key="group.topic" class="map__card">
-          <h2 class="map__card-title map__card-title--theme">{{ group.topic }}</h2>
-          <ul class="map__card-list">
-            <li
-              v-for="item in group.items"
-              :key="item.id"
-              class="map__card-item"
-              @click="openKnowledge(item.id)"
-            >
-              <RouterLink class="map__card-link" :to="`/knowledge/${item.id}`">
-                {{ item.title }}
-              </RouterLink>
-              <p class="map__card-summary">{{ item.summary }}</p>
-              <div class="map__card-meta">
-                <el-tag v-if="item.kbName" size="small" effect="plain">{{ item.kbName }}</el-tag>
-                <span v-if="formatDate(item.publishedAt)">{{ formatDate(item.publishedAt) }}</span>
-              </div>
-            </li>
-          </ul>
-        </article>
-      </section>
-      <section v-else class="map__grid">
-        <article v-for="group in kbGroups" :key="group.kbId" class="map__card">
-          <h2 class="map__card-title">{{ group.kbName }}</h2>
-          <ul class="map__card-list">
-            <li
-              v-for="item in group.items"
-              :key="item.id"
-              class="map__card-item"
-              @click="openKnowledge(item.id)"
-            >
-              <RouterLink class="map__card-link" :to="`/knowledge/${item.id}`">
-                {{ item.title }}
-              </RouterLink>
-              <p class="map__card-summary">{{ item.summary }}</p>
-              <div class="map__card-meta">
-                <el-tag v-if="item.kbName" size="small" effect="plain">{{ item.kbName }}</el-tag>
-                <span>{{ formatDate(item.publishedAt) }}</span>
-              </div>
-            </li>
-          </ul>
-        </article>
-      </section>
-    </template>
+    <!-- 主题航道：登录态 AI 聚类结果 -->
+    <section v-else-if="useThemeView" class="map__lanes">
+      <article v-for="group in themeGroups" :key="group.topic" class="map__col">
+        <header class="map__col-head">
+          <span class="map__col-star" aria-hidden="true">✦</span>
+          <h2 class="map__col-title">{{ group.topic }}</h2>
+        </header>
+        <ul class="map__col-list">
+          <li
+            v-for="item in group.items"
+            :key="item.id"
+            class="map__col-item"
+            @click="openKnowledge(item.id)"
+          >
+            <RouterLink class="map__col-link" :to="`/knowledge/${item.id}`">
+              {{ item.title }}
+            </RouterLink>
+            <p class="map__col-summary">{{ item.summary }}</p>
+            <div class="map__col-meta">
+              <el-tag v-if="item.kbName" size="small" effect="plain">{{ item.kbName }}</el-tag>
+              <span v-if="formatDate(item.publishedAt)">{{ formatDate(item.publishedAt) }}</span>
+            </div>
+          </li>
+        </ul>
+      </article>
+    </section>
+    <!-- 知识库航道：访客 / 无聚类结果时 -->
+    <section v-else class="map__lanes">
+      <article v-for="group in kbGroups" :key="group.kbId" class="map__col">
+        <header class="map__col-head map__col-head--kb">
+          <h2 class="map__col-title">{{ group.kbName }}</h2>
+        </header>
+        <ul class="map__col-list">
+          <li
+            v-for="item in group.items"
+            :key="item.id"
+            class="map__col-item"
+            @click="openKnowledge(item.id)"
+          >
+            <RouterLink class="map__col-link" :to="`/knowledge/${item.id}`">
+              {{ item.title }}
+            </RouterLink>
+            <p class="map__col-summary">{{ item.summary }}</p>
+            <div class="map__col-meta">
+              <el-tag v-if="item.kbName" size="small" effect="plain">{{ item.kbName }}</el-tag>
+              <span>{{ formatDate(item.publishedAt) }}</span>
+            </div>
+          </li>
+        </ul>
+      </article>
+    </section>
   </main>
 </template>
 
 <style scoped>
 .map {
-  width: min(calc(100% - 48px), 1180px);
+  width: min(calc(100% - 48px), var(--xl-container));
   margin: 0 auto;
-  padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
+  padding: var(--xl-space-8) var(--xl-content-pad) var(--xl-space-8);
   box-sizing: border-box;
 }
 
 .map__head {
-  margin-bottom: var(--xl-space-6);
+  margin-bottom: var(--xl-space-8);
 }
 
 .map__title {
@@ -236,24 +241,29 @@ onMounted(() => {
   gap: var(--xl-space-2);
   margin: 0 0 var(--xl-space-2);
   color: var(--xl-text-primary);
-  font-size: 22px;
+  font-size: var(--xl-fs-h1);
+  font-weight: var(--xl-fs-h1-w);
+  line-height: var(--xl-fs-h1-lh);
+  letter-spacing: var(--xl-fs-h1-track);
 }
 
 .map__title-icon {
   color: var(--xl-color-primary);
-  font-size: 20px;
+  font-size: 24px;
 }
 
 .map__desc {
+  max-width: 640px;
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-body);
+  line-height: 1.7;
 }
 
 .map__hint {
-  margin: var(--xl-space-2) 0 0;
+  margin: var(--xl-space-3) 0 0;
   color: var(--xl-color-ai);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
 }
 
 .map__state {
@@ -270,67 +280,86 @@ onMounted(() => {
 
 .map__state-text {
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
-.map__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+/* ===== 主题航道：横向错落的纵向栏 ===== */
+.map__lanes {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--xl-space-4);
-  align-items: start;
+  align-items: flex-start;
 }
 
-.map__card {
+.map__col {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   padding: var(--xl-space-4);
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
 }
 
-/* AI 主题卡片：左侧 AI 色强调线 + 主题名 */
-.map__card-title--theme {
-  border-left: 3px solid var(--xl-color-ai);
-  padding-left: var(--xl-space-2);
-}
-
-.map__card-title {
-  margin: 0 0 var(--xl-space-3);
-  padding-bottom: var(--xl-space-2);
+.map__col-head {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
+  padding-bottom: var(--xl-space-3);
   border-bottom: 1px solid var(--xl-border);
-  color: var(--xl-text-primary);
+}
+
+.map__col-head--kb {
+  border-left: 3px solid var(--xl-color-primary);
+  padding-left: var(--xl-space-3);
+}
+
+.map__col-star {
+  color: var(--xl-color-ai);
   font-size: 15px;
-  font-weight: 600;
+}
+
+.map__col-title {
+  margin: 0;
+  color: var(--xl-text-primary);
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
   overflow-wrap: break-word;
 }
 
-.map__card-list {
+.map__col-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.map__card-item {
-  padding: var(--xl-space-2) 0;
+.map__col-item {
+  padding: var(--xl-space-3) 0;
   cursor: pointer;
 }
 
-.map__card-link {
+.map__col-item:last-child {
+  padding-bottom: 0;
+}
+
+.map__col-link {
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   font-weight: 600;
   text-decoration: none;
   overflow-wrap: break-word;
+  transition: color var(--xl-transition);
 }
 
-.map__card-item:hover .map__card-link {
+.map__col-item:hover .map__col-link {
   color: var(--xl-color-primary);
 }
 
-.map__card-summary {
+.map__col-summary {
   margin: 4px 0 0;
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.6;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -338,13 +367,23 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.map__card-meta {
+.map__col-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--xl-space-2);
   margin-top: 6px;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
+}
+
+@media (width <= 960px) {
+  .map__lanes {
+    flex-direction: column;
+  }
+
+  .map__col {
+    width: 100%;
+  }
 }
 </style>

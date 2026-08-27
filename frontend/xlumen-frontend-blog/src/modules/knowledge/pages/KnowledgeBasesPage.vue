@@ -132,44 +132,43 @@ onMounted(() => {
       <el-icon class="kb-discovery__state-icon"><Collection /></el-icon>
       <p class="kb-discovery__state-text">还没有知识库，点击右上角「新建知识库」开始。</p>
     </div>
-    <div v-else class="kb-discovery__grid">
-      <article v-for="kb in kbs" :key="kb.id" class="kb-tile">
-        <RouterLink class="kb-tile__link" :to="`/kb/${kb.id}`">
-          <div
-            class="kb-tile__cover"
-            :class="`kb-tile__cover--${kb.visibility === 1 ? 'public' : 'private'}`"
-          >
-            <span class="kb-tile__cover-text">{{ kb.name.slice(0, 1) }}</span>
-          </div>
-          <div class="kb-tile__body">
-            <div class="kb-tile__name-row">
-              <h2 class="kb-tile__name">{{ kb.name }}</h2>
-              <el-tag :type="kb.visibility === 1 ? 'success' : 'info'" effect="plain" size="small">
-                <el-icon class="kb-tile__tag-icon">
-                  <Lock v-if="kb.visibility === 0" />
-                  <Unlock v-else />
-                </el-icon>
-                {{ kb.visibility === 1 ? '公开' : '私有' }}
-              </el-tag>
-            </div>
-            <p class="kb-tile__intro">{{ kb.intro || '暂无简介' }}</p>
-            <div class="kb-tile__meta">
-              <span>知识 {{ kb.knowledgeCount }}</span>
-            </div>
-          </div>
+    <!-- 书架索引：纵向列表，不使用等宽卡片网格 -->
+    <div v-else class="kb-shelf">
+      <article v-for="(kb, index) in kbs" :key="kb.id" class="kb-shelf__item">
+        <span class="kb-shelf__idx" aria-hidden="true">{{
+          String(index + 1).padStart(2, '0')
+        }}</span>
+        <RouterLink class="kb-shelf__cover" :to="`/kb/${kb.id}`">
+          <span class="kb-shelf__cover-text">{{ kb.name.slice(0, 1) }}</span>
         </RouterLink>
-        <div class="kb-tile__actions">
-          <button type="button" class="kb-tile__action" @click="openEdit(kb)">
-            <el-icon><Edit /></el-icon>
-            编辑
-          </button>
-          <button
-            type="button"
-            class="kb-tile__action kb-tile__action--danger"
-            @click="handleDelete(kb)"
-          >
-            删除
-          </button>
+        <div class="kb-shelf__body">
+          <div class="kb-shelf__name-row">
+            <RouterLink class="kb-shelf__name" :to="`/kb/${kb.id}`">{{ kb.name }}</RouterLink>
+            <el-tag :type="kb.visibility === 1 ? 'success' : 'info'" effect="plain" size="small">
+              <el-icon class="kb-shelf__tag-icon">
+                <Lock v-if="kb.visibility === 0" />
+                <Unlock v-else />
+              </el-icon>
+              {{ kb.visibility === 1 ? '公开' : '私有' }}
+            </el-tag>
+          </div>
+          <p class="kb-shelf__intro">{{ kb.intro || '暂无简介' }}</p>
+        </div>
+        <div class="kb-shelf__meta">
+          <span class="kb-shelf__count">知识 {{ kb.knowledgeCount }}</span>
+          <div class="kb-shelf__actions">
+            <button type="button" class="kb-shelf__action" @click="openEdit(kb)">
+              <el-icon><Edit /></el-icon>
+              编辑
+            </button>
+            <button
+              type="button"
+              class="kb-shelf__action kb-shelf__action--danger"
+              @click="handleDelete(kb)"
+            >
+              删除
+            </button>
+          </div>
         </div>
       </article>
     </div>
@@ -196,33 +195,37 @@ onMounted(() => {
 
 <style scoped>
 .kb-discovery {
-  max-width: 1080px;
+  width: min(calc(100% - 48px), var(--xl-container));
   margin: 0 auto;
-  padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
+  padding: var(--xl-space-8) var(--xl-content-pad) var(--xl-space-8);
+  box-sizing: border-box;
 }
 
 .kb-discovery__header {
   position: relative;
-  margin-bottom: var(--xl-space-6);
+  margin-bottom: var(--xl-space-8);
 }
 
 .kb-discovery__title {
-  margin: 0 0 var(--xl-space-2);
+  margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-primary);
-  font-size: 24px;
+  font-size: var(--xl-fs-h1);
+  font-weight: var(--xl-fs-h1-w);
+  line-height: var(--xl-fs-h1-lh);
+  letter-spacing: var(--xl-fs-h1-track);
 }
 
 .kb-discovery__desc {
   max-width: 640px;
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
 }
 
 .kb-discovery__create {
   position: absolute;
-  top: 0;
+  top: 4px;
   right: 0;
   display: inline-flex;
   align-items: center;
@@ -231,19 +234,21 @@ onMounted(() => {
   border-radius: var(--xl-radius);
   background: var(--xl-color-primary);
   color: #fff;
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   text-decoration: none;
+  transition: background var(--xl-transition);
 }
 
 .kb-discovery__create:hover {
   background: var(--xl-color-primary-hover);
 }
 
+/* ===== 状态区 ===== */
 .kb-discovery__state {
-  padding: var(--xl-space-8) 0;
+  padding: var(--xl-space-10) 0;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .kb-discovery__state p {
@@ -258,103 +263,105 @@ onMounted(() => {
 }
 
 .kb-discovery__skeleton {
-  height: 180px;
+  height: 96px;
+  margin-bottom: var(--xl-space-4);
   border-radius: var(--xl-radius-card);
   background: color-mix(in srgb, var(--xl-border) 60%, transparent);
 }
 
-.kb-discovery__grid {
+/* ===== 书架索引 ===== */
+.kb-shelf {
+  display: flex;
+  flex-direction: column;
+}
+
+.kb-shelf__item {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--xl-space-4);
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  gap: var(--xl-space-6);
+  align-items: center;
+  padding: var(--xl-space-6) 0;
+  border-bottom: 1px solid var(--xl-border);
 }
 
-.kb-tile {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
-  transition:
-    box-shadow var(--xl-transition),
-    transform var(--xl-transition);
+.kb-shelf__item:first-child {
+  border-top: 1px solid var(--xl-border);
 }
 
-.kb-tile:hover {
-  box-shadow: var(--xl-shadow-md);
-  transform: translateY(-2px);
+.kb-shelf__idx {
+  writing-mode: vertical-rl;
+  color: var(--xl-text-muted);
+  font-family: var(--xl-font-mono);
+  font-size: var(--xl-fs-caption);
+  letter-spacing: 0.2em;
 }
 
-.kb-tile__link {
-  display: flex;
-  flex-direction: column;
-  text-decoration: none;
-}
-
-.kb-tile__cover {
+.kb-shelf__cover {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88px;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--xl-color-primary) 22%, transparent),
-    transparent
+    color-mix(in srgb, var(--xl-color-primary) 16%, transparent),
+    var(--xl-bg-surface)
   );
+  text-decoration: none;
+  transition: border-color var(--xl-transition);
 }
 
-.kb-tile__cover--private {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--xl-text-muted) 30%, transparent),
-    transparent
-  );
+.kb-shelf__cover:hover {
+  border-color: var(--xl-color-primary);
 }
 
-.kb-tile__cover-text {
-  color: color-mix(in srgb, var(--xl-color-primary) 70%, var(--xl-text-primary));
-  font-size: 36px;
+.kb-shelf__cover-text {
+  color: color-mix(in srgb, var(--xl-color-primary) 78%, var(--xl-text-primary));
+  font-size: 30px;
   font-weight: 700;
 }
 
-.kb-tile__body {
+.kb-shelf__body {
+  min-width: 0;
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: var(--xl-space-2);
-  padding: var(--xl-space-4);
 }
 
-.kb-tile__name-row {
+.kb-shelf__name-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--xl-space-2);
+  gap: var(--xl-space-3);
 }
 
-.kb-tile__name {
+.kb-shelf__name {
   min-width: 0;
-  margin: 0;
   overflow: hidden;
   color: var(--xl-text-primary);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-decoration: none;
+  transition: color var(--xl-transition);
 }
 
-.kb-tile__tag-icon {
+.kb-shelf__name:hover {
+  color: var(--xl-color-primary);
+}
+
+.kb-shelf__tag-icon {
   margin-right: 4px;
   vertical-align: -2px;
 }
 
-.kb-tile__intro {
-  flex: 1;
+.kb-shelf__intro {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-body);
   line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -362,18 +369,25 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.kb-tile__meta {
-  color: var(--xl-text-muted);
-  font-size: 12px;
+.kb-shelf__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--xl-space-3);
+  flex-shrink: 0;
 }
 
-.kb-tile__actions {
+.kb-shelf__count {
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.kb-shelf__actions {
   display: flex;
   gap: var(--xl-space-2);
-  padding: 0 var(--xl-space-4) var(--xl-space-4);
 }
 
-.kb-tile__action {
+.kb-shelf__action {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -382,21 +396,35 @@ onMounted(() => {
   border-radius: var(--xl-radius-sm);
   background: transparent;
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   cursor: pointer;
+  transition:
+    border-color var(--xl-transition),
+    color var(--xl-transition);
 }
 
-.kb-tile__action:hover {
+.kb-shelf__action:hover {
   border-color: var(--xl-color-primary);
   color: var(--xl-color-primary);
 }
 
-.kb-tile__action--danger:hover {
+.kb-shelf__action--danger:hover {
   border-color: var(--xl-color-danger);
   color: var(--xl-color-danger);
 }
 
-@media (width <= 640px) {
+@media (width <= 800px) {
+  .kb-shelf__item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .kb-shelf__meta {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
   .kb-discovery__create {
     position: static;
     margin-top: var(--xl-space-3);

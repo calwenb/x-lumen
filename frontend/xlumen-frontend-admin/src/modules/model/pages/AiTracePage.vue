@@ -89,47 +89,50 @@ onMounted(() => {
   <main class="trace">
     <h1 class="trace__title">AI 调用追踪</h1>
 
-    <section class="trace__stats" aria-label="今日统计">
-      <div class="trace__stat">
-        <span class="trace__stat-label">今日调用</span>
-        <span class="trace__stat-value">{{ summary ? summary.todayCount : '—' }}</span>
-      </div>
-      <div class="trace__stat trace__stat--fail">
-        <span class="trace__stat-label">今日失败</span>
-        <span class="trace__stat-value">{{ summary ? summary.todayFailed : '—' }}</span>
-      </div>
-      <div class="trace__stat trace__stat--ok">
-        <span class="trace__stat-label">今日成功</span>
-        <span class="trace__stat-value">{{ summary ? todaySuccess : '—' }}</span>
-      </div>
-    </section>
+    <!-- A03 顶部：连续统计带 + 同排右侧筛选 -->
+    <div class="trace__top">
+      <section class="trace__stats" aria-label="今日统计">
+        <div class="trace__stat">
+          <span class="trace__stat-label">今日调用</span>
+          <span class="trace__stat-value">{{ summary ? summary.todayCount : '—' }}</span>
+        </div>
+        <div class="trace__stat trace__stat--fail">
+          <span class="trace__stat-label">今日失败</span>
+          <span class="trace__stat-value">{{ summary ? summary.todayFailed : '—' }}</span>
+        </div>
+        <div class="trace__stat trace__stat--ok">
+          <span class="trace__stat-label">今日成功</span>
+          <span class="trace__stat-value">{{ summary ? todaySuccess : '—' }}</span>
+        </div>
+      </section>
 
-    <div class="trace__filters">
-      <el-select
-        v-model="sceneFilter"
-        class="trace__filter-select"
-        clearable
-        placeholder="全部场景"
-        aria-label="场景筛选"
-      >
-        <el-option
-          v-for="(label, scene) in SCENE_LABELS"
-          :key="scene"
-          :label="label"
-          :value="scene"
-        />
-      </el-select>
-      <el-select
-        v-model="resultFilter"
-        class="trace__filter-select"
-        placeholder="全部结果"
-        aria-label="结果筛选"
-      >
-        <el-option label="全部结果" value="" />
-        <el-option label="成功" value="true" />
-        <el-option label="失败" value="false" />
-      </el-select>
-      <el-button type="primary" plain @click="applyFilter">筛选</el-button>
+      <div class="trace__filters">
+        <el-select
+          v-model="sceneFilter"
+          class="trace__filter-select"
+          clearable
+          placeholder="全部场景"
+          aria-label="场景筛选"
+        >
+          <el-option
+            v-for="(label, scene) in SCENE_LABELS"
+            :key="scene"
+            :label="label"
+            :value="scene"
+          />
+        </el-select>
+        <el-select
+          v-model="resultFilter"
+          class="trace__filter-select"
+          placeholder="全部结果"
+          aria-label="结果筛选"
+        >
+          <el-option label="全部结果" value="" />
+          <el-option label="成功" value="true" />
+          <el-option label="失败" value="false" />
+        </el-select>
+        <el-button type="primary" plain @click="applyFilter">筛选</el-button>
+      </div>
     </div>
 
     <div v-if="loading" class="trace__state" role="status">
@@ -147,6 +150,8 @@ onMounted(() => {
       <el-table
         :data="records"
         class="trace__table"
+        :max-height="620"
+        :row-class-name="(data: any) => (data.row.success ? '' : 'trace__row-failed')"
         :header-cell-style="{ background: 'var(--xl-bg-secondary)' }"
       >
         <el-table-column label="时间" min-width="130">
@@ -210,9 +215,8 @@ onMounted(() => {
 
 <style scoped>
 .trace {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: var(--xl-space-8) var(--xl-space-4);
+  width: 100%;
+  padding: var(--xl-space-8) var(--xl-content-pad);
 }
 
 .trace__title {
@@ -221,22 +225,36 @@ onMounted(() => {
   font-size: 22px;
 }
 
+/* A03 顶部：统计带 + 筛选同一水平线 */
+.trace__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--xl-space-4);
+  margin-bottom: var(--xl-space-4);
+}
+
+/* 连续统计带：细分隔线而非三张卡 */
 .trace__stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--xl-space-3);
-  margin-bottom: var(--xl-space-6);
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+  overflow: hidden;
 }
 
 .trace__stat {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
   gap: var(--xl-space-2);
-  padding: var(--xl-space-4);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
+  padding: var(--xl-space-3) var(--xl-space-6);
+}
+
+.trace__stat + .trace__stat {
+  border-left: 1px solid var(--xl-border);
 }
 
 .trace__stat-label {
@@ -246,8 +264,9 @@ onMounted(() => {
 
 .trace__stat-value {
   color: var(--xl-text-primary);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 600;
+  line-height: 1;
 }
 
 .trace__stat--ok .trace__stat-value {
@@ -260,8 +279,8 @@ onMounted(() => {
 
 .trace__filters {
   display: flex;
+  align-items: center;
   gap: var(--xl-space-2);
-  margin-bottom: var(--xl-space-4);
 }
 
 .trace__filter-select {
@@ -302,6 +321,11 @@ onMounted(() => {
 .trace__table :deep(th.el-table__cell) {
   color: var(--xl-text-secondary);
   font-weight: 600;
+}
+
+/* A03 失败行：左侧 Danger 细线 */
+.trace__table :deep(.el-table__row.trace__row-failed td.el-table__cell:first-child) {
+  box-shadow: inset 3px 0 0 var(--xl-color-danger);
 }
 
 .trace__cell-time {

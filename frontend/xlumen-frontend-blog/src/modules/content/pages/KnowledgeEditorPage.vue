@@ -17,9 +17,7 @@ import MarkdownEditor from '@/modules/content/components/MarkdownEditor.vue'
 import { useAutoSave } from '@/modules/content/composables/useAutoSave'
 import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
-import {
-  createAutoReview,
-} from '@/modules/publishing/api/review'
+import { createAutoReview } from '@/modules/publishing/api/review'
 
 const route = useRoute()
 const router = useRouter()
@@ -332,12 +330,19 @@ const editorStatusText = computed(() => {
 
 <template>
   <main class="editor-page">
-    <div class="editor-page__header">
-      <h1 class="editor-page__title">{{ isNew ? '新建知识' : '编辑知识' }}</h1>
-      <div class="editor-page__actions">
+    <!-- 吸顶命令栏 -->
+    <header class="editor-page__cmdbar">
+      <div class="editor-page__cmdbar-left">
+        <RouterLink class="editor-page__back" :to="{ name: 'knowledge-list' }">返回列表</RouterLink>
+        <span class="editor-page__cmdbar-sep" aria-hidden="true">/</span>
+        <h1 class="editor-page__title">{{ isNew ? '新建知识' : '编辑知识' }}</h1>
+      </div>
+      <div class="editor-page__cmdbar-status" aria-live="polite">
         <span class="editor-page__status" :class="{ 'editor-page__status--conflict': conflict }">
           {{ editorStatusText }}
         </span>
+      </div>
+      <div class="editor-page__actions">
         <el-button :loading="saving" :disabled="submitting" @click="handleSave">保存</el-button>
         <el-button
           v-if="canAutoPublish"
@@ -348,9 +353,8 @@ const editorStatusText = computed(() => {
           @click="handleAutoPublish"
           >发布</el-button
         >
-        <RouterLink class="editor-page__back" :to="{ name: 'knowledge-list' }">返回列表</RouterLink>
       </div>
-    </div>
+    </header>
 
     <div v-if="loading" class="editor-page__loading" role="status">加载中…</div>
     <div v-else-if="loadError" class="editor-page__error">
@@ -366,20 +370,26 @@ const editorStatusText = computed(() => {
       </div>
       <div v-if="saveMessage" class="editor-page__message" role="status">{{ saveMessage }}</div>
 
-      <section class="editor-page__fields">
-        <el-input
-          v-model="title"
-          class="editor-page__title-input"
-          type="text"
-          placeholder="知识标题"
-          aria-label="知识标题"
-          size="large"
-          :disabled="submitting"
-          @input="autoSave.touch()"
-          @blur="autoSave.flush()"
-        />
-        <div class="editor-page__row">
+      <div class="editor-page__workspace">
+        <!-- 元数据轨 -->
+        <aside class="editor-page__rail">
+          <label class="editor-page__field-label" for="editor-title">知识标题</label>
+          <el-input
+            id="editor-title"
+            v-model="title"
+            class="editor-page__title-input"
+            type="text"
+            placeholder="知识标题"
+            aria-label="知识标题"
+            size="large"
+            :disabled="submitting"
+            @input="autoSave.touch()"
+            @blur="autoSave.flush()"
+          />
+
+          <label class="editor-page__field-label" for="editor-kb">所属知识库</label>
           <el-select
+            id="editor-kb"
             v-model="kbId"
             class="editor-page__kb"
             placeholder="所属知识库（必选）"
@@ -389,7 +399,10 @@ const editorStatusText = computed(() => {
           >
             <el-option v-for="kb in knowledgeBases" :key="kb.id" :label="kb.name" :value="kb.id" />
           </el-select>
+
+          <label class="editor-page__field-label" for="editor-dir">所属目录</label>
           <el-select
+            id="editor-dir"
             v-model="directoryId"
             class="editor-page__directory"
             placeholder="所属目录（默认库根）"
@@ -406,7 +419,10 @@ const editorStatusText = computed(() => {
               :value="dir.id"
             />
           </el-select>
+
+          <label class="editor-page__field-label" for="editor-tags">标签</label>
           <el-input
+            id="editor-tags"
             v-model="tagsInput"
             class="editor-page__tags"
             type="text"
@@ -416,64 +432,100 @@ const editorStatusText = computed(() => {
             @input="autoSave.touch()"
             @blur="autoSave.flush()"
           />
-        </div>
-        <div class="editor-page__row editor-page__hint">
-          <span v-if="knowledgeId" class="editor-page__status-text">
-            当前状态：{{ STATUS_LABELS[status] ?? status }} ·
-            归属库不可修改，目录可调整
-          </span>
-          <span v-else>知识按「库 → 目录 → 知识」组织，请先选择知识库（新建后不可更换）</span>
-        </div>
-        <div v-if="canAutoPublish" class="editor-page__publish-settings">
-          <label class="editor-page__publish-label" for="publish-at">发布时间</label>
-          <input
-            id="publish-at"
-            v-model="publishAt"
-            class="editor-page__publish-at"
-            type="datetime-local"
-            :disabled="submitting"
-            aria-describedby="publish-at-hint"
-          />
-          <span id="publish-at-hint" class="editor-page__publish-hint">
-            留空表示审核通过后立即发布；选择时间则进入定时发布。
-          </span>
-        </div>
-      </section>
 
-      <MarkdownEditor
-        v-model="content"
-        class="editor-page__editor"
-        :disabled="submitting"
-        @update:model-value="autoSave.touch()"
-        @blur="autoSave.flush()"
-      />
+          <div v-if="canAutoPublish" class="editor-page__publish-settings">
+            <label class="editor-page__publish-label" for="publish-at">发布时间</label>
+            <input
+              id="publish-at"
+              v-model="publishAt"
+              class="editor-page__publish-at"
+              type="datetime-local"
+              :disabled="submitting"
+              aria-describedby="publish-at-hint"
+            />
+            <span id="publish-at-hint" class="editor-page__publish-hint">
+              留空表示审核通过后立即发布；选择时间则进入定时发布。
+            </span>
+          </div>
+
+          <p class="editor-page__status-text">
+            <template v-if="knowledgeId">
+              当前状态：{{ STATUS_LABELS[status] ?? status }} · 归属库不可修改，目录可调整
+            </template>
+            <template v-else>
+              知识按「库 → 目录 → 知识」组织，请先选择知识库（新建后不可更换）
+            </template>
+          </p>
+        </aside>
+
+        <!-- 编辑画布 -->
+        <section class="editor-page__canvas">
+          <MarkdownEditor
+            v-model="content"
+            class="editor-page__editor"
+            :disabled="submitting"
+            @update:model-value="autoSave.touch()"
+            @blur="autoSave.flush()"
+          />
+        </section>
+      </div>
     </template>
   </main>
 </template>
 
 <style scoped>
 .editor-page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 32px 20px 64px;
+  min-height: 100vh;
+  padding-bottom: 64px;
 }
 
-.editor-page__header {
+.editor-page__cmdbar {
+  position: sticky;
+  top: var(--xl-header-h);
+  z-index: 20;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
+  gap: var(--xl-space-4);
+  padding: 0 var(--xl-content-pad);
+  height: 58px;
+  border-bottom: 1px solid var(--xl-border);
+  background: color-mix(in srgb, var(--xl-bg-surface) 92%, transparent);
+  backdrop-filter: saturate(180%) blur(8px);
+}
+
+.editor-page__cmdbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-3);
+  min-width: 0;
 }
 
 .editor-page__title {
   margin: 0;
-  font-size: 24px;
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
+  color: var(--xl-text-primary);
+  white-space: nowrap;
 }
 
-.editor-page__actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.editor-page__cmdbar-sep {
+  color: var(--xl-text-muted);
+}
+
+.editor-page__back {
+  color: var(--xl-text-secondary);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.editor-page__back:hover {
+  color: var(--xl-color-primary);
+}
+
+.editor-page__cmdbar-status {
+  flex: 1;
+  text-align: center;
 }
 
 .editor-page__status {
@@ -485,14 +537,11 @@ const editorStatusText = computed(() => {
   color: var(--xl-color-danger);
 }
 
-.editor-page__back {
-  color: var(--xl-text-secondary);
-  font-size: 13px;
-  text-decoration: none;
-}
-
-.editor-page__back:hover {
-  color: var(--xl-color-primary);
+.editor-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .editor-page__loading,
@@ -503,7 +552,7 @@ const editorStatusText = computed(() => {
 }
 
 .editor-page__conflict {
-  margin-bottom: 16px;
+  margin: var(--xl-space-4) var(--xl-content-pad) 0;
   padding: 12px 16px;
   border: 1px solid var(--xl-color-danger);
   border-radius: var(--xl-radius-sm);
@@ -517,53 +566,69 @@ const editorStatusText = computed(() => {
 }
 
 .editor-page__message {
-  margin-bottom: 12px;
+  margin: var(--xl-space-3) var(--xl-content-pad) 0;
   color: var(--xl-text-secondary);
   font-size: 13px;
 }
 
-.editor-page__fields {
+/* 工作区：元数据轨 + 编辑画布 */
+.editor-page__workspace {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: var(--xl-space-6);
+  align-items: start;
+  max-width: var(--xl-container);
+  margin: 0 auto;
+  padding: var(--xl-space-6) var(--xl-content-pad);
+}
+
+.editor-page__rail {
+  position: sticky;
+  top: calc(var(--xl-header-h) + 58px + var(--xl-space-4));
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: var(--xl-space-2);
+  padding: var(--xl-space-4) var(--xl-space-4) var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
-.editor-page__title-input :deep(.el-input__inner) {
-  font-size: 18px;
-  font-weight: 600;
+.editor-page__field-label {
+  margin-top: var(--xl-space-3);
+  color: var(--xl-text-secondary);
+  font-size: 12px;
 }
 
-.editor-page__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
+.editor-page__field-label:first-child {
+  margin-top: 0;
 }
 
 .editor-page__kb,
 .editor-page__directory,
 .editor-page__tags {
-  flex: 1;
-  min-width: 180px;
+  width: 100%;
 }
 
-.editor-page__hint {
-  font-size: 12px;
-  color: var(--xl-text-secondary);
+.editor-page__title-input :deep(.el-input__inner) {
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .editor-page__status-text {
-  font-size: 12px;
+  margin: var(--xl-space-4) 0 0;
   color: var(--xl-text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .editor-page__publish-settings {
-  display: grid;
-  grid-template-columns: auto minmax(190px, 230px) 1fr;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-2);
+  margin-top: var(--xl-space-4);
+  padding: var(--xl-space-3) var(--xl-space-3) var(--xl-space-2);
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-sm);
   background: var(--xl-bg-secondary);
@@ -588,21 +653,36 @@ const editorStatusText = computed(() => {
 .editor-page__publish-hint {
   color: var(--xl-text-secondary);
   font-size: 12px;
+  line-height: 1.5;
 }
 
-@media (width <= 760px) {
-  .editor-page__header {
-    align-items: flex-start;
-    gap: 12px;
-  }
+.editor-page__canvas {
+  min-width: 0;
+}
 
-  .editor-page__actions {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
+.editor-page__editor {
+  height: 100%;
+}
 
-  .editor-page__publish-settings {
+@media (width <= 860px) {
+  .editor-page__workspace {
     grid-template-columns: 1fr;
+  }
+
+  .editor-page__rail {
+    position: static;
+  }
+
+  .editor-page__cmdbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: var(--xl-space-2) var(--xl-content-pad);
+    gap: var(--xl-space-2);
+  }
+
+  .editor-page__cmdbar-left,
+  .editor-page__cmdbar-status {
+    min-width: 0;
   }
 }
 </style>

@@ -1,17 +1,30 @@
 <script setup lang="ts">
-// 首页知识流（B01，KB-4 知识平台化）：左栏库导航 + 右栏知识卡片流。
-// 左栏：库切换器（全部知识库/我的知识库）；选中库后切换为该库目录树 + 标签云；未选库时显示公开知识库列表与「我的知识库」入口。
-// 简化决策：目录树/标签云/库切换仅在登录态可用（后端 /knowledge-bases 为鉴权接口），未登录首页为纯列表流。
-// 排序由后端保证：未选目录按更新时间倒序，选中目录后按创建时间正序。私有库知识卡片 🔒 由前端比对登录用户私有库集合标记。
-import { computed, onMounted, ref } from 'vue'
+// 首页（B01，KB-4 知识平台化）：AI 光带入口（品牌记忆点）+ 左侧吸顶「探索」轨 + 右侧标签知识流。
+// 功能真值：AI 光带只做路由跳转（问小光→/search?mode=ask、AI 写作→/studio/writing、对比文档→/chat、知识地图→/map），
+// 不在主页模拟生成/对比/会话恢复/Agent 执行；知识流只展示已有字段，不添加缩略图等不存在的字段。
+// 目录树/标签云/库切换仅在登录态可用（后端 /knowledge-bases 为鉴权接口），未登录首页为纯列表流。
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { ArrowDown, Document } from '@element-plus/icons-vue'
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  ChatDotRound,
+  Collection,
+  Document,
+  Grid,
+  MapLocation,
+  Promotion,
+  EditPen,
+} from '@element-plus/icons-vue'
 
 import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import { fetchKnowledges, fetchTags } from '@/modules/publishing/api/public'
 import DirectoryTreeContextMenu from '@/modules/knowledge/components/DirectoryTreeContextMenu.vue'
 import { useInfinitePage } from '@/composables/useInfinitePage'
 import { useSessionStore } from '@/stores/session'
+import SegmentedControl from '@/components/SegmentedControl.vue'
+import InitialAvatar from '@/components/InitialAvatar.vue'
 
 import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
 import type { CategoryCount, KnowledgeCard } from '@/modules/publishing/api/public'
@@ -21,10 +34,50 @@ const PAGE_SIZE = 10
 const session = useSessionStore()
 const router = useRouter()
 
-// 右栏列表状态
+// ---- AI 光带入口（仅路由跳转） ----
+const homeKeyword = ref('')
+const homeMode = ref('keyword')
+const glowModes = [
+  { label: '关键词', value: 'keyword' },
+  { label: '向量语义', value: 'semantic' },
+  { label: '问小光', value: 'ask' },
+]
+const glowEntries = [
+  { icon: ChatDotRound, title: 'AI小光对话', desc: '与知识对话，获得洞察', to: '/chat', ai: true },
+  { icon: EditPen, title: 'AI 写作', desc: '基于知识，辅助创作', to: '/studio/writing', ai: false },
+  { icon: Grid, title: '对比文档', desc: '多文档对照与洞察', to: '/chat', ai: false },
+  { icon: MapLocation, title: '知识地图', desc: '可视化探索知识全景', to: '/map', ai: false },
+]
+
+function onGlowMode(value: string): void {
+  homeMode.value = value
+  void router.push({ name: 'search', query: value === 'keyword' ? {} : { mode: value } })
+}
+
+function submitHomeSearch(): void {
+  const q = homeKeyword.value.trim()
+  void router.push({ name: 'search', query: q ? { keyword: q } : {} })
+  homeKeyword.value = ''
+}
+
+// ---- 右栏列表状态 ----
 const sentinel = ref<HTMLElement | null>(null)
 
-// 左栏范围状态（空 kbId = 全部知识库）
+// ---- B01-C 滚动态：AI 光带离场后顶部浅提示「上滑唤回 AI 快速操作」 ----
+const glowBandEl = ref<HTMLElement | null>(null)
+const showReturnTip = ref(false)
+
+function onGlowScroll(): void {
+  const el = glowBandEl.value
+  if (!el) return
+  showReturnTip.value = el.getBoundingClientRect().bottom <= 64
+}
+
+function scrollToTop(): void {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// ---- 左栏「探索」轨状态（空 kbId = 全部知识库） ----
 const myKnowledgeBases = ref<KnowledgeBase[]>([])
 const selectedKbId = ref('')
 const selectedDirectoryId = ref('')
@@ -169,18 +222,82 @@ onMounted(async () => {
     tags.value = tagList
   }
   await infinite.loadFirst()
+  window.addEventListener('scroll', onGlowScroll, { passive: true })
+  onGlowScroll()
 })
+
+onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 </script>
 
 <template>
   <main class="home">
-    <div class="home-layout">
+    <!-- AI 光带入口：只做路由跳转，不模拟任何生成/对比/会话 -->
+    <section ref="glowBandEl" class="home__glow">
+      <div class="home__glow-left">
+        <h1 class="home__glow-title">让知识会回答，也会继续生长</h1>
+        <p class="home__glow-sub">汇聚知识、连接知识、创造知识。</p>
+        <SegmentedControl
+          :model-value="homeMode"
+          :options="glowModes"
+          class="home__glow-modes"
+          @update:model-value="onGlowMode"
+        />
+        <form class="home__glow-search" @submit.prevent="submitHomeSearch">
+          <el-input
+            v-model="homeKeyword"
+            class="home__glow-search-input"
+            type="search"
+            placeholder="搜索知识、文档、主题或问题…"
+            aria-label="搜索知识"
+          />
+          <button type="submit" class="home__glow-submit" aria-label="搜索">
+            <el-icon><Promotion /></el-icon>
+          </button>
+        </form>
+      </div>
+      <div class="home__glow-right">
+        <RouterLink
+          v-for="entry in glowEntries"
+          :key="entry.title"
+          class="glow-entry"
+          :to="entry.to"
+        >
+          <span class="glow-entry__icon" :class="{ 'glow-entry__icon--ai': entry.ai }">
+            <el-icon><component :is="entry.icon" /></el-icon>
+            <span v-if="entry.ai" class="glow-entry__ai" aria-hidden="true">✦</span>
+          </span>
+          <span class="glow-entry__body">
+            <span class="glow-entry__title">{{ entry.title }}</span>
+            <span class="glow-entry__desc">{{ entry.desc }}</span>
+          </span>
+          <el-icon v-if="entry.title === '知识地图'" class="glow-entry__arrow"
+            ><ArrowRight
+          /></el-icon>
+        </RouterLink>
+      </div>
+    </section>
+
+    <!-- B01-C 滚动态：AI 光带离场后顶部轻提示「上滑唤回 AI 快速操作」 -->
+    <transition name="glow-tip">
+      <button v-if="showReturnTip" type="button" class="home__return" @click="scrollToTop">
+        <el-icon><ArrowUp /></el-icon>
+        上滑唤回 AI 快速操作
+      </button>
+    </transition>
+
+    <!-- 知识流：左探索轨 + 右侧知识列表 -->
+    <div class="home__layout">
       <aside class="home__side">
+        <h2 class="home__side-title">探索</h2>
+
         <!-- 库切换器（登录态）：全部知识库 + 我的知识库 -->
         <el-dropdown v-if="session.loggedIn" trigger="click" @command="switchKb">
           <button type="button" class="home__switcher">
+            <span class="home__switcher-icon"
+              ><el-icon><Collection /></el-icon
+            ></span>
             <span class="home__switcher-label">{{ scopeTitle }}</span>
-            <el-icon class="home__switcher-icon"><ArrowDown /></el-icon>
+            <el-icon class="home__dropdown-arrow"><ArrowDown /></el-icon>
           </button>
           <template #dropdown>
             <el-dropdown-menu>
@@ -199,85 +316,86 @@ onMounted(async () => {
           </template>
         </el-dropdown>
 
-        <!-- 未登录：纯列表流，左栏说明 -->
+        <!-- 未登录：左栏说明 -->
         <section v-else class="side-card home__guest-hint">
           <p class="home__guest-text">登录后可浏览知识库、目录与标签筛选。</p>
           <RouterLink class="home__guest-login" to="/login">登录 / 注册</RouterLink>
         </section>
 
         <template v-if="session.loggedIn">
-          <!-- 选中库：目录树 + 标签云 -->
+          <!-- 选中库：当前库目录树 -->
           <template v-if="selectedKbId">
             <section class="side-card" @contextmenu="dirMenu?.open($event)">
-              <h2 class="side-card__title">目录</h2>
+              <h3 class="side-card__title">目录</h3>
               <p v-if="sideLoading" class="side-card__hint">目录加载中…</p>
               <p v-else-if="directoryTree.length === 0" class="side-card__hint">该知识库暂无目录</p>
-              <ul v-else class="side-card__tree">
+              <ul v-else class="home__tree">
                 <li v-for="node in flattenTree(directoryTree)" :key="node.id">
                   <button
                     type="button"
-                    class="side-card__dir"
-                    :class="{ 'side-card__dir--active': node.id === selectedDirectoryId }"
-                    :style="{ paddingLeft: `${10 + node.depth * 14}px` }"
+                    class="home__dir"
+                    :class="{ 'home__dir--active': node.id === selectedDirectoryId }"
+                    :style="{ paddingLeft: `${12 + node.depth * 14}px` }"
                     @click="toggleDirectory(node)"
                     @contextmenu.stop="dirMenu?.open($event, { id: node.id, name: node.name })"
                   >
                     <span>{{ node.name }}</span>
-                    <span class="side-card__count">{{ node.knowledgeCount }}</span>
+                    <span class="home__dir-count">{{ node.knowledgeCount }}</span>
                   </button>
                 </li>
               </ul>
             </section>
-            <section v-if="tags.length > 0" class="side-card">
-              <h2 class="side-card__title">标签云</h2>
-              <div class="side-card__tags">
-                <button
-                  v-for="tag in tags"
-                  :key="tag.name"
-                  type="button"
-                  class="side-card__tag"
-                  :class="{ 'side-card__tag--active': tag.name === selectedTag }"
-                  @click="toggleTag(tag.name)"
-                >
-                  # {{ tag.name }}
-                </button>
-              </div>
-            </section>
           </template>
 
-          <!-- 全部知识库：我的公开库列表 + 我的知识库入口（数据源为鉴权接口仅返回自己的库，标题对齐语义） -->
+          <!-- 全部知识库：我的公开库列表 + 我的知识库入口 -->
           <template v-else>
             <section class="side-card">
-              <h2 class="side-card__title">我的公开库</h2>
+              <h3 class="side-card__title">我的公开库</h3>
               <p v-if="publicKnowledgeBases.length === 0" class="side-card__hint">暂无我的公开库</p>
-              <RouterLink
-                v-for="kb in publicKnowledgeBases"
-                :key="kb.id"
-                class="side-card__item"
-                :to="`/kb/${kb.id}`"
-              >
-                <span>{{ kb.name }}</span>
-                <span class="side-card__count">{{ kb.knowledgeCount }}</span>
-              </RouterLink>
+              <div class="home__side-list">
+                <RouterLink
+                  v-for="kb in publicKnowledgeBases"
+                  :key="kb.id"
+                  class="home__side-link"
+                  :to="`/kb/${kb.id}`"
+                >
+                  <span>{{ kb.name }}</span>
+                  <span class="home__side-count">{{ kb.knowledgeCount }}</span>
+                </RouterLink>
+              </div>
             </section>
-            <RouterLink
-              class="side-card__mine"
-              :to="{ name: 'kb-discovery', query: { mine: '1' } }"
-            >
+            <RouterLink class="home__mine" :to="{ name: 'kb-discovery', query: { mine: '1' } }">
               我的知识库 →
             </RouterLink>
           </template>
+
+          <!-- 热门标签（登录态展示） -->
+          <section v-if="tags.length > 0" class="side-card">
+            <h3 class="side-card__title">热门标签</h3>
+            <div class="home__tags">
+              <button
+                v-for="tag in tags"
+                :key="tag.name"
+                type="button"
+                class="home__tag"
+                :class="{ 'home__tag--active': tag.name === selectedTag }"
+                @click="toggleTag(tag.name)"
+              >
+                {{ tag.name }}
+              </button>
+            </div>
+          </section>
         </template>
       </aside>
 
       <section class="home__main">
         <header class="home__list-head">
-          <h1 class="home__title">{{ scopeTitle }}</h1>
-          <p class="home__sort">更新时间倒序 · 选中目录后按创建时间正序 · 共 {{ total }} 篇</p>
+          <h2 class="home__title">{{ scopeTitle }}</h2>
+          <p class="home__meta">共 {{ total }} 篇</p>
         </header>
 
         <div v-if="loading" class="home__state">
-          <div v-for="i in 3" :key="i" class="home__skeleton" aria-hidden="true" />
+          <div v-for="i in 4" :key="i" class="home__skeleton" aria-hidden="true" />
         </div>
         <div v-else-if="loadError" class="home__state">
           <p class="home__state-text">知识加载失败</p>
@@ -285,59 +403,69 @@ onMounted(async () => {
         </div>
         <template v-else>
           <div v-if="knowledges.length === 0" class="home__empty">
-            <el-icon class="home__empty-icon"><Document /></el-icon>
+            <el-icon class="home__empty-icon"><Collection /></el-icon>
             <p>{{ emptyText }}</p>
           </div>
-          <div v-if="knowledges.length > 0" class="home__cards">
+          <div v-if="knowledges.length > 0" class="home__list">
             <article
               v-for="knowledge in knowledges"
               :key="knowledge.id"
-              class="knowledge-card"
+              class="knowledge-row"
               @click="openKnowledge(knowledge.id)"
             >
-              <div class="knowledge-card__badges">
-                <RouterLink
-                  v-if="knowledge.kbName"
-                  class="knowledge-card__kb"
-                  :to="`/kb/${knowledge.kbId}`"
-                  @click.stop
-                >
-                  <el-tag size="small" round effect="plain">{{ knowledge.kbName }}</el-tag>
-                </RouterLink>
-                <el-tag
-                  v-if="isPrivateCard(knowledge)"
-                  class="knowledge-card__private"
-                  size="small"
-                  round
-                  effect="plain"
-                >
-                  🔒 私有
-                </el-tag>
+              <div class="knowledge-row__thumb" aria-hidden="true">
+                <el-icon class="knowledge-row__thumb-icon"><Document /></el-icon>
               </div>
-              <RouterLink
-                class="knowledge-card__title"
-                :to="`/knowledge/${knowledge.id}`"
-                @click.stop
-              >
-                {{ knowledge.title }}
-              </RouterLink>
-              <p class="knowledge-card__summary">{{ knowledge.summary }}</p>
-              <div class="knowledge-card__meta">
-                <span>{{ knowledge.authorName }}</span>
-                <span>{{ formatDate(knowledge.publishedAt) }}</span>
-                <span>{{ knowledge.readMinutes }} 分钟阅读</span>
-                <span>{{ knowledge.viewCount }} 阅读</span>
-              </div>
-              <div v-if="knowledge.tags.length > 0" class="knowledge-card__tags">
-                <RouterLink
-                  v-for="tag in knowledge.tags"
-                  :key="tag"
-                  class="knowledge-card__tag"
-                  :to="`/search?tag=${encodeURIComponent(tag)}`"
-                  @click.stop
-                >
-                  # {{ tag }}
-                </RouterLink>
+              <div class="knowledge-row__body">
+                <div class="knowledge-row__head">
+                  <RouterLink
+                    class="knowledge-row__title"
+                    :to="`/knowledge/${knowledge.id}`"
+                    @click.stop
+                  >
+                    {{ knowledge.title }}
+                  </RouterLink>
+                  <div class="knowledge-row__badges">
+                    <RouterLink
+                      v-if="knowledge.kbName"
+                      class="knowledge-row__kb"
+                      :to="`/kb/${knowledge.kbId}`"
+                      @click.stop
+                    >
+                      <el-tag size="small" round effect="plain">{{ knowledge.kbName }}</el-tag>
+                    </RouterLink>
+                    <el-tag
+                      v-if="isPrivateCard(knowledge)"
+                      size="small"
+                      round
+                      effect="plain"
+                      class="knowledge-row__private"
+                    >
+                      🔒 私有
+                    </el-tag>
+                  </div>
+                </div>
+                <p class="knowledge-row__summary">{{ knowledge.summary }}</p>
+                <div class="knowledge-row__meta">
+                  <InitialAvatar :name="knowledge.authorName" :size="22" />
+                  <span class="knowledge-row__author">{{ knowledge.authorName }}</span>
+                  <span>{{ formatDate(knowledge.publishedAt) }}</span>
+                  <span>{{ knowledge.readMinutes }} 分钟阅读</span>
+                  <span>{{ knowledge.viewCount }} 阅读</span>
+                  <span v-if="knowledge.commentCount > 0">{{ knowledge.commentCount }} 评论</span>
+                  <span v-if="knowledge.likeCount > 0">{{ knowledge.likeCount }} 点赞</span>
+                </div>
+                <div v-if="knowledge.tags.length > 0" class="knowledge-row__tags">
+                  <RouterLink
+                    v-for="tag in knowledge.tags"
+                    :key="tag"
+                    class="knowledge-row__tag"
+                    :to="`/search?tag=${encodeURIComponent(tag)}`"
+                    @click.stop
+                  >
+                    {{ tag }}
+                  </RouterLink>
+                </div>
               </div>
             </article>
           </div>
@@ -353,7 +481,7 @@ onMounted(async () => {
       </section>
     </div>
 
-    <!-- 目录树右键菜单（新增/重命名/删除，仅库主；open 非库主时忽略） -->
+    <!-- 目录树右键菜单（新增/重命名/删除，仅库主） -->
     <DirectoryTreeContextMenu
       ref="dirMenu"
       :kb-id="selectedKbId"
@@ -367,16 +495,219 @@ onMounted(async () => {
 
 <style scoped>
 .home {
-  width: min(calc(100% - 48px), 1180px);
-  margin: 0 auto;
-  padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
+  width: 100%;
   box-sizing: border-box;
 }
 
-.home-layout {
+/* ===== AI 光带入口 ===== */
+.home__glow {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: var(--xl-space-8);
+  align-items: stretch;
+  padding: var(--xl-space-8) var(--xl-content-pad);
+  background:
+    radial-gradient(
+      90% 140% at 82% 20%,
+      color-mix(in srgb, var(--xl-color-primary) 14%, transparent),
+      transparent 60%
+    ),
+    var(--xl-bg-page);
+  border-bottom: 1px solid var(--xl-border);
+}
+
+.home__glow-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--xl-space-3);
+}
+
+.home__glow-title {
+  margin: 0;
+  color: var(--xl-text-primary);
+  font-size: var(--xl-fs-h1);
+  font-weight: var(--xl-fs-h1-w);
+  line-height: var(--xl-fs-h1-lh);
+  letter-spacing: var(--xl-fs-h1-track);
+}
+
+.home__glow-sub {
+  margin: 0;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-body);
+}
+
+.home__glow-modes {
+  margin-top: var(--xl-space-2);
+}
+
+.home__glow-search {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-3);
+  margin-top: var(--xl-space-2);
+}
+
+.home__glow-search-input {
+  flex: 1;
+  max-width: 460px;
+}
+
+.home__glow-search-input :deep(.el-input__wrapper) {
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: none;
+  border: 1px solid var(--xl-border);
+}
+
+.home__glow-search-input :deep(.el-input__wrapper.is-focus),
+.home__glow-search-input :deep(.el-input__wrapper:hover) {
+  border-color: var(--xl-color-primary);
+}
+
+.home__glow-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--xl-radius);
+  background: var(--xl-color-primary);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--xl-transition);
+}
+
+.home__glow-submit:hover {
+  background: var(--xl-color-primary-hover);
+}
+
+/* B01-C 滚动态：导航下沿浅提示「上滑唤回 AI 快速操作」 */
+.home__return {
+  position: fixed;
+  top: calc(var(--xl-header-h) + 8px);
+  left: 50%;
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--xl-border);
+  border-radius: 999px;
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-md);
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-caption);
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition:
+    color var(--xl-transition),
+    border-color var(--xl-transition);
+}
+
+.home__return:hover {
+  border-color: var(--xl-color-primary);
+  color: var(--xl-color-primary);
+}
+
+.glow-tip-enter-active,
+.glow-tip-leave-active {
+  transition:
+    opacity var(--xl-transition),
+    transform var(--xl-transition);
+}
+
+.glow-tip-enter-from,
+.glow-tip-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -8px);
+}
+
+.home__glow-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--xl-space-3);
+  padding-left: var(--xl-space-6);
+  border-left: 1px solid var(--xl-border);
+}
+
+.glow-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-3);
+  padding: var(--xl-space-2) var(--xl-space-3);
+  border-radius: var(--xl-radius);
+  text-decoration: none;
+  transition: background var(--xl-transition);
+}
+
+.glow-entry:hover {
+  background: color-mix(in srgb, var(--xl-color-primary) 6%, transparent);
+}
+
+.glow-entry__icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--xl-radius);
+  background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
+  color: var(--xl-color-primary);
+  font-size: 20px;
+}
+
+.glow-entry__icon--ai {
+  background: color-mix(in srgb, var(--xl-color-ai) 12%, transparent);
+  color: var(--xl-color-ai);
+}
+
+.glow-entry__ai {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  color: var(--xl-color-ai);
+  font-size: 13px;
+}
+
+.glow-entry__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.glow-entry__title {
+  color: var(--xl-text-primary);
+  font-size: var(--xl-fs-body);
+  font-weight: var(--xl-fs-title-w);
+}
+
+.glow-entry__desc {
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.glow-entry__arrow {
+  margin-left: auto;
+  color: var(--xl-text-muted);
+  font-size: 14px;
+  transform: rotate(90deg);
+}
+
+/* ===== 知识流布局 ===== */
+.home__layout {
   display: flex;
   gap: var(--xl-space-6);
   align-items: flex-start;
+  width: min(100% - 48px, var(--xl-container));
+  margin: 0 auto;
+  padding: var(--xl-space-8) var(--xl-content-pad) var(--xl-space-8);
+  box-sizing: border-box;
 }
 
 .home__side {
@@ -386,7 +717,14 @@ onMounted(async () => {
   flex-direction: column;
   gap: var(--xl-space-4);
   position: sticky;
-  top: var(--xl-space-6);
+  top: calc(var(--xl-header-h) + var(--xl-space-6));
+}
+
+.home__side-title {
+  margin: 0;
+  color: var(--xl-text-primary);
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
 }
 
 .home__main {
@@ -394,18 +732,19 @@ onMounted(async () => {
   min-width: 0;
 }
 
+/* 库切换器 */
 .home__switcher {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--xl-space-2);
   width: 100%;
-  padding: 8px 12px;
+  padding: 9px 12px;
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
   color: var(--xl-text-primary);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--xl-fs-body);
+  font-weight: var(--xl-fs-title-w);
   cursor: pointer;
   transition: border-color var(--xl-transition);
 }
@@ -415,26 +754,42 @@ onMounted(async () => {
 }
 
 .home__switcher-icon {
+  color: var(--xl-color-primary);
+  font-size: 15px;
+}
+
+.home__switcher-label {
+  flex: 1;
+  text-align: left;
+}
+
+.home__dropdown-arrow {
   color: var(--xl-text-muted);
   font-size: 13px;
 }
 
+/* 列表头部 */
 .home__list-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--xl-space-3);
   margin-bottom: var(--xl-space-4);
 }
 
 .home__title {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 20px;
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
 }
 
-.home__sort {
-  margin: var(--xl-space-1) 0 0;
+.home__meta {
+  margin: 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
+/* 未登录提示 */
 .home__guest-hint {
   text-align: center;
 }
@@ -442,7 +797,7 @@ onMounted(async () => {
 .home__guest-text {
   margin: 0 0 var(--xl-space-2);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.7;
 }
 
@@ -452,14 +807,11 @@ onMounted(async () => {
   border-radius: 999px;
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   text-decoration: none;
 }
 
-.home__guest-login:hover {
-  background: color-mix(in srgb, var(--xl-color-primary) 18%, transparent);
-}
-
+/* 状态区 */
 .home__state {
   display: flex;
   flex-direction: column;
@@ -467,24 +819,24 @@ onMounted(async () => {
 }
 
 .home__skeleton {
-  height: 120px;
+  height: 96px;
   border-radius: var(--xl-radius-card);
   background: color-mix(in srgb, var(--xl-border) 60%, transparent);
 }
 
 .home__state-text {
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .home__retry {
   align-self: flex-start;
   padding: 6px 16px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--xl-radius);
   background: var(--xl-color-primary);
   color: #fff;
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   cursor: pointer;
 }
 
@@ -495,7 +847,7 @@ onMounted(async () => {
   gap: var(--xl-space-3);
   padding: var(--xl-space-8) 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .home__empty-icon {
@@ -507,104 +859,127 @@ onMounted(async () => {
   margin: 0;
 }
 
-.home__cards {
+/* 细分隔线知识流 */
+.home__list {
   display: flex;
   flex-direction: column;
-  gap: var(--xl-space-4);
 }
 
-.knowledge-card {
-  padding: var(--xl-space-4) var(--xl-space-6);
-  margin: 0;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
-  cursor: pointer;
-  transition:
-    box-shadow var(--xl-transition),
-    transform var(--xl-transition);
-}
-
-.home__sentinel {
-  height: 1px;
-}
-
-.home__load-more {
-  min-height: 34px;
-  padding: 14px 0 4px;
-  color: var(--xl-text-secondary);
-  font-size: 13px;
-  text-align: center;
-}
-
-.knowledge-card:hover {
-  box-shadow: var(--xl-shadow-md);
-  transform: translateY(-2px);
-}
-
-.knowledge-card__badges {
+.knowledge-row {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--xl-space-4);
+  padding: var(--xl-space-4) 0;
+  border-bottom: 1px solid var(--xl-border);
+  cursor: pointer;
+}
+
+.knowledge-row:last-child {
+  border-bottom: none;
+}
+
+/* 知识缩略图占位（数据无图片字段，用品牌色块 + 线性图标做版式占位，非真实封面） */
+.knowledge-row__thumb {
+  display: flex;
   align-items: center;
-  gap: var(--xl-space-2);
-  margin-bottom: var(--xl-space-2);
+  justify-content: center;
+  width: 84px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: var(--xl-radius);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--xl-color-primary) 12%, var(--xl-bg-surface)),
+    color-mix(in srgb, var(--xl-color-ai) 12%, var(--xl-bg-surface))
+  );
+  border: 1px solid var(--xl-border);
 }
 
-.knowledge-card__kb {
-  text-decoration: none;
+.knowledge-row__thumb-icon {
+  color: var(--xl-color-primary);
+  font-size: 24px;
 }
 
-.knowledge-card__private :deep(.el-tag__content) {
-  color: #b7791f;
+.knowledge-row__body {
+  flex: 1;
+  min-width: 0;
 }
 
-.knowledge-card__title {
+.knowledge-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--xl-space-3);
+}
+
+.knowledge-row__title {
   color: var(--xl-text-primary);
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
   text-decoration: none;
+  transition: color var(--xl-transition);
 }
 
-.knowledge-card__title:hover {
+.knowledge-row__title:hover {
   color: var(--xl-color-primary);
 }
 
-.knowledge-card__summary {
+.knowledge-row__badges {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--xl-space-2);
+}
+
+.knowledge-row__kb {
+  text-decoration: none;
+}
+
+.knowledge-row__private :deep(.el-tag__content) {
+  color: var(--xl-color-warning);
+}
+
+.knowledge-row__summary {
   margin: var(--xl-space-2) 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
 }
 
-.knowledge-card__meta {
+.knowledge-row__meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--xl-space-3);
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
-.knowledge-card__tags {
+.knowledge-row__author {
+  color: var(--xl-text-secondary);
+  font-weight: 500;
+}
+
+.knowledge-row__tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--xl-space-2);
   margin-top: var(--xl-space-3);
 }
 
-.knowledge-card__tag {
+.knowledge-row__tag {
   padding: 2px 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
   color: var(--xl-color-primary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   text-decoration: none;
 }
 
-.knowledge-card__tag:hover {
+.knowledge-row__tag:hover {
   background: color-mix(in srgb, var(--xl-color-primary) 16%, transparent);
 }
 
+/* 左栏卡片 */
 .side-card {
   padding: var(--xl-space-4);
   border: 1px solid var(--xl-border);
@@ -616,23 +991,23 @@ onMounted(async () => {
 .side-card__title {
   margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-primary);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--xl-fs-body);
+  font-weight: var(--xl-fs-title-w);
 }
 
 .side-card__hint {
   margin: 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
-.side-card__tree {
+.home__tree {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.side-card__dir {
+.home__dir {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -644,81 +1019,91 @@ onMounted(async () => {
   border-radius: var(--xl-radius-sm);
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   text-align: left;
   cursor: pointer;
 }
 
-.side-card__dir:hover {
+.home__dir:hover {
   background: var(--xl-bg-secondary);
   color: var(--xl-color-primary);
 }
 
-.side-card__dir--active {
+.home__dir--active {
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
   font-weight: 600;
 }
 
-.side-card__item {
+.home__dir-count {
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.home__side-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.home__side-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 6px 8px;
   border-radius: var(--xl-radius-sm);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   text-decoration: none;
 }
 
-.side-card__item:hover {
+.home__side-link:hover {
   background: var(--xl-bg-secondary);
   color: var(--xl-color-primary);
 }
 
-.side-card__count {
+.home__side-count {
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
-.side-card__mine {
+.home__mine {
   display: block;
   padding: 8px 10px;
   border: 1px dashed var(--xl-border);
   border-radius: var(--xl-radius-card);
   color: var(--xl-color-primary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   text-align: center;
   text-decoration: none;
 }
 
-.side-card__mine:hover {
+.home__mine:hover {
   border-color: var(--xl-color-primary);
   background: color-mix(in srgb, var(--xl-color-primary) 6%, transparent);
 }
 
-.side-card__tags {
+.home__tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--xl-space-2);
 }
 
-.side-card__tag {
+.home__tag {
   padding: 3px 10px;
   border: none;
   border-radius: 999px;
   background: var(--xl-bg-secondary);
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   cursor: pointer;
 }
 
-.side-card__tag:hover {
+.home__tag:hover {
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
 }
 
-.side-card__tag--active {
+.home__tag--active {
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
 }
@@ -727,8 +1112,34 @@ onMounted(async () => {
   font-size: 12px;
 }
 
+.home__sentinel {
+  height: 1px;
+}
+
+.home__load-more {
+  min-height: 34px;
+  padding: 14px 0 4px;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-caption);
+  text-align: center;
+}
+
+@media (width <= 900px) {
+  .home__glow {
+    grid-template-columns: 1fr;
+    gap: var(--xl-space-6);
+  }
+
+  .home__glow-right {
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px solid var(--xl-border);
+    padding-top: var(--xl-space-4);
+  }
+}
+
 @media (width <= 800px) {
-  .home-layout {
+  .home__layout {
     flex-direction: column;
   }
 

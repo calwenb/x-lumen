@@ -142,7 +142,7 @@ const router = createRouter({
       meta: { authenticated: true, title: '发布管理' },
     },
     {
-      path: '/studio/knowledge',
+      path: '/studio/index-status',
       name: 'index-status',
       component: () => import('@/modules/knowledge/pages/IndexStatusPage.vue'),
       meta: { authenticated: true, title: 'RAG 索引' },

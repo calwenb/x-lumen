@@ -1,12 +1,14 @@
 <script setup lang="ts">
-// 应用根组件：左侧边栏（品牌 + 菜单：空间设置/模型配置/AI 调用追踪/审计日志 + 用户名 + 登出）+ 路由出口。
+// 应用根组件：左侧边栏（品牌 + 菜单：空间设置/模型配置/AI 调用追踪/站点动态/审计日志 + 用户名 + 登出）+ 路由出口。
 // 登录页（guest）不渲染侧边栏，仅路由出口。侧栏基于 Element Plus el-menu（EP 接入后统一视觉）。
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Document, Monitor, Operation, Setting, User, View } from '@element-plus/icons-vue'
+import { Document, Monitor, Operation, Setting, View } from '@element-plus/icons-vue'
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import { useSessionStore } from '@/stores/session'
+import XlLogo from '@/components/XlLogo.vue'
+import InitialAvatar from '@/components/InitialAvatar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,8 +29,8 @@ async function handleLogout(): Promise<void> {
   <div v-if="showShell" class="app-shell">
     <aside class="app-sidebar">
       <div class="app-sidebar__brand">
-        <span class="app-sidebar__logo" aria-hidden="true" />
-        xLumen 管理后台
+        <XlLogo variant="icon" :size="26" class="app-sidebar__logo" />
+        <span class="app-sidebar__brand-text">xLumen 管理后台</span>
       </div>
       <el-menu class="app-sidebar__menu" :default-active="route.path" router>
         <el-menu-item index="/settings">
@@ -52,10 +54,11 @@ async function handleLogout(): Promise<void> {
           <span>审计日志</span>
         </el-menu-item>
       </el-menu>
-      <div class="app-sidebar__footer">        <span class="app-sidebar__user">
-          <el-icon><User /></el-icon>
-          {{ session.snapshot?.username }}
-        </span>
+      <div class="app-sidebar__footer">
+        <div class="app-sidebar__user">
+          <InitialAvatar :name="session.snapshot?.username ?? ''" :size="26" />
+          <span class="app-sidebar__username">{{ session.snapshot?.username }}</span>
+        </div>
         <button type="button" class="app-sidebar__logout" @click="handleLogout">登出</button>
       </div>
     </aside>
@@ -76,7 +79,7 @@ async function handleLogout(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: var(--xl-space-6);
-  width: 220px;
+  width: 232px;
   flex-shrink: 0;
   padding: var(--xl-space-4);
   border-right: 1px solid var(--xl-border);
@@ -87,18 +90,19 @@ async function handleLogout(): Promise<void> {
   display: flex;
   align-items: center;
   gap: var(--xl-space-2);
-  color: var(--xl-color-primary);
-  font-size: 17px;
-  font-weight: 600;
+  padding: var(--xl-space-1) var(--xl-space-1) var(--xl-space-2);
   white-space: nowrap;
 }
 
 .app-sidebar__logo {
-  width: 22px;
-  height: 22px;
   flex-shrink: 0;
-  border-radius: 6px;
-  background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
+}
+
+.app-sidebar__brand-text {
+  color: var(--xl-text-primary);
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .app-sidebar__menu {
@@ -107,18 +111,21 @@ async function handleLogout(): Promise<void> {
 
 .app-sidebar__menu :deep(.el-menu-item) {
   height: 40px;
+  margin-bottom: 2px;
   border-radius: var(--xl-radius);
   color: var(--xl-text-secondary);
+  font-size: 14px;
 }
 
 .app-sidebar__menu :deep(.el-menu-item:hover) {
   background: var(--xl-bg-secondary);
-  color: var(--xl-color-primary);
+  color: var(--xl-text-primary);
 }
 
 .app-sidebar__menu :deep(.el-menu-item.is-active) {
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
+  font-weight: 600;
 }
 
 .app-sidebar__footer {
@@ -126,19 +133,27 @@ async function handleLogout(): Promise<void> {
   flex-direction: column;
   gap: var(--xl-space-2);
   margin-top: auto;
+  padding-top: var(--xl-space-4);
+  border-top: 1px solid var(--xl-border);
 }
 
 .app-sidebar__user {
   display: flex;
   align-items: center;
   gap: var(--xl-space-2);
+  padding: var(--xl-space-1);
   color: var(--xl-text-primary);
   font-size: 14px;
   overflow-wrap: anywhere;
 }
 
+.app-sidebar__username {
+  flex: 1;
+  min-width: 0;
+}
+
 .app-sidebar__logout {
-  padding: var(--xl-space-2);
+  padding: var(--xl-space-2) var(--xl-space-3);
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius);
   background: transparent;

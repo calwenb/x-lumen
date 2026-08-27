@@ -198,21 +198,24 @@ WebSocket 只用于站内通知（F-1004）与协作状态。业务最终状态�
 
 | Token | 值 | 用途 |
 | --- | --- | --- |
-| `--xl-bg-page` | `#F6F8FC` | 页面背景 |
-| `--xl-bg-surface` | `#FFFFFF` | 卡片、表格和编辑器 |
+| `--xl-bg-page` | `#F7F8FC` | 页面背景（Paper） |
+| `--xl-bg-surface` | `#FFFFFF` | 卡片、表格和编辑器（Surface） |
 | `--xl-bg-secondary` | `#EEF1F7` | 辅助背景（hover、气泡、浅底） |
-| `--xl-text-primary` | `#1F2937` | 主要文字 |
-| `--xl-text-secondary` | `#667085` | 次要文字 |
+| `--xl-text-primary` | `#162033` | 主要文字（Ink） |
+| `--xl-text-secondary` | `#667085` | 次要文字（Muted Text） |
 | `--xl-text-muted` | `#98A2B3` | 弱化文字 |
-| `--xl-color-primary` | `#5367E8` | 主操作和品牌 |
+| `--xl-color-primary` | `#5367E8` | 主操作和品牌（Indigo） |
 | `--xl-color-primary-hover` | `#4558D6` | 主操作悬停 |
-| `--xl-color-ai` | `#12A594` | AI 状态和关键数据 |
-| `--xl-color-success` | `#12A594` | 成功语义色 |
-| `--xl-color-danger` | `#D92D20` | 危险/错误语义色 |
-| `--xl-color-warning` | `#DC6803` | 警示语义色 |
+| `--xl-color-ai` | `#12A594` | AI 状态和关键数据（AI Teal，仅 AI 标识/生成/引用/建议） |
+| `--xl-color-success` | `#2E8B68` | 成功语义色（与 AI Teal 严格区分） |
+| `--xl-color-danger` | `#C94B50` | 危险/错误语义色 |
+| `--xl-color-warning` | `#B7791F` | 警示语义色 |
 | `--xl-border` | `#E7EAF0` | 边框和分割线 |
-| `--xl-font-sans` | `system-ui, "PingFang SC", "Microsoft YaHei", sans-serif` | UI 与正文 |
+| `--xl-font-sans` | `MiSans, "Source Han Sans SC", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif` | UI 与正文 |
 | `--xl-font-mono` | `"JetBrains Mono", Consolas, monospace` | 代码、证据卡与序号 |
+| `--xl-fs-h1 / -h2 / -body / -caption` | `38 / 24 / 14 / 12px` | 字体层级（H1 700/-0.02em，H2 600/-0.01em） |
+| `--xl-header-h` | `64px` | 博客吸顶导航高度 |
+| `--xl-container` | `1360px` | 内容版心宽度 |
 | `--xl-radius-card` | `12px` | 卡片/弹窗圆角 |
 | `--xl-radius` | `8px` | 控件圆角 |
 | `--xl-radius-sm` | `6px` | 小控件圆角 |

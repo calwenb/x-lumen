@@ -3,7 +3,9 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('博客前台公开页（M03）', () => {
-  test('B01 首页：展示公开知识，草稿/私有不出现，标签侧栏可用（KB-4 库切换器）', async ({ page }) => {
+  test('B01 首页：展示公开知识，草稿/私有不出现，标签侧栏可用（KB-4 库切换器）', async ({
+    page,
+  }) => {
     await page.goto('/')
 
     await expect(page.getByRole('heading', { name: '全部知识库' })).toBeVisible()

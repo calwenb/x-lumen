@@ -1,18 +1,10 @@
 <script setup lang="ts">
-// 应用根组件：顶栏（品牌 Logo、主导航：知识/知识库/创作中心(登录态)/AI小光、全局搜索框、
-// 写知识 CTA、头像菜单，PROTOTYPE §5.1）与路由出口。
-// 当前导航项高亮用 router-link-exact-active（首页 / 为全部路由父级，router-link-active 会全站匹配误高亮）。
+// 应用根组件（V2 设计系统）：64px 吸顶头部（品牌 Logo、主导航「发现/知识库/动态/创作中心/AI小光」、
+// 搜索胶囊、主题图标『仅视觉·固定浅色』、通知铃、写知识 CTA、头像菜单，FRONTEND.md §5.1）与路由出口。
+// 导航高亮用 router-link-exact-active（首页 / 为全部路由父级，泛匹配会全站误高亮）。
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ChatDotRound,
-  Collection,
-  EditPen,
-  HomeFilled,
-  Monitor,
-  Search,
-  Tickets,
-} from '@element-plus/icons-vue'
+import { Search, Sunny } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 
@@ -20,6 +12,8 @@ import { logoutApi } from '@/modules/identity/api/auth'
 import NotificationBell from '@/modules/notification/components/NotificationBell.vue'
 import FloatingAssistant from '@/modules/chat/components/FloatingAssistant.vue'
 import SiteTour from '@/modules/blog/components/SiteTour.vue'
+import XlLogo from '@/components/XlLogo.vue'
+import InitialAvatar from '@/components/InitialAvatar.vue'
 
 const router = useRouter()
 const session = useSessionStore()
@@ -89,39 +83,28 @@ function handleNavCommand(command: string): void {
 <template>
   <div class="app-shell">
     <header class="app-header">
-      <RouterLink class="app-header__brand" to="/">
-        <span class="app-header__logo" aria-hidden="true" />
-        xLumen
+      <RouterLink class="app-header__brand" to="/" aria-label="xLumen 首页">
+        <XlLogo :size="30" />
       </RouterLink>
+
       <nav class="app-header__nav">
-        <RouterLink class="app-header__link" to="/">
-          <el-icon class="app-header__link-icon"><HomeFilled /></el-icon>
-          知识
-        </RouterLink>
-        <RouterLink class="app-header__link" :to="{ name: 'kb-discovery' }">
-          <el-icon class="app-header__link-icon"><Collection /></el-icon>
-          知识库
-        </RouterLink>
-        <RouterLink class="app-header__link" :to="{ name: 'changelog' }">
-          <el-icon class="app-header__link-icon"><Tickets /></el-icon>
-          动态
-        </RouterLink>
-        <!-- 创作中心：一级导航，仅登录态显示 -->
+        <RouterLink class="app-header__link" to="/">发现</RouterLink>
+        <RouterLink class="app-header__link" :to="{ name: 'kb-discovery' }">知识库</RouterLink>
+        <RouterLink class="app-header__link" :to="{ name: 'changelog' }">动态</RouterLink>
         <RouterLink v-if="session.loggedIn" class="app-header__link" :to="{ name: 'workbench' }">
-          <el-icon class="app-header__link-icon"><Monitor /></el-icon>
           创作中心
         </RouterLink>
         <RouterLink class="app-header__link" :to="{ name: 'chat' }">
-          <el-icon class="app-header__link-icon"><ChatDotRound /></el-icon>
-          AI小光
+          AI小光<span class="app-header__ai-star" aria-hidden="true">✦</span>
         </RouterLink>
       </nav>
+
       <div class="app-header__menu">
         <el-dropdown trigger="click" @command="handleNavCommand">
           <button type="button" class="app-header__hamburger" aria-label="打开导航菜单">☰</button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="home">知识</el-dropdown-item>
+              <el-dropdown-item command="home">发现</el-dropdown-item>
               <el-dropdown-item command="kb-discovery">知识库</el-dropdown-item>
               <el-dropdown-item command="changelog">动态</el-dropdown-item>
               <el-dropdown-item v-if="session.loggedIn" command="studio">创作中心</el-dropdown-item>
@@ -130,35 +113,48 @@ function handleNavCommand(command: string): void {
           </template>
         </el-dropdown>
       </div>
-      <form class="app-header__search" @submit.prevent="submitSearch">
-        <el-input
-          v-model="keyword"
-          class="app-header__search-input"
-          type="search"
-          placeholder="搜索知识/知识库…"
-          aria-label="搜索知识"
-          :prefix-icon="Search"
-        />
-      </form>
-      <div class="app-header__account">
-        <RouterLink v-if="!session.loggedIn" class="app-header__login" to="/login"
-          >登录 / 注册</RouterLink
+
+      <div class="app-header__right">
+        <form class="app-header__search" @submit.prevent="submitSearch">
+          <el-input
+            v-model="keyword"
+            class="app-header__search-input"
+            type="search"
+            placeholder="搜索知识、文档、主题或问题…"
+            aria-label="搜索知识"
+          >
+            <template #suffix>
+              <el-icon class="app-header__search-icon"><Search /></el-icon>
+            </template>
+          </el-input>
+        </form>
+
+        <!-- 主题图标：仅视觉，固定浅色（用户拍板），点击无效，不实现切换 -->
+        <button type="button" class="app-header__icon" aria-label="主题" title="固定浅色主题">
+          <el-icon><Sunny /></el-icon>
+        </button>
+
+        <!-- 通用消息：AI 审核完成等站内提醒（仅登录态） -->
+        <NotificationBell v-if="session.loggedIn" />
+
+        <RouterLink
+          v-if="session.loggedIn"
+          class="app-header__write"
+          :to="{ name: 'knowledge-new' }"
         >
-        <template v-else>
-          <!-- 通用消息：AI 审核完成等站内提醒（仅登录态） -->
-          <NotificationBell />
-          <RouterLink class="app-header__write" :to="{ name: 'knowledge-new' }">
-            <el-icon class="app-header__write-icon"><EditPen /></el-icon>
-            写知识
-          </RouterLink>
+          写知识
+        </RouterLink>
+
+        <template v-if="session.loggedIn">
           <el-dropdown trigger="click" @command="handleAccountCommand">
-            <button
-              type="button"
+            <span
               class="app-header__avatar"
+              role="button"
+              tabindex="0"
               :aria-label="`${session.snapshot?.username ?? ''} 账号菜单`"
             >
-              {{ avatarText }}
-            </button>
+              <InitialAvatar :name="avatarText" :size="32" />
+            </span>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="my-kbs">我的知识库</el-dropdown-item>
@@ -171,8 +167,11 @@ function handleNavCommand(command: string): void {
             </template>
           </el-dropdown>
         </template>
+
+        <RouterLink v-else class="app-header__login" to="/login">登录 / 注册</RouterLink>
       </div>
     </header>
+
     <RouterView />
     <!-- 全站悬浮小光：登录/访客均可用，右下角悬浮球 -->
     <FloatingAssistant />
@@ -182,72 +181,82 @@ function handleNavCommand(command: string): void {
 </template>
 
 <style scoped>
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
-  gap: var(--xl-space-6);
-  padding: 0 var(--xl-space-6);
-  height: 56px;
+  gap: var(--xl-space-8);
+  height: var(--xl-header-h);
+  padding: 0 var(--xl-content-pad);
   border-bottom: 1px solid var(--xl-border);
   background: var(--xl-bg-surface);
 }
 
 .app-header__brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--xl-space-2);
-  color: var(--xl-color-primary);
-  font-size: 17px;
-  font-weight: 600;
   text-decoration: none;
-  white-space: nowrap;
-}
-
-.app-header__logo {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  border-radius: 6px;
-  background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
 }
 
 .app-header__nav {
   display: flex;
   align-items: center;
-  gap: var(--xl-space-1);
+  gap: var(--xl-space-2);
+  height: 100%;
 }
 
 .app-header__link {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--xl-space-1);
-  padding: 6px 12px;
-  border-radius: 999px;
+  height: 100%;
+  padding: 0 var(--xl-space-3);
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   text-decoration: none;
   white-space: nowrap;
+  transition: color var(--xl-transition);
 }
 
 .app-header__link:hover {
-  background: var(--xl-bg-secondary);
-  color: var(--xl-color-primary);
+  color: var(--xl-text-primary);
 }
 
-/* 当前导航项高亮（洋红系主色；exact 精确匹配：/ 为全部路由父级，泛匹配会全站误高亮） */
+/* 当前导航项：Indigo 细下划线（V2 视觉语言，非胶囊底） */
 .app-header__link.router-link-exact-active {
-  background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
+  font-weight: var(--xl-fs-title-w);
 }
 
-.app-header__link-icon {
-  font-size: 15px;
+.app-header__link.router-link-exact-active::after {
+  content: '';
+  position: absolute;
+  left: var(--xl-space-3);
+  right: var(--xl-space-3);
+  bottom: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--xl-color-primary);
+}
+
+/* AI小光旁的 Teal 四角星（AI 视觉标记，仅此处可用） */
+.app-header__ai-star {
+  color: var(--xl-color-ai);
+  font-size: 12px;
 }
 
 .app-header__menu {
   display: none;
 }
-
 
 .app-header__hamburger {
   display: inline-flex;
@@ -263,19 +272,15 @@ function handleNavCommand(command: string): void {
   cursor: pointer;
 }
 
-.app-header__hamburger:hover {
-  border-color: var(--xl-color-primary);
-  color: var(--xl-color-primary);
-}
-
-.app-header__search {
-  flex: 1;
-  max-width: 320px;
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
   margin-left: auto;
 }
 
-.app-header__search-input {
-  width: 100%;
+.app-header__search {
+  width: 260px;
 }
 
 .app-header__search-input :deep(.el-input__wrapper) {
@@ -283,45 +288,49 @@ function handleNavCommand(command: string): void {
   background: var(--xl-bg-page);
   box-shadow: none;
   border: 1px solid var(--xl-border);
-  padding-left: var(--xl-space-3);
+  padding-left: var(--xl-space-4);
 }
 
-.app-header__search-input :deep(.el-input__wrapper.is-focus) {
+.app-header__search-input :deep(.el-input__wrapper.is-focus),
+.app-header__search-input :deep(.el-input__wrapper:hover) {
   border-color: var(--xl-color-primary);
 }
 
-.app-header__account {
-  display: flex;
-  align-items: center;
-  gap: var(--xl-space-2);
-}
-
-.app-header__login {
-  padding: 6px 16px;
-  border: 1px solid var(--xl-border);
-  border-radius: 999px;
+.app-header__search-icon {
   color: var(--xl-text-secondary);
-  font-size: 14px;
-  text-decoration: none;
-  white-space: nowrap;
 }
 
-.app-header__login:hover {
-  border-color: var(--xl-color-primary);
-  color: var(--xl-color-primary);
+.app-header__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--xl-text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--xl-transition),
+    background-color var(--xl-transition);
 }
 
-/* 写知识 CTA：洋红系实心主按钮 */
+.app-header__icon:hover {
+  background: var(--xl-bg-secondary);
+  color: var(--xl-text-primary);
+}
+
+/* 写知识 CTA：Indigo 实心主按钮 */
 .app-header__write {
   display: inline-flex;
   align-items: center;
-  gap: var(--xl-space-1);
-  padding: 6px 16px;
+  padding: 7px 18px;
   border-radius: 999px;
   background: var(--xl-color-primary);
   color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--xl-fs-body);
+  font-weight: var(--xl-fs-title-w);
   text-decoration: none;
   white-space: nowrap;
   transition: background var(--xl-transition);
@@ -331,29 +340,32 @@ function handleNavCommand(command: string): void {
   background: var(--xl-color-primary-hover);
 }
 
-.app-header__write-icon {
-  font-size: 14px;
-}
-
 .app-header__avatar {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
   cursor: pointer;
+  outline: none;
 }
 
-@media (width <= 700px) {
+.app-header__login {
+  padding: 7px 16px;
+  border: 1px solid var(--xl-border);
+  border-radius: 999px;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-body);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-header__login:hover {
+  border-color: var(--xl-color-primary);
+  color: var(--xl-color-primary);
+}
+
+@media (width <= 900px) {
   .app-header {
     gap: var(--xl-space-3);
-    padding: 0 var(--xl-space-3);
+    padding: 0 var(--xl-space-4);
   }
 
   .app-header__nav {
@@ -365,8 +377,18 @@ function handleNavCommand(command: string): void {
   }
 
   .app-header__search {
-    max-width: none;
-    margin-left: 0;
+    width: 160px;
+  }
+}
+
+@media (width <= 700px) {
+  .app-header__search {
+    display: none;
+  }
+
+  .app-header__icon,
+  .app-header__write {
+    display: none;
   }
 }
 </style>

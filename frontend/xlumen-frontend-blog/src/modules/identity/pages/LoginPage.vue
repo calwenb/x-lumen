@@ -7,6 +7,7 @@ import { Lock, User } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 import type { SessionSnapshot } from '@/stores/session'
+import XlLogo from '@/components/XlLogo.vue'
 
 import { loginApi, registerApi } from '../api/auth'
 
@@ -58,118 +59,177 @@ async function submit(): Promise<void> {
 
 <template>
   <main class="auth">
-    <div class="auth__brand">
-      <span class="auth__logo" aria-hidden="true" />
-      <h1 class="auth__title">欢迎使用 xLumen</h1>
-    </div>
-    <p class="auth__subtitle">注册即创建个人工作空间</p>
-    <div class="auth__card">
-      <el-tabs v-model="mode" class="auth__tabs" @tab-change="onTabChange">
-        <el-tab-pane label="登录" name="login" />
-        <el-tab-pane label="注册" name="register" />
-      </el-tabs>
-      <el-form class="auth__form" label-position="top" size="large" @submit.prevent="submit">
-        <el-form-item label="用户名">
-          <el-input
-            v-model="username"
-            name="username"
-            placeholder="请输入用户名"
-            :prefix-icon="User"
-            autocomplete="username"
+    <!-- 品牌区（42）：Paper 底，Logo + 标题 + 副标题，两条抽象 Indigo 光柱 + 一颗 AI Teal 星 -->
+    <section class="auth__brand">
+      <div class="auth__brand-inner">
+        <div class="auth__beams" aria-hidden="true">
+          <span class="auth__beam auth__beam--l"></span>
+          <span class="auth__beam auth__beam--r"></span>
+          <span class="auth__star">✦</span>
+        </div>
+        <XlLogo variant="icon" :size="42" class="auth__logo" />
+        <h1 class="auth__title">欢迎使用 xLumen</h1>
+        <p class="auth__subtitle">注册即创建个人工作空间</p>
+      </div>
+    </section>
+
+    <!-- 表单区（58）：白底，约 420px 居中表单 -->
+    <section class="auth__panel">
+      <div class="auth__card">
+        <el-tabs v-model="mode" class="auth__tabs" @tab-change="onTabChange">
+          <el-tab-pane label="登录" name="login" />
+          <el-tab-pane label="注册" name="register" />
+        </el-tabs>
+        <el-form class="auth__form" label-position="top" size="large" @submit.prevent="submit">
+          <el-form-item label="用户名">
+            <el-input
+              v-model="username"
+              name="username"
+              placeholder="请输入用户名"
+              :prefix-icon="User"
+              autocomplete="username"
+            />
+          </el-form-item>
+          <el-form-item v-if="!isLogin" label="邮箱（可选）">
+            <el-input
+              v-model="email"
+              name="email"
+              type="email"
+              placeholder="name@example.com"
+              autocomplete="email"
+            />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input
+              v-model="password"
+              name="password"
+              type="password"
+              show-password
+              placeholder="至少 8 位"
+              :prefix-icon="Lock"
+              autocomplete="current-password"
+              @keyup.enter="submit"
+            />
+          </el-form-item>
+          <el-alert
+            v-if="errorMessage"
+            :title="errorMessage"
+            type="error"
+            :closable="false"
+            class="auth__error"
+            show-icon
           />
-        </el-form-item>
-        <el-form-item v-if="!isLogin" label="邮箱（可选）">
-          <el-input
-            v-model="email"
-            name="email"
-            type="email"
-            placeholder="name@example.com"
-            autocomplete="email"
-          />
-        </el-form-item>
-        <el-form-item label="密码">
-          <el-input
-            v-model="password"
-            name="password"
-            type="password"
-            show-password
-            placeholder="至少 8 位"
-            :prefix-icon="Lock"
-            autocomplete="current-password"
-            @keyup.enter="submit"
-          />
-        </el-form-item>
-        <el-alert
-          v-if="errorMessage"
-          :title="errorMessage"
-          type="error"
-          :closable="false"
-          class="auth__error"
-          show-icon
-        />
-        <el-button type="primary" native-type="submit" class="auth__submit" :loading="loading">
-          {{ loading ? '处理中…' : isLogin ? '登录' : '注册' }}
-        </el-button>
-      </el-form>
-    </div>
+          <el-button type="primary" native-type="submit" class="auth__submit" :loading="loading">
+            {{ loading ? '处理中…' : isLogin ? '登录' : '注册' }}
+          </el-button>
+        </el-form>
+      </div>
+    </section>
   </main>
 </template>
 
 <style scoped>
 .auth {
-  max-width: 420px;
-  margin: 0 auto;
-  padding: var(--xl-space-8) var(--xl-space-4);
-  min-height: calc(100vh - 56px);
+  display: grid;
+  grid-template-columns: 42% minmax(0, 1fr);
+  min-height: calc(100vh - var(--xl-header-h));
+  background: var(--xl-bg-page);
+}
+
+/* ===== 品牌区 ===== */
+.auth__brand {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   background:
     radial-gradient(
-      800px 400px at 50% -10%,
-      color-mix(in srgb, var(--xl-color-primary) 8%, transparent),
+      90% 70% at 20% 10%,
+      color-mix(in srgb, var(--xl-color-primary) 10%, transparent),
       transparent 60%
     ),
     var(--xl-bg-page);
 }
 
-.auth__brand {
+.auth__brand-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--xl-space-3);
+  text-align: center;
+}
+
+.auth__beams {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--xl-space-2);
+  gap: var(--xl-space-6);
+  margin-bottom: var(--xl-space-4);
+}
+
+.auth__beam {
+  width: 40px;
+  height: 128px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--xl-color-primary) 18%,
+    var(--xl-color-primary) 62%,
+    transparent
+  );
+  opacity: 0.75;
+}
+
+.auth__beam--r {
+  transform: translateY(8px);
+}
+
+.auth__star {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--xl-color-ai);
+  font-size: 18px;
 }
 
 .auth__logo {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
+  transform: scale(1.1);
 }
 
 .auth__title {
-  margin: 0;
+  margin: var(--xl-space-3) 0 0;
   color: var(--xl-text-primary);
-  font-size: 24px;
-  text-align: center;
+  font-size: var(--xl-fs-h1);
+  font-weight: var(--xl-fs-h1-w);
+  line-height: var(--xl-fs-h1-lh);
+  letter-spacing: var(--xl-fs-h1-track);
 }
 
 .auth__subtitle {
-  margin: var(--xl-space-2) 0 0;
+  margin: 0;
   color: var(--xl-text-secondary);
-  text-align: center;
+  font-size: var(--xl-fs-body);
+}
+
+/* ===== 表单区 ===== */
+.auth__panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--xl-space-8) var(--xl-space-6);
+  background: var(--xl-bg-surface);
 }
 
 .auth__card {
   width: 100%;
-  margin-top: var(--xl-space-6);
-  padding: var(--xl-space-6);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-md);
+  max-width: 420px;
+  padding: var(--xl-space-6) 0;
 }
 
 .auth__tabs :deep(.el-tabs__header) {
@@ -177,7 +237,7 @@ async function submit(): Promise<void> {
 }
 
 .auth__tabs :deep(.el-tabs__item) {
-  font-size: 15px;
+  font-size: var(--xl-fs-body);
 }
 
 .auth__error {
@@ -186,5 +246,15 @@ async function submit(): Promise<void> {
 
 .auth__submit {
   width: 100%;
+}
+
+@media (width <= 800px) {
+  .auth {
+    grid-template-columns: 1fr;
+  }
+
+  .auth__brand {
+    min-height: 260px;
+  }
 }
 </style>

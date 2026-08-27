@@ -47,87 +47,101 @@ watch(page, () => {
 
 <template>
   <main class="changelog">
-    <header class="changelog__head">
+    <!-- 左侧窄轨（24） -->
+    <aside class="changelog__rail">
       <h1 class="changelog__title">
         <el-icon class="changelog__title-icon"><Tickets /></el-icon>
-        更新日志
+        站点更新日志
       </h1>
-      <p class="changelog__desc">记录站点迭代：新功能、体验优化与问题修复，共 {{ total }} 条。</p>
-    </header>
+      <p class="changelog__desc">记录 xLumen 的功能与内容更新，共 {{ total }} 条。</p>
+    </aside>
 
-    <div v-if="loading" class="changelog__state">
-      <div v-for="i in 3" :key="i" class="changelog__skeleton" aria-hidden="true" />
-    </div>
-    <div v-else-if="loadError" class="changelog__state">
-      <p class="changelog__state-text">更新日志加载失败</p>
-      <el-button type="primary" plain @click="load">重试</el-button>
-    </div>
-    <template v-else>
-      <el-empty v-if="items.length === 0" description="暂无更新日志" />
-      <el-timeline v-else class="changelog__timeline">
-        <el-timeline-item
-          v-for="item in items"
-          :key="item.id"
-          :timestamp="formatTimestamp(item.publishedAt)"
-          placement="top"
-        >
-          <article class="changelog__entry">
-            <h2 class="changelog__entry-title">{{ item.title }}</h2>
-            <div
-              class="changelog__entry-content markdown-body"
-              v-html="renderMarkdown(item.content)"
-            />
-          </article>
-        </el-timeline-item>
-      </el-timeline>
-      <div v-if="total > PAGE_SIZE" class="changelog__pager">
-        <el-pagination
-          v-model:current-page="page"
-          layout="prev, pager, next"
-          :page-size="PAGE_SIZE"
-          :total="total"
-          background
-        />
+    <!-- 右侧动态流（76） -->
+    <section class="changelog__stream">
+      <div v-if="loading" class="changelog__state">
+        <div v-for="i in 3" :key="i" class="changelog__skeleton" aria-hidden="true" />
       </div>
-      <p class="changelog__back">
-        <RouterLink to="/">← 返回首页</RouterLink>
-      </p>
-    </template>
+      <div v-else-if="loadError" class="changelog__state">
+        <p class="changelog__state-text">更新日志加载失败</p>
+        <el-button type="primary" plain @click="load">重试</el-button>
+      </div>
+      <template v-else>
+        <el-empty v-if="items.length === 0" description="暂无更新日志" />
+        <div v-else class="changelog__list">
+          <article v-for="item in items" :key="item.id" class="changelog__entry">
+            <time class="changelog__date">{{ formatTimestamp(item.publishedAt) }}</time>
+            <span class="changelog__node" aria-hidden="true"></span>
+            <div class="changelog__content">
+              <h2 class="changelog__entry-title">{{ item.title }}</h2>
+              <div
+                class="changelog__entry-content markdown-body"
+                v-html="renderMarkdown(item.content)"
+              />
+            </div>
+          </article>
+        </div>
+        <div v-if="total > PAGE_SIZE" class="changelog__pager">
+          <el-pagination
+            v-model:current-page="page"
+            layout="prev, pager, next"
+            :page-size="PAGE_SIZE"
+            :total="total"
+            background
+          />
+        </div>
+        <p class="changelog__back">
+          <RouterLink to="/">← 返回首页</RouterLink>
+        </p>
+      </template>
+    </section>
   </main>
 </template>
 
 <style scoped>
 .changelog {
-  width: min(calc(100% - 48px), 760px);
+  display: grid;
+  grid-template-columns: 24% minmax(0, 1fr);
+  gap: var(--xl-space-8);
+  align-items: start;
+  width: min(calc(100% - 48px), 1080px);
   margin: 0 auto;
-  padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
+  padding: var(--xl-space-8) var(--xl-content-pad) var(--xl-space-8);
   box-sizing: border-box;
 }
 
-.changelog__head {
-  margin-bottom: var(--xl-space-6);
+/* ===== 左侧窄轨 ===== */
+.changelog__rail {
+  position: sticky;
+  top: calc(var(--xl-header-h) + var(--xl-space-6));
+  padding-top: var(--xl-space-6);
+  border-top: 2px solid var(--xl-color-primary);
 }
 
 .changelog__title {
   display: flex;
   align-items: center;
   gap: var(--xl-space-2);
-  margin: 0 0 var(--xl-space-2);
+  margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-primary);
-  font-size: 22px;
+  font-size: var(--xl-fs-h1);
+  font-weight: var(--xl-fs-h1-w);
+  line-height: var(--xl-fs-h1-lh);
+  letter-spacing: var(--xl-fs-h1-track);
 }
 
 .changelog__title-icon {
   color: var(--xl-color-primary);
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .changelog__desc {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-body);
+  line-height: 1.7;
 }
 
+/* ===== 右侧动态流 ===== */
 .changelog__state {
   padding: var(--xl-space-8) 0;
   text-align: center;
@@ -142,31 +156,57 @@ watch(page, () => {
 
 .changelog__state-text {
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
-.changelog__timeline {
-  padding-left: var(--xl-space-2);
+.changelog__list {
+  display: flex;
+  flex-direction: column;
 }
 
 .changelog__entry {
-  padding: var(--xl-space-4);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: var(--xl-space-6);
+  padding: var(--xl-space-6) 0;
+  position: relative;
+}
+
+.changelog__date {
+  color: var(--xl-text-muted);
+  font-family: var(--xl-font-mono);
+  font-size: var(--xl-fs-caption);
+  padding-top: 4px;
+}
+
+.changelog__node {
+  position: absolute;
+  left: 118px;
+  top: var(--xl-space-6);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--xl-color-primary);
+}
+
+.changelog__content {
+  min-width: 0;
+  padding-left: var(--xl-space-4);
+  border-left: 1px solid var(--xl-border);
 }
 
 .changelog__entry-title {
-  margin: 0 0 var(--xl-space-2);
+  margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-primary);
-  font-size: 16px;
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
 }
 
 .changelog__entry-content {
   margin-top: 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
+  line-height: 1.8;
 }
 
 .changelog__pager {
@@ -182,11 +222,21 @@ watch(page, () => {
 
 .changelog__back a {
   color: var(--xl-color-primary);
-  font-size: 13px;
+  font-size: var(--xl-fs-caption);
   text-decoration: none;
 }
 
 .changelog__back a:hover {
   text-decoration: underline;
+}
+
+@media (width <= 800px) {
+  .changelog {
+    grid-template-columns: 1fr;
+  }
+
+  .changelog__rail {
+    position: static;
+  }
 }
 </style>

@@ -3,7 +3,14 @@
 // 访客无会话功能，单次问答；登录用户可选会话/新对话，回答附带 [序号] 引用卡片。
 // KB-3 检索范围选择器（决策 D13/D16）：全部可见库（默认）/ 指定知识库；访客隐藏选择器默认全部。
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
-import { Collection, Plus, UserFilled } from '@element-plus/icons-vue'
+import {
+  CircleCloseFilled,
+  Clock,
+  Collection,
+  Plus,
+  SuccessFilled,
+  UserFilled,
+} from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 import { useSessionStore } from '@/stores/session'
@@ -74,6 +81,27 @@ const compareKeyword = ref('')
 const compareOptions = ref<KnowledgeCard[]>([])
 const compareSelection = ref<string[]>([])
 const selectedKnowledgeIds = ref<string[]>([])
+
+// B00 右侧「本轮过程」检查器：取最近一条助手消息的工具轨迹（名称/状态/摘要/耗时）与引用数量。
+const currentAssistant = computed(() => {
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    const message = messages.value[i]
+    if (message?.role === 'assistant') return message
+  }
+  return null
+})
+const processTools = computed(() =>
+  currentAssistant.value ? doneTools(currentAssistant.value.tools) : [],
+)
+const processDuration = computed(() =>
+  processTools.value.reduce((sum, tool) => sum + (tool.durationMs ?? 0), 0),
+)
+const processCitationCount = computed(() => currentAssistant.value?.citations.length ?? 0)
+
+/** 毫秒 → "04.70s" 耗时文案。 */
+function formatDuration(ms: number): string {
+  return `${(ms / 1000).toFixed(2)}s`
+}
 
 const filteredCompareOptions = computed(() => {
   const keyword = compareKeyword.value.trim().toLowerCase()
@@ -512,6 +540,51 @@ onMounted(() => {
       </form>
     </section>
 
+    <!-- B00 右侧「本轮过程」检查器：贴图五步轨迹卡片（工具名/状态/摘要/耗时/引用），不显示思维链 -->
+    <aside class="chat__process">
+      <h2 class="chat__process-title">本轮过程</h2>
+      <p v-if="!currentAssistant" class="chat__process-empty">
+        提问后在这里查看本轮的工具执行过程。
+      </p>
+      <template v-else>
+        <p v-if="processTools.length === 0" class="chat__process-empty">本轮未调用检索与工具。</p>
+        <ul v-else class="chat__process-list">
+          <li v-for="tool in processTools" :key="`p-${tool.seq}`" class="chat__process-card">
+            <div class="chat__process-head">
+              <span
+                class="chat__process-state"
+                :class="{ 'chat__process-state--fail': tool.ok === false }"
+              >
+                <el-icon>
+                  <CircleCloseFilled v-if="tool.ok === false" />
+                  <SuccessFilled v-else />
+                </el-icon>
+              </span>
+              <span class="chat__process-name">{{ tool.name }}</span>
+              <span v-if="tool.durationMs != null" class="chat__process-time"
+                >{{ tool.durationMs }}ms</span
+              >
+            </div>
+            <span
+              class="chat__process-status"
+              :class="{ 'chat__process-status--fail': tool.ok === false }"
+            >
+              {{ tool.ok === false ? '失败' : '完成' }}
+            </span>
+            <p v-if="tool.summary" class="chat__process-summary">{{ tool.summary }}</p>
+            <div v-if="processCitationCount > 0" class="chat__process-ref">
+              引用 {{ processCitationCount }}
+            </div>
+          </li>
+        </ul>
+        <div v-if="processDuration > 0" class="chat__process-total">
+          <el-icon class="chat__process-total-icon"><Clock /></el-icon>
+          本轮总耗时
+          <span class="chat__process-total-val">{{ formatDuration(processDuration) }}</span>
+        </div>
+      </template>
+    </aside>
+
     <!-- 多文档对比：勾选可见知识，确认后限定本轮提问的检索范围 -->
     <el-dialog
       v-model="compareDialogVisible"
@@ -560,8 +633,8 @@ onMounted(() => {
 <style scoped>
 .chat {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  height: calc(100vh - 56px);
+  grid-template-columns: 260px minmax(0, 1fr) 280px;
+  height: calc(100vh - var(--xl-header-h));
 }
 
 .chat__sidebar {
@@ -1063,10 +1136,136 @@ onMounted(() => {
 }
 
 .chat__send:hover {
-  background: var(--xl-color-success);
-  border-color: var(--xl-color-success);
+  background: color-mix(in srgb, var(--xl-color-ai) 85%, black);
+  border-color: color-mix(in srgb, var(--xl-color-ai) 85%, black);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px color-mix(in srgb, var(--xl-color-ai) 40%, transparent);
+}
+
+/* B00 右侧「本轮过程」检查器 */
+.chat__process {
+  border-left: 1px solid var(--xl-border);
+  background: var(--xl-bg-surface);
+  padding: var(--xl-space-4);
+  overflow-y: auto;
+}
+
+.chat__process-title {
+  margin: 0 0 var(--xl-space-3);
+  color: var(--xl-text-primary);
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
+}
+
+.chat__process-empty {
+  margin: 0;
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+  line-height: 1.7;
+}
+
+.chat__process-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat__process-card {
+  padding: var(--xl-space-3);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius);
+  background: var(--xl-bg-surface);
+}
+
+.chat__process-head {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
+}
+
+.chat__process-state {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--xl-color-success);
+  font-size: 16px;
+}
+
+.chat__process-state--fail {
+  color: var(--xl-color-danger);
+}
+
+.chat__process-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--xl-font-mono);
+  font-size: var(--xl-fs-caption);
+  color: var(--xl-text-primary);
+}
+
+.chat__process-time {
+  flex-shrink: 0;
+  color: var(--xl-text-muted);
+  font-size: 11px;
+}
+
+.chat__process-status {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--xl-color-success) 14%, transparent);
+  color: var(--xl-color-success);
+  font-size: 11px;
+}
+
+.chat__process-status--fail {
+  background: color-mix(in srgb, var(--xl-color-danger) 14%, transparent);
+  color: var(--xl-color-danger);
+}
+
+.chat__process-summary {
+  margin: 6px 0 0;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-caption);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.chat__process-ref {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--xl-border);
+  color: var(--xl-color-ai);
+  font-size: 11px;
+}
+
+.chat__process-total {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
+  margin-top: var(--xl-space-3);
+  padding: var(--xl-space-3);
+  border-radius: var(--xl-radius);
+  background: var(--xl-bg-page);
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-caption);
+}
+
+.chat__process-total-icon {
+  color: var(--xl-text-muted);
+}
+
+.chat__process-total-val {
+  margin-left: auto;
+  font-family: var(--xl-font-mono);
+  font-weight: 600;
+  color: var(--xl-text-primary);
 }
 
 @media (width <= 760px) {
@@ -1078,6 +1277,10 @@ onMounted(() => {
     border-right: none;
     border-bottom: 1px solid var(--xl-border);
     max-height: 200px;
+  }
+
+  .chat__process {
+    display: none;
   }
 }
 </style>

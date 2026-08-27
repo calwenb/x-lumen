@@ -5,12 +5,11 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
+import InitialAvatar from '@/components/InitialAvatar.vue'
 import { fetchKnowledges, VISIBILITY_LABELS } from '@/modules/content/api/knowledge'
 import { fetchDirectoryTree, fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
 import { fetchReleases } from '@/modules/publishing/api/release'
-import {
-  createAutoReview,
-} from '@/modules/publishing/api/review'
+import { createAutoReview } from '@/modules/publishing/api/review'
 import { useInfinitePage } from '@/composables/useInfinitePage'
 import Pagination from '@/modules/publishing/components/Pagination.vue'
 
@@ -198,9 +197,11 @@ async function doRelease(row: ReleaseRow, publishAt?: string): Promise<void> {
       // 强制审核关闭：无 AI 任务，提交即通过
       ElMessage.success(publishAt ? '已提交定时发布' : '已发布，公开可见')
     } else {
-      ElMessage.success(publishAt
-        ? `已提交 AI 审核，审核通过后将按计划于 ${publishAt.replace('T', ' ')} 发布，结果通过消息中心通知你`
-        : '已提交 AI 审核，审核通过后自动发布，结果通过消息中心通知你')
+      ElMessage.success(
+        publishAt
+          ? `已提交 AI 审核，审核通过后将按计划于 ${publishAt.replace('T', ' ')} 发布，结果通过消息中心通知你`
+          : '已提交 AI 审核，审核通过后自动发布，结果通过消息中心通知你',
+      )
     }
     await Promise.all([approvedInfinite.loadFirst(), loadReleases(1)])
   } catch (error) {
@@ -228,146 +229,191 @@ onMounted(() => {
       </p>
     </header>
 
-    <section class="release-page__section">
-      <h2 class="release-page__section-title">待发布知识（已通过审核）</h2>
-      <div v-if="approvedLoading" class="release-page__state">
-        <el-skeleton :rows="4" animated />
-      </div>
-      <div v-else-if="approvedError" class="release-page__state">
-        <p>待发布知识加载失败</p>
-        <el-button type="primary" plain size="small" @click="approvedInfinite.retry"
-          >重试</el-button
-        >
-      </div>
-      <div v-else-if="approved.length === 0" class="release-page__state">暂无待发布知识。</div>
-      <ul v-else class="release-page__list">
-        <li v-for="row in approved" :key="row.knowledge.id" class="release-row">
-          <div class="release-row__main">
-            <span class="release-row__title">{{ row.knowledge.title }}</span>
-            <span v-if="row.knowledge.kbId" class="release-row__meta">
-              v{{ row.knowledge.version }} · 目标：知识库{{ row.kbName }} · 目录{{
-                row.directoryName
-              }}
-            </span>
-            <span v-else class="release-row__meta release-row__meta--warn">
-              未归属知识库，请先在编辑页选择知识库
-            </span>
-          </div>
-          <div class="release-row__actions">
-            <input
-              v-model="row.publishAt"
-              class="release-row__datetime"
-              type="datetime-local"
-              aria-label="定时发布时间"
-            />
-            <el-button
-              type="primary"
-              size="small"
-              :loading="row.releasing"
-              :disabled="!row.knowledge.kbId"
-              @click="releaseNow(row)"
-            >
-              立即发布
-            </el-button>
-            <el-button
-              type="primary"
-              plain
-              size="small"
-              :loading="row.releasing"
-              :disabled="!row.knowledge.kbId"
-              @click="releaseScheduled(row)"
-            >
-              定时发布
-            </el-button>
-          </div>
-        </li>
-      </ul>
-      <div
-        v-if="approved.length > 0"
-        ref="approvedSentinel"
-        class="release-page__load-more"
-        role="status"
-      >
-        <span v-if="approvedInfinite.loadingMore">加载更多…</span>
-        <span v-else-if="approvedInfinite.loadMoreError">
-          加载失败，请
-          <button type="button" @click="approvedInfinite.retryMore">重试</button>
-        </span>
-        <span v-else-if="!approvedInfinite.hasMore">已加载全部待发布知识</span>
-      </div>
-    </section>
+    <div class="release-page__layout">
+      <!-- 左 56%：待发布知识 -->
+      <section class="release-page__section release-page__pending">
+        <h2 class="release-page__section-title">待发布知识（已通过审核）</h2>
+        <div v-if="approvedLoading" class="release-page__state">
+          <el-skeleton :rows="4" animated />
+        </div>
+        <div v-else-if="approvedError" class="release-page__state">
+          <p>待发布知识加载失败</p>
+          <el-button type="primary" plain size="small" @click="approvedInfinite.retry"
+            >重试</el-button
+          >
+        </div>
+        <div v-else-if="approved.length === 0" class="release-page__state">暂无待发布知识。</div>
+        <ul v-else class="release-page__list">
+          <li v-for="row in approved" :key="row.knowledge.id" class="release-row">
+            <div class="release-row__head">
+              <InitialAvatar :name="row.knowledge.title" :size="40" class="release-row__avatar" />
+              <div class="release-row__text">
+                <div class="release-row__title-line">
+                  <span class="release-row__title">{{ row.knowledge.title }}</span>
+                  <span class="release-row__chip">v{{ row.knowledge.version }}</span>
+                </div>
+              </div>
+            </div>
 
-    <section class="release-page__section">
-      <h2 class="release-page__section-title">发布记录</h2>
-      <div v-if="releasesLoading" class="release-page__state">
-        <el-skeleton :rows="4" animated />
-      </div>
-      <div v-else-if="releasesError" class="release-page__state">
-        <p>发布记录加载失败</p>
-        <el-button type="primary" plain size="small" @click="loadReleases(releasesPageNo)"
-          >重试</el-button
-        >
-      </div>
-      <div v-else-if="releases.length === 0" class="release-page__state">暂无发布记录。</div>
-      <template v-else>
-        <ul class="release-page__records">
-          <li v-for="record in releases" :key="record.id" class="release-record">
-            <span class="release-record__title">{{ record.knowledgeTitle }}</span>
-            <span class="release-record__meta">
-              {{ VISIBILITY_LABELS[record.visibility] ?? record.visibility }} ·
-              {{ RELEASE_STATUS_LABELS[record.status] ?? record.status }}
-            </span>
-            <span class="release-record__time">
-              {{
-                record.releasedAt
-                  ? formatTime(record.releasedAt)
-                  : record.publishAt
-                    ? `计划 ${formatTime(record.publishAt)}`
-                    : '—'
-              }}
-            </span>
+            <div class="release-row__targets">
+              <div class="release-row__target">
+                <span class="release-row__target-label">目标知识库</span>
+                <span class="release-row__target-value" :class="{ 'is-empty': !row.kbName }">{{
+                  row.kbName || '未归属'
+                }}</span>
+              </div>
+              <div class="release-row__target">
+                <span class="release-row__target-label">目录</span>
+                <span
+                  class="release-row__target-value"
+                  :class="{ 'is-empty': !row.directoryName }"
+                  >{{ row.directoryName || '—' }}</span
+                >
+              </div>
+            </div>
+
+            <p v-if="!row.knowledge.kbId" class="release-row__warn">
+              未归属知识库，请先在编辑页选择知识库
+            </p>
+
+            <div class="release-row__actions">
+              <input
+                v-model="row.publishAt"
+                class="release-row__datetime"
+                type="datetime-local"
+                aria-label="定时发布时间"
+              />
+              <el-button
+                type="primary"
+                size="small"
+                :loading="row.releasing"
+                :disabled="!row.knowledge.kbId"
+                @click="releaseNow(row)"
+              >
+                立即发布
+              </el-button>
+              <el-button
+                type="primary"
+                plain
+                size="small"
+                :loading="row.releasing"
+                :disabled="!row.knowledge.kbId"
+                @click="releaseScheduled(row)"
+              >
+                定时发布
+              </el-button>
+            </div>
           </li>
         </ul>
-        <Pagination
-          :page-no="releasesPageNo"
-          :page-size="PAGE_SIZE"
-          :total="releasesTotal"
-          @change="loadReleases"
-        />
-      </template>
-    </section>
+        <div
+          v-if="approved.length > 0"
+          ref="approvedSentinel"
+          class="release-page__load-more"
+          role="status"
+        >
+          <span v-if="approvedInfinite.loadingMore">加载更多…</span>
+          <span v-else-if="approvedInfinite.loadMoreError">
+            加载失败，请
+            <button type="button" @click="approvedInfinite.retryMore">重试</button>
+          </span>
+          <span v-else-if="!approvedInfinite.hasMore">已加载全部待发布知识</span>
+        </div>
+      </section>
+
+      <!-- 右 44%：发布记录 -->
+      <section class="release-page__section release-page__records-col">
+        <h2 class="release-page__section-title">发布记录</h2>
+        <div v-if="releasesLoading" class="release-page__state">
+          <el-skeleton :rows="4" animated />
+        </div>
+        <div v-else-if="releasesError" class="release-page__state">
+          <p>发布记录加载失败</p>
+          <el-button type="primary" plain size="small" @click="loadReleases(releasesPageNo)"
+            >重试</el-button
+          >
+        </div>
+        <div v-else-if="releases.length === 0" class="release-page__state">暂无发布记录。</div>
+        <template v-else>
+          <ul class="release-page__records">
+            <li v-for="record in releases" :key="record.id" class="release-record">
+              <span class="release-record__title">{{ record.knowledgeTitle }}</span>
+              <span class="release-record__meta">
+                {{ VISIBILITY_LABELS[record.visibility] ?? record.visibility }} ·
+                {{ RELEASE_STATUS_LABELS[record.status] ?? record.status }}
+              </span>
+              <span class="release-record__time">
+                {{
+                  record.releasedAt
+                    ? formatTime(record.releasedAt)
+                    : record.publishAt
+                      ? `计划 ${formatTime(record.publishAt)}`
+                      : '—'
+                }}
+              </span>
+            </li>
+          </ul>
+          <Pagination
+            :page-no="releasesPageNo"
+            :page-size="PAGE_SIZE"
+            :total="releasesTotal"
+            @change="loadReleases"
+          />
+        </template>
+      </section>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .release-page {
-  max-width: 960px;
+  max-width: var(--xl-container);
   margin: 0 auto;
-  padding: 32px 20px 64px;
+  padding: 40px var(--xl-content-pad) 64px;
 }
 
 .release-page__header {
-  margin-bottom: 24px;
+  margin-bottom: var(--xl-space-6);
 }
 
 .release-page__title {
   margin: 0;
-  font-size: 24px;
+  font-size: var(--xl-fs-h1);
+  font-weight: var(--xl-fs-h1-w);
+  line-height: var(--xl-fs-h1-lh);
+  letter-spacing: var(--xl-fs-h1-track);
+  color: var(--xl-text-primary);
 }
 
 .release-page__intro {
-  margin: 8px 0 0;
+  margin: var(--xl-space-3) 0 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
+  line-height: var(--xl-fs-body-lh);
+}
+
+.release-page__layout {
+  display: grid;
+  grid-template-columns: 56fr 44fr;
+  gap: var(--xl-space-6);
+  align-items: start;
 }
 
 .release-page__section {
-  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--xl-space-4);
+  padding: var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
 }
 
 .release-page__section-title {
-  margin: 0 0 12px;
-  font-size: 17px;
+  margin: 0;
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
+  color: var(--xl-text-primary);
 }
 
 .release-page__state {
@@ -384,7 +430,7 @@ onMounted(() => {
 .release-page__list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--xl-space-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -406,21 +452,33 @@ onMounted(() => {
 
 .release-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px;
+  flex-direction: column;
+  gap: var(--xl-space-3);
+  padding: 16px 18px;
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
   box-shadow: var(--xl-shadow-sm);
 }
 
-.release-row__main {
+.release-row__head {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: var(--xl-space-3);
+}
+
+.release-row__avatar {
+  flex-shrink: 0;
+}
+
+.release-row__text {
+  min-width: 0;
+}
+
+.release-row__title-line {
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
   min-width: 0;
 }
 
@@ -430,23 +488,59 @@ onMounted(() => {
   overflow-wrap: break-word;
 }
 
-.release-row__meta {
+.release-row__chip {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border: 1px solid var(--xl-border);
+  border-radius: 999px;
   color: var(--xl-text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.release-row__targets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--xl-space-3);
+}
+
+.release-row__target {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.release-row__target-label {
+  color: var(--xl-text-muted);
   font-size: 12px;
 }
 
-.release-row__meta--warn {
+.release-row__target-value {
+  color: var(--xl-text-primary);
+  font-size: 13px;
+  overflow-wrap: break-word;
+}
+
+.release-row__target-value.is-empty {
   color: var(--xl-color-warning);
+}
+
+.release-row__warn {
+  margin: 0;
+  color: var(--xl-color-warning);
+  font-size: 12px;
 }
 
 .release-row__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--xl-space-2);
 }
 
 .release-row__datetime {
+  flex: 1;
+  min-width: 180px;
   padding: 6px 10px;
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-sm);
@@ -463,7 +557,7 @@ onMounted(() => {
 .release-page__records {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--xl-space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -471,19 +565,15 @@ onMounted(() => {
 
 .release-record {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
   padding: 12px 16px;
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
 }
 
 .release-record__title {
-  flex: 1;
-  min-width: 200px;
   font-size: 14px;
   overflow-wrap: break-word;
 }
@@ -496,5 +586,11 @@ onMounted(() => {
 .release-record__time {
   color: var(--xl-text-muted);
   font-size: 12px;
+}
+
+@media (width <= 960px) {
+  .release-page__layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

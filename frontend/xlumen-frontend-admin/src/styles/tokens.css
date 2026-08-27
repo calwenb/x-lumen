@@ -1,17 +1,54 @@
 /* Design Token（FRONTEND.md §10.1）：所有业务样式通过 var(--xl-xxx) 引用，禁止硬编码颜色。
-   MVP 仅 light 主题；dark 变体预留，V2 启用切换入口。 */
+   V2 设计系统（与博客端同步）：Indigo #5367E8 / Ink #162033 / AI Teal #12A594 / Paper #F7F8FC /
+   Surface #FFFFFF / Border #E7EAF0 / Success #2E8B68 / Warning #B7791F / Danger #C94B50。
+   仅 light 主题（用户拍板固定浅色）；dark 变体预留但不启用。 */
 :root {
-  --xl-bg-page: #f6f8fc;
-  --xl-bg-surface: #fff;
-  --xl-text-primary: #1f2937;
-  --xl-text-secondary: #667085;
-  --xl-text-muted: #98a2b3;
+  /* 品牌色 */
   --xl-color-primary: #5367e8;
   --xl-color-primary-hover: #4558d6;
   --xl-color-ai: #12a594;
+
+  /* 中性色 */
+  --xl-bg-page: #f7f8fc; /* Paper */
+  --xl-bg-surface: #ffffff; /* Surface */
+  --xl-bg-secondary: #eef1f7;
+  --xl-text-primary: #162033; /* Ink */
+  --xl-text-secondary: #667085; /* Muted Text */
+  --xl-text-muted: #98a2b3;
   --xl-border: #e7eaf0;
-  --xl-font-sans: system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --xl-font-mono: 'JetBrains Mono', consolas, monospace;
+
+  /* 语义色：与 AI Teal 严格区分（AI 仅用于 AI 标记/生成态/引用/建议） */
+  --xl-color-success: #2e8b68;
+  --xl-color-warning: #b7791f;
+  --xl-color-danger: #c94b50;
+  --xl-color-danger-light: #f0a6a4;
+
+  /* 字体：MiSans / 思源黑体，回退 PingFang SC 与系统字体 */
+  --xl-font-sans: 'MiSans', 'Source Han Sans SC', 'Source Han Sans CN', system-ui,
+    'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --xl-font-mono: 'JetBrains Mono', 'SFMono-Regular', consolas, monospace;
+
+  /* 字体层级（H1 38/700/-0.02em，H2 24/600，正文 14/1.6，Caption 12/1.4） */
+  --xl-fs-h1: 38px;
+  --xl-fs-h1-lh: 1.2;
+  --xl-fs-h1-w: 700;
+  --xl-fs-h1-track: -0.02em;
+  --xl-fs-h2: 24px;
+  --xl-fs-h2-lh: 1.4;
+  --xl-fs-h2-w: 600;
+  --xl-fs-h2-track: -0.01em;
+  --xl-fs-title: 18px;
+  --xl-fs-title-lh: 1.4;
+  --xl-fs-title-w: 600;
+  --xl-fs-body: 14px;
+  --xl-fs-body-lh: 1.6;
+  --xl-fs-caption: 12px;
+  --xl-fs-caption-lh: 1.4;
+
+  /* 布局：顶栏高度与内容容器 */
+  --xl-header-h: 64px;
+  --xl-container: 1360px;
+  --xl-content-pad: 24px;
 
   /* 4px 基础间距（FRONTEND.md §10.1） */
   --xl-space-1: 4px;
@@ -20,15 +57,11 @@
   --xl-space-4: 16px;
   --xl-space-6: 24px;
   --xl-space-8: 32px;
+
+  /* 圆角：卡片 12px / 控件 8px / 小控件 6px（与 Element Plus 对齐） */
   --xl-radius-card: 12px;
   --xl-radius: 8px;
   --xl-radius-sm: 6px;
-
-  /* 辅助背景与语义色：错误/成功/警示，组件内禁止硬编码（白字 #fff 除外） */
-  --xl-bg-secondary: #eef1f7;
-  --xl-color-danger: #d92d20;
-  --xl-color-success: #12a594;
-  --xl-color-warning: #dc6803;
 
   /* 阴影体系：卡片常规/悬浮抬升/弹窗浮层 */
   --xl-shadow-sm: 0 1px 2px rgb(16 24 40 / 5%);
@@ -39,7 +72,7 @@
   --xl-transition: 0.2s ease;
 }
 
-/* ===== dark 主题（V2 深浅色切换，html.dark 生效） ===== */
+/* ===== dark 主题（V2 深浅色切换，html.dark 生效；当前固定浅色未启用） ===== */
 html.dark {
   --xl-bg-page: #0f1117;
   --xl-bg-surface: #171a22;

@@ -116,28 +116,44 @@ export async function createKnowledgeBase(payload: {
 }
 
 /** 更新知识库。 */
-export async function updateKnowledgeBase(kbId: string, payload: { name?: string; intro?: string; cover?: string }): Promise<KnowledgeBase> {
-  const { data } = await http.put<ApiResponse<RawKnowledgeBase>>(`/knowledge-bases/${kbId}`, payload)
+export async function updateKnowledgeBase(
+  kbId: string,
+  payload: { name?: string; intro?: string; cover?: string },
+): Promise<KnowledgeBase> {
+  const { data } = await http.put<ApiResponse<RawKnowledgeBase>>(
+    `/knowledge-bases/${kbId}`,
+    payload,
+  )
   const kb = unwrap(data)
   return { ...kb, knowledgeCount: toNumber(kb.knowledgeCount) }
 }
 
 /** 删除知识库（二次确认 confirm=CONFIRM，连带回收站）。 */
 export async function deleteKnowledgeBase(kbId: string, confirm = 'CONFIRM'): Promise<void> {
-  const { data } = await http.delete<ApiResponse<null>>(`/knowledge-bases/${kbId}`, { params: { confirm } })
+  const { data } = await http.delete<ApiResponse<null>>(`/knowledge-bases/${kbId}`, {
+    params: { confirm },
+  })
   unwrap(data)
 }
 
 /** 切换知识库可见性（0 私有/1 公开，即时生效）。 */
-export async function changeKnowledgeBaseVisibility(kbId: string, visibility: 0 | 1): Promise<KnowledgeBase> {
-  const { data } = await http.put<ApiResponse<RawKnowledgeBase>>(`/knowledge-bases/${kbId}/visibility`, { visibility })
+export async function changeKnowledgeBaseVisibility(
+  kbId: string,
+  visibility: 0 | 1,
+): Promise<KnowledgeBase> {
+  const { data } = await http.put<ApiResponse<RawKnowledgeBase>>(
+    `/knowledge-bases/${kbId}/visibility`,
+    { visibility },
+  )
   const kb = unwrap(data)
   return { ...kb, knowledgeCount: toNumber(kb.knowledgeCount) }
 }
 
 /** 目录树（按名称排序）。 */
 export async function fetchDirectoryTree(kbId: string): Promise<DirectoryNode[]> {
-  const { data } = await http.get<ApiResponse<RawDirectoryNode[]>>(`/knowledge-bases/${kbId}/directories`)
+  const { data } = await http.get<ApiResponse<RawDirectoryNode[]>>(
+    `/knowledge-bases/${kbId}/directories`,
+  )
   return unwrap(data).map((node) => mapDirectory(node))
 }
 
@@ -153,13 +169,23 @@ function mapDirectory(node: RawDirectoryNode): DirectoryNode {
 }
 
 /** 创建目录。 */
-export async function createDirectory(kbId: string, payload: { parentId?: string; name: string }): Promise<DirectoryNode> {
-  const { data } = await http.post<ApiResponse<RawDirectoryNode>>(`/knowledge-bases/${kbId}/directories`, payload)
+export async function createDirectory(
+  kbId: string,
+  payload: { parentId?: string; name: string },
+): Promise<DirectoryNode> {
+  const { data } = await http.post<ApiResponse<RawDirectoryNode>>(
+    `/knowledge-bases/${kbId}/directories`,
+    payload,
+  )
   return mapDirectory(unwrap(data))
 }
 
 /** 更新目录。 */
-export async function updateDirectory(kbId: string, directoryId: string, payload: { name: string }): Promise<DirectoryNode> {
+export async function updateDirectory(
+  kbId: string,
+  directoryId: string,
+  payload: { name: string },
+): Promise<DirectoryNode> {
   const { data } = await http.put<ApiResponse<RawDirectoryNode>>(
     `/knowledge-bases/${kbId}/directories/${directoryId}`,
     payload,
@@ -169,7 +195,9 @@ export async function updateDirectory(kbId: string, directoryId: string, payload
 
 /** 删除目录（目录下知识上挂父目录）。 */
 export async function deleteDirectory(kbId: string, directoryId: string): Promise<void> {
-  const { data } = await http.delete<ApiResponse<null>>(`/knowledge-bases/${kbId}/directories/${directoryId}`)
+  const { data } = await http.delete<ApiResponse<null>>(
+    `/knowledge-bases/${kbId}/directories/${directoryId}`,
+  )
   unwrap(data)
 }
 
@@ -177,7 +205,9 @@ export async function deleteDirectory(kbId: string, directoryId: string): Promis
 export async function fetchRecycleBin(
   params: { type?: 'kb' | 'knowledge'; pageNo?: number; pageSize?: number } = {},
 ): Promise<PageResult<RecycleBinItem>> {
-  const { data } = await http.get<ApiResponse<RawPage<RawRecycleBinItem>>>('/recycle-bin', { params })
+  const { data } = await http.get<ApiResponse<RawPage<RawRecycleBinItem>>>('/recycle-bin', {
+    params,
+  })
   const body = unwrap(data)
   return {
     total: toNumber(body.total),
@@ -194,7 +224,13 @@ export async function restoreRecycleBinItem(type: 'kb' | 'knowledge', id: string
 }
 
 /** 彻底删除回收站条目（二次确认 confirm=CONFIRM）。 */
-export async function purgeRecycleBinItem(type: 'kb' | 'knowledge', id: string, confirm = 'CONFIRM'): Promise<void> {
-  const { data } = await http.delete<ApiResponse<null>>(`/recycle-bin/${type}/${id}`, { params: { confirm } })
+export async function purgeRecycleBinItem(
+  type: 'kb' | 'knowledge',
+  id: string,
+  confirm = 'CONFIRM',
+): Promise<void> {
+  const { data } = await http.delete<ApiResponse<null>>(`/recycle-bin/${type}/${id}`, {
+    params: { confirm },
+  })
   unwrap(data)
 }

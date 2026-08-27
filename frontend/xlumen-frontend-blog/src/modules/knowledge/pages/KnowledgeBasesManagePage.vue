@@ -1,12 +1,13 @@
 <script setup lang="ts">
-// 知识库管理页（B22，决策 D16）：我的知识库卡片墙 + 库资料编辑/可见性切换/删除 +
-// 每卡片可展开的目录管理（目录树、新建/改名/删除）。需登录（路由 meta 守卫 + 页内兜底）。
+// 知识库管理页（B22，决策 D16）：两栏主从工作区——左 320px 知识库索引列 + 右选中库管理画布
+// （库资料编辑/可见性切换/删除 + 目录树、新建/改名/删除）。需登录（路由 meta 守卫 + 页内兜底）。
 // 破坏性操作一律二次确认：删库（知识一并入回收站）、删目录（知识上挂父目录）。
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Collection, Edit, Folder, Plus } from '@element-plus/icons-vue'
 
+import InitialAvatar from '@/components/InitialAvatar.vue'
 import { useSessionStore } from '@/stores/session'
 import {
   changeKnowledgeBaseVisibility,
@@ -289,97 +290,115 @@ onMounted(() => {
       <el-icon class="kb-manage__state-icon"><Collection /></el-icon>
       <p class="kb-manage__state-text">还没有知识库，点击右上角「新建知识库」开始。</p>
     </div>
-    <div v-else class="kb-manage__grid">
-      <article v-for="kb in kbs" :key="kb.id" class="kb-manage__card">
-        <div class="kb-manage__cover" :class="{ 'kb-manage__cover--private': kb.visibility === 0 }">
-          <span class="kb-manage__cover-text">{{ kb.name.slice(0, 1) }}</span>
-        </div>
-        <div class="kb-manage__card-body">
-          <div class="kb-manage__name-row">
-            <h2 class="kb-manage__name">{{ kb.name }}</h2>
-            <el-tag :type="kb.visibility === 1 ? 'success' : 'info'" effect="plain" size="small">
-              {{ kb.visibility === 1 ? '公开' : '私有' }}
-            </el-tag>
-          </div>
-          <p class="kb-manage__intro">{{ kb.intro || '暂无简介' }}</p>
-          <div class="kb-manage__meta">
-            <span>知识 {{ kb.knowledgeCount }}</span>
-          </div>
-          <div class="kb-manage__actions">
-            <el-button size="small" plain @click="openEdit(kb)">
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-            <el-switch
-              v-model="kb.visibility"
-              :active-value="1"
-              :inactive-value="0"
-              size="small"
-              inline-prompt
-              :active-text="kb.visibility === 1 ? '公开' : ''"
-              :inactive-text="kb.visibility === 0 ? '私有' : ''"
-              aria-label="切换可见性"
-              @change="(value: unknown) => handleVisibility(kb, value)"
-            />
-            <el-button size="small" type="danger" plain @click="handleDelete(kb)">删除</el-button>
-          </div>
-          <button
-            type="button"
-            class="kb-manage__toggle"
-            :class="{ 'kb-manage__toggle--open': expandedId === kb.id }"
-            @click="toggleExpand(kb.id)"
-          >
-            <el-icon><Folder /></el-icon>
-            目录管理
-            <span class="kb-manage__toggle-arrow">▾</span>
-          </button>
-          <div v-if="expandedId === kb.id" class="kb-manage__dirs">
-            <div class="kb-manage__dirs-toolbar">
-              <span class="kb-manage__dirs-label">目录树</span>
-              <el-button size="small" plain @click="openNewDir(kb)">
-                <el-icon><Plus /></el-icon>
-                新建目录
-              </el-button>
-            </div>
-            <div v-if="treeLoading" class="kb-manage__dirs-loading">目录加载中…</div>
-            <div v-else-if="(trees[kb.id] ?? []).length === 0" class="kb-manage__dirs-empty">
-              还没有目录，新建一个吧。
-            </div>
-            <el-tree
-              v-else
-              :data="trees[kb.id] ?? []"
-              node-key="id"
-              :props="{ label: 'name', children: 'children' }"
-              default-expand-all
-              class="kb-manage__tree"
+    <div v-else class="kb-manage__layout">
+      <aside class="kb-manage__rail">
+        <ul class="kb-manage__list">
+          <li v-for="kb in kbs" :key="kb.id" class="kb-manage__entry">
+            <button
+              type="button"
+              class="kb-manage__entry-btn"
+              :class="{ 'kb-manage__entry-btn--active': expandedId === kb.id }"
+              @click="toggleExpand(kb.id)"
             >
-              <template #default="{ data }">
-                <span class="kb-manage__dir">
-                  <el-icon class="kb-manage__dir-icon"><Folder /></el-icon>
-                  <span class="kb-manage__dir-name">{{ data.name }}</span>
-                  <span class="kb-manage__dir-count">{{ data.knowledgeCount }}</span>
-                  <span class="kb-manage__dir-ops">
-                    <button
-                      type="button"
-                      class="kb-manage__dir-op"
-                      @click.stop="openRename(kb.id, data)"
-                    >
-                      改名
-                    </button>
-                    <button
-                      type="button"
-                      class="kb-manage__dir-op kb-manage__dir-op--danger"
-                      @click.stop="handleDeleteDir(kb.id, data)"
-                    >
-                      删除
-                    </button>
-                  </span>
+              <InitialAvatar :name="kb.name" :size="40" />
+              <span class="kb-manage__entry-body">
+                <span class="kb-manage__entry-top">
+                  <span class="kb-manage__entry-name">{{ kb.name }}</span>
+                  <el-tag
+                    :type="kb.visibility === 1 ? 'success' : 'info'"
+                    effect="plain"
+                    size="small"
+                  >
+                    {{ kb.visibility === 1 ? '公开' : '私有' }}
+                  </el-tag>
                 </span>
-              </template>
-            </el-tree>
+                <span class="kb-manage__entry-intro">{{ kb.intro || '暂无简介' }}</span>
+                <span class="kb-manage__entry-meta">知识 {{ kb.knowledgeCount }}</span>
+              </span>
+            </button>
+          </li>
+        </ul>
+      </aside>
+
+      <section class="kb-manage__canvas">
+        <template v-for="kb in kbs" :key="kb.id">
+          <div v-if="expandedId === kb.id" class="kb-manage__canvas-inner">
+            <div class="kb-manage__canvas-top">
+              <span class="kb-manage__canvas-caption">当前库</span>
+              <span class="kb-manage__canvas-name">{{ kb.name }}</span>
+              <div class="kb-manage__canvas-actions">
+                <el-button size="small" plain @click="openEdit(kb)">
+                  <el-icon><Edit /></el-icon>
+                  编辑资料
+                </el-button>
+                <el-switch
+                  v-model="kb.visibility"
+                  :active-value="1"
+                  :inactive-value="0"
+                  size="small"
+                  inline-prompt
+                  :active-text="kb.visibility === 1 ? '公开' : ''"
+                  :inactive-text="kb.visibility === 0 ? '私有' : ''"
+                  aria-label="切换可见性"
+                  @change="(value: unknown) => handleVisibility(kb, value)"
+                />
+                <el-button size="small" type="danger" plain @click="handleDelete(kb)"
+                  >删除</el-button
+                >
+              </div>
+            </div>
+
+            <div class="kb-manage__dirs">
+              <div class="kb-manage__dirs-toolbar">
+                <span class="kb-manage__dirs-label">目录树</span>
+                <el-button size="small" plain @click="openNewDir(kb)">
+                  <el-icon><Plus /></el-icon>
+                  新建目录
+                </el-button>
+              </div>
+              <div v-if="treeLoading" class="kb-manage__dirs-loading">目录加载中…</div>
+              <div v-else-if="(trees[kb.id] ?? []).length === 0" class="kb-manage__dirs-empty">
+                还没有目录，新建一个吧。
+              </div>
+              <el-tree
+                v-else
+                :data="trees[kb.id] ?? []"
+                node-key="id"
+                :props="{ label: 'name', children: 'children' }"
+                default-expand-all
+                class="kb-manage__tree"
+              >
+                <template #default="{ data }">
+                  <span class="kb-manage__dir">
+                    <el-icon class="kb-manage__dir-icon"><Folder /></el-icon>
+                    <span class="kb-manage__dir-name">{{ data.name }}</span>
+                    <span class="kb-manage__dir-count">{{ data.knowledgeCount }}</span>
+                    <span class="kb-manage__dir-ops">
+                      <button
+                        type="button"
+                        class="kb-manage__dir-op"
+                        @click.stop="openRename(kb.id, data)"
+                      >
+                        改名
+                      </button>
+                      <button
+                        type="button"
+                        class="kb-manage__dir-op kb-manage__dir-op--danger"
+                        @click.stop="handleDeleteDir(kb.id, data)"
+                      >
+                        删除
+                      </button>
+                    </span>
+                  </span>
+                </template>
+              </el-tree>
+            </div>
           </div>
+        </template>
+        <div v-if="!expandedId" class="kb-manage__canvas-empty">
+          从左侧选择一个知识库开始管理目录。
         </div>
-      </article>
+      </section>
     </div>
 
     <el-dialog v-model="createVisible" title="新建知识库" width="440px">
@@ -460,7 +479,7 @@ onMounted(() => {
 
 <style scoped>
 .kb-manage {
-  max-width: 1080px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: var(--xl-space-6) var(--xl-space-4) var(--xl-space-8);
 }
@@ -477,13 +496,15 @@ onMounted(() => {
 .kb-manage__title {
   margin: 0 0 var(--xl-space-1);
   color: var(--xl-text-primary);
-  font-size: 24px;
+  font-size: var(--xl-fs-h2);
+  font-weight: var(--xl-fs-h2-w);
+  letter-spacing: var(--xl-fs-h2-track);
 }
 
 .kb-manage__desc {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-body);
 }
 
 .kb-manage__state {
@@ -510,135 +531,157 @@ onMounted(() => {
   background: color-mix(in srgb, var(--xl-border) 60%, transparent);
 }
 
-.kb-manage__grid {
+.kb-manage__layout {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--xl-space-4);
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: var(--xl-space-6);
   align-items: start;
 }
 
-.kb-manage__card {
+.kb-manage__rail {
+  position: sticky;
+  top: calc(var(--xl-header-h) + var(--xl-space-4));
   overflow: hidden;
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
   box-shadow: var(--xl-shadow-sm);
-  transition: box-shadow var(--xl-transition);
 }
 
-.kb-manage__card:hover {
-  box-shadow: var(--xl-shadow-md);
-}
-
-.kb-manage__cover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 72px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--xl-color-primary) 22%, transparent),
-    transparent
-  );
-}
-
-.kb-manage__cover--private {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--xl-text-muted) 30%, transparent),
-    transparent
-  );
-}
-
-.kb-manage__cover-text {
-  color: color-mix(in srgb, var(--xl-color-primary) 70%, var(--xl-text-primary));
-  font-size: 32px;
-  font-weight: 700;
-}
-
-.kb-manage__card-body {
+.kb-manage__list {
   display: flex;
   flex-direction: column;
-  gap: var(--xl-space-2);
-  padding: var(--xl-space-4);
+  margin: 0;
+  padding: var(--xl-space-2);
+  list-style: none;
 }
 
-.kb-manage__name-row {
+.kb-manage__entry + .kb-manage__entry {
+  margin-top: var(--xl-space-1);
+}
+
+.kb-manage__entry-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--xl-space-3);
+  width: 100%;
+  padding: var(--xl-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--xl-radius);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--xl-transition),
+    border-color var(--xl-transition);
+}
+
+.kb-manage__entry-btn:hover {
+  background: var(--xl-bg-secondary);
+}
+
+.kb-manage__entry-btn--active {
+  border-color: var(--xl-color-primary);
+  background: color-mix(in srgb, var(--xl-color-primary) 8%, transparent);
+}
+
+.kb-manage__entry-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--xl-space-1);
+  min-width: 0;
+}
+
+.kb-manage__entry-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--xl-space-2);
 }
 
-.kb-manage__name {
+.kb-manage__entry-name {
   min-width: 0;
-  margin: 0;
   overflow: hidden;
   color: var(--xl-text-primary);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--xl-fs-title);
+  font-weight: var(--xl-fs-title-w);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.kb-manage__intro {
-  margin: 0;
+.kb-manage__entry-intro {
   color: var(--xl-text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: var(--xl-fs-caption);
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.kb-manage__meta {
+.kb-manage__entry-meta {
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
-.kb-manage__actions {
+.kb-manage__canvas {
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+.kb-manage__canvas-inner {
+  padding: var(--xl-space-4);
+}
+
+.kb-manage__canvas-top {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--xl-space-2);
-  padding-top: var(--xl-space-1);
-  border-top: 1px solid var(--xl-border);
+  margin-bottom: var(--xl-space-4);
+  padding-bottom: var(--xl-space-4);
+  border-bottom: 1px solid var(--xl-border);
 }
 
-.kb-manage__toggle {
+.kb-manage__canvas-caption {
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.kb-manage__canvas-name {
+  margin: 0;
+  color: var(--xl-text-primary);
+  font-size: var(--xl-fs-h2);
+  font-weight: var(--xl-fs-h2-w);
+  letter-spacing: var(--xl-fs-h2-track);
+}
+
+.kb-manage__canvas-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--xl-space-2);
+  margin-left: auto;
+}
+
+.kb-manage__canvas-empty {
   display: flex;
   align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-sm);
-  background: var(--xl-bg-secondary);
-  color: var(--xl-text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.kb-manage__toggle:hover {
-  color: var(--xl-color-primary);
-}
-
-.kb-manage__toggle--open {
-  color: var(--xl-color-primary);
-}
-
-.kb-manage__toggle-arrow {
-  margin-left: auto;
-  transition: transform var(--xl-transition);
-}
-
-.kb-manage__toggle--open .kb-manage__toggle-arrow {
-  transform: rotate(180deg);
+  justify-content: center;
+  min-height: 420px;
+  padding: var(--xl-space-6);
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-body);
+  text-align: center;
 }
 
 .kb-manage__dirs {
-  padding: var(--xl-space-3);
+  padding: var(--xl-space-4);
   border: 1px solid var(--xl-border);
   border-radius: var(--xl-radius-sm);
   background: var(--xl-bg-page);
@@ -653,14 +696,14 @@ onMounted(() => {
 
 .kb-manage__dirs-label {
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .kb-manage__dirs-loading,
 .kb-manage__dirs-empty {
   padding: var(--xl-space-3) 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   text-align: center;
 }
 
@@ -680,7 +723,7 @@ onMounted(() => {
   width: 100%;
   padding-right: 4px;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: var(--xl-fs-body);
 }
 
 .kb-manage__dir-icon {
@@ -733,5 +776,15 @@ onMounted(() => {
 .kb-manage__dir-op--danger:hover {
   background: color-mix(in srgb, var(--xl-color-danger) 10%, transparent);
   color: var(--xl-color-danger);
+}
+
+@media (width <= 860px) {
+  .kb-manage__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .kb-manage__rail {
+    position: static;
+  }
 }
 </style>

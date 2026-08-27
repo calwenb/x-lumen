@@ -81,94 +81,114 @@ onMounted(() => {
   <main class="audit">
     <h1 class="audit__title">审计日志</h1>
 
-    <div class="audit__filters">
-      <el-input
-        v-model="actionFilter"
-        class="audit__filter-input"
-        placeholder="动作筛选，如 LOGIN"
-        aria-label="动作筛选"
-        clearable
-        @keyup.enter="applyFilter"
-      />
-      <el-button type="primary" plain @click="applyFilter">筛选</el-button>
-    </div>
+    <div class="audit__layout">
+      <!-- A05 左侧 ~64%：日志表 + 筛选 + 分页 -->
+      <section class="audit__list">
+        <div class="audit__filters">
+          <el-input
+            v-model="actionFilter"
+            class="audit__filter-input"
+            placeholder="动作筛选，如 LOGIN"
+            aria-label="动作筛选"
+            clearable
+            @keyup.enter="applyFilter"
+          />
+          <el-button type="primary" plain @click="applyFilter">筛选</el-button>
+        </div>
 
-    <div v-if="loading" class="audit__state" role="status">
-      <el-skeleton :rows="8" animated />
-    </div>
-    <div v-else-if="loadError" class="audit__state">
-      <p>加载失败，请稍后重试。</p>
-      <el-button type="primary" plain @click="load()">重试</el-button>
-    </div>
-    <div v-else-if="records.length === 0" class="audit__state">
-      <el-icon class="audit__state-icon"><Document /></el-icon>
-      <p>暂无审计日志</p>
-    </div>
-    <template v-else>
-      <el-table
-        :data="records"
-        class="audit__table"
-        :header-cell-style="{ background: 'var(--xl-bg-secondary)' }"
-      >
-        <el-table-column label="时间" min-width="130">
-          <template #default="{ row }">
-            <span class="audit__cell-time">{{ formatTime(row.createdAt) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="operatorName" label="操作人" min-width="110" />
-        <el-table-column prop="action" label="动作" min-width="170" />
-        <el-table-column label="目标" min-width="180">
-          <template #default="{ row }">{{ formatTarget(row) }}</template>
-        </el-table-column>
-        <el-table-column label="详情" width="90">
-          <template #default="{ row }">
-            <el-button
-              v-if="formatDetail(row.detailJson)"
-              type="primary"
-              link
-              @click="openDetail(row)"
-              >查看</el-button
-            >
-            <span v-else class="audit__detail-empty">—</span>
-          </template>
-        </el-table-column>
-      </el-table>
+        <div v-if="loading" class="audit__state" role="status">
+          <el-skeleton :rows="8" animated />
+        </div>
+        <div v-else-if="loadError" class="audit__state">
+          <p>加载失败，请稍后重试。</p>
+          <el-button type="primary" plain @click="load()">重试</el-button>
+        </div>
+        <div v-else-if="records.length === 0" class="audit__state">
+          <el-icon class="audit__state-icon"><Document /></el-icon>
+          <p>暂无审计日志</p>
+        </div>
+        <template v-else>
+          <el-table
+            :data="records"
+            class="audit__table"
+            :max-height="620"
+            :row-class-name="
+              (data: any) => (detailRecord?.id === data.row.id ? 'audit__row-active' : '')
+            "
+            :header-cell-style="{ background: 'var(--xl-bg-secondary)' }"
+          >
+            <el-table-column label="时间" min-width="130">
+              <template #default="{ row }">
+                <span class="audit__cell-time">{{ formatTime(row.createdAt) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="operatorName" label="操作人" min-width="110" />
+            <el-table-column prop="action" label="动作" min-width="170" />
+            <el-table-column label="目标" min-width="180">
+              <template #default="{ row }">{{ formatTarget(row) }}</template>
+            </el-table-column>
+            <el-table-column label="详情" width="90">
+              <template #default="{ row }">
+                <el-button
+                  v-if="formatDetail(row.detailJson)"
+                  type="primary"
+                  link
+                  @click="openDetail(row)"
+                  >查看</el-button
+                >
+                <span v-else class="audit__detail-empty">—</span>
+              </template>
+            </el-table-column>
+          </el-table>
 
-      <nav class="audit__pagination" aria-label="分页">
-        <el-pagination
-          :current-page="pageNo"
-          :page-size="PAGE_SIZE"
-          :total="total"
-          layout="prev, pager, next, total"
-          @current-change="(page: number) => load(page)"
-        />
-      </nav>
-    </template>
+          <nav class="audit__pagination" aria-label="分页">
+            <el-pagination
+              :current-page="pageNo"
+              :page-size="PAGE_SIZE"
+              :total="total"
+              layout="prev, pager, next, total"
+              @current-change="(page: number) => load(page)"
+            />
+          </nav>
+        </template>
+      </section>
 
-    <el-dialog v-model="detailVisible" title="审计详情" width="560px">
-      <div v-if="detailRecord" class="audit__detail-meta">
-        <span>{{ formatTime(detailRecord.createdAt) }}</span>
-        <span>{{ detailRecord.operatorName || '系统' }}</span>
-        <span>{{ detailRecord.action }}</span>
-      </div>
-      <pre class="audit__detail-body">{{
-        detailRecord ? formatDetail(detailRecord.detailJson) : ''
-      }}</pre>
-    </el-dialog>
+      <!-- A05 右侧 ~36%：审计详情检查器 -->
+      <aside v-if="detailRecord" class="audit__inspector" aria-label="审计详情">
+        <h2 class="audit__inspector-title">审计详情</h2>
+        <div class="audit__detail-meta">
+          <span>{{ formatTime(detailRecord.createdAt) }}</span>
+          <span>{{ detailRecord.operatorName || '系统' }}</span>
+          <span>{{ detailRecord.action }}</span>
+        </div>
+        <pre class="audit__detail-body">{{ formatDetail(detailRecord.detailJson) }}</pre>
+      </aside>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .audit {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: var(--xl-space-8) var(--xl-space-4);
+  width: 100%;
+  padding: var(--xl-space-8) var(--xl-content-pad);
 }
 
 .audit__title {
   margin: 0 0 var(--xl-space-4);
   color: var(--xl-text-primary);
   font-size: 22px;
+}
+
+/* A05 64/36 日志表 + 详情检查器 */
+.audit__layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--xl-space-6);
+}
+
+.audit__list {
+  flex: 1 1 64%;
+  min-width: 0;
 }
 
 .audit__filters {
@@ -218,6 +238,11 @@ onMounted(() => {
   font-weight: 600;
 }
 
+/* A05 当前查看行高亮 */
+.audit__table :deep(.el-table__row.audit__row-active td.el-table__cell) {
+  background: color-mix(in srgb, var(--xl-color-primary) 8%, var(--xl-bg-surface));
+}
+
 .audit__cell-time {
   white-space: nowrap;
 }
@@ -233,8 +258,29 @@ onMounted(() => {
   margin-top: var(--xl-space-6);
 }
 
+/* A05 右侧 ~36%：审计详情检查器 */
+.audit__inspector {
+  flex: 1 1 36%;
+  min-width: 320px;
+  position: sticky;
+  top: var(--xl-space-6);
+  padding: var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+.audit__inspector-title {
+  margin: 0 0 var(--xl-space-4);
+  color: var(--xl-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
 .audit__detail-meta {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--xl-space-4);
   margin-bottom: var(--xl-space-3);
   color: var(--xl-text-secondary);

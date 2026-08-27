@@ -93,9 +93,7 @@ async function send(): Promise<void> {
       },
       controller.signal,
       // KB-3：本库=传 kbId 限定单库；全部可见库=allVisible=true
-      scope.value === 'kb' && props.kbId
-        ? { kbId: props.kbId }
-        : { allVisible: true },
+      scope.value === 'kb' && props.kbId ? { kbId: props.kbId } : { allVisible: true },
     )
   } catch (error) {
     if (!(error instanceof DOMException && error.name === 'AbortError') && !assistant.content) {
@@ -154,12 +152,7 @@ async function send(): Promise<void> {
               v-html="renderMarkdown(message.content)"
             ></div>
             <p v-else class="qa-message__text">{{ message.content }}</p>
-            <span
-              v-if="message.streaming"
-              class="qa-message__cursor"
-              aria-hidden="true"
-              >▍</span
-            >
+            <span v-if="message.streaming" class="qa-message__cursor" aria-hidden="true">▍</span>
             <!-- 工具过程：进行中状态行 -->
             <div
               v-if="message.role === 'assistant' && activeTools(message.tools).length > 0"
