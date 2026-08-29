@@ -14,11 +14,12 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 
 ## 文档与交付状态
 
-文档体系 12 份（产品/全局/后端/前端/原型 + AI 协作 STATUS/CHANGELOG/CHANGELOG-ARCHIVE/BUGS/IDEAS/QA），各文档职责与权威范围见 [全局文档](docs/global/GLOBAL.md) 第 2 节：
+文档体系 13 份（产品/全局/后端/前端/原型 + AI 协作 STATUS/CHANGELOG/CHANGELOG-ARCHIVE/BUGS/IDEAS/QA + 部署），各文档职责与权威范围见 [全局文档](docs/global/GLOBAL.md) 第 2 节：
 
 - [产品设计文档](docs/product/PRODUCT.md)：13 模块 99 项功能总表（唯一功能事实源，MVP 47 / V2 27 / V3 25，V3 含 6 项暂缓）
 - [全局文档](docs/global/GLOBAL.md)：总体架构、仓库结构、技术基线、本地运行与质量门禁命令
 - [后端开发文档](docs/backend/BACKEND.md) / [前端开发文档](docs/frontend/FRONTEND.md) / [前端原型文档](docs/frontend/PROTOTYPE.md)：工程实现与页面规范
+- [上线部署文档](docs/deploy/DEPLOY.md)：生产部署（fat jar + 前端静态产物 + Nginx 反代 + systemd）
 - [开发状态与交接文档](docs/ai/STATUS.md)：强制工作流、能力基线、待办认领、决策 D1~D19（开工前必读）
 - [AI 变更日志](docs/ai/CHANGELOG.md)（最近约 14 天）+ [归档](docs/ai/CHANGELOG-ARCHIVE.md)：按会话倒序的变更记录
 - [待修问题清单](docs/ai/BUGS.md)：用户自测缺陷记录（仅按明确要求修复）
