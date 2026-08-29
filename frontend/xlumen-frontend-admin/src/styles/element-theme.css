@@ -34,6 +34,11 @@
   --el-bg-color: var(--xl-bg-surface);
   --el-bg-color-overlay: var(--xl-bg-surface);
   --el-font-family: var(--xl-font-sans);
+  --el-font-size-base: var(--xl-fs-body);
+  --el-font-size-medium: 16px;
+  --el-font-size-large: 18px;
+  --el-font-size-small: 13px;
+  --el-font-size-extra-small: 12px;
   --el-border-radius-base: var(--xl-radius);
   --el-border-radius-small: var(--xl-radius-sm);
   --el-border-radius-round: 999px;

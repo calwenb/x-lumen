@@ -7,8 +7,6 @@ import { Lock, User } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 import type { SessionSnapshot } from '@/stores/session'
-import XlLogo from '@/components/XlLogo.vue'
-
 import { loginApi, logoutApi } from '../api/auth'
 
 const router = useRouter()
@@ -58,22 +56,30 @@ async function submit(): Promise<void> {
 
 <template>
   <main class="login">
-    <!-- A00 左侧：深 Ink 品牌面，反白 Logo + 双 Indigo 光柱 -->
+    <!-- A00 左侧：深 Ink 品牌面，静态主 Logo + 受控光柱 -->
     <section class="login__brand-panel" aria-label="xLumen 管理后台">
       <div class="login__pillars" aria-hidden="true">
         <span class="login__pillar login__pillar--left" />
         <span class="login__pillar login__pillar--right" />
       </div>
       <div class="login__brand-content">
-        <XlLogo variant="full" reverse :size="46" wordmark="xLumen" />
+        <div class="login__brand-logo">
+          <img src="/brand/xlumen-logo-primary-generated.png" alt="xLumen" />
+        </div>
+        <span class="login__eyebrow">AI KNOWLEDGE PLATFORM</span>
         <h1 class="login__title">xLumen 管理后台</h1>
         <p class="login__subtitle">仅限空间所有者与管理员登录</p>
       </div>
     </section>
 
-    <!-- A00 右侧：Paper 背景，约 420px 无厚重阴影表单 -->
+    <!-- A00 右侧：Paper 背景，轻量卡片表单 -->
     <section class="login__form-panel">
       <div class="login__form-wrap">
+        <div class="login__form-heading">
+          <span class="login__form-kicker">WELCOME BACK</span>
+          <h2>登录控制台</h2>
+          <p>使用管理员账号继续管理空间配置与 AI 服务。</p>
+        </div>
         <el-form class="login__form" label-position="top" size="large" @submit.prevent="submit">
           <el-form-item label="用户名">
             <el-input
@@ -127,27 +133,42 @@ async function submit(): Promise<void> {
   justify-content: center;
   width: 44%;
   overflow: hidden;
-  background: var(--xl-text-primary);
+  background:
+    radial-gradient(circle at 28% 30%, rgb(83 103 232 / 20%), transparent 34%),
+    radial-gradient(circle at 78% 72%, rgb(18 165 148 / 11%), transparent 32%),
+    var(--xl-text-primary);
 }
 
-/* 两条低对比 Indigo 纵向光柱，作为空间结构 */
+/* 两条低对比 Indigo 光柱，作为空间结构而非满屏背景块 */
 .login__pillars {
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: 50%;
+  width: 360px;
+  height: 520px;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  gap: 16%;
+  gap: 96px;
+  opacity: 0.58;
+  transform: translate(-50%, -50%) rotate(-8deg);
 }
 
 .login__pillar {
-  width: 64px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--xl-color-primary) 28%, transparent),
-    color-mix(in srgb, var(--xl-color-primary) 6%, transparent)
-  );
-  filter: blur(1px);
+  width: 52px;
+  height: 380px;
+  border: 1px solid rgb(130 147 255 / 18%);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(83 103 232 / 34%), rgb(83 103 232 / 5%));
+  box-shadow: 0 0 80px rgb(83 103 232 / 18%);
+}
+
+.login__pillar--left {
+  transform: translateY(-18px);
+}
+
+.login__pillar--right {
+  transform: translateY(18px);
 }
 
 .login__brand-content {
@@ -161,9 +182,34 @@ async function submit(): Promise<void> {
   color: #fff;
 }
 
+.login__brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 22px;
+  border: 1px solid rgb(255 255 255 / 62%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 18px 42px rgb(0 0 0 / 18%);
+}
+
+.login__brand-logo img {
+  display: block;
+  width: auto;
+  height: 38px;
+}
+
+.login__eyebrow {
+  margin-top: var(--xl-space-2);
+  color: color-mix(in srgb, var(--xl-color-ai) 82%, #fff);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
 .login__title {
-  margin: 0;
-  font-size: 26px;
+  margin: var(--xl-space-2) 0 0;
+  font-size: 28px;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
@@ -171,7 +217,7 @@ async function submit(): Promise<void> {
 .login__subtitle {
   margin: 0;
   color: color-mix(in srgb, #fff 62%, transparent);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 /* A00 右侧 56%：Paper 背景 + 约 420px 表单 */
@@ -180,13 +226,48 @@ async function submit(): Promise<void> {
   align-items: center;
   justify-content: center;
   width: 56%;
-  padding: var(--xl-space-8) var(--xl-space-4);
-  background: var(--xl-bg-page);
+  padding: var(--xl-space-8) clamp(24px, 7vw, 120px);
+  background:
+    radial-gradient(circle at 75% 15%, rgb(83 103 232 / 7%), transparent 30%),
+    var(--xl-bg-page);
+  box-sizing: border-box;
 }
 
 .login__form-wrap {
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
+  padding: 44px 48px 48px;
+  border: 1px solid var(--xl-border);
+  border-radius: 24px;
+  background: var(--xl-bg-surface);
+  box-shadow: 0 24px 60px rgb(22 32 51 / 8%);
+  box-sizing: border-box;
+}
+
+.login__form-heading {
+  margin-bottom: var(--xl-space-6);
+}
+
+.login__form-kicker {
+  color: var(--xl-color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.login__form-heading h2 {
+  margin: var(--xl-space-2) 0 var(--xl-space-2);
+  color: var(--xl-text-primary);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.login__form-heading p {
+  margin: 0;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-body);
+  line-height: 1.7;
 }
 
 .login__form {
@@ -202,5 +283,24 @@ async function submit(): Promise<void> {
 .login__submit {
   width: 100%;
   margin-top: var(--xl-space-2);
+}
+
+@media (width <= 800px) {
+  .login {
+    display: block;
+  }
+
+  .login__brand-panel,
+  .login__form-panel {
+    width: 100%;
+  }
+
+  .login__brand-panel {
+    min-height: 300px;
+  }
+
+  .login__form-wrap {
+    max-width: 520px;
+  }
 }
 </style>

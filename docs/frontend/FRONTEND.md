@@ -213,7 +213,7 @@ WebSocket 只用于站内通知（F-1004）与协作状态。业务最终状态�
 | `--xl-border` | `#E7EAF0` | 边框和分割线 |
 | `--xl-font-sans` | `MiSans, "Source Han Sans SC", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif` | UI 与正文 |
 | `--xl-font-mono` | `"JetBrains Mono", Consolas, monospace` | 代码、证据卡与序号 |
-| `--xl-fs-h1 / -h2 / -body / -caption` | `38 / 24 / 14 / 12px` | 字体层级（H1 700/-0.02em，H2 600/-0.01em） |
+| `--xl-fs-h1 / -h2 / -body / -caption` | `40 / 26 / 15 / 13px` | 字体层级（H1 700/-0.02em，H2 600/-0.01em）；--xl-fs-title 18→20px |
 | `--xl-header-h` | `64px` | 博客吸顶导航高度 |
 | `--xl-container` | `1360px` | 内容版心宽度 |
 | `--xl-radius-card` | `12px` | 卡片/弹窗圆角 |

@@ -232,7 +232,7 @@ async function confirmDelete(): Promise<void> {
   border-radius: var(--xl-radius-sm);
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   cursor: pointer;
 }

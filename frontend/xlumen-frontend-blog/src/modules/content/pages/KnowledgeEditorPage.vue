@@ -514,7 +514,7 @@ const editorStatusText = computed(() => {
 
 .editor-page__back {
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -529,7 +529,7 @@ const editorStatusText = computed(() => {
 }
 
 .editor-page__status {
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   color: var(--xl-text-secondary);
 }
 
@@ -558,7 +558,7 @@ const editorStatusText = computed(() => {
   border-radius: var(--xl-radius-sm);
   background: color-mix(in srgb, var(--xl-color-danger) 6%, transparent);
   color: var(--xl-color-danger);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .editor-page__conflict p {
@@ -568,7 +568,7 @@ const editorStatusText = computed(() => {
 .editor-page__message {
   margin: var(--xl-space-3) var(--xl-content-pad) 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* 工作区：元数据轨 + 编辑画布 */
@@ -598,7 +598,7 @@ const editorStatusText = computed(() => {
 .editor-page__field-label {
   margin-top: var(--xl-space-3);
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .editor-page__field-label:first-child {
@@ -612,14 +612,14 @@ const editorStatusText = computed(() => {
 }
 
 .editor-page__title-input :deep(.el-input__inner) {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
 }
 
 .editor-page__status-text {
   margin: var(--xl-space-4) 0 0;
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.6;
 }
 
@@ -636,7 +636,7 @@ const editorStatusText = computed(() => {
 
 .editor-page__publish-label {
   color: var(--xl-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -647,12 +647,12 @@ const editorStatusText = computed(() => {
   border-radius: var(--xl-radius-sm);
   background: var(--xl-bg-surface);
   color: var(--xl-text-primary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .editor-page__publish-hint {
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.5;
 }
 

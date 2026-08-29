@@ -252,7 +252,7 @@ async function copyTitle(candidate: string): Promise<void> {
 }
 
 .markdown-editor__label {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--xl-text-secondary);
 }
 
@@ -278,12 +278,12 @@ async function copyTitle(candidate: string): Promise<void> {
   border-radius: 999px;
   background: color-mix(in srgb, var(--xl-color-ai) 8%, transparent);
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   font-weight: 600;
 }
 
 .markdown-editor__ai-badge-icon {
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .markdown-editor__ai-btn {
@@ -308,7 +308,7 @@ async function copyTitle(candidate: string): Promise<void> {
   border-radius: var(--xl-radius-sm, 6px);
   background: transparent;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -342,7 +342,7 @@ async function copyTitle(candidate: string): Promise<void> {
   background: transparent;
   color: var(--xl-text-primary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
   outline: none;
 }
@@ -389,7 +389,7 @@ async function copyTitle(candidate: string): Promise<void> {
 .markdown-editor__title-text {
   min-width: 0;
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.5;
   overflow-wrap: break-word;
 }
@@ -403,7 +403,7 @@ async function copyTitle(candidate: string): Promise<void> {
 .markdown-editor__titles-empty {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 @media (width < 768px) {

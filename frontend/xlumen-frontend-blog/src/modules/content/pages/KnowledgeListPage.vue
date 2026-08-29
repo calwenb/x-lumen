@@ -45,6 +45,10 @@ const infinite = useInfinitePage<KnowledgeListItem>({
 const knowledges = infinite.items
 const loading = infinite.loading
 const loadError = infinite.error
+// 嵌套在普通对象里的 ref 模板不自动解包，须先提升为顶层 ref 再用于 v-if
+const loadingMore = infinite.loadingMore
+const loadMoreError = infinite.loadMoreError
+const hasMore = infinite.hasMore
 
 function applyFilters(): void {
   void infinite.loadFirst()
@@ -179,15 +183,15 @@ onMounted(() => {
             </li>
           </ul>
           <div ref="sentinel" class="knowledge-list__sentinel" aria-hidden="true" />
-          <div v-if="infinite.loadingMore" class="knowledge-list__load-more" role="status">
+          <div v-if="loadingMore" class="knowledge-list__load-more" role="status">
             加载更多…
           </div>
-          <div v-else-if="infinite.loadMoreError" class="knowledge-list__load-more">
+          <div v-else-if="loadMoreError" class="knowledge-list__load-more">
             <el-button type="primary" plain size="small" @click="infinite.retryMore()"
               >重试加载</el-button
             >
           </div>
-          <div v-else-if="!infinite.hasMore" class="knowledge-list__load-more">已加载全部知识</div>
+          <div v-else-if="!hasMore" class="knowledge-list__load-more">已加载全部知识</div>
         </template>
       </section>
     </div>
@@ -234,13 +238,13 @@ onMounted(() => {
 .knowledge-list__rail-hint {
   margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
 .knowledge-list__field-label {
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .knowledge-list__select {
@@ -259,7 +263,7 @@ onMounted(() => {
 .knowledge-list__rail-note {
   margin: var(--xl-space-3) 0 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.6;
 }
 
@@ -276,7 +280,7 @@ onMounted(() => {
   border-radius: var(--xl-radius);
   background: var(--xl-color-primary);
   color: #fff;
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   font-weight: 500;
   text-decoration: none;
   transition: background var(--xl-transition);
@@ -290,13 +294,13 @@ onMounted(() => {
   padding: 48px 0;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .knowledge-list__state-icon {
   display: block;
   margin-bottom: var(--xl-space-3);
-  font-size: 40px;
+  font-size: 42px;
   color: var(--xl-text-muted);
 }
 
@@ -349,7 +353,7 @@ onMounted(() => {
 
 .knowledge-list__item-title {
   color: var(--xl-text-primary);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   text-decoration: none;
 }
@@ -364,7 +368,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   margin-top: 8px;
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   color: var(--xl-text-secondary);
 }
 
@@ -383,7 +387,7 @@ onMounted(() => {
   min-height: 34px;
   padding: 14px 0 4px;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   text-align: center;
 }
 
@@ -393,7 +397,7 @@ onMounted(() => {
   border-radius: var(--xl-radius-sm);
   background: transparent;
   color: var(--xl-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   text-decoration: none;
   cursor: pointer;
 }

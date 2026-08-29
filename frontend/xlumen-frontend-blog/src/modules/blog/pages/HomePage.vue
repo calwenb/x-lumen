@@ -11,7 +11,6 @@ import {
   ArrowUp,
   ChatDotRound,
   Collection,
-  Document,
   Grid,
   MapLocation,
   Promotion,
@@ -157,6 +156,10 @@ const knowledges = infinite.items
 const total = infinite.total
 const loading = infinite.loading
 const loadError = infinite.error
+// 嵌套在普通对象里的 ref 模板不自动解包，须先提升为顶层 ref 再用于 v-if
+const loadingMore = infinite.loadingMore
+const loadMoreError = infinite.loadMoreError
+const hasMore = infinite.hasMore
 
 /** 库切换器：command 为 'all' 表示全部知识库，否则为库 ID。 */
 async function switchKb(command: string): Promise<void> {
@@ -318,8 +321,8 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 
         <!-- 未登录：左栏说明 -->
         <section v-else class="side-card home__guest-hint">
-          <p class="home__guest-text">登录后可浏览知识库、目录与标签筛选。</p>
-          <RouterLink class="home__guest-login" to="/login">登录 / 注册</RouterLink>
+<!--          <p class="home__guest-text">登录探索更多</p>-->
+          <RouterLink class="home__guest-login" to="/login">登录探索更多</RouterLink>
         </section>
 
         <template v-if="session.loggedIn">
@@ -413,9 +416,6 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
               class="knowledge-row"
               @click="openKnowledge(knowledge.id)"
             >
-              <div class="knowledge-row__thumb" aria-hidden="true">
-                <el-icon class="knowledge-row__thumb-icon"><Document /></el-icon>
-              </div>
               <div class="knowledge-row__body">
                 <div class="knowledge-row__head">
                   <RouterLink
@@ -470,13 +470,13 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
             </article>
           </div>
           <div ref="sentinel" class="home__sentinel" aria-hidden="true" />
-          <div v-if="infinite.loadingMore" class="home__load-more" role="status">加载更多…</div>
-          <div v-else-if="infinite.loadMoreError" class="home__load-more">
+          <div v-if="loadingMore" class="home__load-more" role="status">加载更多…</div>
+          <div v-else-if="loadMoreError" class="home__load-more">
             <el-button type="primary" plain size="small" @click="infinite.retryMore()"
               >重试加载</el-button
             >
           </div>
-          <div v-else-if="!infinite.hasMore" class="home__load-more">已加载全部知识</div>
+          <div v-else-if="!hasMore" class="home__load-more">已加载全部知识</div>
         </template>
       </section>
     </div>
@@ -501,25 +501,73 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 
 /* ===== AI 光带入口 ===== */
 .home__glow {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 1.5fr 1fr;
   gap: var(--xl-space-8);
   align-items: stretch;
-  padding: var(--xl-space-8) var(--xl-content-pad);
+  min-height: 292px;
+  padding: var(--xl-space-6)
+    max(var(--xl-content-pad), calc((100% - var(--xl-container)) / 2 + var(--xl-content-pad)));
   background:
     radial-gradient(
-      90% 140% at 82% 20%,
-      color-mix(in srgb, var(--xl-color-primary) 14%, transparent),
-      transparent 60%
+      68% 150% at 75% 48%,
+      color-mix(in srgb, var(--xl-color-primary) 16%, transparent),
+      transparent 62%
     ),
     var(--xl-bg-page);
   border-bottom: 1px solid var(--xl-border);
+}
+
+/* 参考图中的“知识光轨”：用低对比几何光束表达连接，不引入额外图片资产。 */
+.home__glow::before {
+  content: '';
+  position: absolute;
+  top: -22%;
+  right: 28%;
+  z-index: -1;
+  width: 58%;
+  height: 145%;
+  border-radius: 50%;
+  background:
+    linear-gradient(76deg, transparent 47%, rgb(83 103 232 / 9%) 49%, transparent 51%),
+    linear-gradient(84deg, transparent 58%, rgb(18 165 148 / 7%) 59%, transparent 60%),
+    radial-gradient(ellipse at 80% 50%, rgb(255 255 255 / 68%), transparent 58%);
+  opacity: 0.8;
+  transform: rotate(-7deg);
+  pointer-events: none;
+}
+
+.home__glow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 25%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--xl-color-ai);
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--xl-color-ai) 9%, transparent),
+    0 0 24px color-mix(in srgb, var(--xl-color-ai) 24%, transparent);
+  opacity: 0.75;
+  transform: translate(50%, -50%);
+  pointer-events: none;
+}
+
+.home__glow-left,
+.home__glow-right {
+  position: relative;
+  z-index: 1;
 }
 
 .home__glow-left {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  max-width: 720px;
   gap: var(--xl-space-3);
 }
 
@@ -546,12 +594,13 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   display: flex;
   align-items: center;
   gap: var(--xl-space-3);
+  max-width: 680px;
   margin-top: var(--xl-space-2);
 }
 
 .home__glow-search-input {
   flex: 1;
-  max-width: 460px;
+  max-width: 640px;
 }
 
 .home__glow-search-input :deep(.el-input__wrapper) {
@@ -570,8 +619,8 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: none;
   border-radius: var(--xl-radius);
   background: var(--xl-color-primary);
@@ -626,15 +675,39 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 }
 
 .home__glow-right {
+  position: relative;
+  justify-self: end;
+  width: min(100%, 560px);
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: var(--xl-space-3);
-  padding-left: var(--xl-space-6);
-  border-left: 1px solid var(--xl-border);
+  padding: var(--xl-space-4) var(--xl-space-3) var(--xl-space-4) var(--xl-space-6);
+  border: 1px solid rgb(255 255 255 / 72%);
+  border-radius: 20px;
+  background: rgb(255 255 255 / 58%);
+  box-shadow: 0 18px 44px rgb(83 103 232 / 8%);
+  backdrop-filter: blur(12px);
+}
+
+.home__glow-right::before {
+  content: '';
+  position: absolute;
+  top: 22px;
+  bottom: 22px;
+  left: 20px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--xl-color-primary) 32%, transparent) 18%,
+    color-mix(in srgb, var(--xl-color-ai) 32%, transparent) 82%,
+    transparent
+  );
 }
 
 .glow-entry {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--xl-space-3);
@@ -642,6 +715,23 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   border-radius: var(--xl-radius);
   text-decoration: none;
   transition: background var(--xl-transition);
+}
+
+.glow-entry::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--xl-bg-page);
+  border-radius: 50%;
+  background: var(--xl-color-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xl-color-primary) 25%, transparent);
+}
+
+.glow-entry:first-child::before {
+  background: var(--xl-color-ai);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--xl-color-ai) 28%, transparent);
 }
 
 .glow-entry:hover {
@@ -659,7 +749,7 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   border-radius: var(--xl-radius);
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .glow-entry__icon--ai {
@@ -672,7 +762,7 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   top: -6px;
   right: -6px;
   color: var(--xl-color-ai);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .glow-entry__body {
@@ -695,7 +785,7 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 .glow-entry__arrow {
   margin-left: auto;
   color: var(--xl-text-muted);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   transform: rotate(90deg);
 }
 
@@ -706,12 +796,12 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   align-items: flex-start;
   width: min(100% - 48px, var(--xl-container));
   margin: 0 auto;
-  padding: var(--xl-space-8) var(--xl-content-pad) var(--xl-space-8);
+  padding: var(--xl-space-6) var(--xl-content-pad) var(--xl-space-8);
   box-sizing: border-box;
 }
 
 .home__side {
-  width: 240px;
+  width: 260px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -730,6 +820,11 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 .home__main {
   flex: 1;
   min-width: 0;
+  padding: var(--xl-space-4) var(--xl-space-6) var(--xl-space-6);
+  border: 1px solid var(--xl-border);
+  border-radius: 20px;
+  background: var(--xl-bg-surface);
+  box-shadow: 0 10px 30px rgb(22 32 51 / 3%);
 }
 
 /* 库切换器 */
@@ -755,7 +850,7 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 
 .home__switcher-icon {
   color: var(--xl-color-primary);
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .home__switcher-label {
@@ -765,7 +860,7 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 
 .home__dropdown-arrow {
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* 列表头部 */
@@ -773,7 +868,9 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   display: flex;
   align-items: baseline;
   gap: var(--xl-space-3);
-  margin-bottom: var(--xl-space-4);
+  margin-bottom: var(--xl-space-3);
+  padding-bottom: var(--xl-space-3);
+  border-bottom: 1px solid var(--xl-border);
 }
 
 .home__title {
@@ -792,6 +889,14 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 /* 未登录提示 */
 .home__guest-hint {
   text-align: center;
+}
+
+.home__guest-hint::before {
+  content: '✦';
+  display: block;
+  margin-bottom: var(--xl-space-2);
+  color: var(--xl-color-ai);
+  font-size: 20px;
 }
 
 .home__guest-text {
@@ -851,7 +956,7 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 }
 
 .home__empty-icon {
-  font-size: 40px;
+  font-size: 42px;
   color: var(--xl-text-muted);
 }
 
@@ -869,35 +974,20 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   display: flex;
   align-items: flex-start;
   gap: var(--xl-space-4);
-  padding: var(--xl-space-4) 0;
+  padding: 18px 12px;
+  margin: 0 -12px;
   border-bottom: 1px solid var(--xl-border);
+  border-radius: 12px;
   cursor: pointer;
+  transition: background var(--xl-transition);
+}
+
+.knowledge-row:hover {
+  background: color-mix(in srgb, var(--xl-color-primary) 4%, var(--xl-bg-surface));
 }
 
 .knowledge-row:last-child {
   border-bottom: none;
-}
-
-/* 知识缩略图占位（数据无图片字段，用品牌色块 + 线性图标做版式占位，非真实封面） */
-.knowledge-row__thumb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 84px;
-  height: 60px;
-  flex-shrink: 0;
-  border-radius: var(--xl-radius);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--xl-color-primary) 12%, var(--xl-bg-surface)),
-    color-mix(in srgb, var(--xl-color-ai) 12%, var(--xl-bg-surface))
-  );
-  border: 1px solid var(--xl-border);
-}
-
-.knowledge-row__thumb-icon {
-  color: var(--xl-color-primary);
-  font-size: 24px;
 }
 
 .knowledge-row__body {
@@ -942,7 +1032,7 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   margin: var(--xl-space-2) 0;
   color: var(--xl-text-secondary);
   font-size: var(--xl-fs-body);
-  line-height: 1.7;
+  line-height: 1.65;
 }
 
 .knowledge-row__meta {
@@ -1109,7 +1199,7 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
 }
 
 .home__kb-lock {
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .home__sentinel {
@@ -1128,6 +1218,7 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   .home__glow {
     grid-template-columns: 1fr;
     gap: var(--xl-space-6);
+    min-height: 0;
   }
 
   .home__glow-right {
@@ -1135,6 +1226,11 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
     border-left: none;
     border-top: 1px solid var(--xl-border);
     padding-top: var(--xl-space-4);
+  }
+
+  .home__glow-right::before,
+  .glow-entry::before {
+    display: none;
   }
 }
 
@@ -1146,6 +1242,10 @@ onUnmounted(() => window.removeEventListener('scroll', onGlowScroll))
   .home__side {
     width: 100%;
     position: static;
+  }
+
+  .home__glow-search-input {
+    max-width: none;
   }
 }
 </style>

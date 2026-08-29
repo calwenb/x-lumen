@@ -595,28 +595,6 @@ watch(renderedHtml, () => {
           @mouseup="onContentMouseUp"
           v-html="renderedHtml"
         />
-
-        <!-- B02-S 文末互动带：与右操作轨共用同一组动作 -->
-        <div class="detail__actions-band">
-          <span class="detail__actions-band-label">本文</span>
-          <div class="detail__actions-band-actions">
-            <ReactionBar
-              :knowledge-id="knowledge.id"
-              :initial-reaction="knowledge.liked ? 'LIKE' : null"
-              :like-count="knowledge.likeCount"
-              :dislike-count="knowledge.dislikeCount"
-              @update:counts="onCountsChange"
-            />
-            <FavoriteButton
-              :knowledge-id="knowledge.id"
-              :initial="knowledge.favorited"
-              :count="knowledge.favoriteCount"
-              @update:state="onFavoriteChange"
-            />
-            <el-button plain @click="showQa = true">问「小光」</el-button>
-            <el-button plain @click="showFeedback = true">纠错反馈</el-button>
-          </div>
-        </div>
       </article>
 
       <aside class="detail__rail">
@@ -753,7 +731,7 @@ watch(renderedHtml, () => {
 
 <style scoped>
 .detail {
-  max-width: 1240px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: var(--xl-space-8) var(--xl-content-pad) var(--xl-space-8);
 }
@@ -772,12 +750,12 @@ watch(renderedHtml, () => {
 .detail__state-title {
   margin: 0 0 var(--xl-space-2);
   color: var(--xl-text-primary);
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .detail__state-text {
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .detail__back {
@@ -788,7 +766,7 @@ watch(renderedHtml, () => {
   border-radius: 8px;
   background: var(--xl-color-primary);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   text-decoration: none;
 }
 
@@ -798,7 +776,7 @@ watch(renderedHtml, () => {
 
 .detail__layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 780px) 210px;
+  grid-template-columns: 180px minmax(0, 1000px) 190px;
   gap: 0;
   justify-content: center;
   align-items: start;
@@ -806,7 +784,7 @@ watch(renderedHtml, () => {
 
 /* 目录为空时退回「正文 + 操作轨」两栏（去掉左目录列） */
 .detail__layout--single {
-  grid-template-columns: minmax(0, 780px) 210px;
+  grid-template-columns: minmax(0, 1000px) 190px;
 }
 
 .detail__toc {
@@ -820,7 +798,7 @@ watch(renderedHtml, () => {
 .detail__toc-title {
   margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   font-weight: 600;
 }
 
@@ -832,7 +810,7 @@ watch(renderedHtml, () => {
   border-radius: var(--xl-radius-sm);
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   text-align: left;
   cursor: pointer;
@@ -904,7 +882,7 @@ watch(renderedHtml, () => {
 .detail__title {
   margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-primary);
-  font-size: 28px;
+  font-size: 30px;
   line-height: 1.4;
 }
 
@@ -913,7 +891,7 @@ watch(renderedHtml, () => {
   flex-wrap: wrap;
   gap: var(--xl-space-3);
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .detail__tags {
@@ -967,24 +945,11 @@ watch(renderedHtml, () => {
 }
 
 .detail__rail-icon {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .detail__rail-label {
   line-height: 1.3;
-}
-
-/* B02-S：文末互动带进入视口时右轨自然收束（平移出视口，避免重复按钮） */
-.detail__rail--collapsed {
-  transform: translateX(20px);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.detail__rail {
-  transition:
-    transform var(--xl-transition),
-    opacity var(--xl-transition);
 }
 
 .detail__rail-hint {
@@ -992,33 +957,6 @@ watch(renderedHtml, () => {
   font-size: var(--xl-fs-caption);
   text-align: center;
   line-height: 1.6;
-}
-
-/* B02-S 文末互动带：正文末端一条轻量动作条 */
-.detail__actions-band {
-  display: flex;
-  align-items: center;
-  gap: var(--xl-space-4);
-  margin-top: var(--xl-space-8);
-  padding: var(--xl-space-4) var(--xl-space-6);
-  border: 1px solid var(--xl-border);
-  border-radius: var(--xl-radius-card);
-  background: var(--xl-bg-surface);
-  box-shadow: var(--xl-shadow-sm);
-}
-
-.detail__actions-band-label {
-  flex-shrink: 0;
-  color: var(--xl-text-secondary);
-  font-size: var(--xl-fs-caption);
-  font-weight: var(--xl-fs-title-w);
-}
-
-.detail__actions-band-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--xl-space-3);
 }
 
 /* AI 摘要区块：header 与正文之间，浅色卡片（AI 色 token 化） */
@@ -1040,7 +978,7 @@ watch(renderedHtml, () => {
 .detail__summary-text {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
   overflow-wrap: break-word;
 }
@@ -1054,7 +992,7 @@ watch(renderedHtml, () => {
 
 .detail__actions-hint {
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .detail__comments {
@@ -1066,7 +1004,7 @@ watch(renderedHtml, () => {
 .markdown-body {
   margin-top: var(--xl-space-4);
   color: var(--xl-text-primary);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.8;
   overflow-wrap: break-word;
 }
@@ -1092,7 +1030,7 @@ watch(renderedHtml, () => {
   border-radius: 4px;
   background: color-mix(in srgb, var(--xl-border) 70%, transparent);
   font-family: var(--xl-font-mono);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .markdown-body :deep(pre) {
@@ -1146,7 +1084,7 @@ watch(renderedHtml, () => {
   border-radius: 6px;
   background: transparent;
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   cursor: pointer;
 }
 
@@ -1238,7 +1176,7 @@ watch(renderedHtml, () => {
 .detail__player-error {
   margin: var(--xl-space-2) 0 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 /* AI 导读：AI 色左侧强调线 + 火星图标，折叠卡默认展开 */
@@ -1276,14 +1214,14 @@ watch(renderedHtml, () => {
 
 .detail__guide-title {
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   font-weight: 600;
 }
 
 .detail__guide-arrow {
   margin-left: auto;
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
   transition: transform var(--xl-transition);
 }
 
@@ -1300,7 +1238,7 @@ watch(renderedHtml, () => {
   gap: var(--xl-space-2);
   align-items: flex-start;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
 }
 
@@ -1310,7 +1248,7 @@ watch(renderedHtml, () => {
   border-radius: 999px;
   background: color-mix(in srgb, var(--xl-color-ai) 15%, transparent);
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   font-weight: 600;
 }
 
@@ -1323,7 +1261,7 @@ watch(renderedHtml, () => {
   margin: var(--xl-space-2) 0 0;
   padding-left: 1.5em;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.8;
 }
 
@@ -1336,7 +1274,7 @@ watch(renderedHtml, () => {
 .detail__related-title {
   margin: 0 0 var(--xl-space-3);
   color: var(--xl-text-primary);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -1365,7 +1303,7 @@ watch(renderedHtml, () => {
   padding: var(--xl-space-2) var(--xl-space-3);
   border-radius: var(--xl-radius-sm);
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   text-decoration: none;
 }
 
@@ -1385,13 +1323,13 @@ watch(renderedHtml, () => {
 .detail__related-kb {
   flex-shrink: 0;
   color: var(--xl-color-primary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .detail__related-date {
   flex-shrink: 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 /* 术语悬浮解释：气泡 + 解释小弹窗 */
@@ -1406,7 +1344,7 @@ watch(renderedHtml, () => {
   border-radius: 999px;
   background: var(--xl-bg-surface);
   color: var(--xl-color-ai);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   box-shadow: var(--xl-shadow-md);
   cursor: pointer;
@@ -1437,7 +1375,7 @@ watch(renderedHtml, () => {
 
 .detail__term-popup-word {
   color: var(--xl-color-ai);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   overflow-wrap: break-word;
 }
@@ -1445,13 +1383,13 @@ watch(renderedHtml, () => {
 .detail__term-popup-loading {
   margin: 0;
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .detail__term-popup-text {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
   overflow-wrap: break-word;
 }
@@ -1481,7 +1419,7 @@ watch(renderedHtml, () => {
   border-radius: 999px;
   background: color-mix(in srgb, var(--xl-bg-surface) 88%, transparent);
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   font-weight: 600;
   box-shadow: var(--xl-shadow-sm);
   cursor: pointer;
@@ -1501,7 +1439,7 @@ watch(renderedHtml, () => {
 .detail__img-dialog-loading {
   margin: var(--xl-space-4) 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   text-align: center;
 }
 

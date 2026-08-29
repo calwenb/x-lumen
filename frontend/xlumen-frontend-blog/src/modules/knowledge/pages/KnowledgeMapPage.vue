@@ -249,7 +249,7 @@ onMounted(() => {
 
 .map__title-icon {
   color: var(--xl-color-primary);
-  font-size: 24px;
+  font-size: 26px;
 }
 
 .map__desc {
@@ -317,7 +317,7 @@ onMounted(() => {
 
 .map__col-star {
   color: var(--xl-color-ai);
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .map__col-title {

@@ -66,7 +66,7 @@ const labels: Record<AiTaskStatus, string> = {
 }
 
 .ai-task-progress__mark {
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1;
 }
 
@@ -80,7 +80,7 @@ const labels: Record<AiTaskStatus, string> = {
 
 .ai-task-progress__text {
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .ai-task-progress__text--error {

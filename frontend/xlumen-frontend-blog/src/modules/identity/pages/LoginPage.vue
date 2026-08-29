@@ -59,15 +59,10 @@ async function submit(): Promise<void> {
 
 <template>
   <main class="auth">
-    <!-- 品牌区（42）：Paper 底，Logo + 标题 + 副标题，两条抽象 Indigo 光柱 + 一颗 AI Teal 星 -->
+    <!-- 品牌区（42）：Paper 底，静态主 Logo + 标题 + 副标题 -->
     <section class="auth__brand">
       <div class="auth__brand-inner">
-        <div class="auth__beams" aria-hidden="true">
-          <span class="auth__beam auth__beam--l"></span>
-          <span class="auth__beam auth__beam--r"></span>
-          <span class="auth__star">✦</span>
-        </div>
-        <XlLogo variant="icon" :size="42" class="auth__logo" />
+        <XlLogo variant="full" :size="42" class="auth__logo" />
         <h1 class="auth__title">欢迎使用 xLumen</h1>
         <p class="auth__subtitle">注册即创建个人工作空间</p>
       </div>
@@ -162,44 +157,8 @@ async function submit(): Promise<void> {
   text-align: center;
 }
 
-.auth__beams {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--xl-space-6);
-  margin-bottom: var(--xl-space-4);
-}
-
-.auth__beam {
-  width: 40px;
-  height: 128px;
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    transparent,
-    var(--xl-color-primary) 18%,
-    var(--xl-color-primary) 62%,
-    transparent
-  );
-  opacity: 0.75;
-}
-
-.auth__beam--r {
-  transform: translateY(8px);
-}
-
-.auth__star {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  color: var(--xl-color-ai);
-  font-size: 18px;
-}
-
 .auth__logo {
-  transform: scale(1.1);
+  margin-bottom: var(--xl-space-2);
 }
 
 .auth__title {

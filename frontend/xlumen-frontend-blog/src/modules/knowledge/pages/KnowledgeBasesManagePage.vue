@@ -511,7 +511,7 @@ onMounted(() => {
   padding: var(--xl-space-8) 0;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .kb-manage__state p {
@@ -521,7 +521,7 @@ onMounted(() => {
 .kb-manage__state-icon {
   display: block;
   margin: 0 auto var(--xl-space-3);
-  font-size: 40px;
+  font-size: 42px;
   color: var(--xl-text-muted);
 }
 
@@ -745,7 +745,7 @@ onMounted(() => {
   border-radius: 999px;
   background: var(--xl-bg-secondary);
   color: var(--xl-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .kb-manage__dir-ops {
@@ -764,7 +764,7 @@ onMounted(() => {
   border-radius: 4px;
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
 }
 

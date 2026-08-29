@@ -479,7 +479,7 @@ onMounted(() => {
 .review-center__intro {
   margin: var(--xl-space-2) 0 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
@@ -496,7 +496,7 @@ onMounted(() => {
   padding: 32px 0;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .review-center__state :deep(.el-skeleton) {
@@ -539,7 +539,7 @@ onMounted(() => {
 }
 
 .review-item__title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -549,7 +549,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 /* 右：审阅画布 */
@@ -573,7 +573,7 @@ onMounted(() => {
   min-height: 320px;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .review-center__retry {
@@ -582,7 +582,7 @@ onMounted(() => {
   border-radius: var(--xl-radius-sm);
   background: transparent;
   color: var(--xl-color-primary);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -610,7 +610,7 @@ onMounted(() => {
 
 .review-detail__view {
   color: var(--xl-color-primary);
-  font-size: 13px;
+  font-size: 14px;
   text-decoration: none;
 }
 
@@ -622,19 +622,19 @@ onMounted(() => {
   border: none;
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
 .review-detail__subtitle {
   margin: 0 0 10px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .review-detail__hint {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .review-detail__issues {
@@ -673,7 +673,7 @@ onMounted(() => {
 }
 
 .review-issue__severity {
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   font-weight: 600;
 }
 
@@ -691,14 +691,14 @@ onMounted(() => {
 
 .review-issue__position {
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .review-issue__evidence,
 .review-issue__suggestion {
   margin: 4px 0 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   overflow-wrap: break-word;
 }
@@ -706,7 +706,7 @@ onMounted(() => {
 .review-issue__evidence-link {
   margin-left: 6px;
   color: var(--xl-color-primary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   text-decoration: none;
 }
 
@@ -719,7 +719,7 @@ onMounted(() => {
   border-radius: var(--xl-radius-sm, 6px);
   background: var(--xl-bg-secondary);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.7;
 }
 
@@ -763,7 +763,7 @@ onMounted(() => {
 
 .review-detail__label {
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .review-detail__input,
@@ -776,7 +776,7 @@ onMounted(() => {
   background: var(--xl-bg-secondary);
   color: var(--xl-text-primary);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
 }
 
@@ -792,13 +792,13 @@ onMounted(() => {
 .review-detail__message {
   margin: 12px 0 0;
   color: var(--xl-color-ai);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .review-detail__action-error {
   margin: 12px 0 0;
   color: var(--xl-color-danger, #d03050);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 @media (width <= 900px) {

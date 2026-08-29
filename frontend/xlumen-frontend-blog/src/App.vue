@@ -4,7 +4,7 @@
 // 导航高亮用 router-link-exact-active（首页 / 为全部路由父级，泛匹配会全站误高亮）。
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Sunny } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 
@@ -21,6 +21,14 @@ const session = useSessionStore()
 const keyword = ref('')
 
 const avatarText = computed(() => (session.snapshot?.username ?? '?').slice(0, 1).toUpperCase())
+
+// 管理后台入口：新标签页跳转，可用 VITE_ADMIN_URL 覆盖（部署联调时指向实际地址）。
+// 不做角色判断：非管理员进入后由后台自身的路由守卫统一处理。
+const adminUrl = import.meta.env.VITE_ADMIN_URL ?? 'http://localhost:5174'
+
+function openAdmin(): void {
+  window.open(adminUrl, '_blank', 'noopener')
+}
 
 async function handleLogout(): Promise<void> {
   if (session.refreshToken) {
@@ -51,6 +59,9 @@ function handleAccountCommand(command: string): void {
       break
     case 'recycle-bin':
       void router.push({ name: 'recycle-bin' })
+      break
+    case 'admin':
+      openAdmin()
       break
     case 'logout':
       void handleLogout()
@@ -89,13 +100,13 @@ function handleNavCommand(command: string): void {
 
       <nav class="app-header__nav">
         <RouterLink class="app-header__link" to="/">发现</RouterLink>
+        <RouterLink class="app-header__link" :to="{ name: 'chat' }">
+          AI小光<span class="app-header__ai-star" aria-hidden="true">✦</span>
+        </RouterLink>
         <RouterLink class="app-header__link" :to="{ name: 'kb-discovery' }">知识库</RouterLink>
         <RouterLink class="app-header__link" :to="{ name: 'changelog' }">动态</RouterLink>
         <RouterLink v-if="session.loggedIn" class="app-header__link" :to="{ name: 'workbench' }">
           创作中心
-        </RouterLink>
-        <RouterLink class="app-header__link" :to="{ name: 'chat' }">
-          AI小光<span class="app-header__ai-star" aria-hidden="true">✦</span>
         </RouterLink>
       </nav>
 
@@ -105,10 +116,10 @@ function handleNavCommand(command: string): void {
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="home">发现</el-dropdown-item>
+              <el-dropdown-item command="chat">AI小光</el-dropdown-item>
               <el-dropdown-item command="kb-discovery">知识库</el-dropdown-item>
               <el-dropdown-item command="changelog">动态</el-dropdown-item>
               <el-dropdown-item v-if="session.loggedIn" command="studio">创作中心</el-dropdown-item>
-              <el-dropdown-item command="chat">AI小光</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -128,11 +139,6 @@ function handleNavCommand(command: string): void {
             </template>
           </el-input>
         </form>
-
-        <!-- 主题图标：仅视觉，固定浅色（用户拍板），点击无效，不实现切换 -->
-        <button type="button" class="app-header__icon" aria-label="主题" title="固定浅色主题">
-          <el-icon><Sunny /></el-icon>
-        </button>
 
         <!-- 通用消息：AI 审核完成等站内提醒（仅登录态） -->
         <NotificationBell v-if="session.loggedIn" />
@@ -162,6 +168,7 @@ function handleNavCommand(command: string): void {
                 <el-dropdown-item command="studio">创作中心</el-dropdown-item>
                 <el-dropdown-item command="recycle-bin">回收站</el-dropdown-item>
                 <el-dropdown-item disabled>个人设置（即将上线）</el-dropdown-item>
+                <el-dropdown-item command="admin" divided>管理后台</el-dropdown-item>
                 <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -251,7 +258,7 @@ function handleNavCommand(command: string): void {
 /* AI小光旁的 Teal 四角星（AI 视觉标记，仅此处可用） */
 .app-header__ai-star {
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .app-header__menu {
@@ -268,7 +275,7 @@ function handleNavCommand(command: string): void {
   border-radius: var(--xl-radius-sm);
   background: var(--xl-bg-surface);
   color: var(--xl-text-primary);
-  font-size: 16px;
+  font-size: 18px;
   cursor: pointer;
 }
 
@@ -298,27 +305,6 @@ function handleNavCommand(command: string): void {
 
 .app-header__search-icon {
   color: var(--xl-text-secondary);
-}
-
-.app-header__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 50%;
-  background: none;
-  color: var(--xl-text-secondary);
-  cursor: pointer;
-  transition:
-    color var(--xl-transition),
-    background-color var(--xl-transition);
-}
-
-.app-header__icon:hover {
-  background: var(--xl-bg-secondary);
-  color: var(--xl-text-primary);
 }
 
 /* 写知识 CTA：Indigo 实心主按钮 */
@@ -386,7 +372,6 @@ function handleNavCommand(command: string): void {
     display: none;
   }
 
-  .app-header__icon,
   .app-header__write {
     display: none;
   }

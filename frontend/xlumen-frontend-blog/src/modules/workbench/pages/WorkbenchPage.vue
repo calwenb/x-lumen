@@ -289,7 +289,7 @@ const entries = [
   border-radius: 50%;
   background: var(--xl-color-primary);
   color: #fff;
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   font-weight: 700;
   box-shadow: var(--xl-shadow-sm);
 }
@@ -333,13 +333,13 @@ const entries = [
   border-radius: var(--xl-radius);
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .workbench__icon--lg {
   width: 52px;
   height: 52px;
-  font-size: 26px;
+  font-size: 28px;
   border-radius: var(--xl-radius-card);
 }
 
@@ -361,13 +361,13 @@ const entries = [
 }
 
 .workbench__entry--01 .workbench__entry-title {
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .workbench__entry-desc {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
@@ -375,7 +375,7 @@ const entries = [
   margin-left: auto;
   align-self: center;
   color: var(--xl-text-muted);
-  font-size: 24px;
+  font-size: 26px;
   line-height: 1;
 }
 
@@ -404,7 +404,7 @@ const entries = [
 
 .workbench__quick-label {
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   font-weight: 600;
 }
 
@@ -414,7 +414,7 @@ const entries = [
   border-radius: 999px;
   background: var(--xl-bg-surface);
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.5;
   white-space: nowrap;
 }

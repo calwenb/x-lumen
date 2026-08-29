@@ -40,7 +40,7 @@ const emit = defineEmits<{
   border-radius: 999px;
   background: color-mix(in srgb, var(--xl-color-ai) 8%, transparent);
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.5;
   cursor: pointer;
 }

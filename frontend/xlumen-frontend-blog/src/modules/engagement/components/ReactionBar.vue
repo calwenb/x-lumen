@@ -143,7 +143,7 @@ async function react(target: MyReaction): Promise<void> {
   border-radius: 999px;
   background: var(--xl-bg-surface);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 

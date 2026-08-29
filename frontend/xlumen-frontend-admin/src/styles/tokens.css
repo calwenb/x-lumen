@@ -28,21 +28,21 @@
     'PingFang SC', 'Microsoft YaHei', sans-serif;
   --xl-font-mono: 'JetBrains Mono', 'SFMono-Regular', consolas, monospace;
 
-  /* 字体层级（H1 38/700/-0.02em，H2 24/600，正文 14/1.6，Caption 12/1.4） */
-  --xl-fs-h1: 38px;
+  /* 字体层级（H1 40/700/-0.02em，H2 26/600，正文 15/1.6，Caption 13/1.4） */
+  --xl-fs-h1: 40px;
   --xl-fs-h1-lh: 1.2;
   --xl-fs-h1-w: 700;
   --xl-fs-h1-track: -0.02em;
-  --xl-fs-h2: 24px;
+  --xl-fs-h2: 26px;
   --xl-fs-h2-lh: 1.4;
   --xl-fs-h2-w: 600;
   --xl-fs-h2-track: -0.01em;
-  --xl-fs-title: 18px;
+  --xl-fs-title: 20px;
   --xl-fs-title-lh: 1.4;
   --xl-fs-title-w: 600;
-  --xl-fs-body: 14px;
+  --xl-fs-body: 15px;
   --xl-fs-body-lh: 1.6;
-  --xl-fs-caption: 12px;
+  --xl-fs-caption: 13px;
   --xl-fs-caption-lh: 1.4;
 
   /* 布局：顶栏高度与内容容器 */

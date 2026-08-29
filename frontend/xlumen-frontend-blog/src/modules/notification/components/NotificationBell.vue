@@ -231,7 +231,7 @@ timer = window.setInterval(() => void refresh(), 30_000)
   border-radius: 50%;
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 17px;
+  font-size: 18px;
   cursor: pointer;
 }
 
@@ -255,7 +255,7 @@ timer = window.setInterval(() => void refresh(), 30_000)
 }
 
 .noti-panel__title {
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   font-weight: 600;
 }
 
@@ -263,7 +263,7 @@ timer = window.setInterval(() => void refresh(), 30_000)
   padding: 24px 0;
   text-align: center;
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .noti-panel__list {
@@ -316,13 +316,13 @@ timer = window.setInterval(() => void refresh(), 30_000)
 
 .noti-item__title {
   color: var(--xl-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .noti-item__content {
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -333,7 +333,7 @@ timer = window.setInterval(() => void refresh(), 30_000)
 
 .noti-item__time {
   color: var(--xl-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .noti-panel__footer {
@@ -344,7 +344,7 @@ timer = window.setInterval(() => void refresh(), 30_000)
 
 .noti-panel__more {
   color: var(--xl-color-primary);
-  font-size: 13px;
+  font-size: 14px;
   text-decoration: none;
 }
 </style>

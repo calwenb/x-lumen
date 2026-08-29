@@ -8,7 +8,7 @@ body {
   background-color: var(--xl-bg-page);
   color: var(--xl-text-primary);
   font-family: var(--xl-font-sans);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.6;
 }
 

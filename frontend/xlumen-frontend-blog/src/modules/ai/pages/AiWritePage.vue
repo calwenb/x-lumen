@@ -407,13 +407,13 @@ onBeforeUnmount(() => {
 
 .ai-write__title {
   margin: 0;
-  font-size: 24px;
+  font-size: 26px;
 }
 
 .ai-write__intro {
   margin: 8px 0 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .ai-write__form {
@@ -433,7 +433,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: var(--xl-bg-surface);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -451,7 +451,7 @@ onBeforeUnmount(() => {
 
 .ai-write__field-label {
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .ai-write__textarea,
@@ -464,7 +464,7 @@ onBeforeUnmount(() => {
   background: var(--xl-bg-secondary);
   color: var(--xl-text-primary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
   outline: none;
 }
@@ -497,7 +497,7 @@ onBeforeUnmount(() => {
   box-shadow: var(--xl-shadow-sm);
   color: var(--xl-text-primary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -541,7 +541,7 @@ onBeforeUnmount(() => {
 .ai-write__message {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* 完成态（B11-S）：36/64 任务工作台 */
@@ -576,7 +576,7 @@ onBeforeUnmount(() => {
 .ai-write__rail-intro {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
@@ -591,14 +591,14 @@ onBeforeUnmount(() => {
 
 .ai-write__input-label {
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   font-weight: 600;
 }
 
 .ai-write__input-text {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -625,7 +625,7 @@ onBeforeUnmount(() => {
   border-radius: var(--xl-radius);
   background: var(--xl-bg-surface);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .ai-write__step-check {
@@ -638,7 +638,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   background: color-mix(in srgb, var(--xl-color-ai) 12%, transparent);
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1;
 }
 
@@ -678,7 +678,7 @@ onBeforeUnmount(() => {
 
 .ai-write__saveband-label {
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -711,7 +711,7 @@ onBeforeUnmount(() => {
 /* Markdown 预览样式（B11）：与设计 token 对齐 */
 .markdown-body {
   color: var(--xl-text-primary);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.8;
   overflow-wrap: break-word;
 }
@@ -735,7 +735,7 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   background: color-mix(in srgb, var(--xl-border) 70%, transparent);
   font-family: var(--xl-font-mono);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .markdown-body :deep(pre) {

@@ -222,7 +222,7 @@ onMounted(() => {
 .trace__title {
   margin: 0 0 var(--xl-space-4);
   color: var(--xl-text-primary);
-  font-size: 22px;
+  font-size: 24px;
 }
 
 /* A03 顶部：统计带 + 筛选同一水平线 */
@@ -259,12 +259,12 @@ onMounted(() => {
 
 .trace__stat-label {
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .trace__stat-value {
   color: var(--xl-text-primary);
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 600;
   line-height: 1;
 }
@@ -291,13 +291,13 @@ onMounted(() => {
   padding: 48px 0;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .trace__state-icon {
   display: block;
   margin-bottom: var(--xl-space-3);
-  font-size: 40px;
+  font-size: 42px;
   color: var(--xl-text-muted);
 }
 

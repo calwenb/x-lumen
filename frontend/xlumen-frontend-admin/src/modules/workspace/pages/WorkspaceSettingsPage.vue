@@ -117,7 +117,7 @@ watch([intro, forceReview], () => {
   grid-column: 1 / -1;
   margin: 0 0 var(--xl-space-4);
   color: var(--xl-text-primary);
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .settings__state {
@@ -125,7 +125,7 @@ watch([intro, forceReview], () => {
   padding: 48px 0;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .settings__state :deep(.el-skeleton) {
@@ -159,6 +159,6 @@ watch([intro, forceReview], () => {
 
 .settings__saved {
   color: var(--xl-color-success);
-  font-size: 13px;
+  font-size: 14px;
 }
 </style>

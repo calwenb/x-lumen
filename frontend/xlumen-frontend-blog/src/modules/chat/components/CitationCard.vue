@@ -57,7 +57,7 @@ const href = computed(() => {
 
 .citation-card__badge {
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   font-weight: 600;
 }
 
@@ -65,7 +65,7 @@ const href = computed(() => {
   flex: 1;
   min-width: 0;
   color: var(--xl-text-primary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   overflow-wrap: break-word;
 }
 
@@ -79,14 +79,14 @@ const href = computed(() => {
   border-left: 2px solid var(--xl-color-ai);
   background: var(--xl-bg-surface);
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.6;
   overflow-wrap: break-word;
 }
 
 .citation-card__link {
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   text-decoration: none;
 }
 

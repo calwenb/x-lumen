@@ -467,13 +467,13 @@ onMounted(() => {
 .models__title {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .models__hint {
   margin: var(--xl-space-1) 0 var(--xl-space-6);
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* A02 主从：左侧 ~68% 主区 + 右侧 ~32% Prompt 检查器 */
@@ -492,13 +492,13 @@ onMounted(() => {
   padding: 48px 0;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .models__state-icon {
   display: block;
   margin-bottom: var(--xl-space-3);
-  font-size: 40px;
+  font-size: 42px;
   color: var(--xl-text-muted);
 }
 
@@ -548,7 +548,7 @@ onMounted(() => {
 .models__test-title {
   margin: 0 0 var(--xl-space-4);
   color: var(--xl-text-primary);
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .models__test-form {
@@ -568,7 +568,7 @@ onMounted(() => {
 
 .models__test-result {
   margin: var(--xl-space-4) 0 0;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .models__test-result--ok {
@@ -605,7 +605,7 @@ onMounted(() => {
 .models__inspector-title {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -613,7 +613,7 @@ onMounted(() => {
   border: none;
   background: transparent;
   color: var(--xl-text-muted);
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1;
   cursor: pointer;
 }
@@ -636,7 +636,7 @@ onMounted(() => {
 
 .models__prompt-label {
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -647,7 +647,7 @@ onMounted(() => {
 .models__prompt-hint {
   margin: 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .models__inspector-footer {

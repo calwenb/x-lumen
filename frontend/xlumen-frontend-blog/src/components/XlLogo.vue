@@ -30,25 +30,37 @@ withDefaults(
     role="img"
     :aria-label="wordmark"
   >
-    <svg
-      class="xl-logo__mark"
-      :width="size"
-      :height="size * 1.1"
-      viewBox="0 0 40 44"
-      fill="none"
-      aria-hidden="true"
-    >
-      <!-- 左光柱 -->
-      <path :fill="reverse ? '#fff' : 'var(--xl-color-primary)'" d="M9 4 L15 8 L12 40 L6 36 Z" />
-      <!-- 右光柱 -->
-      <path :fill="reverse ? '#fff' : 'var(--xl-color-primary)'" d="M25 8 L31 4 L34 36 L28 40 Z" />
-      <!-- 中心四角星（隐藏 X / AI 小光） -->
-      <path
-        :fill="reverse ? 'var(--xl-color-primary)' : '#fff'"
-        d="M20 9 Q20 16 24 16 Q20 16 20 23 Q20 16 16 16 Q20 16 20 9 Z"
-      />
-    </svg>
-    <span v-if="variant === 'full'" class="xl-logo__word">{{ wordmark }}</span>
+    <img
+      v-if="variant === 'full' && !reverse && wordmark === 'xLumen'"
+      class="xl-logo__image"
+      src="/brand/xlumen-logo-primary-generated.png"
+      alt=""
+      :style="{ height: `${size * 1.1}px` }"
+    />
+    <template v-else>
+      <svg
+        class="xl-logo__mark"
+        :width="size"
+        :height="size * 1.1"
+        viewBox="0 0 40 44"
+        fill="none"
+        aria-hidden="true"
+      >
+        <!-- 左光柱 -->
+        <path :fill="reverse ? '#fff' : 'var(--xl-color-primary)'" d="M9 4 L15 8 L12 40 L6 36 Z" />
+        <!-- 右光柱 -->
+        <path
+          :fill="reverse ? '#fff' : 'var(--xl-color-primary)'"
+          d="M25 8 L31 4 L34 36 L28 40 Z"
+        />
+        <!-- 中心四角星（隐藏 X / AI 小光） -->
+        <path
+          :fill="reverse ? 'var(--xl-color-primary)' : '#fff'"
+          d="M20 9 Q20 16 24 16 Q20 16 20 23 Q20 16 16 16 Q20 16 20 9 Z"
+        />
+      </svg>
+      <span v-if="variant === 'full'" class="xl-logo__word">{{ wordmark }}</span>
+    </template>
   </span>
 </template>
 
@@ -67,10 +79,19 @@ withDefaults(
   flex-shrink: 0;
 }
 
+.xl-logo__image {
+  display: block;
+  width: auto;
+  max-width: none;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
 .xl-logo__word {
   font-family: var(--xl-font-sans);
   font-weight: 650;
   letter-spacing: -0.03em;
+
   /* 字标随图标高度等比缩放 */
   font-size: calc(var(--xl-logo-h) * 0.62);
 }

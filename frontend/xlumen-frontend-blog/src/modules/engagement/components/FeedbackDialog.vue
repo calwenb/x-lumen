@@ -136,14 +136,14 @@ async function submit(): Promise<void> {
 
 .feedback-dialog__title {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .feedback-dialog__close {
   border: none;
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
 }
@@ -163,7 +163,7 @@ async function submit(): Promise<void> {
 
 .feedback-dialog__label {
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .feedback-dialog__input,
@@ -176,7 +176,7 @@ async function submit(): Promise<void> {
   background: var(--xl-bg-page);
   color: var(--xl-text-primary);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
 }
 
@@ -192,7 +192,7 @@ async function submit(): Promise<void> {
 .feedback-dialog__error {
   margin: 0;
   color: var(--xl-color-danger, #d03050);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .feedback-dialog__actions {
@@ -212,20 +212,20 @@ async function submit(): Promise<void> {
 
 .feedback-dialog__done-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
 }
 
 .feedback-dialog__done-text {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .feedback-dialog__track-no {
   margin: 0 0 8px;
   color: var(--xl-color-primary);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
 }
 </style>

@@ -19,7 +19,7 @@
 
 .dashboard__title {
   color: var(--xl-text-primary);
-  font-size: 28px;
+  font-size: 30px;
 }
 
 .dashboard__subtitle {

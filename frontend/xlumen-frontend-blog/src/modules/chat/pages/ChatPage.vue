@@ -654,7 +654,7 @@ onMounted(() => {
 
 .chat__title {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .chat__new {
@@ -672,7 +672,7 @@ onMounted(() => {
 }
 
 .chat__scope :deep(.el-radio-button__inner) {
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .chat__scope-select {
@@ -689,7 +689,7 @@ onMounted(() => {
 .chat__guest-hint {
   padding: var(--xl-space-3) 0;
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .chat__conversation {
@@ -698,7 +698,7 @@ onMounted(() => {
   border-radius: 8px;
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   cursor: pointer;
   overflow-wrap: break-word;
@@ -717,6 +717,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* 网格项默认 min-height:auto 会随消息变长而撑高，须收敛为 0 才能让内部消息区滚动、输入框固定 */
+  min-height: 0;
 }
 
 .chat__toolbar {
@@ -734,11 +736,12 @@ onMounted(() => {
   border-radius: 999px;
   background: color-mix(in srgb, var(--xl-color-ai) 12%, transparent);
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .chat__messages {
   flex: 1;
+  min-height: 0;
   padding: var(--xl-space-4);
   overflow-y: auto;
 }
@@ -762,21 +765,21 @@ onMounted(() => {
   border-radius: 50%;
   background: linear-gradient(135deg, var(--xl-color-primary), var(--xl-color-ai));
   color: #fff;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   box-shadow: var(--xl-shadow-md);
 }
 
 .chat__empty-title {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
 }
 
 .chat__empty-text {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .chat-message {
@@ -804,7 +807,7 @@ onMounted(() => {
   margin-top: 2px;
   border-radius: 50%;
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -815,7 +818,7 @@ onMounted(() => {
 .chat-message__avatar--user {
   background: color-mix(in srgb, var(--xl-color-primary) 18%, white);
   color: var(--xl-color-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .chat-message__bubble {
@@ -834,14 +837,14 @@ onMounted(() => {
 .chat-message__name {
   margin: 0 0 4px;
   color: var(--xl-color-ai);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   font-weight: 600;
 }
 
 .chat-message__text {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -888,7 +891,7 @@ onMounted(() => {
   border-radius: 4px;
   background: color-mix(in srgb, var(--xl-border) 70%, transparent);
   font-family: var(--xl-font-mono);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .markdown-body :deep(pre) {
@@ -941,7 +944,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .chat-message__tool-line::before {
@@ -973,7 +976,7 @@ onMounted(() => {
 
 .chat-message__tools-summary {
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   cursor: pointer;
   user-select: none;
 }
@@ -992,12 +995,12 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .chat-message__tool-name {
   font-family: var(--xl-font-mono);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .chat-message__tool-status {
@@ -1005,7 +1008,7 @@ onMounted(() => {
   border-radius: 8px;
   background: color-mix(in srgb, var(--xl-color-success) 14%, transparent);
   color: var(--xl-color-success);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .chat-message__tool--fail .chat-message__tool-status {
@@ -1021,7 +1024,7 @@ onMounted(() => {
 .chat-message__tool-duration {
   margin-left: auto;
   color: var(--xl-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .chat-message__citations {
@@ -1042,7 +1045,7 @@ onMounted(() => {
   border-radius: 999px;
   background: var(--xl-bg-surface);
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   cursor: pointer;
 }
 
@@ -1067,7 +1070,7 @@ onMounted(() => {
   margin: 0;
   padding: 6px 0;
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .compare-list__group {
@@ -1092,14 +1095,14 @@ onMounted(() => {
 
 .compare-list__title {
   color: var(--xl-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   overflow-wrap: break-word;
 }
 
 .compare-list__kb {
   flex-shrink: 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .chat__composer {
@@ -1119,7 +1122,7 @@ onMounted(() => {
   background: var(--xl-bg-page);
   color: var(--xl-text-primary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.6;
   resize: none;
   outline: none;
@@ -1190,7 +1193,7 @@ onMounted(() => {
   display: inline-flex;
   flex-shrink: 0;
   color: var(--xl-color-success);
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .chat__process-state--fail {
@@ -1211,7 +1214,7 @@ onMounted(() => {
 .chat__process-time {
   flex-shrink: 0;
   color: var(--xl-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .chat__process-status {
@@ -1221,7 +1224,7 @@ onMounted(() => {
   border-radius: 999px;
   background: color-mix(in srgb, var(--xl-color-success) 14%, transparent);
   color: var(--xl-color-success);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .chat__process-status--fail {
@@ -1242,7 +1245,7 @@ onMounted(() => {
   padding-top: 6px;
   border-top: 1px solid var(--xl-border);
   color: var(--xl-color-ai);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .chat__process-total {

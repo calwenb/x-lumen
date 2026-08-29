@@ -178,7 +178,7 @@ onMounted(load)
 .changelog-admin__title {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .changelog-admin__pager {
@@ -202,14 +202,14 @@ onMounted(load)
 .changelog-admin__panel-title {
   margin: 0 0 var(--xl-space-4);
   color: var(--xl-text-primary);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
 }
 
 .changelog-admin__hint {
   margin-top: var(--xl-space-1);
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   line-height: 1.4;
 }
 

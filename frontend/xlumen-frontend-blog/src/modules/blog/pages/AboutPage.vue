@@ -84,7 +84,7 @@ import XlLogo from '@/components/XlLogo.vue'
   top: 8px;
   left: calc(var(--xl-space-8) - 8px);
   color: var(--xl-color-ai);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .about__text {

@@ -100,7 +100,7 @@ async function handleClick(): Promise<void> {
   border-radius: 999px;
   background: var(--xl-bg-surface);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -121,6 +121,6 @@ async function handleClick(): Promise<void> {
 }
 
 .favorite-button__icon {
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 </style>

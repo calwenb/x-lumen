@@ -176,7 +176,7 @@ onMounted(() => {
 .audit__title {
   margin: 0 0 var(--xl-space-4);
   color: var(--xl-text-primary);
-  font-size: 22px;
+  font-size: 24px;
 }
 
 /* A05 64/36 日志表 + 详情检查器 */
@@ -206,13 +206,13 @@ onMounted(() => {
   padding: 48px 0;
   text-align: center;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .audit__state-icon {
   display: block;
   margin-bottom: var(--xl-space-3);
-  font-size: 40px;
+  font-size: 42px;
   color: var(--xl-text-muted);
 }
 
@@ -274,7 +274,7 @@ onMounted(() => {
 .audit__inspector-title {
   margin: 0 0 var(--xl-space-4);
   color: var(--xl-text-primary);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -284,7 +284,7 @@ onMounted(() => {
   gap: var(--xl-space-4);
   margin-bottom: var(--xl-space-3);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .audit__detail-body {
@@ -294,7 +294,7 @@ onMounted(() => {
   background: var(--xl-bg-secondary);
   color: var(--xl-text-primary);
   font-family: var(--xl-font-mono);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

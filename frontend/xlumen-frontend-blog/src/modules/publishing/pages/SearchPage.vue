@@ -918,7 +918,7 @@ onMounted(() => {
   top: 12px;
   right: 14px;
   color: var(--xl-color-ai);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   opacity: 0.8;
 }
 
@@ -1003,7 +1003,7 @@ onMounted(() => {
   border-radius: 4px;
   background: color-mix(in srgb, var(--xl-border) 70%, transparent);
   font-family: var(--xl-font-mono);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .markdown-body :deep(pre) {

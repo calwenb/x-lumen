@@ -205,14 +205,14 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
 
 .comment-section__title {
   margin: 0 0 var(--xl-space-4);
-  font-size: 16px;
+  font-size: 18px;
   color: var(--xl-text-primary);
 }
 
 .comment-section__hint {
   padding: var(--xl-space-6) 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .comment-section__retry {
@@ -246,7 +246,7 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
   align-items: center;
   gap: var(--xl-space-2);
   color: var(--xl-color-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -258,20 +258,20 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
   background: var(--xl-bg-surface);
   box-shadow: inset 0 1px 2px color-mix(in srgb, var(--xl-color-ai) 18%, transparent);
   color: var(--xl-color-ai);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.6;
 }
 
 .comment-item__time {
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .comment-item__content {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
   overflow-wrap: break-word;
 }
@@ -292,7 +292,7 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
   border-radius: 999px;
   background: none;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   cursor: pointer;
 }
 
@@ -331,7 +331,7 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
   background: var(--xl-bg-surface);
   color: var(--xl-text-primary);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   resize: vertical;
 }
 
@@ -349,6 +349,6 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
 
 .comment-form__tip {
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 </style>

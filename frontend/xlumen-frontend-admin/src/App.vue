@@ -3,7 +3,7 @@
 // 登录页（guest）不渲染侧边栏，仅路由出口。侧栏基于 Element Plus el-menu（EP 接入后统一视觉）。
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Document, Monitor, Operation, Setting, View } from '@element-plus/icons-vue'
+import { Document, House, Monitor, Operation, Setting, View } from '@element-plus/icons-vue'
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import { useSessionStore } from '@/stores/session'
@@ -14,7 +14,14 @@ const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 
+// 前台入口：新标签页打开博客端，可用 VITE_BLOG_URL 覆盖（部署联调时指向实际地址）
+const blogUrl = import.meta.env.VITE_BLOG_URL ?? 'http://localhost:5173'
+
 const showShell = computed(() => !route.meta.guest)
+
+function openBlog(): void {
+  window.open(blogUrl, '_blank', 'noopener')
+}
 
 async function handleLogout(): Promise<void> {
   if (session.refreshToken) {
@@ -32,6 +39,10 @@ async function handleLogout(): Promise<void> {
         <XlLogo variant="icon" :size="26" class="app-sidebar__logo" />
         <span class="app-sidebar__brand-text">xLumen 管理后台</span>
       </div>
+      <button type="button" class="app-sidebar__blog-link" @click="openBlog">
+        <el-icon><House /></el-icon>
+        <span>前往前台</span>
+      </button>
       <el-menu class="app-sidebar__menu" :default-active="route.path" router>
         <el-menu-item index="/settings">
           <el-icon><Setting /></el-icon>
@@ -100,7 +111,7 @@ async function handleLogout(): Promise<void> {
 
 .app-sidebar__brand-text {
   color: var(--xl-text-primary);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
@@ -114,7 +125,7 @@ async function handleLogout(): Promise<void> {
   margin-bottom: 2px;
   border-radius: var(--xl-radius);
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
 }
 
 .app-sidebar__menu :deep(.el-menu-item:hover) {
@@ -126,6 +137,28 @@ async function handleLogout(): Promise<void> {
   background: color-mix(in srgb, var(--xl-color-primary) 10%, transparent);
   color: var(--xl-color-primary);
   font-weight: 600;
+}
+
+/* 前往前台：与菜单项同视觉高度的外链按钮（新标签页打开博客端） */
+.app-sidebar__blog-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  margin-bottom: var(--xl-space-3);
+  padding: 0 var(--xl-space-3);
+  border: 1px dashed var(--xl-border);
+  border-radius: var(--xl-radius);
+  background: transparent;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-body);
+  cursor: pointer;
+  transition: color var(--xl-transition), border-color var(--xl-transition);
+}
+
+.app-sidebar__blog-link:hover {
+  border-color: var(--xl-color-primary);
+  color: var(--xl-color-primary);
 }
 
 .app-sidebar__footer {
@@ -143,7 +176,7 @@ async function handleLogout(): Promise<void> {
   gap: var(--xl-space-2);
   padding: var(--xl-space-1);
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   overflow-wrap: anywhere;
 }
 
@@ -158,7 +191,7 @@ async function handleLogout(): Promise<void> {
   border-radius: var(--xl-radius);
   background: transparent;
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   cursor: pointer;
 }

@@ -366,19 +366,19 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
 
 .floating-assistant__title {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .floating-assistant__subtitle {
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .floating-assistant__close {
   border: none;
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
 }
@@ -394,7 +394,7 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
   padding: var(--xl-space-6) 0;
   text-align: center;
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .panel-message {
@@ -424,7 +424,7 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
 .panel-message__text {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -465,7 +465,7 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
   border-radius: 4px;
   background: color-mix(in srgb, var(--xl-border) 70%, transparent);
   font-family: var(--xl-font-mono);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .markdown-body :deep(pre) {
@@ -511,7 +511,7 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
   border-radius: 999px;
   background: var(--xl-bg-surface);
   color: var(--xl-text-secondary);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
   cursor: pointer;
 }
 
@@ -541,7 +541,7 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
   border-radius: 8px;
   background: var(--xl-bg-page);
   color: var(--xl-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
 }
 

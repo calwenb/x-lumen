@@ -528,7 +528,7 @@ onMounted(async () => {
 
 .kb-detail__cover-text {
   color: color-mix(in srgb, var(--xl-color-primary) 78%, var(--xl-text-primary));
-  font-size: 38px;
+  font-size: 40px;
   font-weight: 700;
 }
 
@@ -720,7 +720,7 @@ onMounted(async () => {
   border-radius: 999px;
   background: var(--xl-bg-secondary);
   color: var(--xl-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .kb-detail__main {
@@ -753,7 +753,7 @@ onMounted(async () => {
 .kb-detail__state-title {
   margin: var(--xl-space-2) 0;
   color: var(--xl-text-primary);
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .kb-detail__state-text {
@@ -770,7 +770,7 @@ onMounted(async () => {
 .kb-detail__state-icon {
   display: block;
   margin: 0 auto var(--xl-space-3);
-  font-size: 40px;
+  font-size: 42px;
   color: var(--xl-text-muted);
 }
 

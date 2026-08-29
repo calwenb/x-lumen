@@ -171,7 +171,7 @@ onBeforeUnmount(() => {
 
 .tour__steps {
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .tour__close {
@@ -181,7 +181,7 @@ onBeforeUnmount(() => {
   border: none;
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
 }
@@ -193,13 +193,13 @@ onBeforeUnmount(() => {
 .tour__title {
   margin: var(--xl-space-3) 0 var(--xl-space-2);
   color: var(--xl-text-primary);
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .tour__desc {
   margin: 0;
   color: var(--xl-text-secondary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.8;
 }
 
@@ -234,7 +234,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: var(--xl-bg-surface);
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   transition:
     border-color var(--xl-transition),
