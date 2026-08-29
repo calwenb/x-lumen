@@ -6,6 +6,7 @@ import com.calwen.xlumen.ai.enums.AiTaskStatus;
 import cn.hutool.core.util.StrUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
@@ -28,18 +29,19 @@ public class AiTaskDispatcher {
     private static final Logger log = LoggerFactory.getLogger(AiTaskDispatcher.class);
 
     private final Map<AiScene, AiTaskExecutor> executors = new EnumMap<>(AiScene.class);
-    private final AiTaskService aiTaskService;
+    // AiTaskServiceImpl 构造依赖本类（@Lazy），反向再用 ObjectProvider 延迟解析，彻底打断 bean 创建环
+    private final ObjectProvider<AiTaskService> aiTaskServiceProvider;
     private final SseService sseService;
     private final ThreadPoolTaskExecutor taskExecutor;
 
     public AiTaskDispatcher(List<AiTaskExecutor> executorList,
-                            AiTaskService aiTaskService,
+                            ObjectProvider<AiTaskService> aiTaskServiceProvider,
                             SseService sseService,
                             @Qualifier("aiTaskExecutor") ThreadPoolTaskExecutor taskExecutor) {
         for (AiTaskExecutor executor : executorList) {
             executors.put(executor.scene(), executor);
         }
-        this.aiTaskService = aiTaskService;
+        this.aiTaskServiceProvider = aiTaskServiceProvider;
         this.sseService = sseService;
         this.taskExecutor = taskExecutor;
     }
@@ -53,7 +55,7 @@ public class AiTaskDispatcher {
         AiTaskExecutor executor = executors.get(AiScene.valueOf(task.getScene()));
         if (executor == null) {
             log.warn("未找到场景执行器 scene={} taskId={}", task.getScene(), task.getId());
-            aiTaskService.fail(task.getId(), "该场景暂不支持");
+            aiTaskServiceProvider.getObject().fail(task.getId(), "该场景暂不支持");
             return;
         }
         try {
@@ -64,6 +66,7 @@ public class AiTaskDispatcher {
     }
 
     private void run(AiTaskExecutor executor, AiTaskEntity task) {
+        AiTaskService aiTaskService = aiTaskServiceProvider.getObject();
         aiTaskService.markRunning(task.getId());
         TaskContext ctx = new TaskContext(aiTaskService, sseService, task.getId());
         try {

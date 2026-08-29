@@ -35,4 +35,7 @@ public class ChatRequestDTO {
 
     /** 限定对比的知识 ID 列表（可空；单篇时检索精确限定该篇，多篇时保持可见库检索由前端表达对比语义）。 */
     private List<Long> knowledgeIds;
+
+    /** 知识级问答锚定的知识标题（可空；详情页「问小光」传入，用于让模型识别「这篇文章」所指）。 */
+    private String knowledgeTitle;
 }

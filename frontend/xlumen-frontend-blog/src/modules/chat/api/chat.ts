@@ -145,13 +145,14 @@ export function streamChat(
   )
 }
 
-/** 知识级流式问答（D02）：scope 空=全部可见库；传 kbId=锁定当前知识库。 */
+/** 知识级流式问答（D02）：scope 空=全部可见库；传 kbId=锁定当前知识库；knowledgeId 由 URL 路径锚定单篇。 */
 export function streamKnowledgeAsk(
   knowledgeId: string,
   query: string,
   callbacks: ChatStreamCallbacks,
   signal?: AbortSignal,
   scope?: ChatScope,
+  knowledgeTitle?: string,
 ): Promise<void> {
   return runChatStream(
     `/chat/knowledge/${knowledgeId}/ask`,
@@ -159,6 +160,7 @@ export function streamKnowledgeAsk(
       query,
       ...(scope?.kbId ? { kbId: scope.kbId } : {}),
       ...(scope?.allVisible !== undefined ? { allVisible: scope.allVisible } : {}),
+      ...(knowledgeTitle ? { knowledgeTitle } : {}),
     },
     callbacks,
     signal,

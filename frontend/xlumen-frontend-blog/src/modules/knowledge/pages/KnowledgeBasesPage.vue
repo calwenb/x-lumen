@@ -99,10 +99,10 @@ onMounted(() => {
   <main class="kb-discovery">
     <header class="kb-discovery__header">
       <h1 class="kb-discovery__title">知识库</h1>
-      <!-- 说明：MVP 展示「我的知识库」；全平台公开库聚合列表（发现页公开卡片墙）由 V2 提供 -->
+      <!-- 说明：MVP 展示「我的知识库」；全平台公开库聚合见「发现」页公开知识流 -->
       <p class="kb-discovery__desc">
         这里是知识平台化的入口——知识按「库 → 目录 → 知识」组织。
-        当前展示我的知识库；全平台公开知识库聚合将在 V2 提供。
+        当前展示我的知识库；全平台公开知识库聚合见「发现」页。
       </p>
       <RouterLink v-if="session.loggedIn" class="kb-discovery__create" to="/studio/knowledge-bases">
         <el-icon><Plus /></el-icon>
@@ -134,10 +134,7 @@ onMounted(() => {
     </div>
     <!-- 书架索引：纵向列表，不使用等宽卡片网格 -->
     <div v-else class="kb-shelf">
-      <article v-for="(kb, index) in kbs" :key="kb.id" class="kb-shelf__item">
-        <span class="kb-shelf__idx" aria-hidden="true">{{
-          String(index + 1).padStart(2, '0')
-        }}</span>
+      <article v-for="kb in kbs" :key="kb.id" class="kb-shelf__item">
         <RouterLink class="kb-shelf__cover" :to="`/kb/${kb.id}`">
           <span class="kb-shelf__cover-text">{{ kb.name.slice(0, 1) }}</span>
         </RouterLink>
@@ -258,7 +255,7 @@ onMounted(() => {
 .kb-discovery__state-icon {
   display: block;
   margin: 0 auto var(--xl-space-3);
-  font-size: 40px;
+  font-size: 42px;
   color: var(--xl-text-muted);
 }
 
@@ -277,7 +274,7 @@ onMounted(() => {
 
 .kb-shelf__item {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: var(--xl-space-6);
   align-items: center;
   padding: var(--xl-space-6) 0;
@@ -286,14 +283,6 @@ onMounted(() => {
 
 .kb-shelf__item:first-child {
   border-top: 1px solid var(--xl-border);
-}
-
-.kb-shelf__idx {
-  writing-mode: vertical-rl;
-  color: var(--xl-text-muted);
-  font-family: var(--xl-font-mono);
-  font-size: var(--xl-fs-caption);
-  letter-spacing: 0.2em;
 }
 
 .kb-shelf__cover {
@@ -320,7 +309,7 @@ onMounted(() => {
 
 .kb-shelf__cover-text {
   color: color-mix(in srgb, var(--xl-color-primary) 78%, var(--xl-text-primary));
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 700;
 }
 

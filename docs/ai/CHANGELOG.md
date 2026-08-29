@@ -16,7 +16,18 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
-## 2026/8/28 07:27 · ZCode（全功能黑盒巡检 1080p + 修复 404 路由盲区）
+## 2026/8/29 07:30 · ZCode（全功能黑盒巡检 1080p + 修复知识级问答缺上下文）
+
+> 影响文档：docs/ai/QA.md（无·测试记录）、docs/ai/STATUS.md（§7 最近变更随本条目更新）、docs/frontend/FRONTEND.md（前端两处） · 决策摘要：无
+
+- **测试范围**：按 QA.md §5 全模块巡检（1920×1080，qa_ft_0829 / qa_ft_0829_b 测试账号）：身份多租户 / 博客公开阅读 / 互动反馈 / 内容管理 / 知识库体系 / 审核发布 / AI 对话 / AI 写作 / AI 内容增值 / RAG 索引 / 管理后台 / 多用户可见性，另覆盖 V2 页（知识地图、站点更新日志、搜索关键词+语义双线、AI 调用追踪、站点动态管理）。
+- **全部通过项**：注册（即建空间）/登录/登出/再登录；详情页（TOC/右轨赞踩收藏/相关推荐/AI 摘要块「AI 摘要」）；赞踩互斥+toggle、收藏、评论发表、读者纠错（追踪号 + 同 IP 1/分钟 429「提交过于频繁」）；建库（公开/私有）、目录树新建/改名/删除、访客私有库直链「知识库不可访问」fallback（BUG-030 复验通过）、回收站；编辑器选库/目录、保存草稿、发布→自动 AI 审核（0 条建议）→自动发布→消息中心通知→审核中心；AI 对话（Agent 工具循环 knowledge.search + 引用溯源展开）、知识级问答、访客助手（访客模式）；AI 写作（topic→四步生成→保存为新知识）；RAG 发布即索引（ACTIVE/3 切片）；后台（空间设置/模型配置空态/审计日志 KNOWLEDGE_PUBLISH/站点更新日志/新增动态表单）；多用户可见性（B 见 A 公开知识、B 直链 A 私有库被拦）。
+- **发现并修复缺陷**：**知识级问答（详情页「问小光」）不注入当前知识上下文**——用户问「这篇文章主要讲什么」时，模型答「无法判断所指是哪一篇」。根因：`ChatController` 路径 `knowledgeId` 传入 `ChatServiceImpl.runAgent` 后未被使用（未进 `toolContext.knowledgeIds`，系统提示也无知识标题），Agent 不知锚定哪篇。修复：①`runAgent` 在 `knowledgeId != null` 时并入 `toolContext.knowledgeIds`（knowledge.search 精确检索单篇）；②新增 `ChatRequestDTO.knowledgeTitle`，`runAgent` 将其注入系统提示（「本次问答锚定知识《标题》」）；③前端 `streamKnowledgeAsk`/`KnowledgeQaDialog` 透传 `knowledgeTitle`。实测模型已能识别「这篇文章」=《QA 巡检：测试知识》并据此作答。
+- **顺带修正文案**：`KnowledgeBasesPage.vue`「全平台公开知识库聚合将在 V2 提供」已与 V2 交付不符，改为「全平台公开知识库聚合见「发现」页」。
+- **排除/遗留（非本次缺陷，记录备查）**：①存量旧发布知识（calwen 的「虚拟线程实战」「Spring Boot 4 自动配置」等）无 ACTIVE RAG 索引——知识级问答/对话检索不到其内容（BUG-004 补跑缺口），仅最近发布知识可检索；②审计日志 KNOWLEDGE_PUBLISH 的「操作人」为空——AI 自动发布由系统上下文触发，`WorkspaceContext.userId()` 为空（未把发起人穿过审核事件），低优先级；③AI 写作生成标题为通用「AI 生成文章」（识别主题能力偏弱，非代码缺陷）；④模型配置页空态为默认无场景配置，属预期。
+- **验证**：后端 ai 模块 10 个测试类全绿（`mvn -pl xlumen-ai -am test`，0 失败）；blog `typecheck`/`build`/改动文件 `eslint`（0 error，1 处既有 v-html 警告）通过。测试数据（qa_ft_0829 / qa_ft_0829_b 及公开/私有库、已发布知识、目录）保留在 xlumen_dev。
+
+
 
 > 影响文档：docs/ai/QA.md（无·测试记录）、docs/ai/STATUS.md（§7 最近变更随本条目更新） · 决策摘要：无
 

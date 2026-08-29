@@ -156,7 +156,7 @@ public class ChatServiceImpl implements ChatService {
                           ChatRequestDTO dto, Long knowledgeId, List<ChatMessageEntity> history,
                           SseEmitter emitter) {
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(resolveSystemPrompt(workspaceId, userId)));
+        messages.add(new SystemMessage(resolveSystemPrompt(workspaceId, userId, knowledgeId, dto.getKnowledgeTitle())));
         messages.addAll(replayHistory(history));
         messages.add(new UserMessage(dto.getQuery()));
 
@@ -168,7 +168,9 @@ public class ChatServiceImpl implements ChatService {
                 .userId(userId)
                 .conversationId(conversation.getId())
                 .kbId(dto.getKbId())
-                .knowledgeIds(dto.getKnowledgeIds())
+                // 知识级问答（详情页「问小光」）由路径 knowledgeId 锁定单篇：把它并入 knowledgeIds，
+                // knowledge.search 即精确检索该篇（多篇对比场景保留 dto 传入的列表）。
+                .knowledgeIds(knowledgeId != null ? List.of(knowledgeId) : dto.getKnowledgeIds())
                 .citationCollector(results -> {
                     for (SearchResultDTO r : results) {
                         if (r != null && r.getKnowledgeId() != null) {
@@ -222,8 +224,13 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /** QA System Prompt：resolver 输出为基础，登录用户存在长期记忆时附加（不替换）。 */
-    private String resolveSystemPrompt(Long workspaceId, Long userId) {
+    private String resolveSystemPrompt(Long workspaceId, Long userId, Long knowledgeId, String knowledgeTitle) {
         String base = promptResolver.resolve(workspaceId, AiScene.QA);
+        // 知识级问答（详情页「问小光」）：把锚定的知识标题注入系统提示，让模型识别「这篇文章」所指，
+        // 避免仅凭「这篇文章」这种指代无从定位文章。
+        if (knowledgeId != null && StrUtil.isNotBlank(knowledgeTitle)) {
+            base = base + "\n\n本次问答锚定知识《" + knowledgeTitle + "》，用户问题指代「这篇文章」即指该知识。";
+        }
         if (userId == null) {
             return base;
         }
@@ -386,7 +393,11 @@ public class ChatServiceImpl implements ChatService {
                     // 无对应 tool 响应的调用剔除（窗口截断导致响应缺失 → 降级纯文本）
                     toolCalls.removeIf(c -> c.id() == null || !responded.contains(c.id()));
                 }
-                out.add(AssistantMessage.builder().content(m.getContent()).toolCalls(toolCalls).build());
+                out.add(AssistantMessage.builder()
+                        .content(m.getContent())
+                        // AssistantMessage 断言 toolCalls 非 null，普通回答须传空列表
+                        .toolCalls(toolCalls == null ? List.of() : toolCalls)
+                        .build());
             } else if ("TOOL".equals(m.getRole())) {
                 if (m.getToolCallId() == null || !responded.contains(m.getToolCallId())) {
                     continue; // 孤儿 tool 行剔除

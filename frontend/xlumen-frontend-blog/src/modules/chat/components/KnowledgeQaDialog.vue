@@ -94,6 +94,7 @@ async function send(): Promise<void> {
       controller.signal,
       // KB-3：本库=传 kbId 限定单库；全部可见库=allVisible=true
       scope.value === 'kb' && props.kbId ? { kbId: props.kbId } : { allVisible: true },
+      props.knowledgeTitle,
     )
   } catch (error) {
     if (!(error instanceof DOMException && error.name === 'AbortError') && !assistant.content) {
@@ -235,12 +236,12 @@ async function send(): Promise<void> {
 
 .qa-dialog__title {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .qa-dialog__subtitle {
   color: var(--xl-text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   overflow-wrap: break-word;
 }
 
@@ -248,7 +249,7 @@ async function send(): Promise<void> {
   border: none;
   background: none;
   color: var(--xl-text-secondary);
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
 }
@@ -270,7 +271,7 @@ async function send(): Promise<void> {
   padding: var(--xl-space-6) 0;
   text-align: center;
   color: var(--xl-text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .qa-message {
@@ -300,7 +301,7 @@ async function send(): Promise<void> {
 .qa-message__text {
   margin: 0;
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -341,7 +342,7 @@ async function send(): Promise<void> {
   border-radius: 4px;
   background: color-mix(in srgb, var(--xl-border) 70%, transparent);
   font-family: var(--xl-font-mono);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .markdown-body :deep(pre) {
@@ -374,7 +375,7 @@ async function send(): Promise<void> {
 .qa-message__tool-line {
   margin: 6px 0 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .qa-message__tool-line::before {
@@ -385,7 +386,7 @@ async function send(): Promise<void> {
 .qa-message__tools {
   margin: 6px 0 0;
   color: var(--xl-text-muted);
-  font-size: 12px;
+  font-size: var(--xl-fs-caption);
 }
 
 .qa-message__citations {
@@ -410,7 +411,7 @@ async function send(): Promise<void> {
   border-radius: 8px;
   background: var(--xl-bg-page);
   color: var(--xl-text-primary);
-  font-size: 14px;
+  font-size: var(--xl-fs-body);
   outline: none;
 }
 
@@ -424,7 +425,7 @@ async function send(): Promise<void> {
   border-radius: 8px;
   background: var(--xl-color-ai);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 

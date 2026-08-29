@@ -80,6 +80,8 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 
 > 仅保留最近 3 条摘要；完整变更以 [CHANGELOG.md](./CHANGELOG.md) 为准。
 
+- 2026/8/29 · ZCode：**全功能黑盒巡检（1080p）+ 修复知识级问答缺上下文**——按 QA.md 全模块巡检（身份/阅读/互动/内容/知识库/审核发布/AI 对话/AI 写作/AI 增值/RAG/管理后台/多用户，12 模块全覆盖，qa_ft_0829/qa_ft_0829_b）；全链路通过（注册登录、赞踩互斥、评论、纠错+速率、建库/目录树、发布→AI 审核→自动发布→通知→审核中心、AI 对话工具循环+引用溯源、访客助手、AI 写作四步、AI 摘要块、后台、多用户可见性+私有库拦截）；**修复：详情页「问小光」知识级问答不注入当前知识上下文**——用户问「这篇文章主要讲什么」模型答「无法判断所指是哪一篇」，根因为路径 `knowledgeId` 在 `runAgent` 未用（未进 toolContext.knowledgeIds、系统提示无标题）；改法=knowledgeIds 并单篇 + 新增 `ChatRequestDTO.knowledgeTitle` 注入系统提示 + 前端透传；顺带把 "知识库管理页「全平台公开知识库聚合在 V2 提供」" 过期文案改掉；验证：ai 10 测试类全绿、blog typecheck/build/lint 通过；遗留：存量旧发布知识无 RAG 索引（BUG-004 补跑缺口，知识级问答/对话查不到其内容）、审计日志 KNOWLEDGE_PUBLISH 操作人为空（AI 自动发布系统上下文）。
+
 - 2026/8/28 · ZCode：**全功能黑盒巡检（1080p）+ 修复 404 路由盲区**——按 QA.md 全模块巡检（身份/阅读/互动/内容/知识库/审核发布/AI 对话/AI 写作/AI 增值/RAG/管理后台/多用户，12 模块全覆盖）；修复 blog 与 admin 均缺 404 兜底——访问不存在路由渲染空白页（BUG-029 同类路由盲区），补 `NotFoundPage.vue` + 两端 router catch-all；验收：发布→AI 审核→自动发布→通知→审核中心全链路、AI 写作四步、AI 调用追踪 13 次 0 失败、多用户可见性（私有库 404+前端 fallback）、回收站等全通过；排除项：AI 对话"切片为空"为测试 fill 换行丢失假象（存量 9 篇已发布知识均已建 ACTIVE 索引）、整页刷新登录态丢失（M02 预期）；双端 typecheck/lint 绿。
 
 - 2026/8/27 · ZCode：**全功能黑盒测试 + 修复 3 项**——按 QA.md 全模块巡检（身份/阅读/互动/内容/知识库/审核发布/AI 对话/AI 写作/AI 摘要/后台/多用户可见性，1080p，qa_ft + qa_ft2 测试账号）；修复：①AI 写作任务 URL `/ai/tasks`→`/tasks`（SSE/GET/retry 404）+ `submitWriting` 取 `result.taskId`→`String(result)` + chunk 展示原始 JSON→解析 `content`（F-0603 流断裂）；②详情页右轨赞/踩/收藏不同步（ReactionBar/FavoriteButton 加 props watch 回同步，`update:counts` 载荷带 reaction，父组件同步 `knowledge.liked`）。验证：博客 typecheck/lint/build/vitest（19 用例）全绿，浏览器复测 AI 写作流式 Markdown 与右轨同步通过。遗留：存量知识 RAG 索引为空（BUG-004 补跑缺口）、`/knowledge-bases`「将在 V2 提供」文案与 V2 已交付不符。
