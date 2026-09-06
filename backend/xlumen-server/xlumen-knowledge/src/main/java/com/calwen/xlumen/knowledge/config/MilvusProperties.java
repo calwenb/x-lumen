@@ -5,9 +5,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Milvus 配置：绑定 .env 的 XLUMEN_MILVUS_* 变量（决策 D8 唯一配置载体）。
+ * Milvus 配置：绑定各环境 profile 的 xlumen.milvus.* 键（决策 D29）。
  * 装配层探测 REST v2 可达性决定启用 Milvus 或降级 Noop。
- * 注：Boot 4 的 Binder 对 .env 导入的大写属性不做 relaxed binding，改用 @Value 显式占位符绑定（同 AiProperties）。
+ * 注：@Value 键名与 profile YAML 的小写点号键一致（如 xlumen.milvus.host）；键缺失即启动失败。
  *
  * @author calwen
  * @date 2026/8/13
@@ -17,14 +17,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class MilvusProperties {
 
     /** Milvus 主机地址。 */
-    @Value("${XLUMEN_MILVUS_HOST}")
+    @Value("${xlumen.milvus.host}")
     private String milvusHost;
 
     /** Milvus 端口。 */
-    @Value("${XLUMEN_MILVUS_PORT}")
+    @Value("${xlumen.milvus.port}")
     private int milvusPort;
 
     /** Milvus 数据库名。 */
-    @Value("${XLUMEN_MILVUS_DATABASE}")
+    @Value("${xlumen.milvus.database}")
     private String milvusDatabase;
 }

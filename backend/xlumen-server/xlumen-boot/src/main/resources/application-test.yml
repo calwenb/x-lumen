@@ -1,0 +1,115 @@
+# ============================================================
+# 测试环境配置（随仓库提交并打进 jar）
+# 使用：--spring.profiles.active=test（deploy-backend.sh test 自动带上）
+# 与正式：同 IP 不同库（xlumen_test）、端口 8081、Redis 逻辑库 1 隔离
+# ============================================================
+
+spring:
+  application:
+    name: xlumen
+  # Spring AI：关闭全部六个 OpenAI 自动配置（D20，供应商手动装配）
+  ai:
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://159.75.6.183:3306/xlumen_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: <测试库密码>
+    hikari:
+      maximum-pool-size: 10                # 个人博客并发假设（PRODUCT §11 NFR）
+      connection-timeout: 5000             # 防连接耗尽挂起
+  mail:
+    host: ""                      # 测试不发真邮件：host 留空，验证码落日志
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+  data:
+    redis:
+      host: 159.75.6.183
+      port: 6379
+      password: <Redis 密码>
+      database: 1                 # 与正式(0)隔离
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 1
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+  main:
+    allow-circular-references: true        # 模块间存在循环依赖
+
+server:
+  port: 8081
+
+management:
+  # 健康检查（部署脚本轮询 /actuator/health 依赖）
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,redis
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+xlumen:
+  jwt-secret: <测试环境独立生成，勿用正式/开发的值>
+  bailian:
+    api-key: <测试用百炼 Key，可与正式共用>
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model-writing: qwen-plus
+    model-reviewer: qwen-plus
+    model-qa: qwen-plus
+    model-summary: qwen-plus
+    model-vision: qwen3-vl-flash
+    model-tts: qwen3-tts-flash
+    model-embedding: text-embedding-v4
+  deepseek:
+    api-key: ""
+    base-url: https://api.deepseek.com
+    model-writing: deepseek-chat
+    model-reviewer: deepseek-chat
+    model-qa: deepseek-chat
+    model-summary: deepseek-chat
+  milvus:
+    host: <Milvus 地址，不可达自动降级>
+    port: 19530
+    database: default
+  agent-max-rounds: 5
+  agent-tool-timeout-millis: 10000
+  agent-max-tool-calls: 8
+  agent-tool-result-max-chars: 8000
+  reviewer-agent-max-rounds: 2
+  writing-max-chapters: 8
+  writing-rag-enabled: true
+  trace-cost-per-1k: 0.004
+  tts-voice: Cherry
+  site-url: http://159.75.6.183
+  mail-from: ""
+  dev-port-guard: false
+
+logging:
+  level:
+    root: INFO
+    com.calwen.xlumen: INFO
+

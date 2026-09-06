@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * AI 调用追踪实现：写入 ai_call_log，费用按每千 Token 单价估算（XLUMEN_TRACE_COST_PER_1K）。
+ * AI 调用追踪实现：写入 ai_call_log，费用按每千 Token 单价估算（xlumen.trace-cost-per-1k）。
  *
  * @author calwen
  * @date 2026/8/26

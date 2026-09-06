@@ -26,7 +26,7 @@ public class MailService {
     private final String from;
 
     public MailService(ObjectProvider<JavaMailSender> mailSenderProvider,
-                       @Value("${XLUMEN_MAIL_FROM:}") String from) {
+                       @Value("${xlumen.mail-from}") String from) {
         this.mailSenderProvider = mailSenderProvider;
         this.from = from;
     }

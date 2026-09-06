@@ -5,9 +5,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * AI 供应商配置：绑定 .env 的 XLUMEN_ 变量（决策 D8 唯一配置载体，GLOBAL.md §6.2）。
- * .env 提供服务器级默认密钥与默认模型；业务级场景配置在 ai_scene_config 表（管理面 A03），运行时表优先、.env 回退。
- * 注：Boot 4 的 Binder 对 .env 导入的大写属性不做 relaxed binding，改用 @Value 显式占位符绑定（与 application.yml 同源可靠）。
+ * AI 供应商配置：绑定各环境 profile 的 xlumen.* 键（决策 D29，GLOBAL.md §6.2）。
+ * 各环境 profile（application-<env>.yml）提供服务器级默认密钥与默认模型；业务级场景配置在 ai_scene_config 表（管理面 A03），运行时表优先、profile 回退。
+ * 注：@Value 键名与 profile YAML 的小写点号键一致（如 xlumen.bailian.api-key）；键缺失即启动失败（不设默认值，强制配置完整）。
  *
  * @author calwen
  * @date 2026/8/13
@@ -17,86 +17,86 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AiProperties {
 
     /** 百炼 API Key（不入日志/响应）。 */
-    @Value("${XLUMEN_BAILIAN_API_KEY:}")
+    @Value("${xlumen.bailian.api-key}")
     private String bailianApiKey;
 
     /** 百炼兼容模式 Base URL（OpenAI 兼容端点）。 */
-    @Value("${XLUMEN_BAILIAN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}")
+    @Value("${xlumen.bailian.base-url}")
     private String bailianBaseUrl;
 
     /** 百炼默认模型：写作。 */
-    @Value("${XLUMEN_BAILIAN_MODEL_WRITING:qwen-plus}")
+    @Value("${xlumen.bailian.model-writing}")
     private String bailianModelWriting;
 
     /** 百炼默认模型：审校。 */
-    @Value("${XLUMEN_BAILIAN_MODEL_REVIEWER:qwen-plus}")
+    @Value("${xlumen.bailian.model-reviewer}")
     private String bailianModelReviewer;
 
     /** 百炼默认模型：问答。 */
-    @Value("${XLUMEN_BAILIAN_MODEL_QA:qwen-plus}")
+    @Value("${xlumen.bailian.model-qa}")
     private String bailianModelQa;
 
     /** 百炼默认模型：摘要。 */
-    @Value("${XLUMEN_BAILIAN_MODEL_SUMMARY:qwen-plus}")
+    @Value("${xlumen.bailian.model-summary}")
     private String bailianModelSummary;
 
     /** 百炼默认模型：图片讲解（视觉模型，选便宜档）。 */
-    @Value("${XLUMEN_BAILIAN_MODEL_VISION:qwen3-vl-flash}")
+    @Value("${xlumen.bailian.model-vision}")
     private String bailianModelVision;
 
     /** DeepSeek API Key（不入日志/响应）。 */
-    @Value("${XLUMEN_DEEPSEEK_API_KEY:}")
+    @Value("${xlumen.deepseek.api-key}")
     private String deepseekApiKey;
 
     /** DeepSeek Base URL。 */
-    @Value("${XLUMEN_DEEPSEEK_BASE_URL:https://api.deepseek.com}")
+    @Value("${xlumen.deepseek.base-url}")
     private String deepseekBaseUrl;
 
     /** DeepSeek 默认模型：写作。 */
-    @Value("${XLUMEN_DEEPSEEK_MODEL_WRITING:deepseek-chat}")
+    @Value("${xlumen.deepseek.model-writing}")
     private String deepseekModelWriting;
 
     /** DeepSeek 默认模型：审校。 */
-    @Value("${XLUMEN_DEEPSEEK_MODEL_REVIEWER:deepseek-chat}")
+    @Value("${xlumen.deepseek.model-reviewer}")
     private String deepseekModelReviewer;
 
     /** DeepSeek 默认模型：问答。 */
-    @Value("${XLUMEN_DEEPSEEK_MODEL_QA:deepseek-chat}")
+    @Value("${xlumen.deepseek.model-qa}")
     private String deepseekModelQa;
 
     /** DeepSeek 默认模型：摘要。 */
-    @Value("${XLUMEN_DEEPSEEK_MODEL_SUMMARY:deepseek-chat}")
+    @Value("${xlumen.deepseek.model-summary}")
     private String deepseekModelSummary;
 
     /** Agent 最大循环轮数：对话工具循环上限，用尽后最后一轮禁工具强制作答。 */
-    @Value("${XLUMEN_AGENT_MAX_ROUNDS:5}")
+    @Value("${xlumen.agent-max-rounds}")
     private int agentMaxRounds;
 
     /** AI 调用追踪：每千 Token 费用估算单价（元），用于 ai_call_log.est_cost。 */
-    @Value("${XLUMEN_TRACE_COST_PER_1K:0.004}")
+    @Value("${xlumen.trace-cost-per-1k}")
     private double traceCostPer1k;
 
     /** 单工具执行超时（毫秒）：超时返回错误信封，孤儿 future 结果丢弃。 */
-    @Value("${XLUMEN_AGENT_TOOL_TIMEOUT_MILLIS:10000}")
+    @Value("${xlumen.agent-tool-timeout-millis}")
     private long agentToolTimeoutMillis;
 
     /** 单请求工具调用总次数上限：超出部分截断并给错误信封。 */
-    @Value("${XLUMEN_AGENT_MAX_TOOL_CALLS:8}")
+    @Value("${xlumen.agent-max-tool-calls}")
     private int agentMaxToolCalls;
 
     /** 单工具结果截断长度：超长截断并附 truncated:true。 */
-    @Value("${XLUMEN_AGENT_TOOL_RESULT_MAX_CHARS:8000}")
+    @Value("${xlumen.agent-tool-result-max-chars}")
     private int agentToolResultMaxChars;
 
     /** 审校事实核对轮数上限：发布闸门路径总耗时应可控。 */
-    @Value("${XLUMEN_REVIEWER_AGENT_MAX_ROUNDS:2}")
+    @Value("${xlumen.reviewer-agent-max-rounds}")
     private int reviewerAgentMaxRounds;
 
     /** 多步写作章节上限：大纲超过则回退单次生成模式。 */
-    @Value("${XLUMEN_WRITING_MAX_CHAPTERS:8}")
+    @Value("${xlumen.writing-max-chapters}")
     private int writingMaxChapters;
 
     /** 写作 RAG 增强（可选启用）：写作前检索知识库注入参考资料，结果携带引用证据。 */
-    @Value("${XLUMEN_WRITING_RAG_ENABLED:true}")
+    @Value("${xlumen.writing-rag-enabled}")
     private boolean writingRagEnabled;
 }

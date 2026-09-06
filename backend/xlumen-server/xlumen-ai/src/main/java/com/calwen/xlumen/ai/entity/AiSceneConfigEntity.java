@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 /**
  * 场景模型配置实体（ai_scene_config）：workspace_id + scene 唯一。
- * 仅存供应商/模型/参数；API Key 不入表（唯一来源 config/.env，决策 D8）。
+ * 仅存供应商/模型/参数；API Key 不入表（唯一来源各环境 profile 的 xlumen.* 键，决策 D29）。
  *
  * @author calwen
  * @date 2026/8/13

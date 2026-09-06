@@ -1,6 +1,6 @@
 # xLumen AI 变更日志
 
-> 更新日期：2026/8/25
+> 更新日期：2026/9/6
 > **本仓库专属**。
 > 按时间倒序记录（最新在顶部），每次 AI 会话结束必须追加一条；代码与文档更新同一提交，禁止虚构进度。
 > 归档规则：正文只保留最近约 14 天条目；更早条目按原样移入 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md) 顶部，git 历史始终可回溯。
@@ -15,6 +15,15 @@
 
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
+
+## 2026/9/6 18:12 · ZCode（D29 profile 化改造收尾核验与缺陷修复）
+
+> 影响文档：AGENTS.md、docs/ai/QA.md、docs/ai/STATUS.md、docs/deploy/DEPLOY.md、docs/backend/BACKEND.md · 决策摘要：D29（配置唯一载体 spring profile YAML，取代 D8）
+
+- **核验结论**：D29 主体改造已完成。四份 `application-{dev,test,prod,demo}.yml`（115~119 行）落在 `xlumen-boot/src/main/resources/`，`application.yml` 瘦身为 3 行仅留 `spring.profiles.active: dev` 开关；`backend/xlumen-server/config/` 目录与 `.env.example` 已删除，`spring.config.import` 全仓无残留；Java 侧 31 处 `@Value` 与 3 个 `@ConfigurationProperties(prefix = "xlumen")` 全部走小写点号键，无 `XLUMEN_*` 大写占位符残留；`init-db.ps1` 已改 `-Profile` 参数解析 YAML `spring.datasource` 段；`deploy-backend.sh` 启动命令携带 `--spring.profiles.active="$ENV"`。STATUS/GLOBAL/BACKEND/README/DEPLOY 决策与载体描述均已同步（D8 标注历史、D29 生效）。
+- **修复缺陷 2 项**：①`application-prod.yml` 中 `xlumen.agent-tool-timeout-millis` 键名被误写为 `agent-tooloklp;-timeout-millis`（键盘误触污染），因 `@Value("${xlumen.agent-tool-timeout-millis}")` 无默认值，prod profile 启动会直接 `Could not resolve placeholder` 失败，已纠正键名；②`deploy-backend.sh` 的 `--spring.profiles.active` 原先放在 `-jar` 之前，会被 JVM 当作无法识别的启动选项导致进程起不来（Spring 应用参数必须在 `-jar <jar>` 之后），已移到 jar 之后并补注释说明。
+- **旧 .env 引用清理**：`AGENTS.md`（项目结构与 Security 节的 `config/.env.example` 描述）、`logback-spring.xml` 头注释（级别改述为 profile 的 `logging.level.root`）、`docs/deploy/DEPLOY.md` 第 5 节 `init-db.ps1 -EnvFile` 用法（改 `-Profile` 解析 datasource）、`docs/ai/QA.md` 环境自检的端口守卫与 Redis 密码表述（改指 `application-dev.yml`）、`deploy-backend.sh` 三处 `.env` 注释、根 `.gitignore` 的 D8 注释块。CHANGELOG 历史条目中的 `.env` 记载按归档规则原样保留不改写。
+- **验证**：五份 YAML（含 `application.yml`）经 js-yaml 解析通过，四环境端口/键值抽查正常（dev/test/prod/demo 均含全部必填键，prod 键修复后校验通过）；`spring.config.import`、`@Value("${XLUMEN_`、`config/.env`、`-EnvFile` 在 backend/scripts/docs 现行文档中 grep 清零（仅历史 CHANGELOG 条目保留）。未跑 mvn 构建（本次改动仅配置文件与文档，无 Java 源码变更）。
 
 ## 2026/8/29 07:30 · ZCode（全功能黑盒巡检 1080p + 修复知识级问答缺上下文）
 

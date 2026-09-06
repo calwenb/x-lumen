@@ -1,11 +1,11 @@
 ﻿# init-db.ps1：xLumen 数据库初始化脚本（M01，GLOBAL.md §6.3 / BACKEND.md §17.1）
-# 用法：./scripts/init-db.ps1 -EnvFile "./backend/xlumen-server/config/.env" [-Reset]
-# 行为：解析 .env 的 KEY=VALUE 行（跳过 # 注释），读取 XLUMEN_DB_URL/XLUMEN_DB_USERNAME/XLUMEN_DB_PASSWORD，
+# 用法：./scripts/init-db.ps1 -Profile "./backend/xlumen-server/xlumen-boot/src/main/resources/application-dev.yml" [-Reset]
+# 行为：解析 profile YAML 的 spring.datasource 段（url/username/password），
 #       按文件名编号顺序执行 backend/xlumen-server/sql/init/ 全部脚本。
 # -Reset：数据库名必须是个人开发库（xlumen_dev）或 xlumen_test，执行前显示服务器地址和数据库名并要求二次确认；
 #         禁止对共享或正式数据执行重置。
 param(
-    [string]$EnvFile = "../backend/xlumen-server/config/.env",
+    [string]$Profile = "../backend/xlumen-server/xlumen-boot/src/main/resources/application-dev.yml",
     [switch]$Reset
 )
 
@@ -14,37 +14,39 @@ $ErrorActionPreference = "Stop"
 
 # ---------- 定位仓库根（脚本位于 <root>/scripts/） ----------
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$EnvFilePath = if ([System.IO.Path]::IsPathRooted($EnvFile)) { $EnvFile } else { Join-Path (Get-Location) $EnvFile }
-if (-not (Test-Path $EnvFilePath)) {
-    throw ".env 文件不存在：$EnvFilePath（先从 config/.env.example 复制并填写真实值）"
+$ProfilePath = if ([System.IO.Path]::IsPathRooted($Profile)) { $Profile } else { Join-Path (Get-Location) $Profile }
+if (-not (Test-Path $ProfilePath)) {
+    throw "profile 文件不存在：$ProfilePath（可从 application-demo.yml 复制为 application-dev.yml）"
 }
 
-# ---------- 解析 .env（KEY=VALUE，跳过 # 注释；UTF-8 无 BOM） ----------
-$envVars = @{}
-Get-Content -Path $EnvFilePath -Encoding UTF8 | ForEach-Object {
-    $line = $_.Trim()
-    if ($line -and -not $line.StartsWith('#')) {
-        $idx = $line.IndexOf('=')
-        if ($idx -gt 0) {
-            $envVars[$line.Substring(0, $idx).Trim()] = $line.Substring($idx + 1).Trim()
-        }
+# ---------- 解析 application-<env>.yml 的 spring.datasource 段 ----------
+$dbUrl = $null; $dbUser = $null; $dbPass = $null
+$inDatasource = $false
+Get-Content -Path $ProfilePath -Encoding UTF8 | ForEach-Object {
+    $line = $_
+    $trimmed = $line.Trim()
+    if ($trimmed -eq '' -or $trimmed.StartsWith('#')) { return }
+    if ($line -match '^  datasource:\s*$') { $inDatasource = $true; return }
+    if ($inDatasource -and $line -match '^  [a-z]') { $inDatasource = $false }
+    if ($inDatasource -and $trimmed -match '^(url|username|password):\s*(.+)$') {
+        $key = $Matches[1]
+        $val = $Matches[2].Trim().Trim('"').Trim("'")
+        if ($key -eq 'url') { $dbUrl = $val }
+        elseif ($key -eq 'username') { $dbUser = $val }
+        elseif ($key -eq 'password') { $dbPass = $val }
     }
 }
-
-$dbUrl = $envVars['XLUMEN_DB_URL']
-$dbUser = $envVars['XLUMEN_DB_USERNAME']
-$dbPass = $envVars['XLUMEN_DB_PASSWORD']
 if (-not $dbUrl -or -not $dbUser) {
-    throw ".env 缺少 XLUMEN_DB_URL 或 XLUMEN_DB_USERNAME"
+    throw "profile 缺少 spring.datasource 的 url 或 username：$ProfilePath"
 }
 
 # ---------- 从 JDBC URL 解析 host/port/database ----------
 if ($dbUrl -match 'jdbc:mysql://([^:/]+):?(\d+)?/([^?]+)?') {
     $dbHost = $Matches[1]
     $dbPort = if ($Matches[2]) { $Matches[2] } else { '3306' }
-    $dbName = if ($envVars['XLUMEN_DB_NAME']) { $envVars['XLUMEN_DB_NAME'] } else { $Matches[3] }
+    $dbName = $Matches[3]
 } else {
-    throw "XLUMEN_DB_URL 格式无法解析：$dbUrl"
+    throw "datasource.url 格式无法解析：$dbUrl"
 }
 
 Write-Host "==> 目标服务器：${dbHost}:${dbPort}，数据库：$dbName，用户：$dbUser"

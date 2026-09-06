@@ -24,12 +24,12 @@
 
 | 交付 | 日期 | 摘要 |
 | --- | --- | --- |
-| M01 代码骨架 | 2026-08-12 | 后端 7 个 Maven 模块与 common 基座、.env 配置体系（D8）、SQL 初始化链路（00~95 编号契约 + init-db.ps1）、blog/admin 双应用脚手架（pnpm Monorepo） |
+| M01 代码骨架 | 2026-08-12 | 后端 7 个 Maven 模块与 common 基座、配置体系（D8 .env，2026-08-30 升级为 D29 profile）、SQL 初始化链路（00~95 编号契约 + init-db.ps1）、blog/admin 双应用脚手架（pnpm Monorepo） |
 | M02 身份与多租户 | 2026-08-12 | JWT 15 分钟短时效 + 刷新令牌 SHA-256 哈希存 Redis、GETDEL 轮换防重放；注册即建空间（D9）；五角色；双层校验（接口权限 + Service 资源归属） |
 | M03 博客公开页 | 2026-08-12 | 公开列表/详情（markdown-it + DOMPurify XSS 清洗、标题目录导航）、搜索/标签 JSON_TABLE 聚合、评论/点赞幂等切换、阅读量 Redis 24h 防刷 |
 | M04 内容管理 | 2026-08-13 | 知识 CRUD + 自动保存幂等 + version 乐观锁（冲突 409）；8 状态机一次定版（构思->草稿->待审核->已通过->定时发布->已发布->更新中->已下架） |
 | M05 RAG 索引 | 2026-08-13 | 发布即索引流水线：事件->清洗->切片->Embedding（百炼 text-embedding-v4，32 片/批）->Milvus/Noop 写向量->kb_chunk 元数据 + kb_index_version 版本管理 |
-| M06+M12 AI 基座 | 2026-08-13（Spring AI 2.0.1 全量迁移 2026-08-24） | ChatRuntime（Spring AI 供应商解析 + 熔断 + 连通性测试，双选项装配 ChatModel/ChatClient）、AiTask 任务底座（幂等键 + Redis 进度 + SSE 事件）、场景模型配置（ai_scene_config 优先、.env 回退） |
+| M06+M12 AI 基座 | 2026-08-13（Spring AI 2.0.1 全量迁移 2026-08-24） | ChatRuntime（Spring AI 供应商解析 + 熔断 + 连通性测试，双选项装配 ChatModel/ChatClient）、AiTask 任务底座（幂等键 + Redis 进度 + SSE 事件）、场景模型配置（ai_scene_config 优先、profile 配置回退） |
 | M07 AI 创作 | 2026-08-13 | AI 写作（topic/draft/content 至少一项 -> 结构化 title+content）、审校异源校验（写作/审校模型不同源，结构化 severity/position/evidence/suggestion） |
 | M08 AI 对话 | 2026-08-13 | 小光（D14）SSE 流式问答（chunk/citation/done 协议）、会话/消息落库、知识级问答、引用溯源 |
 | M09 AI 增值 | 2026-08-13 | 摘要/SEO 结构化输出（Schema 校验）落库 ai_enhance_result |
@@ -47,10 +47,10 @@
 
 踩坑备忘（实现时易复犯，背景详见 CHANGELOG 对应条目，8-16 前条目见 [CHANGELOG-ARCHIVE.md](./CHANGELOG-ARCHIVE.md)）：
 
-- **Spring Boot 4 relaxed binding 失效**：.env 经 spring.config.import 导入的大写属性不做宽松绑定，配置属性类（AiProperties/MilvusProperties 等）必须用 @Value 显式占位符绑定。
+- **Spring Boot 4 relaxed binding 失效**：.env 经 spring.config.import 导入的大写属性不做宽松绑定，配置属性类（AiProperties/MilvusProperties 等）必须用 @Value 显式占位符绑定；D29 起改用 profile YAML，小写点号键（xlumen.bailian.api-key）对 @Value 与 @ConfigurationProperties 均按规范名解析生效。
 - **雪花 ID 精度**：Long 超出 JS Number 安全整数，后端全局序列化为 String（BACKEND §5.3 已约定）。
 - **Milvus 探测**：必须打 REST v2 `collections/has` 接口（/healthz 恒 404 曾导致永远 Noop 降级）；本机 Docker/Milvus 未装，向量以 NoopVectorStore 降级运行（索引元数据正常）。
-- **环境**：编译前 JAVA_HOME 必须指向 JDK 25；本地 Redis 需无密码启动（.env 密码为空）。
+- **环境**：编译前 JAVA_HOME 必须指向 JDK 25；本地 Redis 需无密码启动（application-dev.yml 密码留空）。
 - **遗留运维**：Milvus 就绪后，存量已发布知识需逐篇调用 reindex 补跑端点重建向量（BUG-004 收尾事项，见 BUGS.md 备注）。
 
 | V2 全量交付 | 2026-08-26 | 28 项功能 + 工程项 IDEA-027（批次 0 注释清理 / 1 AI 基建：配额+追踪+Prompt 后台+事件解耦 / 2 检索双线：语义向量+问搜一体+全量补跑 / 3 写作：RAG 增强+辅助编辑+代码解读 / 4 对话组：访客助手+多文档+追问+草稿+记忆+缺口+库洞察+评论@小光 / 5 前台增值：推荐+SEO+术语+导读+导游+地图+日志+TTS+图片讲解+主题+忘记密码）；Milvus 检索线落地（快速建集/大整数字符串化/扁平响应适配）；ai_call_log 访客可空 |
@@ -100,7 +100,8 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 | D5 | 当前直接维护初始化 SQL，不建升级机制（BACKEND） |
 | D6 | Redis 只存短期状态，业务事实以 MySQL 为准（PRODUCT §9） |
 | D7 | **文档先行**：目录结构以 docs 为唯一事实源，代码骨架不得偏离（PRODUCT §5） |
-| D8 | **配置唯一载体 .env**：禁止第二种配置载体（GLOBAL） |
+| D8 | ~~配置唯一载体 .env~~（2026-08-30 被 D29 取代，保留历史） |
+| D29 | **配置唯一载体 spring profile YAML（2026/8/30）**：application-{dev,test,prod,demo}.yml 位于 xlumen-boot/src/main/resources，随仓库提交并打进 fat jar（依赖仓库私密性）；启动 --spring.profiles.active=<dev|test|prod>；废除 .env 与 spring.config.import（GLOBAL） |
 | D9 | **多用户知识平台**：默认单空间使用；任何注册用户可创建知识库并公开分享，访客可浏览所有公开库；团队模式（成员/角色/空间切换）V2 可选启用（PRODUCT §2） |
 | D10 | **阶段标注（MVP/V2/V3）为规划非承诺**：调整须经 CHANGELOG 记录（PRODUCT §5） |
 | D11 | **应用职责划分**：blog（:5173）承载知识创建/编辑/发布/阅读/互动与 AI 对话全链路；admin（:5174）仅管理员配置管理（空间/成员/角色、模型、审计），不参与内容流转（PROTOTYPE §2） |
@@ -125,5 +126,5 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 
 - 后端：`JAVA_HOME` 必须指向 JDK 25；Maven 3.9 构建（命令见 GLOBAL.md）。
 - 前端：Node 20+ 与 pnpm 9+（命令见 GLOBAL.md）。
-- 中间件：MySQL 8.4 / Redis 为远程实例，配置唯一载体为 `backend/xlumen-server/config/.env`（决策 D8，参数与模板见 GLOBAL.md）。
+- 中间件：MySQL 8.4 / Redis 为远程实例，配置唯一载体为 `xlumen-boot/src/main/resources/application-<env>.yml`（决策 D29，模板见同目录 application-demo.yml）。
 - SQL 初始化：链路由 M01 代码骨架阶段按 BACKEND.md 建立（编号以实际为准），脚本与代码同一提交。
