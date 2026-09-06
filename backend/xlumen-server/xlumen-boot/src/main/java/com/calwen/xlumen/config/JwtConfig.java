@@ -15,7 +15,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
 /**
- * JWT 装配：HS256 对称密钥来自 .env 的 XLUMEN_JWT_SECRET（决策 D8），
+ * JWT 装配：HS256 对称密钥来自各环境 profile 的 xlumen.jwt-secret（决策 D29），
  * 访问令牌签发（JwtEncoder）与校验（JwtDecoder）统一在 boot 装配。
  *
  * @author calwen
@@ -25,9 +25,9 @@ import java.nio.charset.StandardCharsets;
 public class JwtConfig {
 
     @Bean
-    public SecretKey jwtSecretKey(@Value("${XLUMEN_JWT_SECRET}") String secret) {
+    public SecretKey jwtSecretKey(@Value("${xlumen.jwt-secret}") String secret) {
         if (secret == null || secret.length() < 32) {
-            throw new IllegalStateException("XLUMEN_JWT_SECRET 未配置或长度不足 32 字符");
+            throw new IllegalStateException("xlumen.jwt-secret 未配置或长度不足 32 字符");
         }
         return new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
     }

@@ -451,19 +451,51 @@ function onFavoriteChange(state: { favorited: boolean; count: number }): void {
   knowledge.value.favoriteCount = state.count
 }
 
-onMounted(async () => {
-  window.addEventListener('mousedown', onGlobalMouseDown, true)
-  window.addEventListener('keydown', onGlobalKeydown)
+/** 载入指定知识：主接口 + 阅读量上报 + 相关推荐；成功后校正目录高亮。 */
+async function reload(): Promise<void> {
   await load()
   if (!notFound.value && !loadError.value) {
     // 阅读量上报：失败不影响阅读
     reportView(knowledgeId.value).catch(() => undefined)
     // 相关推荐：失败静默，无数据不渲染区块
     void loadRelated()
-    // 正文渲染完成后挂滚动监听（TOC 高亮）
-    window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
   }
+}
+
+/** 切换知识（路由参数变化，组件被复用不重挂载）：清空上一篇的状态后重新载入。 */
+async function reloadForNewKnowledge(): Promise<void> {
+  // 关闭浮层与音频，避免上一篇的弹窗/播放器残留
+  showQa.value = false
+  showFeedback.value = false
+  codeDialog.value = null
+  imageExplainState.value = null
+  hideTermEnhance()
+  playerOpen.value = false
+  speechError.value = false
+  audioEl.value?.pause()
+  guideOpen.value = true
+  // knowledge 置空会整体卸载正文/评论区块，评论区等子组件随之重挂载
+  knowledge.value = null
+  related.value = []
+  commentCount.value = 0
+  activeAnchor.value = ''
+  window.scrollTo({ top: 0 })
+  await reload()
+}
+
+onMounted(() => {
+  window.addEventListener('mousedown', onGlobalMouseDown, true)
+  window.addEventListener('keydown', onGlobalKeydown)
+  // 滚动监听常驻（TOC 高亮）；无正文时 onScroll 自身为空操作
+  window.addEventListener('scroll', onScroll, { passive: true })
+  void reload()
+})
+
+// 相关推荐/搜索结果等同路由跳转只改 params，Vue Router 复用组件不重新挂载，
+// 必须 watch 路由参数并主动重新载入，否则页面停留在旧知识。
+watch(knowledgeId, () => {
+  void reloadForNewKnowledge()
 })
 
 onUnmounted(() => {

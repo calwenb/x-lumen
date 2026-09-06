@@ -26,7 +26,7 @@ import java.util.List;
 
 /**
  * 语音化端点（公开）：把知识标题+摘要转语音（TTS）。
- * 调用百炼 OpenAI 兼容 /audio/speech（默认 qwen3-tts-flash 便宜档，.env 可换）；
+ * 调用百炼 OpenAI 兼容 /audio/speech（默认 qwen3-tts-flash 便宜档，profile xlumen.bailian.model-tts 可换）；
  * 端点或密钥不可用时返回 501，前端友好提示。
  *
  * @author calwen
@@ -40,12 +40,12 @@ public class TtsController {
 
     private static final int TEXT_MAX = 500;
 
-    /** TTS 模型：默认便宜档 qwen3-tts-flash（.env XLUMEN_BAILIAN_MODEL_TTS 可换）。 */
-    @Value("${XLUMEN_BAILIAN_MODEL_TTS:qwen3-tts-flash}")
+    /** TTS 模型：默认便宜档 qwen3-tts-flash（profile xlumen.bailian.model-tts 可换）。 */
+    @Value("${xlumen.bailian.model-tts}")
     private String ttsModel;
 
-    /** 发音人：qwen-tts 系列默认 Cherry（.env XLUMEN_TTS_VOICE 可换）。 */
-    @Value("${XLUMEN_TTS_VOICE:Cherry}")
+    /** 发音人：qwen-tts 系列默认 Cherry（profile xlumen.tts-voice 可换）。 */
+    @Value("${xlumen.tts-voice}")
     private String ttsVoice;
 
     @Resource
@@ -53,10 +53,10 @@ public class TtsController {
     @Resource
     private KnowledgeApi knowledgeApi;
 
-    @Value("${XLUMEN_BAILIAN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}")
+    @Value("${xlumen.bailian.base-url}")
     private String bailianBaseUrl;
 
-    @Value("${XLUMEN_BAILIAN_API_KEY:}")
+    @Value("${xlumen.bailian.api-key}")
     private String bailianApiKey;
 
     @GetMapping(produces = "audio/mpeg")

@@ -46,7 +46,7 @@
 backend/xlumen-server/
 ├─ pom.xml                  # 父 POM：统一依赖与版本管理
 ├─ sql/init/                # 初始化 SQL（编号见第 7 节）
-├─ config/.env.example      # 配置模板（决策 D8；.env 不入库）
+├─ xlumen-boot/src/main/resources/application-*.yml   # 环境配置与模板（决策 D29：四份随仓库提交并打进 jar）
 ├─ xlumen-common/           # 基座：ApiResponse/BizException/WorkspaceContext/RequestId
 ├─ xlumen-identity/         # 身份与多租户 + 平台治理（iam_ + plt_）
 ├─ xlumen-content/          # 内容管理 + 数据分析与知识保鲜（cnt_ + analytics_）
@@ -317,8 +317,8 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 
 ## 14. AI 与外部服务
 
-- **AI 运行时（F-0501，Spring AI 2.0.1）**：`spring-ai-starter-model-openai` 统一接入 OpenAI 兼容供应商（百炼 compatible-mode / DeepSeek），多供应商隔离、独立配置；`ChatRuntime` 承担场景解析（ai_scene_config 表优先、.env 回退）、供应商 ChatModel 懒装配（options 内嵌 baseUrl/apiKey/maxRetries=2/timeout）、简单熔断与缺密钥回退 `ScriptedChatModel`（脚本队列，离线可测）。六个 `spring.ai.model.*` 自动配置在装配层全部关闭，双供应商手动装配；`spring-ai-bom:2.0.1` 与 Boot 4.1.0 同代（不降级）。
-- **场景级模型配置（F-0502）**：Writing、Reviewer、问答、摘要、SEO 各自独立配置模型与参数；向量化 Embedding **不属于**场景配置（由 knowledge 模块直接读 `.env` 的 `XLUMEN_BAILIAN_MODEL_EMBEDDING`，见 EmbeddingServiceImpl）；Research/Outline 为 V2 可选场景。
+- **AI 运行时（F-0501，Spring AI 2.0.1）**：`spring-ai-starter-model-openai` 统一接入 OpenAI 兼容供应商（百炼 compatible-mode / DeepSeek），多供应商隔离、独立配置；`ChatRuntime` 承担场景解析（ai_scene_config 表优先、profile 配置回退）、供应商 ChatModel 懒装配（options 内嵌 baseUrl/apiKey/maxRetries=2/timeout）、简单熔断与缺密钥回退 `ScriptedChatModel`（脚本队列，离线可测）。六个 `spring.ai.model.*` 自动配置在装配层全部关闭，双供应商手动装配；`spring-ai-bom:2.0.1` 与 Boot 4.1.0 同代（不降级）。
+- **场景级模型配置（F-0502）**：Writing、Reviewer、问答、摘要、SEO 各自独立配置模型与参数；向量化 Embedding **不属于**场景配置（由 knowledge 模块直接读 profile 的 `xlumen.bailian.model-embedding`，见 EmbeddingServiceImpl）；Research/Outline 为 V2 可选场景。
 - **SSE 流式（F-0503）**：AI 输出分章节流式推送；流式输出开始后不得自动切换模型续写（PRODUCT 第 8 节）；断线后由用户明确发起新任务或按 sequence 续传（见第 18 节）。
 - **AI 任务异步（F-1302）**：AI 长任务必须异步执行并展示进度；任务状态机 `QUEUED → RUNNING → WAITING_APPROVAL（V2 大纲可选确认 F-0602）→ COMPLETED`，失败分支 `FAILED`，人工可 `CANCELLED`；支持有限重试、检查点、取消、死信与人工补偿；任务事实以 MySQL 为准，Redis 只存短期进度。
 - **知识增强写作（F-0603，V2 可选）**：启用时写作阶段 RAG 检索结果必须携带证据（页码/标题/段落 + 不可变快照），AI 输出引用必须关联证据；无法溯源的内容必须明确标注为模型生成而非事实（F-0405、PRODUCT 第 8 节）。
@@ -330,7 +330,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
   - 对话 Agent（F-0708）：`ChatRuntime.chatStreamWithTools` 流式——SSE 事件在 chunk/citation/done/error 基础上新增 `tool`（start/done，`ToolEventSink` 实时收集）；中间轮助手工具调用行与 tool 行落 `chat_message`（tool_calls_json/tool_call_id/tool_name 三列，逐调用配对、tool_call_id 为本地合成 tc-序号，前端按 id 归并工具面板），历史窗口截断按「孤儿 tool 行剔除、toolCalls 无对应响应降级纯文本」修剪配对。
   - 写作 Agent（F-0608，单轨）：大纲→分章流式→异源自审（REVIEWER）→修订；主链路失败（大纲解析失败/章节超限/单章生成失败）→ 任务 FAILED；增强失败（自审/修订失败）→ 跳过修订交付初稿，写作不因增强步骤不可用而中断。
   - 审校事实核对：审校统一挂 knowledge.search 走 `ChatRuntime.chatWithTools` 非流式，工具调用预算在适配器内收紧（默认 2）；输出 Schema 不变，问题条目可选附 evidenceKnowledgeId/evidenceQuote；工具检索失败 ≠ 任务失败，仅任务本身失败才按 F-0907 阻断发布。
-  - Agent 参数上限：`XLUMEN_AGENT_MAX_ROUNDS`（默认 5）、`XLUMEN_AGENT_TOOL_TIMEOUT_MILLIS`（10000）、`XLUMEN_AGENT_MAX_TOOL_CALLS`（8）、`XLUMEN_AGENT_TOOL_RESULT_MAX_CHARS`（8000）、`XLUMEN_REVIEWER_AGENT_MAX_ROUNDS`（2）、`XLUMEN_WRITING_MAX_CHAPTERS`（8），全部经 `.env`（决策 D8）。
+  - Agent 参数上限：`XLUMEN_AGENT_MAX_ROUNDS`（默认 5）、`XLUMEN_AGENT_TOOL_TIMEOUT_MILLIS`（10000）、`XLUMEN_AGENT_MAX_TOOL_CALLS`（8）、`XLUMEN_AGENT_TOOL_RESULT_MAX_CHARS`（8000）、`XLUMEN_REVIEWER_AGENT_MAX_ROUNDS`（2）、`XLUMEN_WRITING_MAX_CHAPTERS`（8），全部经各环境 profile（决策 D29）。
 - **通用站内消息（IDEA-024）**：`xlumen-notification` 模块（`noti_notification` 表）与审核业务解耦；AI 任务完结发布进程内事件 `AiTaskCompletedEvent`（xlumen-common/event），通知模块监听 REVIEWER 场景事件生成审核结果提醒（通过/未通过/失败 + 摘要），链接跳转审核中心；评论回复、@小光（F-1005）等事件可复用同一套站内信。**实时推送**：`GET /api/v1/notifications/stream` 为用户级 SSE 长连接（`UserSseRegistry` 按 userId 注册、30s 心跳、30 分钟超时），通知创建后即时推送 `notification` 事件，前端右上角 ElNotification 弹窗（单向服务端推送用 SSE，不引入 WebSocket）；断线期间由前端 30s 未读数轮询兜底。
 - 结构化输出必须通过 Schema 校验和有限修复；权限、参数和内容安全错误不能通过切换模型绕过；降级与熔断按场景策略执行（如 Reviewer 切换备用模型），降级原因进入 AI Trace（F-0505，V3）。
 - Content 通过 `AiApi` 创建任务；AI 通过 `KnowledgeApi` 检索资料（携带可见库集合）；AI 完成后发布结果业务事件，由 Content 消费、校验并保存知识版本。AI 不反向依赖 Content，也不能直接修改内容表。
@@ -349,7 +349,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 - 日志包含 `requestId`、`traceId`、`workspaceId`、`userId`、模块和必要业务 ID，保证请求链路可定位。
 - 不记录访问令牌、刷新令牌、密码、模型密钥、完整敏感 Prompt 和文件正文。
 - 记录 HTTP、数据库、消息积压、检索、AI 调用和发布核心指标。
-- **日志 Appender 激活策略**：`logback-spring.xml` 中 Appender 必须按实际启用的 profile 显式激活（仅声明不激活会导致"有配置无日志"）；日志级别经 `.env` 变量控制，不写死。
+- **日志 Appender 激活策略**：`logback-spring.xml` 中 Appender 必须按实际启用的 profile 显式激活（仅声明不激活会导致"有配置无日志"）；日志级别经各环境 profile 控制，不写死。
 - 健康检查分级：区分应用存活（liveness）与依赖可用（readiness）状态。
 
 ### 15.3 安全约定
@@ -390,17 +390,17 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 
 ## 17. 配置管理
 
-> 决策 D8：**配置唯一载体为 `.env`**，禁止第二种配置载体（禁止 yq、禁止 `application-local.yml` 等环境 YAML）。
+> 决策 D29（取代 D8，2026-08-30）：**配置唯一载体为 spring profile YAML**——application-{dev,test,prod}.yml，禁止第二种配置载体（禁止 yq、禁止再引入 .env）。
 
-- 唯一载体：复制 `backend/xlumen-server/config/.env.example` 为 `backend/xlumen-server/config/.env`（真实值不得提交，`.env` 加入 `.gitignore`，仅 `.env.example` 允许提交）。
-- 加载方式：`application.yml` 通过 `spring.config.import: optional:file:config/.env[.properties]`（含 `../config/`、`backend/xlumen-server/config/` 相对路径回退）加载；变量命名统一 `${XLUMEN_XXX}` 风格（如 `XLUMEN_DB_URL`、`XLUMEN_JWT_SECRET`、`XLUMEN_BAILIAN_API_KEY`）。
-- 环境差异（数据库、Redis、MinIO、Milvus、模型密钥、日志级别等）全部走 `.env`，代码与资源目录不散落配置读取逻辑；配置使用 `@ConfigurationProperties` 映射，并在启动时校验必要字段。
+- 唯一载体：`backend/xlumen-server/xlumen-boot/src/main/resources/application-{dev,test,prod}.yml`（与 `application.yml` 同级，随仓库提交并打进 fat jar），`application-demo.yml` 为占位符模板。
+- 加载方式：`application.yml` 只有 `spring.profiles.active` 切换开关；其余全部配置（含公共项）在各环境 `application-<env>.yml`，位于 classpath（resources），Spring 按激活的 profile 自动加载（`application.yml` 默认 `active: dev`，命令行 `--spring.profiles.active=<test|prod>` 或环境变量 `SPRING_PROFILES_ACTIVE` 覆盖，命令行/环境变量优先级更高）；代码里 `${XLUMEN_XXX}` 占位符对应 YAML 小写点号键（`XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`，`XLUMEN_` 前缀映射 `xlumen.` 命名空间）。
+- 环境差异（数据库、Redis、Milvus、模型密钥、日志级别等）全部走各环境 profile；配置使用 `@ConfigurationProperties` 前缀 `xlumen` 与 `@Value` 显式占位符两种方式映射，启动时校验必要字段（如 JWT 密钥缺失直接启动失败）。
 - 敏感信息（密码、密钥）不能出现在资源目录、提交记录、日志、异常、接口响应和测试快照中。
-- Windows 下修改 `.env` 必须使用 UTF-8 无 BOM 编码，否则 Spring Boot 解析占位符失败。
+- 各环境 profile 为 YAML 文本，UTF-8 保存即可（无 .env 的 BOM 坑）。
 
 ### 17.1 SQL 初始化脚本
 
-`scripts/init-db.ps1`（仓库根 `scripts/` 目录）真实参数为 `-EnvFile`（默认 `../backend/xlumen-server/config/.env`），脚本直接解析 `.env` 的 `KEY=VALUE` 行（跳过 `#` 注释），读取 `XLUMEN_DB_URL`/`XLUMEN_DB_USERNAME`/`XLUMEN_DB_PASSWORD` 后按编号顺序执行 `backend/xlumen-server/sql/init/` 全部脚本；`-Reset` 要求数据库名必须是个人开发库或 `xlumen_test`，执行前显示服务器地址和数据库名并要求二次确认；禁止对共享或正式数据执行重置。该脚本随 M01 代码骨架落地。
+`scripts/init-db.ps1`（仓库根 `scripts/` 目录）真实参数为 `-Profile`（默认 `../backend/xlumen-server/xlumen-boot/src/main/resources/application-dev.yml`），脚本解析 profile YAML 的 `spring.datasource` 段（url/username/password）后按编号顺序执行 `backend/xlumen-server/sql/init/` 全部脚本；`-Reset` 要求数据库名必须是个人开发库或 `xlumen_test`，执行前显示服务器地址和数据库名并要求二次确认；禁止对共享或正式数据执行重置。该脚本随 M01 代码骨架落地。
 
 ## 18. 性能编码规范
 
@@ -465,6 +465,6 @@ AI 禁止：
 4. API、业务事件和错误码具有稳定契约（OpenAPI 唯一来源，决策 D4）。
 5. 日志和 Trace 能定位问题且不泄露敏感数据。
 6. 单元测试、集成测试和关键异常测试通过。
-7. 初始化 SQL、`.env` 配置和 OpenAPI 已同步更新。
+7. 初始化 SQL、profile 配置和 OpenAPI 已同步更新。
 
 > 产品侧完成定义（含文档同步要求）见 PRODUCT.md 第 12 节；内容状态机文字版见 PRODUCT.md 第 4 节，状态转换逻辑集中在所属 Service 实现中，Controller、Job 和消息消费者不能复制状态判断逻辑。

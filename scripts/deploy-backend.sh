@@ -19,10 +19,10 @@ REPO_URL=https://github.com/calwenb/x-lumen.git     # ← 你的仓库地址（�
 JAVA_HOME_DIR=/wen/env/jdk-25                  # JDK 25 安装目录（项目强制要求）
 JAR=xlumen-boot.jar                                 # 部署到产物目录的 jar 稳定名
 
-# ---- 测试环境 test（git 分支 test / 端口 8081，与 .env 的 XLUMEN_SERVER_PORT 一致）----
+# ---- 测试环境 test（git 分支 test / 端口 8081，与 application-test.yml 的 server.port 一致）----
 BRANCH_TEST=test                                 # 测试环境 git 分支
 SRC_TEST=/wen/project/backend/xlumen/test        # 测试环境源码目录
-APP_TEST=/wen/app/backend/xlumen/test            # 测试产物目录（jar + config/.env）
+APP_TEST=/wen/app/backend/xlumen/test            # 测试产物目录（jar，环境配置已打进 jar）
 LOG_TEST=/wen/log/backend/xlumen/test            # 测试环境日志目录
 PORT_TEST=8081                                   # 测试端口
 
@@ -84,13 +84,15 @@ sleep 3                                    # 等 3 秒让 Spring 收尾并释放
 log "== [4/5] 启动新包 =="
 mkdir -p "$APP" "$LOG"                            # 首次部署目录不存在，先建好
 cp -f "$JAR_FILE" "$APP/$JAR"                     # 新 jar 复制到产物目录（稳定名）
-cd "$APP"                                         # 工作目录=jar 目录，Spring 才能找到 config/.env
-# 堆内存 256M；显式时区 Asia/Shanghai 防 UTC 差 8 小时；显式 UTF-8 与 .env 编码铁律一致
+cd "$APP"                                         # 工作目录=jar 目录（logback 日志相对落盘；环境配置已内置在 jar，由 --spring.profiles.active 选择）
+# 堆内存 256M；显式时区 Asia/Shanghai 防 UTC 差 8 小时；显式 UTF-8 与编码铁律一致
+# 注意：--spring.profiles.active 必须放在 -jar 之后（-jar 前的参数由 JVM 解析，放前面会报 Unrecognized option 直接起不来）
 nohup "$JAVA_HOME_DIR/bin/java" \
     -Xms256m -Xmx256m \
     -Duser.timezone=Asia/Shanghai \
     -Dfile.encoding=UTF-8 \
-    -jar "$APP/$JAR" > "$LOG/app.log" 2>&1 &
+    -jar "$APP/$JAR" \
+    --spring.profiles.active="$ENV" > "$LOG/app.log" 2>&1 &
 log "新进程已启动，日志：$LOG/app.log"
 
 # ================= 5. 查状态 =================

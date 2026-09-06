@@ -102,7 +102,7 @@ xlumen/
 ├─ backend/xlumen-server/               # 后端（M01 代码骨架阶段创建）
 │  ├─ pom.xml                           # 父 POM：聚合与依赖管理
 │  ├─ sql/init/                         # 初始化 SQL：00_database.sql ~ 95_analytics.sql（编号契约见 BACKEND.md §7）
-│  ├─ config/.env.example               # 配置模板（决策 D8；.env 不入库）
+│  ├─ xlumen-boot/src/main/resources/application-*.yml   # 环境配置与模板（决策 D29：四份随仓库提交并打进 jar）
 │  ├─ xlumen-common/                    # 基座：ApiResponse/BizException/WorkspaceContext/RequestId
 │  ├─ xlumen-identity/                  # 身份与多租户 + 平台治理（iam_ + plt_）
 │  ├─ xlumen-content/                   # 内容管理 + 数据分析与知识保鲜（cnt_ + analytics_）
@@ -112,7 +112,7 @@ xlumen/
 │  └─ xlumen-boot/                      # 装配层：唯一启动入口
 ├─ frontend/xlumen-frontend-blog/       # 博客前台（含创作中心，M01 骨架阶段创建，5173）
 ├─ frontend/xlumen-frontend-admin/      # 管理后台（仅管理员，M01 骨架阶段创建，5174）
-├─ scripts/init-db.ps1                  # 数据库初始化脚本（M01 骨架阶段创建，参数 -EnvFile）
+├─ scripts/init-db.ps1                  # 数据库初始化脚本（M01 骨架阶段创建，参数 -Profile）
 ├─ package.json                         # 根脚本代理：pnpm --dir frontend/xlumen-frontend-blog / --dir frontend/xlumen-frontend-admin（M01 骨架阶段创建）
 ├─ pnpm-workspace.yaml                  # Monorepo：声明 blog + admin 双应用（M01 骨架阶段创建）
 ├─ .editorconfig                        # 编辑器统一配置（M01 骨架阶段创建）
@@ -146,25 +146,19 @@ xlumen/
 | pnpm | 9+ | 前端依赖管理（Monorepo） |
 | MySQL 客户端 | 8.4 配套 | 数据库初始化与检查 |
 
-> 本机不安装 yq：初始化脚本直接解析 `.env`（真实参数为 `-EnvFile`）。MySQL、Redis、RocketMQ、Milvus、MinIO 使用现有服务器实例，需提前取得地址、账号、密码与访问白名单。
+> 本机不安装 yq：初始化脚本直接解析 `application-dev.yml`（真实参数为 `-Profile`）。MySQL、Redis、RocketMQ、Milvus、MinIO 使用现有服务器实例，需提前取得地址、账号、密码与访问白名单。
 
 ### 6.2 配置准备
 
-复制模板并填写真实值（`.env` 已加入 `.gitignore`，真实值不得提交；Windows 下必须以 UTF-8 无 BOM 编码保存）：
-
-```powershell
-Copy-Item backend/xlumen-server/config/.env.example backend/xlumen-server/config/.env
-```
-
-`application.yml` 通过 `spring.config.import` 加载 `.env`（`optional:file:config/.env[.properties]`，含 `../config/`、`backend/xlumen-server/config/` 相对路径回退），变量统一 `${XLUMEN_XXX}` 命名（如 `XLUMEN_DB_URL`、`XLUMEN_JWT_SECRET`、`XLUMEN_BAILIAN_API_KEY`）。
+各环境配置 `application-{dev,test,prod}.yml` 与模板 `application-demo.yml` 位于 `backend/xlumen-server/xlumen-boot/src/main/resources/`，随仓库提交并打进 fat jar；直接编辑对应文件即可（改配置 = 改文件 → 重新打包部署）。`application.yml` 默认 `spring.profiles.active: dev`，命令行 `--spring.profiles.active=<env>` 或环境变量 `SPRING_PROFILES_ACTIVE` 优先级更高；代码里的 `${XLUMEN_XXX}` 占位符在 YAML 中写作小写点号键（如 `XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`）。
 
 ### 6.3 初始化数据库
 
 ```powershell
-./scripts/init-db.ps1 -EnvFile "./backend/xlumen-server/config/.env"
+./scripts/init-db.ps1 -Profile "./backend/xlumen-server/xlumen-boot/src/main/resources/application-dev.yml"
 ```
 
-`init-db.ps1` 真实参数为 `-EnvFile`（默认 `../backend/xlumen-server/config/.env`）：解析 `.env` 的 `KEY=VALUE` 行（跳过 `#` 注释），读取 `XLUMEN_DB_URL` / `XLUMEN_DB_USERNAME` / `XLUMEN_DB_PASSWORD`，按编号顺序执行 `backend/xlumen-server/sql/init/` 全部脚本。
+`init-db.ps1` 真实参数为 `-Profile`（默认 `../backend/xlumen-server/xlumen-boot/src/main/resources/application-dev.yml`）：解析 profile YAML 的 `spring.datasource` 段（url/username/password），按编号顺序执行 `backend/xlumen-server/sql/init/` 全部脚本。
 
 ### 6.4 启动后端
 
@@ -176,7 +170,7 @@ mvn -pl xlumen-boot -am package -DskipTests
 java -jar xlumen-boot/target/xlumen-boot-*.jar
 ```
 
-开发机遇到端口残留时，可在 `config/.env` 设置 `XLUMEN_DEV_PORT_GUARD=true`。应用会在绑定端口前列出占用 PID/进程名，输入 `y` 后结束占用进程并继续；生产环境默认关闭。端口可用 `XLUMEN_SERVER_PORT` 覆盖（默认 8080）。
+开发机遇到端口残留时，可在 `application-dev.yml` 设置 `xlumen.dev-port-guard: true`。应用会在绑定端口前列出占用 PID/进程名，输入 `y` 后结束占用进程并继续；生产环境保持 `false`。端口在各环境 profile 的 `server.port` 配置（默认 8080）。
 
 > **不要**用 `mvn -pl xlumen-boot -am spring-boot:run`——`-am` 会让 spring-boot:run 在 reactor 的父 POM 上执行而报 `Unable to find a suitable main class`；且 spring-boot:run 从本地 `~/.m2` 解析兄弟模块，若未先 `mvn install` 会吃到旧版本 jar（症状：接口缺新字段）。确需 spring-boot:run 时：先 `mvn install -DskipTests`，再到 `xlumen-boot/` 目录内执行 `mvn spring-boot:run`（不带 `-am`）。
 

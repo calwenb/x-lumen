@@ -22,7 +22,7 @@ import java.util.List;
 @Service
 public class SceneConfigServiceImpl implements SceneConfigService {
 
-    /** 默认供应商：BAILIAN（config/.env 提供默认密钥）。 */
+    /** 默认供应商：BAILIAN（各环境 profile 提供默认密钥）。 */
     private static final String DEFAULT_PROVIDER = "BAILIAN";
 
     private final AiSceneConfigMapper sceneConfigMapper;

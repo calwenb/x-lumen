@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-xLumen is a pnpm monorepo plus a Maven modular monolith. Backend: `backend/xlumen-server/` (parent POM, 7 modules, `sql/init/`, `config/.env.example`). Frontend: `frontend/xlumen-frontend-blog/` (blog/content, `:5173`) and `frontend/xlumen-frontend-admin/` (admin config, `:5174`). Unit tests are in `src/**/__tests__/`; E2E tests are in each app's `e2e/`. `docs/` is canonical; AI contributors must read `docs/ai/STATUS.md` and `docs/ai/CHANGELOG.md`.
+xLumen is a pnpm monorepo plus a Maven modular monolith. Backend: `backend/xlumen-server/` (parent POM, 7 modules, `sql/init/`, env config in `xlumen-boot/src/main/resources/application-{dev,test,prod,demo}.yml` per decision D29). Frontend: `frontend/xlumen-frontend-blog/` (blog/content, `:5173`) and `frontend/xlumen-frontend-admin/` (admin config, `:5174`). Unit tests are in `src/**/__tests__/`; E2E tests are in each app's `e2e/`. `docs/` is canonical; AI contributors must read `docs/ai/STATUS.md` and `docs/ai/CHANGELOG.md`.
 
 ## Build, Test, and Development Commands
 
@@ -46,7 +46,7 @@ Use Conventional Commits, for example `feat(content): add article review flow` o
 
 ## Security & Configuration
 
-Copy `config/.env.example` to `config/.env`. Never commit secrets or write them into logs, errors, API responses, or test snapshots. Use `xlumen_test` only for integration tests that require real middleware.
+Backend configuration lives in the Spring profile YAMLs under `backend/xlumen-server/xlumen-boot/src/main/resources/` (D29: committed with this private repo and packaged into the fat jar; select env via `--spring.profiles.active=<dev|test|prod>`, `.env` is retired). Never write secrets into logs, errors, API responses, or test snapshots. Use `xlumen_test` only for integration tests that require real middleware.
 
 ## Documentation & Agent Workflow
 

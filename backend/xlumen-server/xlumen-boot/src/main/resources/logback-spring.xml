@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   日志配置（BACKEND.md §15.2）：Appender 显式激活，避免"有配置无日志"；
-  日志携带 requestId（MDC）保证链路可定位；级别经 .env 的 XLUMEN_LOG_LEVEL 控制。
+  日志携带 requestId（MDC）保证链路可定位；级别经各环境 profile 的 logging.level.root 控制（D29）。
   不记录令牌、密码、密钥与完整敏感 Prompt（安全约定见 BACKEND.md §15.3）。
 -->
 <configuration>
