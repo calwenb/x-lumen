@@ -16,6 +16,14 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/6 21:45 · ZCode（D30：dev/test/prod profile 移出版本库）
+
+> 影响文档：AGENTS.md、docs/ai/STATUS.md（D29 修订+D30）、docs/global/GLOBAL.md §6.2、docs/backend/BACKEND.md §17、docs/deploy/DEPLOY.md §4/§6/§11 · 决策摘要：D30（修订 D29 的"随仓库提交并打进 fat jar"条款）
+
+- **动因**：`application-{dev,test,prod}.yml` 含真实密钥（MySQL/Redis 密码、百炼 API Key、SMTP 授权码），用户拍板不再入库；仓库仅保留占位符模板 `application-demo.yml`。
+- **变更**：`git rm --cached` 三份 profile（本地文件保留）+ `.gitignore` 忽略；配置存放改为——开发机 resources/（本地构建打进包，仅本机）、服务器 jar 同级 `config/application-<env>.yml`（Spring Boot 外部加载、优先级高于 jar 内，改配置重启即生效无需重打包）。`deploy-backend.sh` 新增启动前校验 `$APP/config/application-$ENV.yml` 存在（放在停旧进程之前，避免"旧的停了新的起不来"），`bash -n` 语法过。文档六处"随仓库提交并打进 jar"表述同步改写。
+- **安全提示**：git 历史（f5d8796 及其后合并）仍含旧密钥 blob，本次仅从 HEAD 移除；仓库若转公开或需彻底清除，须 filter-repo 重写历史 + 强推，并轮换全部已提交过的密码/Key（推荐尽快轮换）。
+
 ## 2026/9/6 18:12 · ZCode（D29 profile 化改造收尾核验与缺陷修复）
 
 > 影响文档：AGENTS.md、docs/ai/QA.md、docs/ai/STATUS.md、docs/deploy/DEPLOY.md、docs/backend/BACKEND.md · 决策摘要：D29（配置唯一载体 spring profile YAML，取代 D8）

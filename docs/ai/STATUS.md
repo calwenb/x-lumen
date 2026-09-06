@@ -101,7 +101,8 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 | D6 | Redis 只存短期状态，业务事实以 MySQL 为准（PRODUCT §9） |
 | D7 | **文档先行**：目录结构以 docs 为唯一事实源，代码骨架不得偏离（PRODUCT §5） |
 | D8 | ~~配置唯一载体 .env~~（2026-08-30 被 D29 取代，保留历史） |
-| D29 | **配置唯一载体 spring profile YAML（2026/8/30）**：application-{dev,test,prod,demo}.yml 位于 xlumen-boot/src/main/resources，随仓库提交并打进 fat jar（依赖仓库私密性）；启动 --spring.profiles.active=<dev|test|prod>；废除 .env 与 spring.config.import（GLOBAL） |
+| D29 | **配置唯一载体 spring profile YAML（2026/8/30）**：application-{dev,test,prod,demo}.yml 位于 xlumen-boot/src/main/resources；启动 --spring.profiles.active=<dev|test|prod>；废除 .env 与 spring.config.import（GLOBAL）。「随仓库提交并打进 fat jar」条款被 D30 修订 |
+| D30 | **环境 profile 不入库（2026/9/6）**：application-{dev,test,prod}.yml 含真实密钥，从 git 移除并 .gitignore 忽略，仓库仅保留 application-demo.yml 模板；开发机放 resources（本地构建打进包），服务器放 jar 同级 config/ 外部加载（改配置重启即生效）；git 历史 9-06 前提交仍含旧密钥，仓库转公开前须轮换并清历史（BACKEND §17 / DEPLOY §4） |
 | D9 | **多用户知识平台**：默认单空间使用；任何注册用户可创建知识库并公开分享，访客可浏览所有公开库；团队模式（成员/角色/空间切换）V2 可选启用（PRODUCT §2） |
 | D10 | **阶段标注（MVP/V2/V3）为规划非承诺**：调整须经 CHANGELOG 记录（PRODUCT §5） |
 | D11 | **应用职责划分**：blog（:5173）承载知识创建/编辑/发布/阅读/互动与 AI 对话全链路；admin（:5174）仅管理员配置管理（空间/成员/角色、模型、审计），不参与内容流转（PROTOTYPE §2） |

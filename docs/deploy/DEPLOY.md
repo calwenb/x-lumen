@@ -101,12 +101,15 @@ pnpm --dir frontend/xlumen-frontend-admin build    # 产物：frontend/xlumen-fr
    └─ backend/xlumen/test、backend/xlumen/prod         # 后端运行日志 app.log
 ```
 
-## 4. 后端配置（环境 profile，随 jar 内置）
+## 4. 后端配置（环境 profile，不入库 · 决策 D30）
 
-数据库/Redis/密钥等环境差异全部配置在 `backend/xlumen-server/xlumen-boot/src/main/resources/application-<env>.yml`（dev/test/prod 三份 + 模板 application-demo.yml，随仓库提交并打进 fat jar）：
+数据库/Redis/密钥等环境差异全部配置在 `application-<env>.yml`。仓库内**只提交占位符模板 `application-demo.yml`**；dev/test/prod 三份含真实密钥，**不入 git**（`.gitignore` 忽略），存放位置：
+
+- **开发机**：放 `backend/xlumen-server/xlumen-boot/src/main/resources/`（本地构建会打进包，仅本机可见）。
+- **服务器**：放产物目录 jar 同级的 `config/` 下（如 `/wen/app/backend/xlumen/prod/config/application-prod.yml`），Spring Boot 启动时自动外部加载且优先级高于 jar 内配置；部署脚本启动前会校验该文件存在。
 
 - 启动时用 `--spring.profiles.active=<env>` 选择环境（部署脚本已自动带上）。
-- 改配置 = 改对应 profile 文件 → 重新打包部署（配置在 jar 里，不发新包不生效）。
+- 改配置 = 改服务器上对应的 profile 文件 → 重启即生效（**无需重新打包**）。
 - 键名映射：代码里的 `${XLUMEN_XXX}` 占位符在 YAML 里写作小写点号键（`XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`、`XLUMEN_SERVER_PORT` → `server.port`）。
 
 | profile 文件 | 用途 | 关键差异 |
@@ -116,7 +119,7 @@ pnpm --dir frontend/xlumen-frontend-admin build    # 产物：frontend/xlumen-fr
 | `application-test.yml` | 测试环境 | 库 `xlumen_test`、端口 8081、Redis 逻辑库 1 隔离 |
 | `application-prod.yml` | 正式环境 | 库 `xlumen_dev`、端口 8080、正式 SMTP；**上线前把 JWT/AI 密钥替换为全新值** |
 
-> 注意：四份 profile 随仓库提交（依赖仓库私密性），jar 内含有全部环境配置——若未来仓库公开，先轮换所有密钥。
+> 注意：dev/test/prod 三份 profile 从服务器/开发机各自维护，首次可从 `application-demo.yml` 复制后填值。git 历史中 2026-09-06 之前的提交（f5d8796）仍含旧版密钥，仓库若转公开必须先轮换所有密钥并清理历史（filter-repo）。
 
 ## 5. 初始化数据库
 
@@ -170,7 +173,7 @@ WantedBy=multi-user.target
 
 说明：
 
-- `WorkingDirectory=/wen/app/backend/xlumen/prod` 环境配置已内置在 jar（profile 随包打进去），**不需要**任何外部配置文件，也**不需要** systemd `EnvironmentFile`；`WorkingDirectory` 只决定 logback 日志相对落盘位置。
+- `WorkingDirectory=/wen/app/backend/xlumen/prod` 使 Spring Boot 从工作目录的 `config/application-prod.yml` 外部读取环境配置（D30：profile 不入库、不打进 jar），**不需要** systemd `EnvironmentFile`；`WorkingDirectory` 同时决定 logback 日志相对落盘位置。
 - 日志文件：`logback-spring.xml` 固定相对路径 `logs/xlumen.log`（按日滚动 `logs/xlumen.%d{yyyy-MM-dd}.log`），落盘位置 = 工作目录下的 `logs/`（即 `/wen/app/backend/xlumen/prod/logs/`）。
 - 常用运维命令：`systemctl daemon-reload && systemctl enable --now xlumen`；查看 `journalctl -u xlumen -f` 或日志文件。
 
@@ -359,9 +362,9 @@ bash scripts/deploy-admin.sh          # 管理后台发版
 
 脚本就是最朴素的直写：仓库地址、部署目录、互跳地址等**集中在脚本顶部配置区**，按你的服务器实际改一处即可（前端两份只有 URL/路径；后端那份还有 JDK 路径与双环境端口）。之后再无其他参数。要点：
 
-- 后端新 jar 以稳定名 `xlumen-boot.jar` 落入 `/wen/app/backend/xlumen/<test|prod>/`，环境配置已随 jar 打包（改配置需重新构建部署）。
+- 后端新 jar 以稳定名 `xlumen-boot.jar` 落入 `/wen/app/backend/xlumen/<test|prod>/`，环境配置在产物目录的 `config/application-<env>.yml`（D30：不入库），首次部署需手工放置，之后改配置只需重启。
 - 前端构建前会写 `.env.production`（blog 写 `VITE_ADMIN_URL`、admin 写 `VITE_BLOG_URL`），指向当前配置的互跳地址（无域名为 IP+端口，如 `http://159.75.6.183:8082`）。
-- 密钥在各环境 profile（仓库内，依赖仓库私密性）；部署脚本不生成配置、不触碰服务器本地文件。
+- 密钥在服务器本机的 profile 文件里（仓库内只有占位符模板）；部署脚本不生成配置、不触碰 `config/` 下的 profile。
 
 ## 附录 A：Windows 服务器部署（简要）
 
