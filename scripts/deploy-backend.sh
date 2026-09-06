@@ -22,7 +22,7 @@ JAR=xlumen-boot.jar                                 # 部署到产物目录的 j
 # ---- 测试环境 test（git 分支 test / 端口 8081，与 application-test.yml 的 server.port 一致）----
 BRANCH_TEST=test                                 # 测试环境 git 分支
 SRC_TEST=/wen/project/backend/xlumen/test        # 测试环境源码目录
-APP_TEST=/wen/app/backend/xlumen/test            # 测试产物目录（jar，环境配置已打进 jar）
+APP_TEST=/wen/app/backend/xlumen/test            # 测试产物目录（jar + config/application-test.yml，D30 配置不入库）
 LOG_TEST=/wen/log/backend/xlumen/test            # 测试环境日志目录
 PORT_TEST=8081                                   # 测试端口
 
@@ -48,6 +48,14 @@ esac
 
 # 日志函数：每行自动带 时间戳 + 环境名，方便区分 test/prod 输出
 log() { echo "[$(date '+%F %T')] [$ENV] $*"; }
+
+# 环境 profile 校验（决策 D30：profile 不入库、不打进 jar，放产物目录 config/ 外部加载）
+# 放在停旧进程之前：缺配置就中止，避免"旧的停了、新的起不来"的两不管
+if [[ ! -f "$APP/config/application-$ENV.yml" ]]; then
+    log "错误：缺少 $APP/config/application-$ENV.yml"
+    log "请从仓库 application-demo.yml 复制并按实际值填写（该文件不入库，需手工放置）"
+    exit 1
+fi
 
 # ================= 0. 部署前确认 =================
 echo "环境：$ENV | git 分支：$BRANCH | 产物目录：$APP | 日志目录：$LOG | 端口：$PORT"
@@ -84,7 +92,7 @@ sleep 3                                    # 等 3 秒让 Spring 收尾并释放
 log "== [4/5] 启动新包 =="
 mkdir -p "$APP" "$LOG"                            # 首次部署目录不存在，先建好
 cp -f "$JAR_FILE" "$APP/$JAR"                     # 新 jar 复制到产物目录（稳定名）
-cd "$APP"                                         # 工作目录=jar 目录（logback 日志相对落盘；环境配置已内置在 jar，由 --spring.profiles.active 选择）
+cd "$APP"                                         # 工作目录=jar 目录（logback 日志相对落盘；Spring 从 ./config/application-<env>.yml 外部读配置，D30）
 # 堆内存 256M；显式时区 Asia/Shanghai 防 UTC 差 8 小时；显式 UTF-8 与编码铁律一致
 # 注意：--spring.profiles.active 必须放在 -jar 之后（-jar 前的参数由 JVM 解析，放前面会报 Unrecognized option 直接起不来）
 nohup "$JAVA_HOME_DIR/bin/java" \

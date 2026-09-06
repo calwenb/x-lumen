@@ -46,7 +46,7 @@
 backend/xlumen-server/
 ├─ pom.xml                  # 父 POM：统一依赖与版本管理
 ├─ sql/init/                # 初始化 SQL（编号见第 7 节）
-├─ xlumen-boot/src/main/resources/application-*.yml   # 环境配置与模板（决策 D29：四份随仓库提交并打进 jar）
+├─ xlumen-boot/src/main/resources/application-*.yml   # 环境配置（决策 D29/D30：仅 demo 模板入库；dev/test/prod 含密钥不入库，服务器放 jar 同级 config/）
 ├─ xlumen-common/           # 基座：ApiResponse/BizException/WorkspaceContext/RequestId
 ├─ xlumen-identity/         # 身份与多租户 + 平台治理（iam_ + plt_）
 ├─ xlumen-content/          # 内容管理 + 数据分析与知识保鲜（cnt_ + analytics_）
@@ -392,7 +392,7 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 
 > 决策 D29（取代 D8，2026-08-30）：**配置唯一载体为 spring profile YAML**——application-{dev,test,prod}.yml，禁止第二种配置载体（禁止 yq、禁止再引入 .env）。
 
-- 唯一载体：`backend/xlumen-server/xlumen-boot/src/main/resources/application-{dev,test,prod}.yml`（与 `application.yml` 同级，随仓库提交并打进 fat jar），`application-demo.yml` 为占位符模板。
+- 唯一载体：`application-{dev,test,prod}.yml`（决策 D30：含真实密钥**不入库**——开发机放 `backend/xlumen-server/xlumen-boot/src/main/resources/` 且被 `.gitignore` 忽略，服务器放 jar 同级 `config/` 外部加载），仓库仅提交占位符模板 `application-demo.yml`。
 - 加载方式：`application.yml` 只有 `spring.profiles.active` 切换开关；其余全部配置（含公共项）在各环境 `application-<env>.yml`，位于 classpath（resources），Spring 按激活的 profile 自动加载（`application.yml` 默认 `active: dev`，命令行 `--spring.profiles.active=<test|prod>` 或环境变量 `SPRING_PROFILES_ACTIVE` 覆盖，命令行/环境变量优先级更高）；代码里 `${XLUMEN_XXX}` 占位符对应 YAML 小写点号键（`XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`，`XLUMEN_` 前缀映射 `xlumen.` 命名空间）。
 - 环境差异（数据库、Redis、Milvus、模型密钥、日志级别等）全部走各环境 profile；配置使用 `@ConfigurationProperties` 前缀 `xlumen` 与 `@Value` 显式占位符两种方式映射，启动时校验必要字段（如 JWT 密钥缺失直接启动失败）。
 - 敏感信息（密码、密钥）不能出现在资源目录、提交记录、日志、异常、接口响应和测试快照中。

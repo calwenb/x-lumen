@@ -46,7 +46,7 @@ Use Conventional Commits, for example `feat(content): add article review flow` o
 
 ## Security & Configuration
 
-Backend configuration lives in the Spring profile YAMLs under `backend/xlumen-server/xlumen-boot/src/main/resources/` (D29: committed with this private repo and packaged into the fat jar; select env via `--spring.profiles.active=<dev|test|prod>`, `.env` is retired). Never write secrets into logs, errors, API responses, or test snapshots. Use `xlumen_test` only for integration tests that require real middleware.
+Backend configuration uses Spring profile YAMLs (D29/D30): only the placeholder template `application-demo.yml` is committed; `application-{dev,test,prod}.yml` hold real secrets and are git-ignored — keep them in `backend/xlumen-server/xlumen-boot/src/main/resources/` on dev machines and in the `config/` directory next to the jar on servers. Select env via `--spring.profiles.active=<dev|test|prod>`; `.env` is retired. Never commit these profiles or write secrets into logs, errors, API responses, or test snapshots. Use `xlumen_test` only for integration tests that require real middleware.
 
 ## Documentation & Agent Workflow
 

@@ -16,6 +16,14 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/6 21:45 · ZCode（D30：dev/test/prod profile 移出版本库）
+
+> 影响文档：AGENTS.md、docs/ai/STATUS.md（D29 修订+D30）、docs/global/GLOBAL.md §6.2、docs/backend/BACKEND.md §17、docs/deploy/DEPLOY.md §4/§6/§11 · 决策摘要：D30（修订 D29 的"随仓库提交并打进 fat jar"条款）
+
+- **动因**：`application-{dev,test,prod}.yml` 含真实密钥（MySQL/Redis 密码、百炼 API Key、SMTP 授权码），用户拍板不再入库；仓库仅保留占位符模板 `application-demo.yml`。
+- **变更**：`git rm --cached` 三份 profile（本地文件保留）+ `.gitignore` 忽略；配置存放改为——开发机 resources/（本地构建打进包，仅本机）、服务器 jar 同级 `config/application-<env>.yml`（Spring Boot 外部加载、优先级高于 jar 内，改配置重启即生效无需重打包）。`deploy-backend.sh` 新增启动前校验 `$APP/config/application-$ENV.yml` 存在（放在停旧进程之前，避免"旧的停了新的起不来"），`bash -n` 语法过。文档六处"随仓库提交并打进 jar"表述同步改写。
+- **安全提示**：git 历史（f5d8796 及其后合并）仍含旧密钥 blob，本次仅从 HEAD 移除；仓库若转公开或需彻底清除，须 filter-repo 重写历史 + 强推，并轮换全部已提交过的密码/Key（推荐尽快轮换）。
+
 ## 2026/9/6 18:12 · ZCode（D29 profile 化改造收尾核验与缺陷修复）
 
 > 影响文档：AGENTS.md、docs/ai/QA.md、docs/ai/STATUS.md、docs/deploy/DEPLOY.md、docs/backend/BACKEND.md · 决策摘要：D29（配置唯一载体 spring profile YAML，取代 D8）
@@ -24,6 +32,7 @@
 - **修复缺陷 2 项**：①`application-prod.yml` 中 `xlumen.agent-tool-timeout-millis` 键名被误写为 `agent-tooloklp;-timeout-millis`（键盘误触污染），因 `@Value("${xlumen.agent-tool-timeout-millis}")` 无默认值，prod profile 启动会直接 `Could not resolve placeholder` 失败，已纠正键名；②`deploy-backend.sh` 的 `--spring.profiles.active` 原先放在 `-jar` 之前，会被 JVM 当作无法识别的启动选项导致进程起不来（Spring 应用参数必须在 `-jar <jar>` 之后），已移到 jar 之后并补注释说明。
 - **旧 .env 引用清理**：`AGENTS.md`（项目结构与 Security 节的 `config/.env.example` 描述）、`logback-spring.xml` 头注释（级别改述为 profile 的 `logging.level.root`）、`docs/deploy/DEPLOY.md` 第 5 节 `init-db.ps1 -EnvFile` 用法（改 `-Profile` 解析 datasource）、`docs/ai/QA.md` 环境自检的端口守卫与 Redis 密码表述（改指 `application-dev.yml`）、`deploy-backend.sh` 三处 `.env` 注释、根 `.gitignore` 的 D8 注释块。CHANGELOG 历史条目中的 `.env` 记载按归档规则原样保留不改写。
 - **验证**：五份 YAML（含 `application.yml`）经 js-yaml 解析通过，四环境端口/键值抽查正常（dev/test/prod/demo 均含全部必填键，prod 键修复后校验通过）；`spring.config.import`、`@Value("${XLUMEN_`、`config/.env`、`-EnvFile` 在 backend/scripts/docs 现行文档中 grep 清零（仅历史 CHANGELOG 条目保留）。未跑 mvn 构建（本次改动仅配置文件与文档，无 Java 源码变更）。
+- **部署事故复盘（9/6 晚，服务器 prod 首跑）**：服务器上执行的 `deploy-backend.sh` 是从 Windows 工作区手工复制的副本，本地 `core.autocrlf=true` 使其变为 CRLF：①`set -euo pipefail` 整行因尾部 `\r` 报"无效的选项名"失效，`git pull` 失败后脚本不再熔断，继续用旧代码打包；②CRLF 令 git 视该脚本为"有本地修改"，`git pull --ff-only` 拒绝合并，工作区停在部署前的旧提交（无 D29 profile）。处置：服务器 `sed -i 's/\r$//' scripts/deploy-backend.sh` 转回 LF 后重新 `git pull` + `bash` 执行。**防复发**：新增根 `.gitattributes`（`* text=auto`、`*.sh/*.java/*.xml/*.yml/*.md/*.sql/*.ts/*.vue` 强制 `eol=lf`、`*.ps1 eol=crlf`），任何平台检出 shell 脚本恒为 LF；服务器上取代码只允许 `git pull`，禁止从 Windows 工作区手动 scp `.sh`。
 
 ## 2026/8/29 07:30 · ZCode（全功能黑盒巡检 1080p + 修复知识级问答缺上下文）
 
