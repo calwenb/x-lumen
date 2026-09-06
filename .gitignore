@@ -1,9 +1,14 @@
 # ---- IDE ----
 /.idea
 
-# ---- 本地覆盖配置（D29 起环境配置随 profile YAML 入库，.env 载体已废除，仅作本地临时覆盖忽略） ----
+# ---- 本地覆盖配置（.env 载体已废除，仅作本地临时覆盖忽略） ----
 .env
 *.env.local
+
+# ---- 环境 profile（D30：dev/test/prod 含真实密钥不入库，仅 application-demo.yml 模板入库） ----
+backend/xlumen-server/xlumen-boot/src/main/resources/application-dev.yml
+backend/xlumen-server/xlumen-boot/src/main/resources/application-test.yml
+backend/xlumen-server/xlumen-boot/src/main/resources/application-prod.yml
 
 # ---- 后端 ----
 backend/**/target/
