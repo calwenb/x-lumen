@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * 开发环境端口守卫：在 Web 容器绑定前询问是否结束监听进程。
- * 通过 XLUMEN_DEV_PORT_GUARD 显式开启，生产环境默认关闭。
+ * 通过 xlumen.dev-port-guard 显式开启，生产环境默认关闭。
  */
 public final class DevPortConflictGuard implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
 
@@ -22,7 +22,7 @@ public final class DevPortConflictGuard implements ApplicationListener<Applicati
     @Override
     public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
         Environment environment = event.getEnvironment();
-        if (!Boolean.parseBoolean(environment.getProperty("XLUMEN_DEV_PORT_GUARD", "false"))) {
+        if (!Boolean.parseBoolean(environment.getProperty("xlumen.dev-port-guard"))) {
             return;
         }
         if (List.of(environment.getActiveProfiles()).stream().anyMatch("prod"::equalsIgnoreCase)) {

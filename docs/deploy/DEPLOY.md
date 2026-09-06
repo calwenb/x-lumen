@@ -95,32 +95,28 @@ pnpm --dir frontend/xlumen-frontend-admin build    # 产物：frontend/xlumen-fr
 │  ├─ backend/xlumen/test、backend/xlumen/master        # 后端双环境源码（脚本自动 clone/pull）
 │  └─ frontend/xlumen-frontend-blog、xlumen-frontend-admin   # 前端源码
 ├─ app/
-│  ├─ backend/xlumen/test、backend/xlumen/prod         # 后端产物：xlumen-boot.jar + config/.env
+│  ├─ backend/xlumen/test、backend/xlumen/prod         # 后端产物：xlumen-boot.jar（环境配置内置 jar）
 │  └─ frontend/xlumen-frontend-blog、xlumen-frontend-admin  # 前端产物 = nginx 站点根目录
 └─ log/
    └─ backend/xlumen/test、backend/xlumen/prod         # 后端运行日志 app.log
 ```
 
-## 4. 后端配置（config/.env）
+## 4. 后端配置（环境 profile，随 jar 内置）
 
-将仓库 `backend/xlumen-server/config/.env.example` 上传为 `/wen/app/backend/xlumen/prod/config/.env` 并按生产值填写。**必须 UTF-8 无 BOM 编码**（Windows 记事本另存为 UTF-8 会带 BOM，导致 Spring 解析占位符失败；Linux 下用 `vim`/`nano` 无此问题）。
+数据库/Redis/密钥等环境差异全部配置在 `backend/xlumen-server/xlumen-boot/src/main/resources/application-<env>.yml`（dev/test/prod 三份 + 模板 application-demo.yml，随仓库提交并打进 fat jar）：
 
-| 键 | 生产填写说明 |
-| --- | --- |
-| `XLUMEN_DB_URL` / `XLUMEN_DB_HOST/PORT/NAME/USERNAME/PASSWORD` | 生产 MySQL 地址与库名（库名可保留 `xlumen_dev` 或改名，URL 与 NAME 需同步）。URL 中 `serverTimezone=Asia/Shanghai` 保留 |
-| `XLUMEN_REDIS_HOST/PORT/PASSWORD` | Redis 地址；本机无密码部署则 PASSWORD 留空（与 `application.yml` 空密码一致） |
-| `XLUMEN_JWT_SECRET` | **必改**：`openssl rand -hex 32` 生成 ≥32 字符随机串 |
-| `XLUMEN_BAILIAN_API_KEY` / `XLUMEN_DEEPSEEK_API_KEY` | AI 密钥（哪家启用填哪家；两家都填则按场景供应）。服务器需能访问 `dashscope.aliyuncs.com` / `api.deepseek.com` 外网 |
-| `XLUMEN_BAILIAN_*` / `XLUMEN_DEEPSEEK_*` 模型 | 默认示例即可；写作/审校/问答/摘要/视觉/语音/Embedding 分开配置 |
-| `XLUMEN_AGENT_*` / `XLUMEN_REVIEWER_AGENT_MAX_ROUNDS` / `XLUMEN_WRITING_MAX_CHAPTERS` | Agent 模式上限参数，保持默认即可 |
-| `XLUMEN_WRITING_RAG_ENABLED` | 写作前 RAG 检索注入参考资料，默认 `true` |
-| `XLUMEN_TRACE_COST_PER_1K` | AI Trace 费用估算单价（元/千 token） |
-| `XLUMEN_MILVUS_HOST/PORT/DATABASE` | 可选；填了且可达则启用向量检索，不可达自动降级 |
-| `XLUMEN_LOG_LEVEL` | `INFO` 即可；排查时临时 `DEBUG` |
-| `XLUMEN_SERVER_PORT` | `8080`（与 Nginx 反代目标一致） |
-| `XLUMEN_DEV_PORT_GUARD` | **必须 `false`**（生产严禁端口守卫交互） |
-| `XLUMEN_MAIL_HOST/PORT/USERNAME/PASSWORD/FROM` | 可选；未填则忘记密码验证码只写日志不真发信 |
-| `XLUMEN_SITE_URL` | `http://159.75.6.183` 站点对外地址（SEO/邮件链接用；有域名后改正式地址） |
+- 启动时用 `--spring.profiles.active=<env>` 选择环境（部署脚本已自动带上）。
+- 改配置 = 改对应 profile 文件 → 重新打包部署（配置在 jar 里，不发新包不生效）。
+- 键名映射：代码里的 `${XLUMEN_XXX}` 占位符在 YAML 里写作小写点号键（`XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`、`XLUMEN_SERVER_PORT` → `server.port`）。
+
+| profile 文件 | 用途 | 关键差异 |
+| --- | --- | --- |
+| `application-demo.yml` | 模板（占位符） | 导出字段参考，勿直接用于启动 |
+| `application-dev.yml` | 开发机 | 本地库/Redis，验证码可落日志 |
+| `application-test.yml` | 测试环境 | 库 `xlumen_test`、端口 8081、Redis 逻辑库 1 隔离 |
+| `application-prod.yml` | 正式环境 | 库 `xlumen_dev`、端口 8080、正式 SMTP；**上线前把 JWT/AI 密钥替换为全新值** |
+
+> 注意：四份 profile 随仓库提交（依赖仓库私密性），jar 内含有全部环境配置——若未来仓库公开，先轮换所有密钥。
 
 ## 5. 初始化数据库
 
@@ -133,7 +129,7 @@ done
 # 或用单条：mysql ... < sql/init/00_database.sql && mysql ... xlumen_dev < 其余脚本
 ```
 
-> Windows 构建机可用 `scripts/init-db.ps1 -EnvFile "./backend/xlumen-server/config/.env"`（读取 .env 连接参数）。幂等可重复执行；老库升级只需执行新增/变更脚本。
+> Windows 构建机可用 `scripts/init-db.ps1 -Profile "./backend/xlumen-server/xlumen-boot/src/main/resources/application-dev.yml"`（决策 D29：解析 profile YAML 的 `spring.datasource` 段取连接参数）。幂等可重复执行；老库升级只需执行新增/变更脚本。
 
 ## 6. 启动后端（systemd 示例 · 可选替代方式）
 
@@ -174,7 +170,7 @@ WantedBy=multi-user.target
 
 说明：
 
-- `WorkingDirectory=/wen/app/backend/xlumen/prod` 保证 `spring.config.import` 的 `config/.env` 相对路径命中；`.env` 由 Spring 自行加载，**不需要** systemd `EnvironmentFile`。
+- `WorkingDirectory=/wen/app/backend/xlumen/prod` 环境配置已内置在 jar（profile 随包打进去），**不需要**任何外部配置文件，也**不需要** systemd `EnvironmentFile`；`WorkingDirectory` 只决定 logback 日志相对落盘位置。
 - 日志文件：`logback-spring.xml` 固定相对路径 `logs/xlumen.log`（按日滚动 `logs/xlumen.%d{yyyy-MM-dd}.log`），落盘位置 = 工作目录下的 `logs/`（即 `/wen/app/backend/xlumen/prod/logs/`）。
 - 常用运维命令：`systemctl daemon-reload && systemctl enable --now xlumen`；查看 `journalctl -u xlumen -f` 或日志文件。
 
@@ -190,7 +186,7 @@ WantedBy=multi-user.target
 | `-XX:+HeapDumpOnOutOfMemoryError` + `-XX:HeapDumpPath` | OOM 自动留堆快照 | 事后用 MAT/JProfiler 定位，生产排查刚需 |
 | `-Xlog:gc*:...` | GC 滚动日志 | 低开销可观测性；磁盘不足时可去掉 |
 | `-Duser.timezone=Asia/Shanghai` | 显式时区 | 服务器若为 UTC 导致日志/定时差 8 小时 |
-| `-Dfile.encoding=UTF-8` | 显式文件编码 | JDK 18+ 默认 UTF-8，显式写出防环境差异（与 .env 铁律一致） |
+| `-Dfile.encoding=UTF-8` | 显式文件编码 | JDK 18+ 默认 UTF-8，显式写出防环境差异 |
 | `-XX:+AutoCreateSharedArchive` + `-XX:SharedArchiveFile=xlumen.jsa` | 动态 CDS 共享归档（启动"镜像"） | 首次启动自动生成归档，之后直接内存映射复用：启动快 20~40%、类区内存省几十 MB；升级 jar 后归档自动失效并重建，无感自愈 |
 
 CDS 补充说明（已在本机 JDK 25 二进制验证参数存在）：
@@ -202,7 +198,7 @@ CDS 补充说明（已在本机 JDK 25 二进制验证参数存在）：
 
 不建议设置的项：
 
-- **不要**在命令行重复 `--server.port`：端口由 `.env` 的 `XLUMEN_SERVER_PORT` 唯一控制，两处并存易混乱。
+- **不要**在命令行重复 `--server.port`：端口由各环境 profile 的 `server.port` 唯一控制，两处并存易混乱。
 - **`spring.threads.virtual.enabled=true` 暂不开**（已核验 Boot 4.1.0 默认 false）：该开关只影响 Tomcat 请求线程与 Spring 自动装配的 TaskExecutor；本应用对话/写作/通知的 SSE 生成跑在自建的平台线程池（`chatStreamExecutor` core2/max8、`aiTaskExecutor` core2/max4、工具池 4），开关管不到它们，SSE 占平台线程的瓶颈（OPT-1：改虚拟线程 + Semaphore）是代码改造而非启动参数。上线稳定后再评估。
 - 不设 `-Xss`：JDK 25 默认线程栈 1m 足够（虚拟线程另有独立小栈机制）。
 
@@ -214,7 +210,7 @@ curl -s http://127.0.0.1:8080/actuator/health/readiness # 含 db、redis 探针
 curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v3/api-docs  # 200（Swagger 契约）
 ```
 
-日志中确认两条关键行：`Milvus 可达/不可达（降级为 NoopVectorStore…）`、无 `ClassNotFound`/绑定失败；日志出现 `Failed to bind` 说明 .env 键拼写或编码问题。
+日志中确认两条关键行：`Milvus 可达/不可达（降级为 NoopVectorStore…）`、无 `ClassNotFound`/绑定失败；日志出现 `Failed to bind` 说明 profile 键名拼写或缩进问题。
 
 ## 7. Nginx 配置（当前无域名：IP 直连）
 
@@ -336,7 +332,7 @@ systemctl restart xlumen && journalctl -u xlumen -f
 | 症状 | 原因 / 处理 |
 | --- | --- |
 | 对话/写作“一直不吐字” | Nginx `proxy_buffering off` 缺失或未生效（`nginx -T` 检查）；确认 `/api/` location 内含该指令 |
-| 后端启动报 `.env` 键绑定失败 | .env 带 BOM / 非 UTF-8 / 键拼写不一致；用 `file config/.env` 与 `==` 对比 .env.example |
+| 后端启动报配置绑定失败 | profile YAML 键名拼写/缩进错误；对照 `application-demo.yml` 逐键检查，别动结构只改值 |
 | 8080 端口被占用 | `ss -ltnp | grep 8080` 找占用进程；生产 `XLUMEN_DEV_PORT_GUARD` 保持 `false` 不会自动杀 |
 | 中文乱码 | MySQL 连接 URL 含 `characterEncoding=utf8`，库表 utf8mb4（已由 init SQL 保证）；Nginx `charset utf-8` |
 | 登录后立即 401 | JWT 密钥与签发不一致（多实例/多次发布用了不同 `XLUMEN_JWT_SECRET`），统一为一个 |
@@ -363,15 +359,15 @@ bash scripts/deploy-admin.sh          # 管理后台发版
 
 脚本就是最朴素的直写：仓库地址、部署目录、互跳地址等**集中在脚本顶部配置区**，按你的服务器实际改一处即可（前端两份只有 URL/路径；后端那份还有 JDK 路径与双环境端口）。之后再无其他参数。要点：
 
-- 后端新 jar 以稳定名 `xlumen-boot.jar` 落入 `/wen/app/backend/xlumen/<test|prod>/`，生产 `config/.env` 在仓库外不受影响。
+- 后端新 jar 以稳定名 `xlumen-boot.jar` 落入 `/wen/app/backend/xlumen/<test|prod>/`，环境配置已随 jar 打包（改配置需重新构建部署）。
 - 前端构建前会写 `.env.production`（blog 写 `VITE_ADMIN_URL`、admin 写 `VITE_BLOG_URL`），指向当前配置的互跳地址（无域名为 IP+端口，如 `http://159.75.6.183:8082`）。
-- 生产 `config/.env`（JWT/AI 密钥）本脚本绝不触碰。
+- 密钥在各环境 profile（仓库内，依赖仓库私密性）；部署脚本不生成配置、不触碰服务器本地文件。
 
 ## 附录 A：Windows 服务器部署（简要）
 
 与 Linux 流程一致，差异点：
 
-- 后端：安装 JDK 25，在 jar 所在目录（保证 `config/.env` 命中）执行：
+- 后端：安装 JDK 25，在 jar 所在目录执行（环境配置内置 jar，启动加 `--spring.profiles.active=prod`）：
 
   ```powershell
   java -Xms512m -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseStringDeduplication `
@@ -381,4 +377,4 @@ bash scripts/deploy-admin.sh          # 管理后台发版
 
   自启用「任务计划程序」或 NSSM 注册为服务（OOM 退出时自动重启）。
 - Nginx：官方 Windows 版，`nginx.conf` 语法同上（路径用 `C:/...`）；注意 Windows Nginx 无 systemd，守护用 NSSM。
-- `.env` 编辑务必「另存为 UTF-8 无 BOM」。
+- profile 为 YAML 文本，UTF-8 保存即可（无 .env 的 BOM 坑）。

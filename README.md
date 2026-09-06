@@ -30,7 +30,7 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 
 ## 本地快速开始
 
-前置环境、配置准备（`.env`）、数据库初始化、后端启动（fat jar 方式，**不要**用 `mvn -pl xlumen-boot -am spring-boot:run`，原因见 GLOBAL §6.4）与双前端启动的完整命令与注意事项见 [全局文档](docs/global/GLOBAL.md) 第 6 节。
+前置环境、配置准备（`application-demo.yml` 模板 → 各环境 profile）、数据库初始化、后端启动（fat jar 方式，**不要**用 `mvn -pl xlumen-boot -am spring-boot:run`，原因见 GLOBAL §6.4）与双前端启动的完整命令与注意事项见 [全局文档](docs/global/GLOBAL.md) 第 6 节。
 
 ## 技术栈
 

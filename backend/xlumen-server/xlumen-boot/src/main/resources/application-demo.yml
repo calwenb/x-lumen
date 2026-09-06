@@ -1,0 +1,119 @@
+# ============================================================
+# xLumen 环境配置模板（决策 D29）
+# 复制为 application-dev.yml / application-test.yml / application-prod.yml 后填真实值。
+# 各环境文件自我完整（公共项 + 环境项都在内）；改配置 = 改文件 → 重新打包部署。
+# 键名说明：XLUMEN_* 环境变量在 YAML 中写作小写点号（XLUMEN_BAILIAN_API_KEY → xlumen.bailian.api-key）
+# ============================================================
+
+spring:
+  application:
+    name: xlumen
+  # Spring AI：关闭全部六个 OpenAI 自动配置（D20，供应商手动装配）
+  ai:
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://<MySQL地址>:3306/<库名>?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: <密码>
+    hikari:
+      maximum-pool-size: 10                # 个人博客并发假设（PRODUCT §11 NFR）
+      connection-timeout: 5000             # 防连接耗尽挂起
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: <发件账号>
+    password: <SMTP 授权码>
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+  data:
+    redis:
+      host: 159.75.6.183
+      port: 6379
+      password: <密码>
+      database: 0
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 1
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+  main:
+    allow-circular-references: true        # 模块间存在循环依赖
+
+server:
+  port: 8080
+
+management:
+  # 健康检查（部署脚本轮询 /actuator/health 依赖）
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,redis
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+xlumen:
+  jwt-secret: <openssl rand -hex 32 生成，各环境独立>
+  bailian:
+    api-key: <百炼 API Key>
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model-writing: qwen-plus
+    model-reviewer: qwen-plus
+    model-qa: qwen-plus
+    model-summary: qwen-plus
+    model-vision: qwen3-vl-flash
+    model-tts: qwen3-tts-flash
+    model-embedding: text-embedding-v4
+  deepseek:
+    api-key: ""
+    base-url: https://api.deepseek.com
+    model-writing: deepseek-chat
+    model-reviewer: deepseek-chat
+    model-qa: deepseek-chat
+    model-summary: deepseek-chat
+  milvus:
+    host: <Milvus 地址，不可达自动降级>
+    port: 19530
+    database: default
+  agent-max-rounds: 5
+  agent-tool-timeout-millis: 10000
+  agent-max-tool-calls: 8
+  agent-tool-result-max-chars: 8000
+  reviewer-agent-max-rounds: 2
+  writing-max-chapters: 8
+  writing-rag-enabled: true
+  trace-cost-per-1k: 0.004
+  tts-voice: Cherry
+  site-url: http://159.75.6.183
+  mail-from: <发件地址，与 mail.username 一致>
+  dev-port-guard: false
+
+logging:
+  level:
+    root: INFO
+    com.calwen.xlumen: INFO
+

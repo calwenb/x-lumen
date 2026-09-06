@@ -33,7 +33,7 @@ public class SitemapController {
     @Resource
     private KnowledgeApi knowledgeApi;
 
-    @Value("${XLUMEN_SITE_URL:https://www.xlumen.dev}")
+    @Value("${xlumen.site-url}")
     private String siteUrl;
 
     @GetMapping(value = "/sitemap.xml", produces = MediaType.APPLICATION_XML_VALUE)
