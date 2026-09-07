@@ -2,7 +2,8 @@
 // 全站悬浮 AI 助理：右下角悬浮球（AI 主色），点击展开面板。
 // 不分登录态均可使用：登录用户走登录态流（会话/历史能力），访客走公开单次问答；
 // 会话仅存于组件内存（不写历史、不落盘），刷新页面后即清空。消息流含追问 chips 与存草稿入口。
-import { nextTick, reactive, ref } from 'vue'
+// 面板支持：按住标题栏拖拽移动、右下角原生缩放、一键清空当前会话；输入框 Shift+Enter 换行。
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 
 import { useSessionStore } from '@/stores/session'
@@ -35,6 +36,69 @@ const askInput = ref('')
 const asking = ref(false)
 const listEl = ref<HTMLElement | null>(null)
 const savingDraftId = ref<string | null>(null)
+
+// ---- 面板拖拽 / 缩放 ----
+const panelEl = ref<HTMLElement | null>(null)
+/** 面板左上角坐标；null 表示尚未拖拽，走 CSS 默认右下角锚位。 */
+const panelPos = ref<{ left: number; top: number } | null>(null)
+const panelStyle = computed(() =>
+  panelPos.value ? { left: `${panelPos.value.left}px`, top: `${panelPos.value.top}px` } : undefined,
+)
+/** 拖拽时指针相对面板左上角的偏移；null 表示未在拖拽。 */
+let dragOffset: { dx: number; dy: number } | null = null
+
+/** 将当前坐标钳制到视口内（留 8px 边距），保证标题栏始终可及。 */
+function clampPos(left: number, top: number): { left: number; top: number } {
+  const width = panelEl.value?.offsetWidth ?? 360
+  const height = panelEl.value?.offsetHeight ?? 520
+  return {
+    left: Math.min(Math.max(left, 8), Math.max(window.innerWidth - width - 8, 8)),
+    top: Math.min(Math.max(top, 8), Math.max(window.innerHeight - height - 8, 8)),
+  }
+}
+
+function onHeaderPointerDown(event: PointerEvent): void {
+  if (event.button !== 0 || !panelEl.value) return
+  // 标题栏内的按钮（清空/关闭）不参与拖拽
+  if ((event.target as HTMLElement).closest('button')) return
+  if (!panelPos.value) {
+    const rect = panelEl.value.getBoundingClientRect()
+    panelPos.value = { left: rect.left, top: rect.top }
+  }
+  dragOffset = { dx: event.clientX - panelPos.value.left, dy: event.clientY - panelPos.value.top }
+  const header = event.currentTarget as HTMLElement
+  header.setPointerCapture(event.pointerId)
+}
+
+function onHeaderPointerMove(event: PointerEvent): void {
+  if (!dragOffset) return
+  panelPos.value = clampPos(event.clientX - dragOffset.dx, event.clientY - dragOffset.dy)
+}
+
+function onHeaderPointerUp(event: PointerEvent): void {
+  dragOffset = null
+  const header = event.currentTarget as HTMLElement
+  if (header.hasPointerCapture(event.pointerId)) {
+    header.releasePointerCapture(event.pointerId)
+  }
+}
+
+/** 窗口尺寸变化时把面板拉回视口内，避免残留坐标使其移出屏幕。 */
+function keepPanelInViewport(): void {
+  if (panelPos.value) panelPos.value = clampPos(panelPos.value.left, panelPos.value.top)
+}
+
+onMounted(() => window.addEventListener('resize', keepPanelInViewport))
+onBeforeUnmount(() => window.removeEventListener('resize', keepPanelInViewport))
+
+// ---- 清空会话 ----
+let activeController: AbortController | null = null
+
+function clearConversation(): void {
+  activeController?.abort()
+  activeController = null
+  messages.value = []
+}
 
 function scrollToBottom(): void {
   void nextTick(() => {
@@ -83,6 +147,7 @@ async function send(question = ''): Promise<void> {
   const onDone = (): void => undefined
 
   const controller = new AbortController()
+  activeController = controller
   try {
     if (session.loggedIn) {
       await streamChat(
@@ -102,6 +167,7 @@ async function send(question = ''): Promise<void> {
       assistant.content = error instanceof Error ? error.message : '回答失败，请稍后重试'
     }
   } finally {
+    if (activeController === controller) activeController = null
     assistant.streaming = false
     asking.value = false
     scrollToBottom()
@@ -135,11 +201,19 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
     <Transition name="floating-assistant__pop">
       <section
         v-if="open"
+        ref="panelEl"
         class="floating-assistant__panel"
+        :style="panelStyle"
         role="dialog"
         aria-label="「小光」AI 助理对话面板"
       >
-        <header class="floating-assistant__header">
+        <header
+          class="floating-assistant__header"
+          @pointerdown="onHeaderPointerDown"
+          @pointermove="onHeaderPointerMove"
+          @pointerup="onHeaderPointerUp"
+          @pointercancel="onHeaderPointerUp"
+        >
           <span class="floating-assistant__logo" aria-hidden="true">
             <svg
               viewBox="0 0 24 24"
@@ -158,6 +232,15 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
               {{ session.loggedIn ? '登录态会话' : '访客模式，仅当前会话' }}
             </span>
           </div>
+          <button
+            type="button"
+            class="floating-assistant__clear"
+            :disabled="messages.length === 0"
+            aria-label="清空当前对话"
+            @click="clearConversation()"
+          >
+            清空
+          </button>
           <button
             type="button"
             class="floating-assistant__close"
@@ -226,11 +309,12 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
         </div>
 
         <form class="floating-assistant__composer" @submit.prevent="send()">
-          <input
+          <textarea
             v-model="askInput"
             class="floating-assistant__input"
-            type="text"
-            placeholder="输入你的问题…"
+            rows="2"
+            placeholder="输入你的问题，Shift+Enter 换行…"
+            @keydown.enter.exact.prevent="send()"
           />
           <el-button
             type="primary"
@@ -311,10 +395,13 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
   display: flex;
   flex-direction: column;
   width: 360px;
+  min-width: 280px;
   max-width: calc(100vw - 24px);
   height: 520px;
+  min-height: 320px;
   max-height: calc(100vh - 120px);
   overflow: hidden;
+  resize: both;
   border-radius: var(--xl-radius-card);
   background: var(--xl-bg-surface);
   box-shadow: var(--xl-shadow-lg);
@@ -340,6 +427,13 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
   padding: var(--xl-space-3) var(--xl-space-4);
   border-bottom: 1px solid var(--xl-border);
   background: color-mix(in srgb, var(--xl-color-ai) 8%, var(--xl-bg-surface));
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.floating-assistant__header:active {
+  cursor: grabbing;
 }
 
 .floating-assistant__logo {
@@ -372,6 +466,26 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
 .floating-assistant__subtitle {
   color: var(--xl-text-muted);
   font-size: var(--xl-fs-caption);
+}
+
+.floating-assistant__clear {
+  padding: 3px 10px;
+  border: 1px solid var(--xl-border);
+  border-radius: 999px;
+  background: var(--xl-bg-surface);
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-caption);
+  cursor: pointer;
+}
+
+.floating-assistant__clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.floating-assistant__clear:hover:not(:disabled) {
+  border-color: var(--xl-color-ai);
+  color: var(--xl-color-ai);
 }
 
 .floating-assistant__close {
@@ -541,7 +655,10 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
   border-radius: 8px;
   background: var(--xl-bg-page);
   color: var(--xl-text-primary);
+  font-family: inherit;
   font-size: 14px;
+  line-height: 1.6;
+  resize: none;
   outline: none;
 }
 
@@ -550,6 +667,7 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
 }
 
 .floating-assistant__send {
+  align-self: flex-end;
   background: var(--xl-color-ai);
   border-color: var(--xl-color-ai);
 }

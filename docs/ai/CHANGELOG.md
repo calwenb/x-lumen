@@ -16,6 +16,18 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/7 22:06 · ZCode（小光悬浮助理：换行输入/面板拖拽缩放/清空会话）
+
+> 影响文档：docs/ai/CHANGELOG.md（本条）· 决策摘要：无
+
+用户提出「小光 · AI 助理」浮窗三项体验改进，全部落在 blog `modules/chat/components/FloatingAssistant.vue`：
+
+- **Shift+Enter 换行**：输入框 input→textarea（rows=2，样式对齐 ChatPage 口径），Enter 发送沿用 ChatPage 的 `@keydown.enter.exact.prevent` 模式；用户气泡已有 `white-space: pre-wrap`，换行原样展示。
+- **窗口移动**：按住标题栏 pointer 事件拖拽（setPointerCapture；清空/关闭按钮排除在拖拽外）。首次拖拽才把 CSS 右下角锚位固化为 left/top 坐标；坐标钳制留 8px 边距保证标题栏可达；监听 window resize 将面板拉回视口。
+- **窗口缩放**：面板加原生 `resize: both`（overflow:hidden 已满足条件），min 280×320、max 沿用视口约束；缩放后拖拽钳制按实时 offsetWidth/Height 计算。
+- **清空对话**：标题栏新增「清空」胶囊按钮（无消息时禁用），`clearConversation()` 先 abort 进行中的流式请求（`activeController` 记录当前控制器，finally 判等清理）再清 `messages`；会话本就不落盘，仅影响当前面板。
+- 验证：eslint --fix 后 build 复跑通过（5.4s）、`vue-tsc` 全绿、stylelint 过；v-html 警告为存量。
+
 ## 2026/9/7 21:42 · ZCode（互跳入口兜底端口 5173/5174→6010/6011，修「前往前台跳 5173」）
 
 > 影响文档：docs/frontend/PROTOTYPE.md · 决策摘要：无（9-07 端口方案 D11 修订补漏）
