@@ -288,13 +288,39 @@ server {
 }
 ```
 
-启用并重载：
+### 7.3 测试环境站点（6010/6011，可选）
+
+测试前端与正式前端是**两份独立产物**（`deploy-blog.sh test` 构建、互跳指向 6011/6060），需要各自的 server 块。与 7.1/7.2 结构完全一致，仅三处不同：`listen` 端口、root 指向 test 产物目录、`proxy_pass` 指向测试后端 6060：
+
+```nginx
+# /etc/nginx/sites-available/xlumen-blog-test.conf
+server {
+    listen 6010;                     # 测试博客入口（正式为 80+5010）
+    server_name _;
+    root /wen/app/frontend/xlumen-frontend-blog/test;   # ← test 产物目录
+    index index.html;
+    charset utf-8;
+    location /api/ {
+        proxy_pass http://127.0.0.1:6060;              # ← 测试后端
+        # 其余 SSE 透传配置与 7.1 完全相同（proxy_http_version 1.1 / Connection "" /
+        # 透传头组 / proxy_buffering off / proxy_cache off / read+send_timeout 3600s）
+    }
+    location / { try_files $uri $uri/ /index.html; }
+}
+# 管理后台同法再来一块：listen 6011 + root .../xlumen-frontend-admin/test + proxy_pass 6060
+```
+
+启用并重载（测试机若与正式机分离，则测试机只需这两个块）：
 
 ```bash
 ln -s /etc/nginx/sites-available/xlumen-blog.conf /etc/nginx/sites-enabled/
 ln -s /etc/nginx/sites-available/xlumen-admin.conf /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/xlumen-blog-test.conf /etc/nginx/sites-enabled/    # 可选：测试站点
+ln -s /etc/nginx/sites-available/xlumen-admin-test.conf /etc/nginx/sites-enabled/   # 可选：测试站点
 nginx -t && systemctl reload nginx
 ```
+
+> 腾讯云安全组：测试站点与正式同机时须放行 6010、6011 入站（6060 后端仍仅本机）。
 
 > 有域名后（可选）：两个 server 各加 `server_name` 与 443 ssl 块，用 `certbot --nginx` 一键签发证书并自动改写配置；无域名时保持 HTTP 直连即可。
 
@@ -352,14 +378,16 @@ systemctl restart xlumen && journalctl -u xlumen -f
 | 脚本 | 部署对象 | 五步中的差异 |
 | --- | --- | --- |
 | `scripts/deploy-backend.sh <test|prod>` | 后端 fat jar | 双环境选择：`test`（分支 test / 源码 `/wen/project/backend/xlumen/test` / 6060）、`prod`（分支 master / 源码 `/wen/project/backend/xlumen/master` / 5060）；不用 systemctl（nohup 起新 + pkill 停旧）；部署前打印环境信息并要 y 确认；每步带时间戳日志 |
-| `scripts/deploy-blog.sh` | 博客前台 dist | 源码 `/wen/project/frontend/xlumen-frontend-blog`，产物 `/wen/app/frontend/xlumen-frontend-blog`（nginx root）；停旧=`rm -rf` 旧产物，查状态=文件校验 |
-| `scripts/deploy-admin.sh` | 管理后台 dist | 源码 `/wen/project/frontend/xlumen-frontend-admin`，产物 `/wen/app/frontend/xlumen-frontend-admin`（nginx root）；同 blog |
+| `scripts/deploy-blog.sh <test|prod>` | 博客前台 dist | 双环境隔离：`test`（分支 test / 源码+产物 `.../xlumen-frontend-blog/{test|prod}` / 互跳 ADMIN_URL=:6011）、`prod`（分支 master / 互跳 :5011）；产物目录=对应 nginx 站点 root；停旧=`rm -rf` 本环境产物 |
+| `scripts/deploy-admin.sh <test|prod>` | 管理后台 dist | 同 blog：`test` 互跳 BLOG_URL=http://159.75.6.183:6010、`prod` 互跳 http://159.75.6.183（80 别名）；部署前均打印环境信息并要 y 确认 |
 
 ```bash
 bash scripts/deploy-backend.sh test   # 后端发版到测试环境（6060）
 bash scripts/deploy-backend.sh prod   # 后端发版到正式环境（5060）
-bash scripts/deploy-blog.sh           # 博客前台发版
-bash scripts/deploy-admin.sh          # 管理后台发版
+bash scripts/deploy-blog.sh test      # 博客前台发版到测试站点（6010）
+bash scripts/deploy-blog.sh prod      # 博客前台发版到正式站点（80/5010）
+bash scripts/deploy-admin.sh test     # 管理后台发版到测试站点（6011）
+bash scripts/deploy-admin.sh prod     # 管理后台发版到正式站点（5011）
 ```
 
 脚本就是最朴素的直写：仓库地址、部署目录、互跳地址等**集中在脚本顶部配置区**，按你的服务器实际改一处即可（前端两份只有 URL/路径；后端那份还有 JDK 路径与双环境端口）。之后再无其他参数。要点：

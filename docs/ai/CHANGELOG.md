@@ -16,6 +16,15 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/7 19:39 · ZCode（前端部署脚本双环境隔离改造）
+
+> 影响文档：docs/deploy/DEPLOY.md §7.3/§11 · 决策摘要：无（补齐环境隔离，用户拍板「直接改造」）
+
+- **动因**：环境隔离核查结论=后端脚本已全维隔离（分支/三目录/端口/进程 pkill 全路径/MySQL 库/Redis index/Milvus database/JWT/邮件），但 `deploy-blog.sh`/`deploy-admin.sh` 为单产物目录+写死 master+互跳 URL 单一正式值，「测试/正式共用」注释自曝无隔离，一次部署即覆盖现网。
+- **改造**：两脚本对齐后端脚本结构=配置区双环境（BRANCH/SRC/APP/互跳 URL 各两套，目录 `/wen/{project,app}/frontend/xlumen-frontend-{blog,admin}/{test,prod}`）+ 位置参数 `<test|prod>` + 步骤 0 y/N 确认 + 环境名时间戳日志 + `git clone -b 分支` + `rm -rf` 仅本环境产物；互跳地址 test=6011/6010、prod=5011/80 别名。`.gitignore` 补 `frontend/**/.env.production`（脚本构建期生成物，防未来入库）。`bash -n` 双脚本语法过。
+- **DEPLOY.md**：新增 §7.3 测试站点 nginx 块（6010/6011，root 指 test 产物、proxy_pass 6060，SSE 透传同 7.1）+ 安全组提醒；§11 脚本表与示例命令改双参数版。
+- **服务器连带**：首次跑 test 部署会自建 clone；nginx 需按 §7.3 加两个测试 server 块后 reload。
+
 ## 2026/9/7 19:10 · ZCode（端口方案定版：prod=506x/501x，dev+test=606x/601x）
 
 > 影响文档：AGENTS.md、docs/ai/STATUS.md（D11 行）、docs/ai/QA.md §3、docs/global/GLOBAL.md §2/§6.4/6.5、docs/frontend/FRONTEND.md §2、docs/deploy/DEPLOY.md · 决策摘要：无（端口段约定，用户拍板）
