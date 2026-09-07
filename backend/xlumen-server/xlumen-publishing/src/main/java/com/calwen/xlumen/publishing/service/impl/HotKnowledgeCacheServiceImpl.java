@@ -78,6 +78,15 @@ public class HotKnowledgeCacheServiceImpl implements HotKnowledgeCacheService {
     }
 
     @Override
+    public void evictKnowledge(Long knowledgeId) {
+        try {
+            stringRedisTemplate.delete(String.format(KNOWLEDGE_KEY, knowledgeId));
+        } catch (Exception e) {
+            log.warn("知识详情缓存失效失败（降级忽略），knowledgeId={}", knowledgeId, e);
+        }
+    }
+
+    @Override
     public void evictByKb(Long kbId) {
         // MVP 简化：按库维度失效时全量删详情键前缀（详情键不含 kbId 维度，V2 改
         // xlumen:knowledge:detail:{kbId}:{ws}:{id} 后按 kbId 精确失效）

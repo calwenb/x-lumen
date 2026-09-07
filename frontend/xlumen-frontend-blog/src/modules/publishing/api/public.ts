@@ -101,7 +101,24 @@ export async function fetchKnowledges(
 /** 知识详情（B02）。 */
 export async function fetchKnowledge(id: string): Promise<KnowledgeDetail> {
   const { data } = await http.get<ApiResponse<RawKnowledgeDetail>>(`/public/knowledge/${id}`)
-  const knowledge = unwrap(data)
+  return mapKnowledgeDetail(unwrap(data))
+}
+
+/**
+ * 手动触发 AI 摘要生成并入库（存量/发布时生成失败的文章补摘要）。
+ * 仅登录用户可用；后端同步调模型较慢，超时放宽到 120s；返回含新摘要的最新详情。
+ */
+export async function generateKnowledgeSummary(id: string): Promise<KnowledgeDetail> {
+  const { data } = await http.post<ApiResponse<RawKnowledgeDetail>>(
+    `/public/knowledge/${id}/summary`,
+    null,
+    { timeout: 120000 },
+  )
+  return mapKnowledgeDetail(unwrap(data))
+}
+
+/** 详情原始响应统一数值还原（fetch/生成摘要共用）。 */
+function mapKnowledgeDetail(knowledge: RawKnowledgeDetail): KnowledgeDetail {
   return {
     ...knowledge,
     viewCount: toNumber(knowledge.viewCount),

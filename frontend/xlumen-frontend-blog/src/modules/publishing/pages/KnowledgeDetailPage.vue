@@ -16,7 +16,12 @@ import KnowledgeQaDialog from '@/modules/chat/components/KnowledgeQaDialog.vue'
 import InitialAvatar from '@/components/InitialAvatar.vue'
 import { assistAction, explainTerm } from '@/modules/ai/api/assist'
 import { useSessionStore } from '@/stores/session'
-import { fetchKnowledge, fetchRelatedKnowledge, reportView } from '@/modules/publishing/api/public'
+import {
+  fetchKnowledge,
+  fetchRelatedKnowledge,
+  generateKnowledgeSummary,
+  reportView,
+} from '@/modules/publishing/api/public'
 import { extractToc, renderMarkdown } from '@/modules/publishing/utils/markdown'
 
 import type { AssistAction, TermExplainResult } from '@/modules/ai/api/assist'
@@ -92,6 +97,27 @@ const summaryText = computed(() => aiSummaryInfo.value?.summary ?? knowledge.val
 /** AI 导读要点；仅 JSON 且 guide 非空时渲染导读卡。 */
 const aiGuide = computed<string[]>(() => aiSummaryInfo.value?.guide ?? [])
 const guideOpen = ref(true)
+
+// 无摘要（存量文章/发布时生成失败）：登录用户可手动触发后端生成并入库，
+// 同步调模型较慢，请求期间按钮 loading；成功后用返回的最新详情（含 aiSummary）刷新。
+const summaryGenerating = ref(false)
+
+async function onGenerateSummary(): Promise<void> {
+  if (summaryGenerating.value) return
+  if (!session.loggedIn) {
+    ElMessage.warning('请先登录后再生成 AI 摘要')
+    return
+  }
+  summaryGenerating.value = true
+  try {
+    knowledge.value = await generateKnowledgeSummary(knowledgeId.value)
+    ElMessage.success('AI 摘要已生成')
+  } catch (e) {
+    ElMessage.error(e instanceof Error && e.message ? e.message : 'AI 摘要生成失败，请稍后重试')
+  } finally {
+    summaryGenerating.value = false
+  }
+}
 
 // D02 知识级问答与 读者纠错弹窗
 const showQa = ref(false)
@@ -368,21 +394,44 @@ function onGlobalKeydown(event: KeyboardEvent): void {
 // 加载失败（501/网络错误等）提示语音功能暂不可用。
 const playerOpen = ref(false)
 const speechError = ref(false)
+const speechLoading = ref(false)
 const audioEl = ref<HTMLAudioElement | null>(null)
 
 const speechUrl = computed(() =>
   knowledge.value ? `/api/v1/public/knowledge/${knowledge.value.id}/speech` : '',
 )
 
-function togglePlayer(): void {
+/** 展开即自动开播：play() 处于点击手势的短暂用户激活窗口内，浏览器允许自动播放；
+ * 语音在后端实时合成（约数秒），play() 会挂起至数据就绪。AbortError=快速折叠/重开打断，忽略。 */
+async function togglePlayer(): Promise<void> {
   playerOpen.value = !playerOpen.value
   speechError.value = false
   if (!playerOpen.value) {
     audioEl.value?.pause()
+    speechLoading.value = false
+    return
+  }
+  speechLoading.value = true
+  await nextTick()
+  try {
+    await audioEl.value?.play()
+    speechLoading.value = false
+  } catch (error) {
+    // AbortError=快速折叠/重开打断；NotAllowedError=自动播放被拦（静默降级，留进度条手动播），
+    // 两者均非服务故障；其余（如源加载失败）才提示暂不可用。
+    if (
+      error instanceof DOMException &&
+      (error.name === 'AbortError' || error.name === 'NotAllowedError')
+    ) {
+      speechLoading.value = false
+      return
+    }
+    onSpeechError()
   }
 }
 
 function onSpeechError(): void {
+  speechLoading.value = false
   speechError.value = true
   ElMessage.warning('语音功能暂不可用')
 }
@@ -473,6 +522,7 @@ async function reloadForNewKnowledge(): Promise<void> {
   hideTermEnhance()
   playerOpen.value = false
   speechError.value = false
+  speechLoading.value = false
   audioEl.value?.pause()
   guideOpen.value = true
   // knowledge 置空会整体卸载正文/评论区块，评论区等子组件随之重挂载
@@ -586,6 +636,7 @@ watch(renderedHtml, () => {
             :src="speechUrl"
             @error="onSpeechError"
           />
+          <p v-if="speechLoading" class="detail__player-hint">正在合成语音，马上开始播放…</p>
           <p v-if="speechError" class="detail__player-error">语音服务暂不可用，可稍后重试。</p>
         </div>
 
@@ -593,6 +644,22 @@ watch(renderedHtml, () => {
         <div v-if="knowledge.aiSummary" class="detail__summary">
           <el-tag class="detail__summary-tag" size="small" effect="plain">AI 摘要</el-tag>
           <p class="detail__summary-text">{{ summaryText }}</p>
+        </div>
+
+        <!-- 无摘要：同卡片提供手动触发入口（生成即入库，幂等不重复计费） -->
+        <div v-else class="detail__summary detail__summary--empty">
+          <el-tag class="detail__summary-tag" size="small" effect="plain">AI 摘要</el-tag>
+          <span class="detail__summary-text">暂无摘要</span>
+          <el-button
+            size="small"
+            type="primary"
+            plain
+            :loading="summaryGenerating"
+            @click="onGenerateSummary"
+          >
+            {{ summaryGenerating ? '生成中…' : '生成 AI 摘要' }}
+          </el-button>
+          <span v-if="!session.loggedIn" class="detail__summary-hint">登录后可用</span>
         </div>
 
         <!-- AI 导读：aiSummary 为 JSON 且含 guide 数组时渲染折叠卡，默认展开 -->
@@ -1007,6 +1074,17 @@ watch(renderedHtml, () => {
   flex-shrink: 0;
 }
 
+/* 空摘要态：标签+文案+触发按钮同行居中 */
+.detail__summary--empty {
+  align-items: center;
+}
+
+.detail__summary-hint {
+  margin-left: auto;
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
 .detail__summary-text {
   margin: 0;
   color: var(--xl-text-secondary);
@@ -1206,6 +1284,12 @@ watch(renderedHtml, () => {
 }
 
 .detail__player-error {
+  margin: var(--xl-space-2) 0 0;
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.detail__player-hint {
   margin: var(--xl-space-2) 0 0;
   color: var(--xl-text-muted);
   font-size: var(--xl-fs-caption);

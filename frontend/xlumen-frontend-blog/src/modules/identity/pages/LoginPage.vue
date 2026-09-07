@@ -29,6 +29,14 @@ function onTabChange(): void {
   errorMessage.value = ''
 }
 
+/** 演示账号：点击提示自动填入登录表单。 */
+function fillDemo(): void {
+  mode.value = 'login'
+  username.value = 'demo'
+  password.value = '123456'
+  errorMessage.value = ''
+}
+
 async function submit(): Promise<void> {
   errorMessage.value = ''
   loading.value = true
@@ -106,6 +114,10 @@ async function submit(): Promise<void> {
               @keyup.enter="submit"
             />
           </el-form-item>
+          <p v-if="isLogin" class="auth__demo-tip">
+            演示账号 demo / 123456
+            <button type="button" class="auth__demo-fill" @click="fillDemo()">一键填充</button>
+          </p>
           <el-alert
             v-if="errorMessage"
             :title="errorMessage"
@@ -197,6 +209,21 @@ async function submit(): Promise<void> {
 
 .auth__tabs :deep(.el-tabs__item) {
   font-size: var(--xl-fs-body);
+}
+
+.auth__demo-tip {
+  margin: calc(-1 * var(--xl-space-2)) 0 var(--xl-space-4);
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.auth__demo-fill {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--xl-color-primary);
+  font-size: var(--xl-fs-caption);
+  cursor: pointer;
 }
 
 .auth__error {

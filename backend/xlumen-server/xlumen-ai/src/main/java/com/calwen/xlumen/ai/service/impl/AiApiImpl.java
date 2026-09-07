@@ -12,6 +12,7 @@ import com.calwen.xlumen.ai.entity.AiTaskEntity;
 import com.calwen.xlumen.ai.enums.AiScene;
 import com.calwen.xlumen.ai.mapper.AiEnhanceResultMapper;
 import com.calwen.xlumen.ai.service.AiTaskService;
+import com.calwen.xlumen.ai.service.EnhanceService;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
 import org.slf4j.Logger;
@@ -33,10 +34,13 @@ public class AiApiImpl implements AiApi {
 
     private final AiTaskService aiTaskService;
     private final AiEnhanceResultMapper enhanceResultMapper;
+    private final EnhanceService enhanceService;
 
-    public AiApiImpl(AiTaskService aiTaskService, AiEnhanceResultMapper enhanceResultMapper) {
+    public AiApiImpl(AiTaskService aiTaskService, AiEnhanceResultMapper enhanceResultMapper,
+                     EnhanceService enhanceService) {
         this.aiTaskService = aiTaskService;
         this.enhanceResultMapper = enhanceResultMapper;
+        this.enhanceService = enhanceService;
     }
 
     @Override
@@ -89,5 +93,12 @@ public class AiApiImpl implements AiApi {
             log.warn("摘要 result_json 解析失败（按无摘要处理）：knowledgeId={}", knowledgeId, e);
             return null;
         }
+    }
+
+    @Override
+    public void generateSummary(Long workspaceId, Long knowledgeId, String title, String content) {
+        // 与发布事件监听同款生成落库路径（EnhanceService.generateAndStoreSummary）；
+        // AI 输出异常由其抛 BizException，本层不吞错（触发方 publishing 决定前端提示）
+        enhanceService.generateAndStoreSummary(workspaceId, knowledgeId, title, content);
     }
 }

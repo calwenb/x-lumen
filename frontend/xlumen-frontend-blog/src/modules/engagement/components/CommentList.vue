@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // 评论区（B02）：评论列表 + 发表评论；发表需登录，未登录引导登录页。
 // 每条评论底部提供赞/踩互斥按钮，以服务端返回 reaction 校正并增减本地计数。
+// @小光 的评论：小光回复在发表请求内同步落库（后端 @EventListener 同线程），提交后静默重拉
+// 列表即可同时呈现本人评论与回复，无需刷新页面；普通评论仍走本地 push 避免整表闪烁。
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -49,22 +51,35 @@ function formatTime(iso: string): string {
   return `${Math.floor(hours / 24)} 天前`
 }
 
-async function load(): Promise<void> {
-  loading.value = true
+/** @小光 触发判定：口径对齐后端 CommentServiceImpl（半角/全角 @ 均可命中）。 */
+const MENTION_XIAOGUANG = /[@＠]小光/
+
+/** 拉取评论列表；silent 模式不闪 loading 占位、失败不翻错误态（发表后的增量刷新用）。 */
+async function loadComments(silent = false): Promise<void> {
+  if (!silent) loading.value = true
   loadError.value = false
   try {
     const page = await fetchComments(props.knowledgeId)
     comments.value = page.records
   } catch {
-    loadError.value = true
+    if (!silent) loadError.value = true
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
+function load(): void {
+  void loadComments()
+}
+
 async function submit(): Promise<void> {
+  // 按钮不再做禁用态（避免「灰死像锁住」的观感），空内容/提交中在此拦截
+  if (submitting.value) return
   const content = draft.value.trim()
-  if (!content) return
+  if (!content) {
+    ElMessage.warning('请先输入评论内容')
+    return
+  }
   if (!session.loggedIn) {
     await router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
     return
@@ -72,8 +87,20 @@ async function submit(): Promise<void> {
   submitting.value = true
   try {
     const created = await createComment(props.knowledgeId, content)
-    comments.value.push(created)
     draft.value = ''
+    if (MENTION_XIAOGUANG.test(content)) {
+      // 回复与本人评论同请求落库，静默重拉一次即两者齐现。
+      // 重拉失败或列表分页未含本条时本地补入本人评论，效果退化为普通评论路径
+      await loadComments(true)
+      if (!comments.value.some((item) => item.id === created.id)) comments.value.push(created)
+      // 限流命中（同一用户对同一知识 5 分钟仅回复一次）时后端静默跳过，这里给出明确反馈避免「无响应」观感
+      const hasReply = comments.value.some((item) => item.isAi && item.parentId === created.id)
+      if (!hasReply) {
+        ElMessage.info('小光这次没有回复：同一文章它每 5 分钟只解答一次，可稍后再试')
+      }
+    } else {
+      comments.value.push(created)
+    }
     emit('update:count', comments.value.length)
   } catch {
     // 失败提示：保持草稿，用户可重试
@@ -184,11 +211,16 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
         class="comment-form__input"
         rows="3"
         maxlength="1000"
-        placeholder="写下你的评论…"
+        placeholder="写下你的评论…（可 @小光 让 AI 助理解答）"
       />
       <div class="comment-form__actions">
-        <span v-if="!session.loggedIn" class="comment-form__tip">登录后即可评论</span>
-        <el-button type="primary" native-type="submit" :disabled="submitting || !draft.trim()">
+        <p v-if="session.loggedIn" class="comment-form__tip">
+          想让小光解答？评论中带上
+          <strong class="comment-form__mention">@小光</strong>
+          ，它会基于站内知识回复
+        </p>
+        <span v-else class="comment-form__tip">登录后即可评论，评论中可 @小光 唤 AI 助理解答</span>
+        <el-button type="primary" native-type="submit">
           {{ submitting ? '发表中' : '发表评论' }}
         </el-button>
       </div>
@@ -348,7 +380,13 @@ async function react(comment: CommentItem, target: MyReaction): Promise<void> {
 }
 
 .comment-form__tip {
+  margin: 0;
   color: var(--xl-text-muted);
   font-size: 14px;
+}
+
+.comment-form__mention {
+  color: var(--xl-color-ai);
+  font-weight: 600;
 }
 </style>

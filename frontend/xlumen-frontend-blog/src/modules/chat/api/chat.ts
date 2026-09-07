@@ -93,15 +93,19 @@ export async function fetchMessages(conversationId: string): Promise<ChatMessage
   const { data } = await http.get<ApiResponse<RawMessage[]>>(
     `/chat/conversations/${conversationId}/messages`,
   )
-  return unwrap(data)
-    .filter((message) => message.role !== 'TOOL')
-    .map((message) => ({
-      id: String(message.id),
-      role: message.role === 'user' ? 'user' : 'assistant',
-      content: message.content ?? '',
-      citations: parseCitations(message.citationsJson ?? ''),
-      toolCalls: parseToolCalls(message.toolCallsJson ?? ''),
-    }))
+  return (
+    unwrap(data)
+      // 后端 role 为大写 USER/ASSISTANT/TOOL，统一转大写比较；
+      // 此前按小写 'user' 匹配永不命中，导致历史回放的提问全被误判为 assistant（不区分用户/AI）
+      .filter((message) => message.role.toUpperCase() !== 'TOOL')
+      .map((message) => ({
+        id: String(message.id),
+        role: message.role.toUpperCase() === 'USER' ? 'user' : 'assistant',
+        content: message.content ?? '',
+        citations: parseCitations(message.citationsJson ?? ''),
+        toolCalls: parseToolCalls(message.toolCallsJson ?? ''),
+      }))
+  )
 }
 
 /** 新建会话：后端 data 直接返回 id 字符串（Long 全局序列化为 String）。 */

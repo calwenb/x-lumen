@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 应用根组件（V2 设计系统）：64px 吸顶头部（品牌 Logo、主导航「发现/知识库/动态/创作中心/AI小光」、
+// 应用根组件（V2 设计系统）：64px 吸顶头部（品牌 Logo、主导航「发现/AI小光/知识库/创作中心/动态」、
 // 搜索胶囊、主题图标『仅视觉·固定浅色』、通知铃、写知识 CTA、头像菜单，FRONTEND.md §5.1）与路由出口。
 // 导航高亮用 router-link-exact-active（首页 / 为全部路由父级，泛匹配会全站误高亮）。
 import { computed, ref } from 'vue'
@@ -105,10 +105,10 @@ function handleNavCommand(command: string): void {
           AI小光<span class="app-header__ai-star" aria-hidden="true">✦</span>
         </RouterLink>
         <RouterLink class="app-header__link" :to="{ name: 'kb-discovery' }">知识库</RouterLink>
-        <RouterLink class="app-header__link" :to="{ name: 'changelog' }">动态</RouterLink>
         <RouterLink v-if="session.loggedIn" class="app-header__link" :to="{ name: 'workbench' }">
           创作中心
         </RouterLink>
+        <RouterLink class="app-header__link" :to="{ name: 'changelog' }">动态</RouterLink>
       </nav>
 
       <div class="app-header__menu">
@@ -119,8 +119,8 @@ function handleNavCommand(command: string): void {
               <el-dropdown-item command="home">发现</el-dropdown-item>
               <el-dropdown-item command="chat">AI小光</el-dropdown-item>
               <el-dropdown-item command="kb-discovery">知识库</el-dropdown-item>
-              <el-dropdown-item command="changelog">动态</el-dropdown-item>
               <el-dropdown-item v-if="session.loggedIn" command="studio">创作中心</el-dropdown-item>
+              <el-dropdown-item command="changelog">动态</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>

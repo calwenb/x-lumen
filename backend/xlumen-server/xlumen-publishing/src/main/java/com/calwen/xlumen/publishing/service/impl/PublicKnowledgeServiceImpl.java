@@ -149,6 +149,30 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
     }
 
     @Override
+    public KnowledgeDetailVO generateSummary(Long knowledgeId) {
+        // 手动补摘要仅登录用户可用（端点不在 SecurityConfig POST 白名单，JWT 已强制；
+        // 此处 userId 判空为业务级兜底，并取可见库集合复用详情同款可见性口径）
+        Long userId = WorkspaceContext.userId();
+        if (userId == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED);
+        }
+        List<Long> visibleKbIds = knowledgeApi.resolveVisibleKbIds(userId);
+        KnowledgeDetailDTO knowledge = contentApi.getPublished(null, knowledgeId, visibleKbIds);
+        KnowledgeBaseVO kb = knowledge == null || knowledge.getKbId() == null
+                ? null : knowledgeApi.getKnowledgeBaseById(knowledge.getKbId());
+        if (kb == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识不存在或未公开");
+        }
+        // 幂等：已有摘要不重复调模型（防双击/并发重复计费），仅保证缓存失效后回读
+        if (aiApi.findLatestSummary(kb.getWorkspaceId(), knowledgeId) == null) {
+            aiApi.generateSummary(kb.getWorkspaceId(), knowledgeId, knowledge.getTitle(), knowledge.getContent());
+        }
+        // 精确失效访客详情缓存（TTL 10min），避免新摘要延迟可见；登录态回源无缓存不受影响
+        hotKnowledgeCacheService.evictKnowledge(knowledgeId);
+        return getKnowledge(knowledgeId);
+    }
+
+    @Override
     public KnowledgeBaseVO getKnowledgeBase(Long kbId) {
         // 公开探测：私有库/不存在统一 404「知识库不存在或无权访问」，
         // 与知识详情「不可访问」语义一致，避免前端对私有直链静默回退到公开占位

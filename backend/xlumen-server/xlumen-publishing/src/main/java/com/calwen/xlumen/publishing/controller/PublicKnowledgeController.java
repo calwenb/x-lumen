@@ -50,6 +50,16 @@ public class PublicKnowledgeController {
     }
 
     /**
+     * 手动触发 AI 摘要生成并入库（存量/发布时生成失败的文章补摘要）：
+     * 需登录（/api/v1/public/** 白名单仅 GET 与本文件显式放行的 POST）；
+     * 同步调模型生成较慢，返回含新摘要的最新详情。
+     */
+    @PostMapping("/knowledge/{id}/summary")
+    public ApiResponse<KnowledgeDetailVO> generateSummary(@PathVariable Long id) {
+        return ApiResponse.success(publicKnowledgeService.generateSummary(id));
+    }
+
+    /**
      * 公开知识库探测（B20）：公开库返回库信息；私有库/不存在统一 404
      * 「知识库不存在或无权访问」，与知识详情不可访问语义一致。
      */
