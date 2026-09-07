@@ -22,9 +22,10 @@ const keyword = ref('')
 
 const avatarText = computed(() => (session.snapshot?.username ?? '?').slice(0, 1).toUpperCase())
 
-// 管理后台入口：新标签页跳转，可用 VITE_ADMIN_URL 覆盖（部署联调时指向实际地址）。
+// 管理后台入口：新标签页跳转，可用 VITE_ADMIN_URL 覆盖（部署构建期由 deploy-blog.sh 写入）。
 // 不做角色判断：非管理员进入后由后台自身的路由守卫统一处理。
-const adminUrl = import.meta.env.VITE_ADMIN_URL ?? 'http://localhost:5174'
+// 兜底值=本地 dev 端口（9-07 端口方案：blog 6010/admin 6011，旧 5173/5174 作废）
+const adminUrl = import.meta.env.VITE_ADMIN_URL ?? 'http://localhost:6011'
 
 function openAdmin(): void {
   window.open(adminUrl, '_blank', 'noopener')

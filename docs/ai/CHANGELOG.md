@@ -16,6 +16,12 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/7 21:42 · ZCode（互跳入口兜底端口 5173/5174→6010/6011，修「前往前台跳 5173」）
+
+> 影响文档：docs/frontend/PROTOTYPE.md · 决策摘要：无（9-07 端口方案 D11 修订补漏）
+
+现象：admin 侧栏「前往前台」跳 `http://localhost:5173`。根因链：链接取 `import.meta.env.VITE_BLOG_URL`（**构建期**变量，由 deploy-admin.sh 写 .env.production 打入 bundle），当前在跑的 bundle 构建时该变量缺位（写 .env.production 的双环境脚本 3ac9674 尚未推送部署），落到代码兜底常量；而兜底是端口改版（cfc1910）时漏改的 vite 旧默认口 5173/5174。修复：双端 App.vue 兜底改 6010/6011（blog→admin 同步修 5174→6011）、PROTOTYPE.md §1 表格 :5173/:5174→:6010/:6011；历史归档（CHANGELOG 旧条目、assets 测试记录）不回改。双端 `vue-tsc` 通过。服务器侧根治仍待：推送 3ac9674 后用新脚本重新构建部署，URL 即构建期打入。
+
 ## 2026/9/7 21:37 · ZCode（管理后台「索引维护」页，接入全平台补跑接口）
 
 > 影响文档：docs/frontend/FRONTEND.md · docs/backend/BACKEND.md · docs/deploy/DEPLOY.md · 决策摘要：无

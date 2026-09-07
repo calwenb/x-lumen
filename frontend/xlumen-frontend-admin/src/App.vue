@@ -22,8 +22,9 @@ const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 
-// 前台入口：新标签页打开博客端，可用 VITE_BLOG_URL 覆盖（部署联调时指向实际地址）
-const blogUrl = import.meta.env.VITE_BLOG_URL ?? 'http://localhost:5173'
+// 前台入口：新标签页打开博客端，可用 VITE_BLOG_URL 覆盖（部署构建期由 deploy-admin.sh 写入）；
+// 兜底值=本地 dev 端口（9-07 端口方案：blog 6010/admin 6011，旧 5173/5174 作废）
+const blogUrl = import.meta.env.VITE_BLOG_URL ?? 'http://localhost:6010'
 
 const showShell = computed(() => !route.meta.guest)
 
