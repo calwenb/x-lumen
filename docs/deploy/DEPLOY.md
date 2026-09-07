@@ -101,9 +101,9 @@ pnpm --dir frontend/xlumen-frontend-admin build    # 产物：frontend/xlumen-fr
    └─ backend/xlumen/test、backend/xlumen/prod         # 后端运行日志 app.log
 ```
 
-## 4. 后端配置（环境 profile，不入库 · 决策 D30）
+## 4. 后端配置（环境 profile 不入库 · 决策 D30/D31）
 
-数据库/Redis/密钥等环境差异全部配置在 `application-<env>.yml`。仓库内**只提交占位符模板 `application-demo.yml`**；dev/test/prod 三份含真实密钥，**不入 git**（`.gitignore` 忽略），存放位置：
+配置分两层：**`application.yml`（入库）= 环境无关公共项**（连接池策略、健康检查、日志、模型选型、Agent 参数）+ active 开关；**`application-<env>.yml`（不入库）= 环境属性与密钥**（中间件地址/端口/库名、`server.port`、site-url、各密钥）——判据是键是否环境属性，而非当前值是否相同（D31）。仓库内只提交占位符模板 `application-demo.yml`；dev/test/prod 三份被 `.gitignore` 忽略，存放位置：
 
 - **开发机**：放 `backend/xlumen-server/xlumen-boot/src/main/resources/`（本地构建会打进包，仅本机可见）。
 - **服务器**：放产物目录 jar 同级的 `config/` 下（如 `/wen/app/backend/xlumen/prod/config/application-prod.yml`），Spring Boot 启动时自动外部加载且优先级高于 jar 内配置；部署脚本启动前会校验该文件存在。
@@ -116,10 +116,11 @@ pnpm --dir frontend/xlumen-frontend-admin build    # 产物：frontend/xlumen-fr
 | --- | --- | --- |
 | `application-demo.yml` | 模板（占位符） | 导出字段参考，勿直接用于启动 |
 | `application-dev.yml` | 开发机 | 本地库/Redis，验证码可落日志 |
-| `application-test.yml` | 测试环境 | 库 `xlumen_test`、端口 8081、Redis 逻辑库 1 隔离 |
-| `application-prod.yml` | 正式环境 | 库 `xlumen_dev`、端口 8080、正式 SMTP；**上线前把 JWT/AI 密钥替换为全新值** |
+| `application-test.yml` | 测试环境 | 库 `xlumen_test`、端口 8081、Redis 逻辑库 1、Milvus database `xlumen_test` |
+| `application-prod.yml` | 正式环境 | 库 `xlumen`、端口 8080、Redis 逻辑库 2、Milvus database `xlumen_prod`、正式 SMTP |
 
-> 注意：dev/test/prod 三份 profile 从服务器/开发机各自维护，首次可从 `application-demo.yml` 复制后填值。git 历史中 2026-09-06 之前的提交（f5d8796）仍含旧版密钥，仓库若转公开必须先轮换所有密钥并清理历史（filter-repo）。
+> 注意一：Milvus 向量隔离只靠 database（集合名固定 `kb_chunks`），`xlumen_test`/`xlumen_prod` 两个 database 需在服务端**预建**（代码不会自动建库）：`curl -X POST http://<milvus>:19530/v2/vectordb/databases/create -H 'Content-Type: application/json' -d '{"dbName":"xlumen_test"}'`（prod 同理）；新库首索引时自动建集合，各环境发布知识自然从零索引。
+> 注意二：dev/test/prod 三份 profile 由服务器/开发机各自维护，首次可从 `application-demo.yml` 复制后填值。git 历史中 2026-09-06 之前的提交（f5d8796）仍含旧版密钥，仓库若转公开必须先轮换所有密钥并清理历史（filter-repo）。
 
 ## 5. 初始化数据库
 

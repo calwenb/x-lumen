@@ -16,6 +16,15 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/7 18:56 · ZCode（D31：配置分层重划 + Milvus database 环境隔离）
+
+> 影响文档：docs/ai/STATUS.md（D29 修订+D31）、docs/global/GLOBAL.md §6.2、docs/backend/BACKEND.md §17、docs/deploy/DEPLOY.md §4 · 决策摘要：D31（修订 D29「各环境文件自我完整」条款）
+
+- **配置分层重划（用户两轮拍板）**：判据=键是否环境属性而非值是否相同。`application.yml`（入库）只留环境无关公共项：active 开关、ai 六关、driver+hikari、mail smtp 属性、lettuce 池、编码、circular、management、logging、模型选型（bailian/deepseek base-url+model-*）、agent/writing/trace/tts 参数；三份 profile（不入库）收纳全部环境属性与密钥：`server.port`、datasource url/账密、redis host/port/密码/index、mail 账密、**milvus 三件**、**site-url**、**dev-port-guard**、jwt-secret、api-key、mail-from。五文件总行数 469→252（base 97 + 3×38 + demo 41）；`application-demo.yml` 模板同步新结构并注明划分原则。等效比对（merge(base,profile) vs 旧自含文件）通过，唯一差异=reviewer 修复。
+- **P0 修复**：test/prod 的 `model-reviewer` 曾被改为 qwen-plus，与写作同源（同供应商+同模型）会触发 `ReviewServiceImpl.checkHeterogeneous` 抛 CONFLICT、发布自动 AI 审核必挂；统一回 `qwen-max`（base 定义，profile 可同名键覆盖）。
+- **Milvus 向量隔离（D31 附带）**：集合名固定 `kb_chunks`，database 是唯一隔离层，原三环境全共用 default 一份向量（测试数据会污染正式检索、reindex/删除互毁）。profile 定版：dev=default（既有向量不动）、test=`xlumen_test`、prod=`xlumen_prod`；代码探测已带 dbName（VectorStoreAutoConfiguration:59）、首写自动建集合，唯 database 须服务端预建（已交付 curl 命令，**Milvus 服务当前未运行，19530 拒连**，待用户启动服务后建库）。同步清空 `xlumen_test`/`xlumen` 两 MySQL 库的 `kb_chunk`(17 行)/`kb_index_version`(13 行) 元数据，防新库无向量而元数据假 ACTIVE（BUG-004 同款症状）；各环境发布知识时自然从零索引。
+- **验证**：五份 YAML js-yaml 解析通过；等效比对差异仅 reviewer 一处；元数据清理后 test/prod 两表计数 0/0（dev 未动）。未跑 mvn 冒烟（用户指示快速执行免验证）。
+
 ## 2026/9/6 21:45 · ZCode（D30：dev/test/prod profile 移出版本库）
 
 > 影响文档：AGENTS.md、docs/ai/STATUS.md（D29 修订+D30）、docs/global/GLOBAL.md §6.2、docs/backend/BACKEND.md §17、docs/deploy/DEPLOY.md §4/§6/§11 · 决策摘要：D30（修订 D29 的"随仓库提交并打进 fat jar"条款）

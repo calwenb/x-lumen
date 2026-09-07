@@ -150,7 +150,7 @@ xlumen/
 
 ### 6.2 配置准备
 
-环境配置载体为 profile YAML（决策 D29），但 dev/test/prod 三份含真实密钥**不入 git**（决策 D30，`.gitignore` 忽略），仓库只提交占位符模板 `application-demo.yml`。开发机把三份 profile 放在 `backend/xlumen-server/xlumen-boot/src/main/resources/`（本地构建打进包，仅本机可见）；服务器放在 jar 同级的 `config/application-<env>.yml`（Spring Boot 外部加载，优先级高于 jar 内，改配置重启即生效、无需重新打包）。`application.yml` 默认 `spring.profiles.active: dev`，命令行 `--spring.profiles.active=<env>` 或环境变量 `SPRING_PROFILES_ACTIVE` 优先级更高；代码里的 `${XLUMEN_XXX}` 占位符在 YAML 中写作小写点号键（如 `XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`）。
+环境配置载体为 profile YAML（决策 D29），但 dev/test/prod 三份含真实密钥**不入 git**（决策 D30，`.gitignore` 忽略），仓库只提交占位符模板 `application-demo.yml`。开发机把三份 profile 放在 `backend/xlumen-server/xlumen-boot/src/main/resources/`（本地构建打进包，仅本机可见）；服务器放在 jar 同级的 `config/application-<env>.yml`（Spring Boot 外部加载，优先级高于 jar 内，改配置重启即生效、无需重新打包）。**分层原则（决策 D31）**：`application.yml` 只放环境无关公共项（active 开关、连接池策略、健康检查、日志、模型选型、Agent 参数）；中间件地址/端口/库名、`server.port`、site-url、端口守卫与全部密钥一律写在对应 profile——判据是键是否环境属性，而非当前值是否相同。`application.yml` 默认 `spring.profiles.active: dev`，命令行 `--spring.profiles.active=<env>` 或环境变量 `SPRING_PROFILES_ACTIVE` 优先级更高；代码里的 `${XLUMEN_XXX}` 占位符在 YAML 中写作小写点号键（如 `XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`）。
 
 ### 6.3 初始化数据库
 
