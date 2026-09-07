@@ -6,6 +6,7 @@
 *.env.local
 
 # ---- 环境 profile（D30：dev/test/prod 含真实密钥不入库，仅 application-demo.yml 模板入库） ----
+frontend/**/.env.production
 backend/xlumen-server/xlumen-boot/src/main/resources/application-dev.yml
 backend/xlumen-server/xlumen-boot/src/main/resources/application-test.yml
 backend/xlumen-server/xlumen-boot/src/main/resources/application-prod.yml

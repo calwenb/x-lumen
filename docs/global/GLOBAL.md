@@ -63,8 +63,8 @@ xLumen 是多用户 AI 知识平台：注册用户创建自己的知识库（公
 
 ```mermaid
 flowchart TB
-    BLOG["xlumen-frontend-blog 博客前台+创作中心 :5173"] --> API["REST / SSE / WebSocket"]
-    ADMIN["xlumen-frontend-admin 管理后台 :5174"] --> API
+    BLOG["xlumen-frontend-blog 博客前台+创作中心 :6010"] --> API["REST / SSE / WebSocket"]
+    ADMIN["xlumen-frontend-admin 管理后台 :6011"] --> API
     API --> BOOT["xlumen-boot 模块化单体（装配 7 个模块：common 基座 + 5 个业务模块）"]
     BOOT --> MYSQL["MySQL 8.4 · 业务事实"]
     BOOT --> REDIS["Redis · 短期状态"]
@@ -110,8 +110,8 @@ xlumen/
 │  ├─ xlumen-knowledge/                 # 知识库与目录管理 + 知识索引 RAG：发布即索引（kb_）
 │  ├─ xlumen-ai/                        # AI 引擎 + 对话 + 增值（ai_ + chat_ + ai_enhance_）
 │  └─ xlumen-boot/                      # 装配层：唯一启动入口
-├─ frontend/xlumen-frontend-blog/       # 博客前台（含创作中心，M01 骨架阶段创建，5173）
-├─ frontend/xlumen-frontend-admin/      # 管理后台（仅管理员，M01 骨架阶段创建，5174）
+├─ frontend/xlumen-frontend-blog/       # 博客前台（含创作中心，M01 骨架阶段创建，6010）
+├─ frontend/xlumen-frontend-admin/      # 管理后台（仅管理员，M01 骨架阶段创建，6011）
 ├─ scripts/init-db.ps1                  # 数据库初始化脚本（M01 骨架阶段创建，参数 -Profile）
 ├─ package.json                         # 根脚本代理：pnpm --dir frontend/xlumen-frontend-blog / --dir frontend/xlumen-frontend-admin（M01 骨架阶段创建）
 ├─ pnpm-workspace.yaml                  # Monorepo：声明 blog + admin 双应用（M01 骨架阶段创建）
@@ -150,7 +150,7 @@ xlumen/
 
 ### 6.2 配置准备
 
-环境配置载体为 profile YAML（决策 D29），但 dev/test/prod 三份含真实密钥**不入 git**（决策 D30，`.gitignore` 忽略），仓库只提交占位符模板 `application-demo.yml`。开发机把三份 profile 放在 `backend/xlumen-server/xlumen-boot/src/main/resources/`（本地构建打进包，仅本机可见）；服务器放在 jar 同级的 `config/application-<env>.yml`（Spring Boot 外部加载，优先级高于 jar 内，改配置重启即生效、无需重新打包）。`application.yml` 默认 `spring.profiles.active: dev`，命令行 `--spring.profiles.active=<env>` 或环境变量 `SPRING_PROFILES_ACTIVE` 优先级更高；代码里的 `${XLUMEN_XXX}` 占位符在 YAML 中写作小写点号键（如 `XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`）。
+环境配置载体为 profile YAML（决策 D29），但 dev/test/prod 三份含真实密钥**不入 git**（决策 D30，`.gitignore` 忽略），仓库只提交占位符模板 `application-demo.yml`。开发机把三份 profile 放在 `backend/xlumen-server/xlumen-boot/src/main/resources/`（本地构建打进包，仅本机可见）；服务器放在 jar 同级的 `config/application-<env>.yml`（Spring Boot 外部加载，优先级高于 jar 内，改配置重启即生效、无需重新打包）。**分层原则（决策 D31）**：`application.yml` 只放环境无关公共项（active 开关、连接池策略、健康检查、日志、模型选型、Agent 参数）；中间件地址/端口/库名、`server.port`、site-url、端口守卫与全部密钥一律写在对应 profile——判据是键是否环境属性，而非当前值是否相同。`application.yml` 默认 `spring.profiles.active: dev`，命令行 `--spring.profiles.active=<env>` 或环境变量 `SPRING_PROFILES_ACTIVE` 优先级更高；代码里的 `${XLUMEN_XXX}` 占位符在 YAML 中写作小写点号键（如 `XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`）。
 
 ### 6.3 初始化数据库
 
@@ -162,7 +162,7 @@ xlumen/
 
 ### 6.4 启动后端
 
-打包后运行（推荐，默认地址 `http://localhost:8080`，健康检查 `http://localhost:8080/actuator/health`；JDK 25）：
+打包后运行（推荐，默认地址 `http://localhost:6060`（dev profile），健康检查 `http://localhost:6060/actuator/health`；JDK 25）：
 
 ```powershell
 cd backend/xlumen-server
@@ -170,7 +170,7 @@ mvn -pl xlumen-boot -am package -DskipTests
 java -jar xlumen-boot/target/xlumen-boot-*.jar
 ```
 
-开发机遇到端口残留时，可在 `application-dev.yml` 设置 `xlumen.dev-port-guard: true`。应用会在绑定端口前列出占用 PID/进程名，输入 `y` 后结束占用进程并继续；生产环境保持 `false`。端口在各环境 profile 的 `server.port` 配置（默认 8080）。
+开发机遇到端口残留时，可在 `application-dev.yml` 设置 `xlumen.dev-port-guard: true`。应用会在绑定端口前列出占用 PID/进程名，输入 `y` 后结束占用进程并继续；生产环境保持 `false`。端口在各环境 profile 的 `server.port` 配置（dev/test=6060，prod=5060）。
 
 > **不要**用 `mvn -pl xlumen-boot -am spring-boot:run`——`-am` 会让 spring-boot:run 在 reactor 的父 POM 上执行而报 `Unable to find a suitable main class`；且 spring-boot:run 从本地 `~/.m2` 解析兄弟模块，若未先 `mvn install` 会吃到旧版本 jar（症状：接口缺新字段）。确需 spring-boot:run 时：先 `mvn install -DskipTests`，再到 `xlumen-boot/` 目录内执行 `mvn spring-boot:run`（不带 `-am`）。
 
@@ -179,8 +179,8 @@ java -jar xlumen-boot/target/xlumen-boot-*.jar
 仓库根目录执行（根 package.json 通过 `pnpm --dir` 代理两应用脚本；首次运行先在根目录 `pnpm install`）：
 
 ```powershell
-pnpm --dir frontend/xlumen-frontend-blog dev     # 博客前台（含创作中心） http://localhost:5173
-pnpm --dir frontend/xlumen-frontend-admin dev    # 管理后台 http://localhost:5174
+pnpm --dir frontend/xlumen-frontend-blog dev     # 博客前台（含创作中心） http://localhost:6010
+pnpm --dir frontend/xlumen-frontend-admin dev    # 管理后台 http://localhost:6011
 ```
 
 ## 7. 质量门禁

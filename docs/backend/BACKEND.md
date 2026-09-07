@@ -393,8 +393,8 @@ MySQL 使用单实例、单 Schema；无数据库外键（逻辑外键通过业�
 > 决策 D29（取代 D8，2026-08-30）：**配置唯一载体为 spring profile YAML**——application-{dev,test,prod}.yml，禁止第二种配置载体（禁止 yq、禁止再引入 .env）。
 
 - 唯一载体：`application-{dev,test,prod}.yml`（决策 D30：含真实密钥**不入库**——开发机放 `backend/xlumen-server/xlumen-boot/src/main/resources/` 且被 `.gitignore` 忽略，服务器放 jar 同级 `config/` 外部加载），仓库仅提交占位符模板 `application-demo.yml`。
-- 加载方式：`application.yml` 只有 `spring.profiles.active` 切换开关；其余全部配置（含公共项）在各环境 `application-<env>.yml`，位于 classpath（resources），Spring 按激活的 profile 自动加载（`application.yml` 默认 `active: dev`，命令行 `--spring.profiles.active=<test|prod>` 或环境变量 `SPRING_PROFILES_ACTIVE` 覆盖，命令行/环境变量优先级更高）；代码里 `${XLUMEN_XXX}` 占位符对应 YAML 小写点号键（`XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`，`XLUMEN_` 前缀映射 `xlumen.` 命名空间）。
-- 环境差异（数据库、Redis、Milvus、模型密钥、日志级别等）全部走各环境 profile；配置使用 `@ConfigurationProperties` 前缀 `xlumen` 与 `@Value` 显式占位符两种方式映射，启动时校验必要字段（如 JWT 密钥缺失直接启动失败）。
+- 分层与加载（决策 D31）：`application.yml` = `spring.profiles.active` 开关 + 环境无关公共项（连接池策略/健康检查/日志/模型选型/Agent 参数）；环境属性（中间件地址端口库名、`server.port`、site-url、端口守卫）与全部密钥在各环境 `application-<env>.yml`——判据是键是否环境属性而非值是否相同。Spring 按激活 profile 自动合并加载（`application.yml` 默认 `active: dev`，命令行 `--spring.profiles.active=<test|prod>` 或环境变量 `SPRING_PROFILES_ACTIVE` 覆盖，profile 同名键覆盖 base）；代码里 `${XLUMEN_XXX}` 占位符对应 YAML 小写点号键（`XLUMEN_BAILIAN_API_KEY` → `xlumen.bailian.api-key`，`XLUMEN_` 前缀映射 `xlumen.` 命名空间）。
+- 环境差异（MySQL/Redis/Milvus 地址与库名、模型密钥、site-url、端口等）全部走各环境 profile；Milvus 集合名固定 `kb_chunks`，向量隔离仅靠 `xlumen.milvus.database`（dev=default 保留既有向量，test=xlumen_test、prod=xlumen_prod，database 需服务端预建）。配置使用 `@ConfigurationProperties` 前缀 `xlumen` 与 `@Value` 显式占位符两种方式映射，启动时校验必要字段（如 JWT 密钥缺失直接启动失败）。
 - 敏感信息（密码、密钥）不能出现在资源目录、提交记录、日志、异常、接口响应和测试快照中。
 - 各环境 profile 为 YAML 文本，UTF-8 保存即可（无 .env 的 BOM 坑）。
 

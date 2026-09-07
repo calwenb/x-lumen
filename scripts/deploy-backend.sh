@@ -19,19 +19,19 @@ REPO_URL=https://github.com/calwenb/x-lumen.git     # ← 你的仓库地址（�
 JAVA_HOME_DIR=/wen/env/jdk-25                  # JDK 25 安装目录（项目强制要求）
 JAR=xlumen-boot.jar                                 # 部署到产物目录的 jar 稳定名
 
-# ---- 测试环境 test（git 分支 test / 端口 8081，与 application-test.yml 的 server.port 一致）----
+# ---- 测试环境 test（git 分支 test / 端口 6060，与 application-test.yml 的 server.port 一致）----
 BRANCH_TEST=test                                 # 测试环境 git 分支
 SRC_TEST=/wen/project/backend/xlumen/test        # 测试环境源码目录
 APP_TEST=/wen/app/backend/xlumen/test            # 测试产物目录（jar + config/application-test.yml，D30 配置不入库）
 LOG_TEST=/wen/log/backend/xlumen/test            # 测试环境日志目录
-PORT_TEST=8081                                   # 测试端口
+PORT_TEST=6060                                   # 测试端口（606x 段，与 dev 同位不同机不冲突）
 
-# ---- 正式环境 prod（git 分支 master / 端口 8080，Nginx 反代目标）----
+# ---- 正式环境 prod（git 分支 master / 端口 5060，Nginx 反代目标）----
 BRANCH_PROD=master                               # 正式环境 git 分支
 SRC_PROD=/wen/project/backend/xlumen/master      # 正式环境源码目录
 APP_PROD=/wen/app/backend/xlumen/prod            # 正式产物目录
 LOG_PROD=/wen/log/backend/xlumen/prod            # 正式环境日志目录
-PORT_PROD=8080                                   # 正式端口
+PORT_PROD=5060                                   # 正式端口（prod 用 506x/501x 段；dev/test 用 606x/601x 段）
 
 # ============================================================
 # 下面基本不用改

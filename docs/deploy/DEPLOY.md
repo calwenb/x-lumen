@@ -8,14 +8,14 @@
 
 ```text
                          ┌─────────────────────── 服务器 ───────────────────────┐
- 用户浏览器 ──HTTPS──▶ Nginx (80/443)                                          │
+ 用户浏览器 ──HTTPS──▶ Nginx (80/443+5010/5011)                                │
                           │                                                      │
-                          ├─ /        → xlumen-frontend-blog/dist   （博客前台） │
-                          ├─ /api/    → 反代 127.0.0.1:8080        （后端 API + SSE）│
-                          ├─ :8082            → admin/dist          （管理后台） │
-                          └─ /api/    → 反代 127.0.0.1:8080                      │
+                          ├─ /,:5010  → xlumen-frontend-blog/dist   （博客前台） │
+                          ├─ /api/    → 反代 127.0.0.1:5060      （后端 API + SSE）│
+                          ├─ :5011            → admin/dist          （管理后台） │
+                          └─ /api/    → 反代 127.0.0.1:5060                      │
                                                       │                          │
-                                    java -jar xlumen-boot-*.jar (:8080)          │
+                                    java -jar xlumen-boot-*.jar (:5060)          │
                                                       │                          │
                         ┌─────────────┬─────────────┼────────────┐               │
                      MySQL 8.x      Redis        Milvus(可选)  云 AI / SMTP      │
@@ -29,7 +29,7 @@
 - 前端 API 基址为同源相对路径 `/api/v1`（[http.ts](../../frontend/xlumen-frontend-blog/src/api/http.ts)），**无需跨域配置**，Nginx 把 `/api/` 反代给后端即可。
 - 两个前端都是 Vue Router history 模式，Nginx 必须配置 SPA fallback（`try_files ... /index.html`）。
 - 对话流式、写作进度、通知推送均为 SSE 长连接（fetch + ReadableStream 消费），Nginx 对该代理**必须关闭缓冲**，否则流式输出被攒批、页面表现为“一直不吐字”。
-- 当前无域名：博客 `http://159.75.6.183`（80 端口）、后台 `http://159.75.6.183:8082`，双端互跳地址在**前端构建时**通过 `VITE_ADMIN_URL` / `VITE_BLOG_URL` 写入（部署脚本顶部配置区）。
+- 当前无域名：博客 `http://159.75.6.183`（80 端口，等同 :5010）、后台 `http://159.75.6.183:5011`，双端互跳地址在**前端构建时**通过 `VITE_ADMIN_URL` / `VITE_BLOG_URL` 写入（部署脚本顶部配置区）。
 
 ## 2. 前置条件
 
@@ -42,9 +42,9 @@
 | MySQL | 8.x，UTF-8（utf8mb4）| 业务事实库，必装 |
 | Redis | 6+/7+ | 会话/验证码/限流，必装；可 127.0.0.1 无密码 |
 | Milvus | 可选 | REST v2（默认 19530），不可达自动降级，不影响启动 |
-| 域名 | 当前无域名：博客 80 端口、后台 8082 端口，IP 直连 `159.75.6.183` | 有域名后改为 server_name 分流 + HTTPS |
+| 域名 | 当前无域名：博客 80/5010 端口、后台 5011 端口，IP 直连 `159.75.6.183` | 有域名后改为 server_name 分流 + HTTPS |
 | HTTPS 证书 | 无域名暂不配置（certbot 需要域名），先 HTTP 直连 | 有域名后用 certbot 免费证书 |
-| 防火墙 | 公网放行 80、8082（前台/后台）；8080/8081 只允许本机/内网 | 后端端口不对公网暴露 |
+| 防火墙 | 公网放行 80、5010、5011（前台/后台）；5060/6060 只允许本机/内网 | 后端端口不对公网暴露 |
 
 ## 3. 构建产物（在构建机执行）
 
@@ -70,7 +70,7 @@ mvn -T 1C -pl xlumen-boot -am package -DskipTests   # -T 1C 每核一线程并�
 
 ```bash
 # frontend/xlumen-frontend-blog/.env.production
-VITE_ADMIN_URL=http://159.75.6.183:8082
+VITE_ADMIN_URL=http://159.75.6.183:5011
 ```
 
 ```bash
@@ -101,9 +101,9 @@ pnpm --dir frontend/xlumen-frontend-admin build    # 产物：frontend/xlumen-fr
    └─ backend/xlumen/test、backend/xlumen/prod         # 后端运行日志 app.log
 ```
 
-## 4. 后端配置（环境 profile，不入库 · 决策 D30）
+## 4. 后端配置（环境 profile 不入库 · 决策 D30/D31）
 
-数据库/Redis/密钥等环境差异全部配置在 `application-<env>.yml`。仓库内**只提交占位符模板 `application-demo.yml`**；dev/test/prod 三份含真实密钥，**不入 git**（`.gitignore` 忽略），存放位置：
+配置分两层：**`application.yml`（入库）= 环境无关公共项**（连接池策略、健康检查、日志、模型选型、Agent 参数）+ active 开关；**`application-<env>.yml`（不入库）= 环境属性与密钥**（中间件地址/端口/库名、`server.port`、site-url、各密钥）——判据是键是否环境属性，而非当前值是否相同（D31）。仓库内只提交占位符模板 `application-demo.yml`；dev/test/prod 三份被 `.gitignore` 忽略，存放位置：
 
 - **开发机**：放 `backend/xlumen-server/xlumen-boot/src/main/resources/`（本地构建会打进包，仅本机可见）。
 - **服务器**：放产物目录 jar 同级的 `config/` 下（如 `/wen/app/backend/xlumen/prod/config/application-prod.yml`），Spring Boot 启动时自动外部加载且优先级高于 jar 内配置；部署脚本启动前会校验该文件存在。
@@ -116,10 +116,11 @@ pnpm --dir frontend/xlumen-frontend-admin build    # 产物：frontend/xlumen-fr
 | --- | --- | --- |
 | `application-demo.yml` | 模板（占位符） | 导出字段参考，勿直接用于启动 |
 | `application-dev.yml` | 开发机 | 本地库/Redis，验证码可落日志 |
-| `application-test.yml` | 测试环境 | 库 `xlumen_test`、端口 8081、Redis 逻辑库 1 隔离 |
-| `application-prod.yml` | 正式环境 | 库 `xlumen_dev`、端口 8080、正式 SMTP；**上线前把 JWT/AI 密钥替换为全新值** |
+| `application-test.yml` | 测试环境 | 库 `xlumen_test`、端口 6060（与 dev 同位不同机）、Redis 逻辑库 1、Milvus database `xlumen_test` |
+| `application-prod.yml` | 正式环境 | 库 `xlumen`、端口 5060、Redis 逻辑库 2、Milvus database `xlumen_prod`、正式 SMTP |
 
-> 注意：dev/test/prod 三份 profile 从服务器/开发机各自维护，首次可从 `application-demo.yml` 复制后填值。git 历史中 2026-09-06 之前的提交（f5d8796）仍含旧版密钥，仓库若转公开必须先轮换所有密钥并清理历史（filter-repo）。
+> 注意一：Milvus 向量隔离只靠 database（集合名固定 `kb_chunks`），`xlumen_test`/`xlumen_prod` 两个 database 需在服务端**预建**（代码不会自动建库）：`curl -X POST http://<milvus>:19530/v2/vectordb/databases/create -H 'Content-Type: application/json' -d '{"dbName":"xlumen_test"}'`（prod 同理）；新库首索引时自动建集合，各环境发布知识自然从零索引。
+> 注意二：dev/test/prod 三份 profile 由服务器/开发机各自维护，首次可从 `application-demo.yml` 复制后填值。git 历史中 2026-09-06 之前的提交（f5d8796）仍含旧版密钥，仓库若转公开必须先轮换所有密钥并清理历史（filter-repo）。
 
 ## 5. 初始化数据库
 
@@ -208,23 +209,24 @@ CDS 补充说明（已在本机 JDK 25 二进制验证参数存在）：
 启动验证：
 
 ```bash
-curl -s http://127.0.0.1:8080/actuator/health          # {"status":"UP"}
-curl -s http://127.0.0.1:8080/actuator/health/readiness # 含 db、redis 探针
-curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v3/api-docs  # 200（Swagger 契约）
+curl -s http://127.0.0.1:5060/actuator/health          # {"status":"UP"}（正式 5060；测试 6060）
+curl -s http://127.0.0.1:5060/actuator/health/readiness # 含 db、redis 探针
+curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5060/v3/api-docs  # 200（Swagger 契约）
 ```
 
 日志中确认两条关键行：`Milvus 可达/不可达（降级为 NoopVectorStore…）`、无 `ClassNotFound`/绑定失败；日志出现 `Failed to bind` 说明 profile 键名拼写或缩进问题。
 
 ## 7. Nginx 配置（当前无域名：IP 直连）
 
-> 当前服务器无域名，直接以 IP 访问：博客 `http://159.75.6.183`（80 端口）、管理后台 `http://159.75.6.183:8082`（nginx 独立端口）。两块各自把 `/api/` 反代到后端（正式 8080 / 测试 8081 二选一）。
+> 当前服务器无域名，直接以 IP 访问：博客 `http://159.75.6.183`（80 端口，同时监听 5010）、管理后台 `http://159.75.6.183:5011`（nginx 独立端口）。两块各自把 `/api/` 反代到后端（正式 5060 / 测试 6060 二选一）。
 
 ### 7.1 博客前台（80 端口）+ API 反代
 
 ```nginx
 # /etc/nginx/sites-available/xlumen-blog.conf
 server {
-    listen 80 default_server;        # 默认站点：根域名/IP 直接命中
+    listen 80 default_server;        # 默认站点：根域名/IP 直接命中（80 保留为博客别名）
+    listen 5010;                     # 正式博客主端口（501x 段；测试机同位用 6010）
     server_name _;
 
     root /wen/app/frontend/xlumen-frontend-blog;   # = 部署脚本 deploy-blog.sh 的产物目录
@@ -233,7 +235,7 @@ server {
 
     # API + SSE 反代（SSE 必须关缓冲，否则流式吐字被攒批卡住）
     location /api/ {
-        proxy_pass http://127.0.0.1:8080;          # 正式后端；若反代测试环境改为 8081
+        proxy_pass http://127.0.0.1:5060;          # 正式后端；若反代测试环境改为 6060
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
@@ -254,12 +256,12 @@ server {
 }
 ```
 
-### 7.2 管理后台（8082 端口）
+### 7.2 管理后台（5011 端口）
 
 ```nginx
 # /etc/nginx/sites-available/xlumen-admin.conf —— 与博客块基本相同，差异仅注出
 server {
-    listen 8082;                     # ← 独立端口；不能设 default_server（一台机器只允许一个）
+    listen 5011;                     # ← 独立端口（正式 5011；测试机同位 6011）；不能设 default_server（一台机器只允许一个）
     server_name _;
 
     root /wen/app/frontend/xlumen-frontend-admin;  # ← 部署脚本 deploy-admin.sh 的产物目录
@@ -267,7 +269,7 @@ server {
     charset utf-8;
 
     location /api/ {                 # 后台与博客共用后端，代理配置完全相同
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:5060;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
@@ -286,13 +288,39 @@ server {
 }
 ```
 
-启用并重载：
+### 7.3 测试环境站点（6010/6011，可选）
+
+测试前端与正式前端是**两份独立产物**（`deploy-blog.sh test` 构建、互跳指向 6011/6060），需要各自的 server 块。与 7.1/7.2 结构完全一致，仅三处不同：`listen` 端口、root 指向 test 产物目录、`proxy_pass` 指向测试后端 6060：
+
+```nginx
+# /etc/nginx/sites-available/xlumen-blog-test.conf
+server {
+    listen 6010;                     # 测试博客入口（正式为 80+5010）
+    server_name _;
+    root /wen/app/frontend/xlumen-frontend-blog/test;   # ← test 产物目录
+    index index.html;
+    charset utf-8;
+    location /api/ {
+        proxy_pass http://127.0.0.1:6060;              # ← 测试后端
+        # 其余 SSE 透传配置与 7.1 完全相同（proxy_http_version 1.1 / Connection "" /
+        # 透传头组 / proxy_buffering off / proxy_cache off / read+send_timeout 3600s）
+    }
+    location / { try_files $uri $uri/ /index.html; }
+}
+# 管理后台同法再来一块：listen 6011 + root .../xlumen-frontend-admin/test + proxy_pass 6060
+```
+
+启用并重载（测试机若与正式机分离，则测试机只需这两个块）：
 
 ```bash
 ln -s /etc/nginx/sites-available/xlumen-blog.conf /etc/nginx/sites-enabled/
 ln -s /etc/nginx/sites-available/xlumen-admin.conf /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/xlumen-blog-test.conf /etc/nginx/sites-enabled/    # 可选：测试站点
+ln -s /etc/nginx/sites-available/xlumen-admin-test.conf /etc/nginx/sites-enabled/   # 可选：测试站点
 nginx -t && systemctl reload nginx
 ```
+
+> 腾讯云安全组：测试站点与正式同机时须放行 6010、6011 入站（6060 后端仍仅本机）。
 
 > 有域名后（可选）：两个 server 各加 `server_name` 与 443 ssl 块，用 `certbot --nginx` 一键签发证书并自动改写配置；无域名时保持 HTTP 直连即可。
 
@@ -302,14 +330,14 @@ nginx -t && systemctl reload nginx
 
 | # | 检查项 | 方法 / 预期 |
 | --- | --- | --- |
-| 1 | 后端存活 | `http://159.75.6.183/api/v1/…` 任意接口或 `curl http://127.0.0.1:8080/actuator/health` → `UP` |
+| 1 | 后端存活 | `http://159.75.6.183/api/v1/…` 任意接口或 `curl http://127.0.0.1:5060/actuator/health` → `UP` |
 | 2 | 数据库/Redis 就绪 | `/actuator/health/readiness` → `UP`（含 db、redis 组） |
 | 3 | 前端首页 | 打开 `http://159.75.6.183` → 首页知识列表正常渲染、无控制台报错 |
 | 4 | SPA 直达 | 直接访问 `/search`、`/kb/xxx`、创作中心路径（如有）→ 不 404 |
 | 5 | 登录/注册 | 真实账号登录成功；验证码邮件（若配 SMTP）或见日志 |
 | 6 | 对话流式 | 打开 AI 小光发一问 → 网页**边生成边显示**（验证 SSE 未缓冲） |
 | 7 | 写作/审核链路 | 创作中心走一遍 写作→审校→AI 审核；管理后台审核中心可见 |
-| 8 | 后台入口互跳 | 前台头像菜单“管理后台”新标签页打开 `http://159.75.6.183:8082`；后台“前往前台”回 `http://159.75.6.183` |
+| 8 | 后台入口互跳 | 前台头像菜单“管理后台”新标签页打开 `http://159.75.6.183:5011`；后台“前往前台”回 `http://159.75.6.183` |
 | 9 | 语义检索（可选） | 若配了 Milvus+Embedding：知识库检索/问答引用正常；未配则关键词检索可用、日志有 Noop 降级提示 |
 | 10 | HTTPS | 无域名暂为 HTTP（IP 直连）；有域名后证书有效、无混合内容警告 |
 
@@ -336,7 +364,7 @@ systemctl restart xlumen && journalctl -u xlumen -f
 | --- | --- |
 | 对话/写作“一直不吐字” | Nginx `proxy_buffering off` 缺失或未生效（`nginx -T` 检查）；确认 `/api/` location 内含该指令 |
 | 后端启动报配置绑定失败 | profile YAML 键名拼写/缩进错误；对照 `application-demo.yml` 逐键检查，别动结构只改值 |
-| 8080 端口被占用 | `ss -ltnp | grep 8080` 找占用进程；生产 `XLUMEN_DEV_PORT_GUARD` 保持 `false` 不会自动杀 |
+| 5060 端口被占用 | `ss -ltnp | grep 5060` 找占用进程；生产 `xlumen.dev-port-guard` 保持 `false` 不会自动杀 |
 | 中文乱码 | MySQL 连接 URL 含 `characterEncoding=utf8`，库表 utf8mb4（已由 init SQL 保证）；Nginx `charset utf-8` |
 | 登录后立即 401 | JWT 密钥与签发不一致（多实例/多次发布用了不同 `XLUMEN_JWT_SECRET`），统一为一个 |
 | 忘记修改 JWT/AI 密钥上线 | 用示例值上线会被盗用，上线前务必轮换 |
@@ -349,21 +377,23 @@ systemctl restart xlumen && journalctl -u xlumen -f
 
 | 脚本 | 部署对象 | 五步中的差异 |
 | --- | --- | --- |
-| `scripts/deploy-backend.sh <test|prod>` | 后端 fat jar | 双环境选择：`test`（分支 test / 源码 `/wen/project/backend/xlumen/test` / 8081）、`prod`（分支 master / 源码 `/wen/project/backend/xlumen/master` / 8080）；不用 systemctl（nohup 起新 + pkill 停旧）；部署前打印环境信息并要 y 确认；每步带时间戳日志 |
-| `scripts/deploy-blog.sh` | 博客前台 dist | 源码 `/wen/project/frontend/xlumen-frontend-blog`，产物 `/wen/app/frontend/xlumen-frontend-blog`（nginx root）；停旧=`rm -rf` 旧产物，查状态=文件校验 |
-| `scripts/deploy-admin.sh` | 管理后台 dist | 源码 `/wen/project/frontend/xlumen-frontend-admin`，产物 `/wen/app/frontend/xlumen-frontend-admin`（nginx root）；同 blog |
+| `scripts/deploy-backend.sh <test|prod>` | 后端 fat jar | 双环境选择：`test`（分支 test / 源码 `/wen/project/backend/xlumen/test` / 6060）、`prod`（分支 master / 源码 `/wen/project/backend/xlumen/master` / 5060）；不用 systemctl（nohup 起新 + pkill 停旧）；部署前打印环境信息并要 y 确认；每步带时间戳日志 |
+| `scripts/deploy-blog.sh <test|prod>` | 博客前台 dist | 双环境隔离：`test`（分支 test / 源码+产物 `.../xlumen-frontend-blog/{test|prod}` / 互跳 ADMIN_URL=:6011）、`prod`（分支 master / 互跳 :5011）；产物目录=对应 nginx 站点 root；停旧=`rm -rf` 本环境产物 |
+| `scripts/deploy-admin.sh <test|prod>` | 管理后台 dist | 同 blog：`test` 互跳 BLOG_URL=http://159.75.6.183:6010、`prod` 互跳 http://159.75.6.183（80 别名）；部署前均打印环境信息并要 y 确认 |
 
 ```bash
-bash scripts/deploy-backend.sh test   # 后端发版到测试环境（8081）
-bash scripts/deploy-backend.sh prod   # 后端发版到正式环境（8080）
-bash scripts/deploy-blog.sh           # 博客前台发版
-bash scripts/deploy-admin.sh          # 管理后台发版
+bash scripts/deploy-backend.sh test   # 后端发版到测试环境（6060）
+bash scripts/deploy-backend.sh prod   # 后端发版到正式环境（5060）
+bash scripts/deploy-blog.sh test      # 博客前台发版到测试站点（6010）
+bash scripts/deploy-blog.sh prod      # 博客前台发版到正式站点（80/5010）
+bash scripts/deploy-admin.sh test     # 管理后台发版到测试站点（6011）
+bash scripts/deploy-admin.sh prod     # 管理后台发版到正式站点（5011）
 ```
 
 脚本就是最朴素的直写：仓库地址、部署目录、互跳地址等**集中在脚本顶部配置区**，按你的服务器实际改一处即可（前端两份只有 URL/路径；后端那份还有 JDK 路径与双环境端口）。之后再无其他参数。要点：
 
 - 后端新 jar 以稳定名 `xlumen-boot.jar` 落入 `/wen/app/backend/xlumen/<test|prod>/`，环境配置在产物目录的 `config/application-<env>.yml`（D30：不入库），首次部署需手工放置，之后改配置只需重启。
-- 前端构建前会写 `.env.production`（blog 写 `VITE_ADMIN_URL`、admin 写 `VITE_BLOG_URL`），指向当前配置的互跳地址（无域名为 IP+端口，如 `http://159.75.6.183:8082`）。
+- 前端构建前会写 `.env.production`（blog 写 `VITE_ADMIN_URL`、admin 写 `VITE_BLOG_URL`），指向当前配置的互跳地址（无域名为 IP+端口，如 `http://159.75.6.183:5011`）。
 - 密钥在服务器本机的 profile 文件里（仓库内只有占位符模板）；部署脚本不生成配置、不触碰 `config/` 下的 profile。
 
 ## 附录 A：Windows 服务器部署（简要）

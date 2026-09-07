@@ -16,6 +16,32 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/7 19:39 · ZCode（前端部署脚本双环境隔离改造）
+
+> 影响文档：docs/deploy/DEPLOY.md §7.3/§11 · 决策摘要：无（补齐环境隔离，用户拍板「直接改造」）
+
+- **动因**：环境隔离核查结论=后端脚本已全维隔离（分支/三目录/端口/进程 pkill 全路径/MySQL 库/Redis index/Milvus database/JWT/邮件），但 `deploy-blog.sh`/`deploy-admin.sh` 为单产物目录+写死 master+互跳 URL 单一正式值，「测试/正式共用」注释自曝无隔离，一次部署即覆盖现网。
+- **改造**：两脚本对齐后端脚本结构=配置区双环境（BRANCH/SRC/APP/互跳 URL 各两套，目录 `/wen/{project,app}/frontend/xlumen-frontend-{blog,admin}/{test,prod}`）+ 位置参数 `<test|prod>` + 步骤 0 y/N 确认 + 环境名时间戳日志 + `git clone -b 分支` + `rm -rf` 仅本环境产物；互跳地址 test=6011/6010、prod=5011/80 别名。`.gitignore` 补 `frontend/**/.env.production`（脚本构建期生成物，防未来入库）。`bash -n` 双脚本语法过。
+- **DEPLOY.md**：新增 §7.3 测试站点 nginx 块（6010/6011，root 指 test 产物、proxy_pass 6060，SSE 透传同 7.1）+ 安全组提醒；§11 脚本表与示例命令改双参数版。
+- **服务器连带**：首次跑 test 部署会自建 clone；nginx 需按 §7.3 加两个测试 server 块后 reload。
+
+## 2026/9/7 19:10 · ZCode（端口方案定版：prod=506x/501x，dev+test=606x/601x）
+
+> 影响文档：AGENTS.md、docs/ai/STATUS.md（D11 行）、docs/ai/QA.md §3、docs/global/GLOBAL.md §2/§6.4/6.5、docs/frontend/FRONTEND.md §2、docs/deploy/DEPLOY.md · 决策摘要：无（端口段约定，用户拍板）
+
+- **定版映射**：prod 后端 **5060**、博客 **5010**（80 保留为别名双监听）、后台 **5011**；dev 与 test **同位复用**（不同机不冲突）：后端均 **6060**、前端均 **6010/6011**（vite dev 与 nginx 同号，URL 跨环境一致）。旧值 8080/8081/5173/5174/8082 全量退役。
+- **改动面**：三份 profile `server.port`；`DevPortConflictGuard` 默认端口 8080→6060；双端 `vite.config.ts`（port+proxy target）、`package.json`（dev/preview --port）、`playwright.config.ts`（baseURL/webServer.url）、admin `main.ts` 注释；`deploy-backend.sh`（PORT_TEST=6060/PORT_PROD=5060+注释）、`deploy-blog.sh`（ADMIN_URL→:5011）；DEPLOY.md 28 处（架构图/防火墙/§4 表/§7 验证 curl/§8 Nginx 两块 listen+proxy_pass/§10 验收/§11 表/排障行——排障行顺带修正旧键名 `XLUMEN_DEV_PORT_GUARD`→`xlumen.dev-port-guard`）；GLOBAL/FRONTEND/QA/AGENTS/STATUS(D11) 端口表述。历史测试归档（docs/ai/assets、BUGS.md 复现步骤）按规则不改。
+- **服务器连带（用户待办）**：nginx 博客块加 `listen 5010;`（80 保留）、后台块 `listen 8082→5011`、两处 `proxy_pass→127.0.0.1:5060` 后 reload；安全组公网放行 80/5010/5011（测试机 6010/6011），5060/6060 仅本机；`config/application-{test,prod}.yml` 换新版（端口已变）。本机 dev 重启后端（6060）与 vite（6010/6011）生效。
+
+## 2026/9/7 18:56 · ZCode（D31：配置分层重划 + Milvus database 环境隔离）
+
+> 影响文档：docs/ai/STATUS.md（D29 修订+D31）、docs/global/GLOBAL.md §6.2、docs/backend/BACKEND.md §17、docs/deploy/DEPLOY.md §4 · 决策摘要：D31（修订 D29「各环境文件自我完整」条款）
+
+- **配置分层重划（用户两轮拍板）**：判据=键是否环境属性而非值是否相同。`application.yml`（入库）只留环境无关公共项：active 开关、ai 六关、driver+hikari、mail smtp 属性、lettuce 池、编码、circular、management、logging、模型选型（bailian/deepseek base-url+model-*）、agent/writing/trace/tts 参数；三份 profile（不入库）收纳全部环境属性与密钥：`server.port`、datasource url/账密、redis host/port/密码/index、mail 账密、**milvus 三件**、**site-url**、**dev-port-guard**、jwt-secret、api-key、mail-from。五文件总行数 469→252（base 97 + 3×38 + demo 41）；`application-demo.yml` 模板同步新结构并注明划分原则。等效比对（merge(base,profile) vs 旧自含文件）通过，唯一差异=reviewer 修复。
+- **P0 修复**：test/prod 的 `model-reviewer` 曾被改为 qwen-plus，与写作同源（同供应商+同模型）会触发 `ReviewServiceImpl.checkHeterogeneous` 抛 CONFLICT、发布自动 AI 审核必挂；统一回 `qwen-max`（base 定义，profile 可同名键覆盖）。
+- **Milvus 向量隔离（D31 附带）**：集合名固定 `kb_chunks`，database 是唯一隔离层，原三环境全共用 default 一份向量（测试数据会污染正式检索、reindex/删除互毁）。profile 定版：dev=default（既有向量不动）、test=`xlumen_test`、prod=`xlumen_prod`；代码探测已带 dbName（VectorStoreAutoConfiguration:59）、首写自动建集合，唯 database 须服务端预建（已交付 curl 命令，**Milvus 服务当前未运行，19530 拒连**，待用户启动服务后建库）。同步清空 `xlumen_test`/`xlumen` 两 MySQL 库的 `kb_chunk`(17 行)/`kb_index_version`(13 行) 元数据，防新库无向量而元数据假 ACTIVE（BUG-004 同款症状）；各环境发布知识时自然从零索引。
+- **验证**：五份 YAML js-yaml 解析通过；等效比对差异仅 reviewer 一处；元数据清理后 test/prod 两表计数 0/0（dev 未动）。未跑 mvn 冒烟（用户指示快速执行免验证）。
+
 ## 2026/9/6 21:45 · ZCode（D30：dev/test/prod profile 移出版本库）
 
 > 影响文档：AGENTS.md、docs/ai/STATUS.md（D29 修订+D30）、docs/global/GLOBAL.md §6.2、docs/backend/BACKEND.md §17、docs/deploy/DEPLOY.md §4/§6/§11 · 决策摘要：D30（修订 D29 的"随仓库提交并打进 fat jar"条款）

@@ -1,4 +1,97 @@
-# xLumen 基础配置（决策 D29：本文件只保留环境切换开关，其余全部配置在各环境 application-<env>.yml）
+# ============================================================
+# xLumen 基础配置（决策 D29/D31）
+# 本文件 = 环境切换开关 + 真正与环境无关的公共配置（连接池策略、健康检查、日志、模型选型、
+# Agent 参数等）。环境属性键（中间件地址/端口/库名、site-url、端口守卫、各密钥）一律写在
+# 对应 application-<env>.yml——即使当前各环境值相同（D31 修订 D29 的「各环境文件自我完整」条款）。
+# 铁律：base 随仓库提交，任何密钥值不得出现在本文件。
+# ============================================================
 spring:
   profiles:
-    active: dev            # 默认激活 dev；部署脚本用 --spring.profiles.active=test|prod 覆盖
+    active: dev                            # 默认 dev；部署脚本用 --spring.profiles.active=test|prod 覆盖
+  application:
+    name: xlumen
+  # Spring AI：关闭全部六个 OpenAI 自动配置（D20，供应商手动装配）
+  ai:
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10                # 个人博客并发假设（PRODUCT §11 NFR）
+      connection-timeout: 5000             # 防连接耗尽挂起
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+  data:
+    redis:
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 1
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+  main:
+    allow-circular-references: true        # 模块间存在循环依赖
+
+management:
+  # 健康检查（部署脚本轮询 /actuator/health 依赖）
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,redis
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+xlumen:
+  bailian:
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model-writing: qwen-plus
+    model-reviewer: qwen-max               # 审校须与写作异模型（同供应商时 checkHeterogeneous 拦截同源）
+    model-qa: qwen-plus
+    model-summary: qwen-plus
+    model-vision: qwen3-vl-flash
+    model-tts: qwen3-tts-flash
+    model-embedding: text-embedding-v4
+  deepseek:
+    base-url: https://api.deepseek.com
+    model-writing: deepseek-chat
+    model-reviewer: deepseek-chat
+    model-qa: deepseek-chat
+    model-summary: deepseek-chat
+  agent-max-rounds: 5
+  agent-tool-timeout-millis: 10000
+  agent-max-tool-calls: 8
+  agent-tool-result-max-chars: 8000
+  reviewer-agent-max-rounds: 2
+  writing-max-chapters: 8
+  writing-rag-enabled: true
+  trace-cost-per-1k: 0.004
+  tts-voice: Cherry
+
+logging:
+  level:
+    root: INFO
+    com.calwen.xlumen: INFO

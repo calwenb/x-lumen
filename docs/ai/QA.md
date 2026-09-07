@@ -31,10 +31,10 @@ AI 浏览器测试由**用户发起**（AI 不自行发起）：AI 用 browser-u
 
 ## 3. 环境自检（开测前逐项确认，任一项不过先解决再开测）
 
-1. **后端健康**：`http://localhost:8080/actuator/health` 返回 UP（启动命令见 GLOBAL §6.4；编译与运行 JAVA_HOME 必须指向 JDK 25）。
+1. **后端健康**：`http://localhost:6060/actuator/health` 返回 UP（启动命令见 GLOBAL §6.4；编译与运行 JAVA_HOME 必须指向 JDK 25）。
    开发环境如需自动处理端口冲突，在 `application-dev.yml` 设置 `xlumen.dev-port-guard: true`（决策 D29：配置随 profile 入库）；守卫会展示 PID/进程名并等待输入 `y`，生产默认关闭。
-2. **双前端可达**：blog `http://localhost:5173`、admin `http://localhost:5174`（命令见 GLOBAL §6.5）。
-3. **端口陷阱**：Vite 端口被占用时自动递增（5174/5175/5176…），开测前确认浏览器访问的是当前实例端口；反复启停残留的旧 dev server 先清掉，防止测到旧代码。
+2. **双前端可达**：blog `http://localhost:6010`、admin `http://localhost:6011`（命令见 GLOBAL §6.5）。
+3. **端口陷阱**：Vite 端口被占用时自动递增（6011/6012/6013…），开测前确认浏览器访问的是当前实例端口；反复启停残留的旧 dev server 先清掉，防止测到旧代码。
 4. **Redis**：连通 `application-dev.yml` 的 `spring.data.redis` 所指向实例即可（本地实例须无密码启动，带密码会导致注册/登录 500）。
 5. **向量库降级判定**：Milvus 不可用时检索以 NoopVectorStore 降级，「AI 对话无引用命中」可能是环境预期而非缺陷；检索恒空时先用知识索引状态接口与 reindex 补跑端点（BACKEND §10）区分 降级 / 环境问题 / 功能缺陷，必要时查后端日志。
 6. **AI 真实调用**：AI 写作/审校/对话/摘要走真实供应商，有真实耗时与费用；纯阅读/互动链路尽量复用既有已发布知识，减少不必要的模型调用。

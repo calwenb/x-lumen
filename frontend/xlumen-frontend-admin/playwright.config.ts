@@ -5,12 +5,12 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 30000,
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: 'http://localhost:6011',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5174',
+    url: 'http://localhost:6011',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
