@@ -16,6 +16,29 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/7 21:37 · ZCode（管理后台「索引维护」页，接入全平台补跑接口）
+
+> 影响文档：docs/frontend/FRONTEND.md · docs/backend/BACKEND.md · docs/deploy/DEPLOY.md · 决策摘要：无
+
+admin 前端新增 `knowledge` 运维模块（对应上条 21:24 后端接口）：
+
+- `modules/knowledge/api/indexOps.ts`：`triggerReindexAllPlatform`/`fetchReindexPlatformStatus` 封装，Long 数值字段 API 层统一转 number（沿用 trace.ts 口径）。
+- `modules/knowledge/pages/IndexOpsPage.vue`：统计带（可重建/已处理/成功/失败）+ el-progress 进度条（运行中条纹流动）+ 任务状态 tag + 起止时间 + 失败明细表（≤100 条）；触发前 ElMessageBox 确认（提示付费 embedding），运行中每 3s 轮询、结束即停，页面卸载清定时器；顶部 el-alert 提示先确认「Milvus 可达」再补跑。
+- 路由 `/index-ops`（authenticated，OWNER/ADMIN 守卫复用）+ App.vue 侧栏菜单「索引维护」（AI 调用追踪之后）。
+- 验证：`vue-tsc` 通过、eslint --fix 后 build 通过（4.2s，chunk 警告为既有）。
+- 文档：FRONTEND.md admin 模块树/表补 knowledge 行；BACKEND.md 与 DEPLOY.md 注意三改为「UI 入口在索引维护页」。
+
+## 2026/9/7 21:24 · ZCode（全平台索引补跑接口 reindex-all-platform）
+
+> 影响文档：docs/backend/BACKEND.md · docs/deploy/DEPLOY.md · docs/ai/STATUS.md · 决策摘要：无
+
+背景：Milvus 停机降级 Noop 期间发布的知识只有 MySQL 元数据、无向量；既有 `reindex-all` 是博主自助口径（登录用户可见库、同步单页 100 篇），无法承担运维全量补齐。新增全平台补跑：
+
+- content 模块 `ContentApi` 新增运维专用契约 `countPublishedPlatform()` / `listPublishedSnapshotsAfter(cursorId, limit)`（status=PUBLISHED + 非回收站、id 游标分页含正文/workspaceId/kbId/version，不限可见库），`ContentApiImpl` 实现。
+- publishing 模块 `IndexBackfillService` 新增 `reindexAllPlatform()`（专用单线程守护执行器异步逐条强制重建，单条失败不中断、重复触发不并跑）与 `reindexAllPlatformStatus()`；进度为内存态（重启即失），新视图 `ReindexPlatformVO`（started/running/total/processed/ok/failedCount/failed≤100/起止时间）。
+- 端点：`POST /api/v1/knowledge/reindex-all-platform` + `GET /api/v1/knowledge/reindex-all-platform/status`（均需登录，无角色体系，双端暂无 UI，curl 触发）。
+- 文档：BACKEND.md 索引补跑节补两条；DEPLOY.md §4 注意三（Milvus 恢复后补跑 runbook）；STATUS.md 遗留运维改为一次调用口径。`mvn -pl xlumen-content,xlumen-publishing -am compile` 通过。
+
 ## 2026/9/7 19:39 · ZCode（前端部署脚本双环境隔离改造）
 
 > 影响文档：docs/deploy/DEPLOY.md §7.3/§11 · 决策摘要：无（补齐环境隔离，用户拍板「直接改造」）

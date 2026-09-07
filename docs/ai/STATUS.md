@@ -51,7 +51,7 @@
 - **雪花 ID 精度**：Long 超出 JS Number 安全整数，后端全局序列化为 String（BACKEND §5.3 已约定）。
 - **Milvus 探测**：必须打 REST v2 `collections/has` 接口（/healthz 恒 404 曾导致永远 Noop 降级）；本机 Docker/Milvus 未装，向量以 NoopVectorStore 降级运行（索引元数据正常）。
 - **环境**：编译前 JAVA_HOME 必须指向 JDK 25；本地 Redis 需无密码启动（application-dev.yml 密码留空）。
-- **遗留运维**：Milvus 就绪后，存量已发布知识需逐篇调用 reindex 补跑端点重建向量（BUG-004 收尾事项，见 BUGS.md 备注）。
+- **遗留运维**：Milvus 就绪后，调一次 `POST /api/v1/knowledge/reindex-all-platform`（异步全平台补跑，9-07 新增）即可补齐所有空间存量向量，无需逐篇 reindex（BUG-004 收尾事项，见 BUGS.md 备注与 DEPLOY.md 注意三）。
 
 | V2 全量交付 | 2026-08-26 | 28 项功能 + 工程项 IDEA-027（批次 0 注释清理 / 1 AI 基建：配额+追踪+Prompt 后台+事件解耦 / 2 检索双线：语义向量+问搜一体+全量补跑 / 3 写作：RAG 增强+辅助编辑+代码解读 / 4 对话组：访客助手+多文档+追问+草稿+记忆+缺口+库洞察+评论@小光 / 5 前台增值：推荐+SEO+术语+导读+导游+地图+日志+TTS+图片讲解+主题+忘记密码）；Milvus 检索线落地（快速建集/大整数字符串化/扁平响应适配）；ai_call_log 访客可空 |
 

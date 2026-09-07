@@ -144,6 +144,35 @@ public class ContentApiImpl implements ContentApi {
     }
 
     @Override
+    public long countPublishedPlatform() {
+        Long count = knowledgeMapper.selectCount(new LambdaQueryWrapper<KnowledgeEntity>()
+                .eq(KnowledgeEntity::getStatus, STATUS_PUBLISHED)
+                .eq(KnowledgeEntity::getRecycleStatus, RECYCLE_STATUS_NORMAL));
+        return count == null ? 0L : count;
+    }
+
+    @Override
+    public List<EditorKnowledgeDTO> listPublishedSnapshotsAfter(Long cursorId, int limit) {
+        int size = Math.max(1, Math.min(limit, 100));
+        List<KnowledgeEntity> rows = knowledgeMapper.selectList(new LambdaQueryWrapper<KnowledgeEntity>()
+                .eq(KnowledgeEntity::getStatus, STATUS_PUBLISHED)
+                .eq(KnowledgeEntity::getRecycleStatus, RECYCLE_STATUS_NORMAL)
+                .gt(KnowledgeEntity::getId, cursorId == null ? 0L : cursorId)
+                .orderByAsc(KnowledgeEntity::getId)
+                // size 为服务端截断后的整数常量，无注入面
+                .last("LIMIT " + size));
+        return rows.stream()
+                .map(k -> EditorKnowledgeDTO.builder()
+                        .id(k.getId()).workspaceId(k.getWorkspaceId()).authorId(k.getAuthorId())
+                        .title(k.getTitle()).content(k.getContent())
+                        .kbId(k.getKbId()).directoryId(k.getDirectoryId())
+                        .tags(k.getTags()).status(k.getStatus())
+                        .version(k.getVersion()).publishedAt(k.getPublishedAt())
+                        .updatedAt(k.getUpdatedAt()).build())
+                .toList();
+    }
+
+    @Override
     public boolean publishKnowledge(Long workspaceId, KnowledgePublishDTO dto) {
         KnowledgeEntity knowledge = knowledgeMapper.selectOne(new LambdaQueryWrapper<KnowledgeEntity>()
                 .eq(KnowledgeEntity::getId, dto.getKnowledgeId())

@@ -3,8 +3,10 @@ package com.calwen.xlumen.publishing.controller;
 import com.calwen.xlumen.common.web.ApiResponse;
 import com.calwen.xlumen.knowledge.vo.IndexStatusVO;
 import com.calwen.xlumen.publishing.dto.ReindexAllVO;
+import com.calwen.xlumen.publishing.dto.ReindexPlatformVO;
 import com.calwen.xlumen.publishing.service.IndexBackfillService;
 import jakarta.annotation.Resource;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,5 +46,26 @@ public class IndexBackfillController {
     @PostMapping("/reindex-all")
     public ApiResponse<ReindexAllVO> reindexAll() {
         return ApiResponse.success(indexBackfillService.reindexAll());
+    }
+
+    /**
+     * 全平台索引补跑（异步）：遍历所有空间的已发布知识逐条强制重建向量索引，立即返回进度快照；
+     * 已有任务在跑时不重复启动（started=false）。典型场景：Milvus 停机恢复后一次性补齐存量向量。
+     *
+     * @return 触发回执（含当前进度）
+     */
+    @PostMapping("/reindex-all-platform")
+    public ApiResponse<ReindexPlatformVO> reindexAllPlatform() {
+        return ApiResponse.success(indexBackfillService.reindexAllPlatform());
+    }
+
+    /**
+     * 全平台补跑进度查询（内存态，重启即失；从未触发过返回 running=false、total=0）。
+     *
+     * @return 进度快照
+     */
+    @GetMapping("/reindex-all-platform/status")
+    public ApiResponse<ReindexPlatformVO> reindexAllPlatformStatus() {
+        return ApiResponse.success(indexBackfillService.reindexAllPlatformStatus());
     }
 }

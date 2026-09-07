@@ -121,6 +121,7 @@ pnpm --dir frontend/xlumen-frontend-admin build    # 产物：frontend/xlumen-fr
 
 > 注意一：Milvus 向量隔离只靠 database（集合名固定 `kb_chunks`），`xlumen_test`/`xlumen_prod` 两个 database 需在服务端**预建**（代码不会自动建库）：`curl -X POST http://<milvus>:19530/v2/vectordb/databases/create -H 'Content-Type: application/json' -d '{"dbName":"xlumen_test"}'`（prod 同理）；新库首索引时自动建集合，各环境发布知识自然从零索引。
 > 注意二：dev/test/prod 三份 profile 由服务器/开发机各自维护，首次可从 `application-demo.yml` 复制后填值。git 历史中 2026-09-06 之前的提交（f5d8796）仍含旧版密钥，仓库若转公开必须先轮换所有密钥并清理历史（filter-repo）。
+> 注意三：Milvus 停机期间发布的知识只落了 MySQL 元数据、没有向量。服务恢复并重启后端（日志出现 `Milvus 可达`）后，在管理后台侧栏「索引维护」页（`/index-ops`）一键触发并看进度，或 curl 直调 `POST /api/v1/knowledge/reindex-all-platform`（见 BACKEND.md 索引补跑节）。
 
 ## 5. 初始化数据库
 
