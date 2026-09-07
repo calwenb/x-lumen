@@ -106,7 +106,7 @@ IDEA-006~008 已落地为 F-0215/F-0907/F-1307，浏览器回归与文档收尾�
 | D31 | **配置分层·环境属性归 profile（2026/9/7）**：application.yml 只放环境无关公共项（active 开关、连接池策略、健康检查、日志、模型选型、Agent 参数）；中间件地址/端口/库名、server.port、site-url、端口守卫、全部密钥一律写对应 profile——即使各环境当前值相同（判据=键是否环境属性，而非值是否相同）。附带向量隔离修正：Milvus 集合名固定 kb_chunks，database 是唯一隔离层，test/prod 分别用 xlumen_test/xlumen_prod（需服务端预建 database），dev 保留 default（既有向量不动）（BACKEND §17 / DEPLOY §4） |
 | D9 | **多用户知识平台**：默认单空间使用；任何注册用户可创建知识库并公开分享，访客可浏览所有公开库；团队模式（成员/角色/空间切换）V2 可选启用（PRODUCT §2） |
 | D10 | **阶段标注（MVP/V2/V3）为规划非承诺**：调整须经 CHANGELOG 记录（PRODUCT §5） |
-| D11 | **应用职责划分**：blog（:5173）承载知识创建/编辑/发布/阅读/互动与 AI 对话全链路；admin（:5174）仅管理员配置管理（空间/成员/角色、模型、审计），不参与内容流转（PROTOTYPE §2） |
+| D11 | **应用职责划分**：blog（:6010）承载知识创建/编辑/发布/阅读/互动与 AI 对话全链路；admin（:6011）仅管理员配置管理（空间/成员/角色、模型、审计），不参与内容流转（PROTOTYPE §2） |
 | D12 | **仓库目录**：后端 backend/xlumen-server，前端 frontend/xlumen-frontend-blog 与 frontend/xlumen-frontend-admin，scripts 与根工程配置留仓库根（GLOBAL §4） |
 | D13 | **发布即索引（按知识库切分）**：知识发布自动建 RAG 索引（按 kb_id 切分），取消外部资料导入与 URL 抓取；私有库知识亦建索引，检索按可见库集合过滤（访客仅公开库已发布、库主全部含私有）（PRODUCT §6、BACKEND §13） |
 | D14 | **AI 命名**：产品内所有面向用户的 AI 能力（对话/问答/访客助手/写作与审校反馈等）统一称呼为**小光**，前台导航标签为「AI小光」，界面文案不得使用其他 AI 名称（PRODUCT §8） |

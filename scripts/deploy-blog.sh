@@ -16,7 +16,7 @@ set -euo pipefail
 REPO_URL=https://github.com/calwenb/x-lumen.git           # 你的仓库地址（首次 clone 用）
 SRC=/wen/project/frontend/xlumen-frontend-blog            # 源码目录（测试/正式共用）
 APP=/wen/app/frontend/xlumen-frontend-blog                # 产物目录（nginx root 指向它）
-ADMIN_URL=http://159.75.6.183:8082                        # 构建期写入 VITE_ADMIN_URL（后台入口；无域名用 IP+端口，有域名后改 https://admin.域名）
+ADMIN_URL=http://159.75.6.183:5011                        # 构建期写入 VITE_ADMIN_URL（后台入口；无域名用 IP+端口，有域名后改 https://admin.域名）
 
 # ============================================================
 # 下面基本不用改

@@ -16,6 +16,14 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/7 19:10 · ZCode（端口方案定版：prod=506x/501x，dev+test=606x/601x）
+
+> 影响文档：AGENTS.md、docs/ai/STATUS.md（D11 行）、docs/ai/QA.md §3、docs/global/GLOBAL.md §2/§6.4/6.5、docs/frontend/FRONTEND.md §2、docs/deploy/DEPLOY.md · 决策摘要：无（端口段约定，用户拍板）
+
+- **定版映射**：prod 后端 **5060**、博客 **5010**（80 保留为别名双监听）、后台 **5011**；dev 与 test **同位复用**（不同机不冲突）：后端均 **6060**、前端均 **6010/6011**（vite dev 与 nginx 同号，URL 跨环境一致）。旧值 8080/8081/5173/5174/8082 全量退役。
+- **改动面**：三份 profile `server.port`；`DevPortConflictGuard` 默认端口 8080→6060；双端 `vite.config.ts`（port+proxy target）、`package.json`（dev/preview --port）、`playwright.config.ts`（baseURL/webServer.url）、admin `main.ts` 注释；`deploy-backend.sh`（PORT_TEST=6060/PORT_PROD=5060+注释）、`deploy-blog.sh`（ADMIN_URL→:5011）；DEPLOY.md 28 处（架构图/防火墙/§4 表/§7 验证 curl/§8 Nginx 两块 listen+proxy_pass/§10 验收/§11 表/排障行——排障行顺带修正旧键名 `XLUMEN_DEV_PORT_GUARD`→`xlumen.dev-port-guard`）；GLOBAL/FRONTEND/QA/AGENTS/STATUS(D11) 端口表述。历史测试归档（docs/ai/assets、BUGS.md 复现步骤）按规则不改。
+- **服务器连带（用户待办）**：nginx 博客块加 `listen 5010;`（80 保留）、后台块 `listen 8082→5011`、两处 `proxy_pass→127.0.0.1:5060` 后 reload；安全组公网放行 80/5010/5011（测试机 6010/6011），5060/6060 仅本机；`config/application-{test,prod}.yml` 换新版（端口已变）。本机 dev 重启后端（6060）与 vite（6010/6011）生效。
+
 ## 2026/9/7 18:56 · ZCode（D31：配置分层重划 + Milvus database 环境隔离）
 
 > 影响文档：docs/ai/STATUS.md（D29 修订+D31）、docs/global/GLOBAL.md §6.2、docs/backend/BACKEND.md §17、docs/deploy/DEPLOY.md §4 · 决策摘要：D31（修订 D29「各环境文件自我完整」条款）

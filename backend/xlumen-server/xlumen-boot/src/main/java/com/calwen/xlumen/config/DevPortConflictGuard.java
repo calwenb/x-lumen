@@ -28,7 +28,7 @@ public final class DevPortConflictGuard implements ApplicationListener<Applicati
         if (List.of(environment.getActiveProfiles()).stream().anyMatch("prod"::equalsIgnoreCase)) {
             return;
         }
-        int port = parsePort(environment.getProperty("server.port", "8080"));
+        int port = parsePort(environment.getProperty("server.port", "6060"));
         List<PortOwner> owners = findOwners(port);
         owners.removeIf(owner -> owner.pid() == currentPid);
         if (owners.isEmpty()) return;

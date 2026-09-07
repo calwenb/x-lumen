@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-xLumen is a pnpm monorepo plus a Maven modular monolith. Backend: `backend/xlumen-server/` (parent POM, 7 modules, `sql/init/`, env config in `xlumen-boot/src/main/resources/application-{dev,test,prod,demo}.yml` per decision D29). Frontend: `frontend/xlumen-frontend-blog/` (blog/content, `:5173`) and `frontend/xlumen-frontend-admin/` (admin config, `:5174`). Unit tests are in `src/**/__tests__/`; E2E tests are in each app's `e2e/`. `docs/` is canonical; AI contributors must read `docs/ai/STATUS.md` and `docs/ai/CHANGELOG.md`.
+xLumen is a pnpm monorepo plus a Maven modular monolith. Backend: `backend/xlumen-server/` (parent POM, 7 modules, `sql/init/`, env config in `xlumen-boot/src/main/resources/application-{dev,test,prod,demo}.yml` per decision D29). Frontend: `frontend/xlumen-frontend-blog/` (blog/content, `:6010`) and `frontend/xlumen-frontend-admin/` (admin config, `:6011`). Unit tests are in `src/**/__tests__/`; E2E tests are in each app's `e2e/`. `docs/` is canonical; AI contributors must read `docs/ai/STATUS.md` and `docs/ai/CHANGELOG.md`.
 
 ## Build, Test, and Development Commands
 

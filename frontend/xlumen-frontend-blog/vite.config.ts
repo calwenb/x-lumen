@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
-// 博客前台（含创作中心）：端口 5173（FRONTEND.md §2），后端代理到 :8080
+// 博客前台（含创作中心）：端口 6010（FRONTEND.md §2），后端代理到 :6060
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -13,10 +13,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 6010,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:6060',
         changeOrigin: true,
       },
     },

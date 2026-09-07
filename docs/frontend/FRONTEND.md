@@ -12,8 +12,8 @@
 
 | 应用 | 目录 | 端口 | 用户 | 核心职责 |
 | --- | --- | --- | --- | --- |
-| 博客前台 | `frontend/xlumen-frontend-blog/` | 5173 | 访客、登录读者、博主（OWNER） | 知识展示/阅读/互动、知识库浏览、AI 对话（[AI小光] 菜单入口，F-0701）、创作中心（创作/审校/自动审核发布/知识库管理） |
-| 管理后台 | `frontend/xlumen-frontend-admin/` | 5174 | 仅管理员（OWNER/ADMIN） | 空间/成员/角色、模型配置、审计日志等配置管理，不参与内容流转 |
+| 博客前台 | `frontend/xlumen-frontend-blog/` | 6010 | 访客、登录读者、博主（OWNER） | 知识展示/阅读/互动、知识库浏览、AI 对话（[AI小光] 菜单入口，F-0701）、创作中心（创作/审校/自动审核发布/知识库管理） |
+| 管理后台 | `frontend/xlumen-frontend-admin/` | 6011 | 仅管理员（OWNER/ADMIN） | 空间/成员/角色、模型配置、审计日志等配置管理，不参与内容流转 |
 
 - 两个 pnpm 应用分别构建和运行；仓库根 `package.json` 通过 `pnpm --dir frontend/xlumen-frontend-blog` / `pnpm --dir frontend/xlumen-frontend-admin` 代理两应用脚本，质量门禁统一在仓库根执行（命令见 GLOBAL.md）。
 - 两应用骨架在 M01 代码骨架阶段随仓库创建；blog 承载全部内容与互动功能（页面见 PROTOTYPE.md B/D 系列），admin 仅承载配置管理（A 系列），开发时不虚构已实现功能。
