@@ -38,4 +38,15 @@ public interface AiApi {
      * @return 摘要文本；无记录或解析失败返回 null
      */
     String findLatestSummary(Long workspaceId, Long knowledgeId);
+
+    /**
+     * 同步生成知识 AI 摘要并落库（ai_enhance_result scene=SUMMARY，发布事件监听同款路径），
+     * 供详情页「生成 AI 摘要」为存量无摘要文章手动补生成。AI 失败抛 BizException（调用方处理）。
+     *
+     * @param workspaceId 知识归属工作空间 ID（与 findLatestSummary 读取口径对齐落库）
+     * @param knowledgeId 知识 ID
+     * @param title       知识标题（可空，拼入待摘要文本）
+     * @param content     知识正文 Markdown
+     */
+    void generateSummary(Long workspaceId, Long knowledgeId, String title, String content);
 }

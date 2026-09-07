@@ -36,6 +36,16 @@ public interface PublicKnowledgeService {
     KnowledgeDetailVO getKnowledge(Long knowledgeId);
 
     /**
+     * 手动触发 AI 摘要生成并入库（详情摘要卡「生成 AI 摘要」）：仅登录用户；
+     * 复用发布事件同款落库路径（ai_enhance_result scene=SUMMARY，按知识归属空间落库），
+     * 已有摘要时不重复调模型（幂等），生成后精确失效访客详情缓存。
+     *
+     * @param knowledgeId 知识 ID
+     * @return 生成后的最新知识详情（含 aiSummary）；不存在/不可见抛 404，AI 失败抛 503
+     */
+    KnowledgeDetailVO generateSummary(Long knowledgeId);
+
+    /**
      * 公开知识库探测：公开库返回库信息，私有库/不存在统一 404
      * 「知识库不存在或无权访问」——与知识详情「不可访问」语义一致，避免前端静默回退。
      *

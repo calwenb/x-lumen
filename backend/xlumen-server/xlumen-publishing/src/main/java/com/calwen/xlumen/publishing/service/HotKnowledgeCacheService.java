@@ -38,6 +38,14 @@ public interface HotKnowledgeCacheService {
     List<CategoryCountDTO> getTags(Supplier<List<CategoryCountDTO>> loader);
 
     /**
+     * 精确失效单条知识详情缓存（键 xlumen:knowledge:detail:{id}）：
+     * 详情页手动补生成摘要后调用，避免访客读缓存（TTL 10min）延迟展示新摘要。
+     *
+     * @param knowledgeId 知识 ID
+     */
+    void evictKnowledge(Long knowledgeId);
+
+    /**
      * 按库维度失效热点缓存（方案 §3.4）：发布/下架/库可见性变更后调用。
      * MVP 简化：全量删详情键前缀（xlumen:knowledge:detail:*），V2 按 kbId 维度精确失效。
      *

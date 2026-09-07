@@ -3,6 +3,7 @@ package com.calwen.xlumen.ai.service.impl;
 import com.calwen.xlumen.ai.entity.AiEnhanceResultEntity;
 import com.calwen.xlumen.ai.mapper.AiEnhanceResultMapper;
 import com.calwen.xlumen.ai.service.AiTaskService;
+import com.calwen.xlumen.ai.service.EnhanceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -10,10 +11,12 @@ import org.mockito.MockitoAnnotations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * AI 模块对外接口单元测试：findLatestSummary 取最新一条并解析 summary 字段。
+ * AI 模块对外接口单元测试：findLatestSummary 取最新一条并解析 summary 字段；
+ * generateSummary 委托 EnhanceService 生成落库。
  *
  * @author calwen
  * @date 2026/8/18
@@ -26,12 +29,22 @@ class AiApiImplTest {
     @Mock
     private AiEnhanceResultMapper enhanceResultMapper;
 
+    @Mock
+    private EnhanceService enhanceService;
+
     private AiApiImpl aiApi;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        aiApi = new AiApiImpl(aiTaskService, enhanceResultMapper);
+        aiApi = new AiApiImpl(aiTaskService, enhanceResultMapper, enhanceService);
+    }
+
+    @Test
+    void generateSummary_delegatesToEnhanceService() {
+        aiApi.generateSummary(100L, 200L, "标题", "正文");
+
+        verify(enhanceService).generateAndStoreSummary(100L, 200L, "标题", "正文");
     }
 
     @Test

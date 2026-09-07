@@ -3,7 +3,7 @@
 // 不分登录态均可使用：登录用户走登录态流（会话/历史能力），访客走公开单次问答；
 // 会话仅存于组件内存（不写历史、不落盘），刷新页面后即清空。消息流含追问 chips 与存草稿入口。
 // 面板支持：按住标题栏拖拽移动、右下角原生缩放、一键清空当前会话；输入框 Shift+Enter 换行。
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
 import { useSessionStore } from '@/stores/session'
@@ -62,8 +62,8 @@ function onHeaderPointerDown(event: PointerEvent): void {
   // 标题栏内的按钮（清空/关闭）不参与拖拽
   if ((event.target as HTMLElement).closest('button')) return
   if (!panelPos.value) {
-    const rect = panelEl.value.getBoundingClientRect()
-    panelPos.value = { left: rect.left, top: rect.top }
+    // offsetLeft/offsetTop 为布局坐标，不受入场 Transition 的 transform 影响
+    panelPos.value = { left: panelEl.value.offsetLeft, top: panelEl.value.offsetTop }
   }
   dragOffset = { dx: event.clientX - panelPos.value.left, dy: event.clientY - panelPos.value.top }
   const header = event.currentTarget as HTMLElement
@@ -83,13 +83,34 @@ function onHeaderPointerUp(event: PointerEvent): void {
   }
 }
 
-/** 窗口尺寸变化时把面板拉回视口内，避免残留坐标使其移出屏幕。 */
-function keepPanelInViewport(): void {
+/**
+ * 打开/缩放/视口变化后将坐标钳制回屏幕内（尚未拖拽时走 CSS 锚位，天然适配视口）。
+ * max-width/max-height 已把面板尺寸钳在视口内，这里只保证位置不越界。
+ */
+function ensurePanelInViewport(): void {
   if (panelPos.value) panelPos.value = clampPos(panelPos.value.left, panelPos.value.top)
 }
 
-onMounted(() => window.addEventListener('resize', keepPanelInViewport))
-onBeforeUnmount(() => window.removeEventListener('resize', keepPanelInViewport))
+/** 监听面板自身尺寸（拖原生 resize 手柄即触发），每次缩放后实时把位置拉回视口内。 */
+let panelObserver: ResizeObserver | null = null
+
+watch(open, (value) => {
+  if (!value) return
+  void nextTick(() => {
+    ensurePanelInViewport()
+    if (!panelObserver && panelEl.value) {
+      panelObserver = new ResizeObserver(() => ensurePanelInViewport())
+      panelObserver.observe(panelEl.value)
+    }
+  })
+})
+
+onMounted(() => window.addEventListener('resize', ensurePanelInViewport))
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', ensurePanelInViewport)
+  panelObserver?.disconnect()
+  panelObserver = null
+})
 
 // ---- 清空会话 ----
 let activeController: AbortController | null = null
@@ -98,6 +119,21 @@ function clearConversation(): void {
   activeController?.abort()
   activeController = null
   messages.value = []
+}
+
+function toggleOpen(): void {
+  open.value = !open.value
+}
+
+function closePanel(): void {
+  open.value = false
+}
+
+/** 回车发送；Shift+Enter 与输入法上屏回车（isComposing）不触发发送，走换行/上屏。 */
+function onComposerKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return
+  event.preventDefault()
+  void send()
 }
 
 function scrollToBottom(): void {
@@ -245,7 +281,7 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
             type="button"
             class="floating-assistant__close"
             aria-label="关闭"
-            @click="open = false"
+            @click="closePanel()"
           >
             ×
           </button>
@@ -313,14 +349,15 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
             v-model="askInput"
             class="floating-assistant__input"
             rows="2"
-            placeholder="输入你的问题，Shift+Enter 换行…"
-            @keydown.enter.exact.prevent="send()"
+            placeholder="输入你的问题（Enter 发送 / Shift+Enter 换行）…"
+            @keydown="onComposerKeydown"
           />
           <el-button
             type="primary"
             class="floating-assistant__send"
-            native-type="submit"
+            native-type="button"
             :disabled="asking || !askInput.trim()"
+            @click="send()"
           >
             {{ asking ? '回复中' : '发送' }}
           </el-button>
@@ -332,7 +369,7 @@ async function saveAsDraft(message: PanelMessage): Promise<void> {
       type="button"
       class="floating-assistant__ball"
       :aria-label="open ? '收起「小光」' : '打开「小光」'"
-      @click="open = !open"
+      @click="toggleOpen()"
     >
       <svg
         class="floating-assistant__ball-icon"
