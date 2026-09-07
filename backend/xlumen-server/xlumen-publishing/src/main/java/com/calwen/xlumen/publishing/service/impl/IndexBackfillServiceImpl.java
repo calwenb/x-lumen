@@ -13,14 +13,20 @@ import com.calwen.xlumen.knowledge.api.KnowledgeApi;
 import com.calwen.xlumen.knowledge.api.dto.IndexRequestDTO;
 import com.calwen.xlumen.knowledge.vo.IndexStatusVO;
 import com.calwen.xlumen.publishing.dto.ReindexAllVO;
+import com.calwen.xlumen.publishing.dto.ReindexPlatformVO;
 import com.calwen.xlumen.publishing.service.IndexBackfillService;
+import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * 索引补跑编排实现：读取当前空间已发布知识正文，经 KnowledgeApi 强制重建索引；
@@ -34,10 +40,30 @@ public class IndexBackfillServiceImpl implements IndexBackfillService {
 
     private static final Logger log = LoggerFactory.getLogger(IndexBackfillServiceImpl.class);
 
+    /** 全平台补跑游标分页每页条数。 */
+    private static final int PLATFORM_PAGE_SIZE = 100;
+    /** 全平台补跑失败明细最多保留条数（计数不受截断影响）。 */
+    private static final int PLATFORM_FAILED_DETAIL_CAP = 100;
+
     @Resource
     private ContentApi contentApi;
     @Resource
     private KnowledgeApi knowledgeApi;
+
+    /** 全平台补跑专用单线程执行器：逐条串行，既避免同步批量 embedding 撑爆 HTTP 超时，也避免并发打满付费模型限流。 */
+    private final ExecutorService platformBackfillExecutor = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "knowledge-reindex-platform");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    /** 补跑任务进度共享态（任务线程单写、状态接口读；finishedAt 非空=已结束）。 */
+    private volatile PlatformBackfillTask platformTask;
+
+    @PreDestroy
+    public void shutdownPlatformBackfill() {
+        platformBackfillExecutor.shutdownNow();
+    }
 
     @Override
     public IndexStatusVO reindex(Long knowledgeId) {
@@ -79,6 +105,91 @@ public class IndexBackfillServiceImpl implements IndexBackfillService {
             }
         }
         return ReindexAllVO.builder().total(total).ok(ok).failed(failed).build();
+    }
+
+    @Override
+    public ReindexPlatformVO reindexAllPlatform() {
+        synchronized (this) {
+            PlatformBackfillTask running = platformTask;
+            if (running != null && running.finishedAt == null) {
+                return toVO(running, false);
+            }
+            PlatformBackfillTask task = new PlatformBackfillTask();
+            task.startedAt = LocalDateTime.now();
+            task.total = contentApi.countPublishedPlatform();
+            platformTask = task;
+            platformBackfillExecutor.execute(() -> runPlatformBackfill(task));
+            log.info("全平台索引补跑已触发：total={}", task.total);
+            return toVO(task, true);
+        }
+    }
+
+    @Override
+    public ReindexPlatformVO reindexAllPlatformStatus() {
+        PlatformBackfillTask task = platformTask;
+        if (task == null) {
+            return ReindexPlatformVO.builder().started(false).running(false).failed(List.of()).build();
+        }
+        return toVO(task, false);
+    }
+
+    /** 任务主体：id 游标遍历全空间已发布知识逐条强制重建，单条失败不中断；finally 兜底置结束时间。 */
+    private void runPlatformBackfill(PlatformBackfillTask task) {
+        long cursor = 0L;
+        try {
+            while (true) {
+                List<EditorKnowledgeDTO> batch = contentApi.listPublishedSnapshotsAfter(cursor, PLATFORM_PAGE_SIZE);
+                if (batch.isEmpty()) {
+                    break;
+                }
+                for (EditorKnowledgeDTO knowledge : batch) {
+                    cursor = Math.max(cursor, knowledge.getId());
+                    task.processed++;
+                    try {
+                        doReindex(knowledge.getWorkspaceId(), knowledge);
+                        task.ok++;
+                    } catch (Exception e) {
+                        log.warn("全平台索引补跑失败 knowledgeId={}", knowledge.getId(), e);
+                        if (task.failed.size() < PLATFORM_FAILED_DETAIL_CAP) {
+                            task.failed.add(ReindexAllVO.FailedItem.builder()
+                                    .knowledgeId(knowledge.getId()).reason(safeMessage(e)).build());
+                        }
+                    }
+                }
+                if (batch.size() < PLATFORM_PAGE_SIZE) {
+                    break;
+                }
+            }
+        } finally {
+            task.finishedAt = LocalDateTime.now();
+            log.info("全平台索引补跑结束：processed={}, ok={}, failed={}",
+                    task.processed, task.ok, task.processed - task.ok);
+        }
+    }
+
+    /** 任务进度快照转视图（started=本次触发是否真正启动了任务）。 */
+    private ReindexPlatformVO toVO(PlatformBackfillTask task, boolean started) {
+        return ReindexPlatformVO.builder()
+                .started(started)
+                .running(task.finishedAt == null)
+                .total(task.total)
+                .processed(task.processed)
+                .ok(task.ok)
+                .failedCount(task.processed - task.ok)
+                .failed(List.copyOf(task.failed))
+                .startedAt(task.startedAt)
+                .finishedAt(task.finishedAt)
+                .build();
+    }
+
+    /** 全平台补跑任务内存态（重启即失，仅覆盖单次补跑窗口）。 */
+    private static class PlatformBackfillTask {
+        private volatile long total;
+        private volatile long processed;
+        private volatile long ok;
+        private final List<ReindexAllVO.FailedItem> failed = Collections.synchronizedList(new ArrayList<>());
+        private volatile LocalDateTime startedAt;
+        private volatile LocalDateTime finishedAt;
     }
 
     /** 单条重建核心（正文已取回时复用，避免全量补跑重复读取）。 */

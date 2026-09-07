@@ -16,6 +16,47 @@
 变更内容正文（模块/文件/接口级别的主要变更，自由分点书写，不再放入表格单元格）。时间精确到分钟（yyyy/M/d HH:mm）。
 ```
 
+## 2026/9/7 22:06 · ZCode（小光悬浮助理：换行输入/面板拖拽缩放/清空会话）
+
+> 影响文档：docs/ai/CHANGELOG.md（本条）· 决策摘要：无
+
+用户提出「小光 · AI 助理」浮窗三项体验改进，全部落在 blog `modules/chat/components/FloatingAssistant.vue`：
+
+- **Shift+Enter 换行**：输入框 input→textarea（rows=2，样式对齐 ChatPage 口径），Enter 发送沿用 ChatPage 的 `@keydown.enter.exact.prevent` 模式；用户气泡已有 `white-space: pre-wrap`，换行原样展示。
+- **窗口移动**：按住标题栏 pointer 事件拖拽（setPointerCapture；清空/关闭按钮排除在拖拽外）。首次拖拽才把 CSS 右下角锚位固化为 left/top 坐标；坐标钳制留 8px 边距保证标题栏可达；监听 window resize 将面板拉回视口。
+- **窗口缩放**：面板加原生 `resize: both`（overflow:hidden 已满足条件），min 280×320、max 沿用视口约束；缩放后拖拽钳制按实时 offsetWidth/Height 计算。
+- **清空对话**：标题栏新增「清空」胶囊按钮（无消息时禁用），`clearConversation()` 先 abort 进行中的流式请求（`activeController` 记录当前控制器，finally 判等清理）再清 `messages`；会话本就不落盘，仅影响当前面板。
+- 验证：eslint --fix 后 build 复跑通过（5.4s）、`vue-tsc` 全绿、stylelint 过；v-html 警告为存量。
+
+## 2026/9/7 21:42 · ZCode（互跳入口兜底端口 5173/5174→6010/6011，修「前往前台跳 5173」）
+
+> 影响文档：docs/frontend/PROTOTYPE.md · 决策摘要：无（9-07 端口方案 D11 修订补漏）
+
+现象：admin 侧栏「前往前台」跳 `http://localhost:5173`。根因链：链接取 `import.meta.env.VITE_BLOG_URL`（**构建期**变量，由 deploy-admin.sh 写 .env.production 打入 bundle），当前在跑的 bundle 构建时该变量缺位（写 .env.production 的双环境脚本 3ac9674 尚未推送部署），落到代码兜底常量；而兜底是端口改版（cfc1910）时漏改的 vite 旧默认口 5173/5174。修复：双端 App.vue 兜底改 6010/6011（blog→admin 同步修 5174→6011）、PROTOTYPE.md §1 表格 :5173/:5174→:6010/:6011；历史归档（CHANGELOG 旧条目、assets 测试记录）不回改。双端 `vue-tsc` 通过。服务器侧根治仍待：推送 3ac9674 后用新脚本重新构建部署，URL 即构建期打入。
+
+## 2026/9/7 21:37 · ZCode（管理后台「索引维护」页，接入全平台补跑接口）
+
+> 影响文档：docs/frontend/FRONTEND.md · docs/backend/BACKEND.md · docs/deploy/DEPLOY.md · 决策摘要：无
+
+admin 前端新增 `knowledge` 运维模块（对应上条 21:24 后端接口）：
+
+- `modules/knowledge/api/indexOps.ts`：`triggerReindexAllPlatform`/`fetchReindexPlatformStatus` 封装，Long 数值字段 API 层统一转 number（沿用 trace.ts 口径）。
+- `modules/knowledge/pages/IndexOpsPage.vue`：统计带（可重建/已处理/成功/失败）+ el-progress 进度条（运行中条纹流动）+ 任务状态 tag + 起止时间 + 失败明细表（≤100 条）；触发前 ElMessageBox 确认（提示付费 embedding），运行中每 3s 轮询、结束即停，页面卸载清定时器；顶部 el-alert 提示先确认「Milvus 可达」再补跑。
+- 路由 `/index-ops`（authenticated，OWNER/ADMIN 守卫复用）+ App.vue 侧栏菜单「索引维护」（AI 调用追踪之后）。
+- 验证：`vue-tsc` 通过、eslint --fix 后 build 通过（4.2s，chunk 警告为既有）。
+- 文档：FRONTEND.md admin 模块树/表补 knowledge 行；BACKEND.md 与 DEPLOY.md 注意三改为「UI 入口在索引维护页」。
+
+## 2026/9/7 21:24 · ZCode（全平台索引补跑接口 reindex-all-platform）
+
+> 影响文档：docs/backend/BACKEND.md · docs/deploy/DEPLOY.md · docs/ai/STATUS.md · 决策摘要：无
+
+背景：Milvus 停机降级 Noop 期间发布的知识只有 MySQL 元数据、无向量；既有 `reindex-all` 是博主自助口径（登录用户可见库、同步单页 100 篇），无法承担运维全量补齐。新增全平台补跑：
+
+- content 模块 `ContentApi` 新增运维专用契约 `countPublishedPlatform()` / `listPublishedSnapshotsAfter(cursorId, limit)`（status=PUBLISHED + 非回收站、id 游标分页含正文/workspaceId/kbId/version，不限可见库），`ContentApiImpl` 实现。
+- publishing 模块 `IndexBackfillService` 新增 `reindexAllPlatform()`（专用单线程守护执行器异步逐条强制重建，单条失败不中断、重复触发不并跑）与 `reindexAllPlatformStatus()`；进度为内存态（重启即失），新视图 `ReindexPlatformVO`（started/running/total/processed/ok/failedCount/failed≤100/起止时间）。
+- 端点：`POST /api/v1/knowledge/reindex-all-platform` + `GET /api/v1/knowledge/reindex-all-platform/status`（均需登录，无角色体系，双端暂无 UI，curl 触发）。
+- 文档：BACKEND.md 索引补跑节补两条；DEPLOY.md §4 注意三（Milvus 恢复后补跑 runbook）；STATUS.md 遗留运维改为一次调用口径。`mvn -pl xlumen-content,xlumen-publishing -am compile` 通过。
+
 ## 2026/9/7 19:39 · ZCode（前端部署脚本双环境隔离改造）
 
 > 影响文档：docs/deploy/DEPLOY.md §7.3/§11 · 决策摘要：无（补齐环境隔离，用户拍板「直接改造」）

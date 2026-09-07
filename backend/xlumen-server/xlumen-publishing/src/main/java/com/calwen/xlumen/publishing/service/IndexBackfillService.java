@@ -2,6 +2,7 @@ package com.calwen.xlumen.publishing.service;
 
 import com.calwen.xlumen.knowledge.vo.IndexStatusVO;
 import com.calwen.xlumen.publishing.dto.ReindexAllVO;
+import com.calwen.xlumen.publishing.dto.ReindexPlatformVO;
 
 /**
  * 索引补跑编排：knowledge 模块依赖方向受限无法自取正文，
@@ -26,4 +27,20 @@ public interface IndexBackfillService {
      * @return 重建汇总
      */
     ReindexAllVO reindexAll();
+
+    /**
+     * 全平台索引补跑（异步触发）：单任务线程遍历所有空间的已发布知识逐条强制重建向量索引，
+     * 立即返回进度快照；已有任务在跑时不重复启动（started=false）。
+     * 典型场景：Milvus 停机期间发布欠账，服务恢复后一次性补齐存量向量。
+     *
+     * @return 触发回执（含当前进度）
+     */
+    ReindexPlatformVO reindexAllPlatform();
+
+    /**
+     * 查询全平台补跑任务进度（从未触发过时 running=false、total=0）。
+     *
+     * @return 进度快照
+     */
+    ReindexPlatformVO reindexAllPlatformStatus();
 }

@@ -73,6 +73,7 @@ frontend/xlumen-frontend-admin/src/    # 管理后台（仅管理员）
 │  ├─ workspace/           # 空间/成员/角色设置（F-1201/F-0102/F-0103）
 │  ├─ model/               # 供应商密钥与场景模型配置（F-0501/F-0502）
 │  ├─ audit/               # 审计日志（F-1202）
+│  ├─ knowledge/           # 索引维护：全平台向量补跑（运维，2026-09-07）
 │  └─ analytics/           # 配额、数据看板、时效检测（V2，F-0504/F-1101/F-1102）
 ├─ App.vue
 └─ main.ts
@@ -101,6 +102,7 @@ admin 应用前端模块：
 | `workspace` | xlumen-identity（iam_ + plt_，platform 域） | MVP | 空间设置（F-1201）、成员与角色（F-0102/0103，成员邀请 V2） |
 | `model` | xlumen-ai（ai_，gateway 域） | MVP | 供应商密钥与场景模型配置（F-0501/0502） |
 | `audit` | xlumen-identity（plt_，platform 域） | MVP | 审计日志（F-1202） |
+| `knowledge` | xlumen-publishing（IndexBackfillController） | 运维 | 索引维护页 `/index-ops`（2026-09-07）：触发全平台向量补跑 + 进度轮询 + 失败明细 |
 | `analytics` | xlumen-content（analytics_，analytics 域）/ xlumen-ai | V2 | 配额与 AI Trace（F-0504/F-0505，V2）、时效检测/知识缺口（F-1102/F-1103，V2）；数据看板/更新建议（F-1101/F-1104，V3）、AI 运行监控与敏感内容检测（F-1203/F-1204，V3 暂缓） |
 
 业务模块内部统一采用（两应用同一规则）：

@@ -1,9 +1,17 @@
 <script setup lang="ts">
-// 应用根组件：左侧边栏（品牌 + 菜单：空间设置/模型配置/AI 调用追踪/站点动态/审计日志 + 用户名 + 登出）+ 路由出口。
+// 应用根组件：左侧边栏（品牌 + 菜单：空间设置/模型配置/AI 调用追踪/索引维护/站点动态/审计日志 + 用户名 + 登出）+ 路由出口。
 // 登录页（guest）不渲染侧边栏，仅路由出口。侧栏基于 Element Plus el-menu（EP 接入后统一视觉）。
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Document, House, Monitor, Operation, Setting, View } from '@element-plus/icons-vue'
+import {
+  Document,
+  House,
+  Monitor,
+  Operation,
+  Refresh,
+  Setting,
+  View,
+} from '@element-plus/icons-vue'
 
 import { logoutApi } from '@/modules/identity/api/auth'
 import { useSessionStore } from '@/stores/session'
@@ -14,8 +22,9 @@ const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 
-// 前台入口：新标签页打开博客端，可用 VITE_BLOG_URL 覆盖（部署联调时指向实际地址）
-const blogUrl = import.meta.env.VITE_BLOG_URL ?? 'http://localhost:5173'
+// 前台入口：新标签页打开博客端，可用 VITE_BLOG_URL 覆盖（部署构建期由 deploy-admin.sh 写入）；
+// 兜底值=本地 dev 端口（9-07 端口方案：blog 6010/admin 6011，旧 5173/5174 作废）
+const blogUrl = import.meta.env.VITE_BLOG_URL ?? 'http://localhost:6010'
 
 const showShell = computed(() => !route.meta.guest)
 
@@ -55,6 +64,10 @@ async function handleLogout(): Promise<void> {
         <el-menu-item index="/ai-traces">
           <el-icon><Monitor /></el-icon>
           <span>AI 调用追踪</span>
+        </el-menu-item>
+        <el-menu-item index="/index-ops">
+          <el-icon><Refresh /></el-icon>
+          <span>索引维护</span>
         </el-menu-item>
         <el-menu-item index="/changelogs">
           <el-icon><Document /></el-icon>
@@ -153,7 +166,9 @@ async function handleLogout(): Promise<void> {
   color: var(--xl-text-secondary);
   font-size: var(--xl-fs-body);
   cursor: pointer;
-  transition: color var(--xl-transition), border-color var(--xl-transition);
+  transition:
+    color var(--xl-transition),
+    border-color var(--xl-transition);
 }
 
 .app-sidebar__blog-link:hover {

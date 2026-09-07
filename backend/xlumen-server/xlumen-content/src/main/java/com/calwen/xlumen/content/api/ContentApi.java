@@ -76,6 +76,25 @@ public interface ContentApi {
     EditorKnowledgeDTO getEditorKnowledge(Long workspaceId, Long knowledgeId);
 
     /**
+     * 全平台已发布知识计数（运维补跑专用）：status=PUBLISHED + recycle_status=0，
+     * 不按空间/可见库过滤；仅供向量索引补跑展示进度，勿用于业务读。
+     *
+     * @return 全平台可重建知识总数
+     */
+    long countPublishedPlatform();
+
+    /**
+     * 全平台已发布知识快照游标分页（运维补跑专用）：返回含正文与 workspaceId/kbId/version
+     * 的编辑态快照，id 升序、id &gt; cursorId（首页传 0）；不按空间/可见库过滤，
+     * 仅供向量索引补跑逐条消费，勿用于业务读。
+     *
+     * @param cursorId id 游标（0=从头开始）
+     * @param limit    每页条数（实现内截断到 1..100）
+     * @return 编辑态知识快照列表（空列表=已到末页）
+     */
+    List<EditorKnowledgeDTO> listPublishedSnapshotsAfter(Long cursorId, int limit);
+
+    /**
      * 发布/状态迁移（M10）：publishing 通过本接口迁移知识状态与发布信息，
      * 版本乐观锁校验，不一致返回 false（由调用方抛 409）。
      * KB-3 起发布目标为 kbId+directoryId（不再传 visibility，可见性由知识库决定，决策 D16）。

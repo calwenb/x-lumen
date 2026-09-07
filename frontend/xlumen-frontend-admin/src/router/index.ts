@@ -46,6 +46,12 @@ const router = createRouter({
       meta: { authenticated: true, title: 'AI 调用追踪' },
     },
     {
+      path: '/index-ops',
+      name: 'index-ops',
+      component: () => import('@/modules/knowledge/pages/IndexOpsPage.vue'),
+      meta: { authenticated: true, title: '索引维护' },
+    },
+    {
       path: '/changelogs',
       name: 'changelogs',
       component: () => import('@/modules/workspace/pages/ChangelogAdminPage.vue'),
