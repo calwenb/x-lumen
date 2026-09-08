@@ -9,7 +9,8 @@ import type { ApiResponse } from './types'
 // 401 单飞刷新：并发 401 共享同一刷新 Promise，刷新成功后重放原请求；/auth/ 路径豁免。
 const http = axios.create({
   baseURL: '/api/v1',
-  timeout: 15000,
+  // 全局 120s：同步大模型接口（/ai/assist、/ai/term-explain 等）整段生成可达 60s，勿再按端点单独放宽
+  timeout: 120000,
 })
 
 // 已重试过的请求：刷新后不再重试（防重试循环，FRONTEND.md §8.1 WeakSet）
