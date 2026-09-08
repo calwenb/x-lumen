@@ -48,11 +48,11 @@ spring:
 
 management:
   # 健康检查（部署脚本轮询管理端口 /actuator/health 依赖）；
-  # 敏感端点（env/loggers/dump）全在 management.server.address=127.0.0.1 的独立管理端口上，业务端口不再暴露任何 /actuator
+  # 敏感端点（env/loggers/dump/logfile）全在 management.server.address=127.0.0.1 的独立管理端口上，业务端口不再暴露任何 /actuator
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env,loggers,threaddump,heapdump
+        include: health,info,metrics,env,loggers,threaddump,heapdump,logfile
   endpoint:
     health:
       probes:
@@ -60,6 +60,10 @@ management:
       group:
         readiness:
           include: readinessState,db,redis
+    # 日志文件路径硬编码在 logback-spring.xml 的 FILE appender 里，Boot 环境变量不可见；
+    # external-file 显式指向同一文件（相对进程工作目录），供 SBA「日志文件」页拉取
+    logfile:
+      external-file: logs/xlumen.log
   health:
     livenessstate:
       enabled: true
