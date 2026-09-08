@@ -22,7 +22,7 @@ spring:
     admin:
       client:
         url: http://127.0.0.1:5070          # x-monitor 监控台（单环境 5070；与被监控应用须同机）
-        username: monitor
+        username: admin
         password: <监控台登录密码>
         instance:
           metadata:
