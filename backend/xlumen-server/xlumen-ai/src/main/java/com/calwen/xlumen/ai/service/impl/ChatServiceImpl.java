@@ -41,6 +41,7 @@ import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -337,6 +338,40 @@ public class ChatServiceImpl implements ChatService {
         conversation.setTitle(dto.getTitle().trim());
         conversationMapper.insert(conversation);
         return conversation.getId();
+    }
+
+    @Override
+    @Transactional
+    public void deleteConversation(Long conversationId) {
+        requireOwnedConversation(conversationId);
+        messageMapper.delete(new LambdaQueryWrapper<ChatMessageEntity>()
+                .eq(ChatMessageEntity::getConversationId, conversationId));
+        conversationMapper.deleteById(conversationId);
+    }
+
+    @Override
+    @Transactional
+    public void clearMessages(Long conversationId) {
+        requireOwnedConversation(conversationId);
+        messageMapper.delete(new LambdaQueryWrapper<ChatMessageEntity>()
+                .eq(ChatMessageEntity::getConversationId, conversationId));
+    }
+
+    /** 校验会话存在且归属当前工作区/用户（与流式会话解析同一口径，删除类操作追加用户级校验）。 */
+    private ChatConversationEntity requireOwnedConversation(Long conversationId) {
+        Long workspaceId = WorkspaceContext.workspaceId();
+        Long userId = WorkspaceContext.userId();
+        if (workspaceId == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED);
+        }
+        ChatConversationEntity conversation = conversationMapper.selectById(conversationId);
+        if (conversation == null || !workspaceId.equals(conversation.getWorkspaceId())) {
+            throw new BizException(ErrorCode.NOT_FOUND, "会话不存在");
+        }
+        if (userId != null && !userId.equals(conversation.getUserId())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权访问该会话");
+        }
+        return conversation;
     }
 
     /** 解析会话：指定则校验归属，否则新建（标题取提问截断）。 */

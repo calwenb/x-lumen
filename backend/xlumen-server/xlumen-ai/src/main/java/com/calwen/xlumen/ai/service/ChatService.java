@@ -55,4 +55,18 @@ public interface ChatService {
      * @return 会话 ID
      */
     Long createConversation(CreateConversationDTO dto);
+
+    /**
+     * 删除会话：物理删除会话与其全部消息（校验归属）。
+     *
+     * @param conversationId 会话 ID
+     */
+    void deleteConversation(Long conversationId);
+
+    /**
+     * 清空会话消息：仅删除消息，保留会话本身（校验归属）。
+     *
+     * @param conversationId 会话 ID
+     */
+    void clearMessages(Long conversationId);
 }

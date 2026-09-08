@@ -65,7 +65,7 @@ export async function updateModelConfig(
   return unwrap(data)
 }
 
-/** 连通性测试。 */
+/** 连通性测试：同步调用真实模型，超时依赖 http 全局 120s。 */
 export async function testModelConfig(provider: string, model: string): Promise<ModelTestResult> {
   const { data } = await http.post<ApiResponse<ModelTestResult>>('/admin/model-configs/test', {
     provider,

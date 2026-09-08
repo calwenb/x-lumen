@@ -3,7 +3,7 @@
 // 搜索胶囊、主题图标『仅视觉·固定浅色』、通知铃、写知识 CTA、头像菜单，FRONTEND.md §5.1）与路由出口。
 // 导航高亮用 router-link-exact-active（首页 / 为全部路由父级，泛匹配会全站误高亮）。
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
@@ -16,7 +16,11 @@ import XlLogo from '@/components/XlLogo.vue'
 import InitialAvatar from '@/components/InitialAvatar.vue'
 
 const router = useRouter()
+const route = useRoute()
 const session = useSessionStore()
+
+// bare 沉浸式路由（登录/注册）：隐藏全局顶部导航栏
+const barePage = computed(() => route.meta.bare === true)
 
 const keyword = ref('')
 
@@ -94,7 +98,7 @@ function handleNavCommand(command: string): void {
 
 <template>
   <div class="app-shell">
-    <header class="app-header">
+    <header v-if="!barePage" class="app-header">
       <RouterLink class="app-header__brand" to="/" aria-label="xLumen 首页">
         <XlLogo :size="30" />
       </RouterLink>

@@ -150,7 +150,14 @@ function handleEvent(id: string, event: SseEvent): void {
     return
   }
   if (event.event === SseEventName.error) {
-    errorMsg.value = event.data
+    // error 事件 data 为 JSON { taskId, sequence, message }，与 chunk 分支同口径解析出 message 展示，
+    // 不再把原始协议串抛给用户；解析失败回退原文。
+    try {
+      const parsed = JSON.parse(event.data) as { message?: string }
+      errorMsg.value = typeof parsed.message === 'string' ? parsed.message : event.data
+    } catch {
+      errorMsg.value = event.data
+    }
     phase.value = 'error'
     controller?.abort()
     return

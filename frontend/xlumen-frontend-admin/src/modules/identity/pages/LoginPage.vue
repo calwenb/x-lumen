@@ -23,6 +23,11 @@ const ADMIN_ROLES = ['OWNER', 'ADMIN']
 
 async function submit(): Promise<void> {
   errorMessage.value = ''
+  // 临时方案：仅 calwen 账号可登录管理后台
+  if (username.value.trim() !== 'calwen') {
+    errorMessage.value = '该账号无权访问'
+    return
+  }
   loading.value = true
   try {
     const token = await loginApi(username.value.trim(), password.value)

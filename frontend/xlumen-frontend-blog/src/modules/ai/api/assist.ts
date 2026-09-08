@@ -33,7 +33,7 @@ export interface AssistResult {
   text: string
 }
 
-/** 调用统一 AI 辅助端点，返回结果文本（调用方负责解析多行标题或直接替换）。 */
+/** 调用统一 AI 辅助端点，返回结果文本（调用方负责解析多行标题或直接替换）。超时依赖 http 全局 120s。 */
 export async function assistAction(body: AssistRequest): Promise<string> {
   const { data } = await http.post<ApiResponse<AssistResult>>('/ai/assist', body)
   const result = unwrap(data)

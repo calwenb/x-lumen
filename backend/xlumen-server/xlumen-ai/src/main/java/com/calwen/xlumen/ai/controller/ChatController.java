@@ -7,6 +7,7 @@ import com.calwen.xlumen.ai.vo.ChatMessageVO;
 import com.calwen.xlumen.ai.vo.ConversationVO;
 import com.calwen.xlumen.common.web.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -72,5 +73,23 @@ public class ChatController {
     @PostMapping("/conversations")
     public ApiResponse<Long> createConversation(@Valid @RequestBody CreateConversationDTO dto) {
         return ApiResponse.success(chatService.createConversation(dto));
+    }
+
+    /**
+     * 删除会话（连同全部消息物理删除）。
+     */
+    @DeleteMapping("/conversations/{conversationId}")
+    public ApiResponse<Void> deleteConversation(@PathVariable Long conversationId) {
+        chatService.deleteConversation(conversationId);
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 清空会话消息（保留会话本身）。
+     */
+    @DeleteMapping("/conversations/{conversationId}/messages")
+    public ApiResponse<Void> clearMessages(@PathVariable Long conversationId) {
+        chatService.clearMessages(conversationId);
+        return ApiResponse.success(null);
     }
 }

@@ -11,7 +11,8 @@ import type { ApiResponse } from './types'
 // 刷新失败：清理会话并跳转登录页（FRONTEND.md §9 守卫亦会兜底拦截）。
 const http = axios.create({
   baseURL: '/api/v1',
-  timeout: 15000,
+  // 全局 120s：同步大模型接口（模型连通性测试等）整段生成可达 60s，勿再按端点单独放宽
+  timeout: 120000,
 })
 
 // 已重试过的请求：刷新后不再重试（防重试循环，FRONTEND.md §8.1 WeakSet）
