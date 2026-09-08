@@ -33,6 +33,8 @@ const kbId = ref<string>('')
 const directoryId = ref<string>('0')
 const tagsInput = ref('')
 const status = ref(2)
+/** 已发布（状态 6）版本服务端不可修改：输入只读、保存/自动保存逻辑拦截并提示，不再静默吞 409。 */
+const isPublished = computed(() => status.value === 6)
 
 const loading = ref(true)
 const loadError = ref(false)
@@ -100,7 +102,7 @@ const isDirty = () =>
 
 /** 自动保存回调：新建草稿必须有归属库（决策 D16），未选库时跳过。 */
 async function doAutoSave(): Promise<{ id: string; version: string } | null> {
-  if (!title.value.trim() || !kbId.value) {
+  if (isPublished.value || !title.value.trim() || !kbId.value) {
     return null
   }
   const snapshot = takeEditorSnapshot()
@@ -181,6 +183,10 @@ async function handleConflict(): Promise<void> {
 
 /** 显式保存（创建或更新）：与自动保存同一幂等通道。 */
 async function handleSave(): Promise<boolean> {
+  if (isPublished.value) {
+    saveMessage.value = '已发布版本不可修改，如需调整请新建知识后重新发布'
+    return false
+  }
   if (!title.value.trim()) {
     saveMessage.value = '请先填写标题'
     return false
@@ -322,7 +328,7 @@ const editorStatusText = computed(() => {
   if (conflict.value) return '版本冲突'
   if (submitting.value) return 'AI 审核中，请勿关闭页面…'
   if (autoSave.saving.value || saving.value) return '保存中…'
-  if (autoSave.error.value) return '自动保存失败'
+  if (autoSave.error.value) return autoSave.error.value
   if (autoSave.savedAt.value) return '已自动保存'
   return ''
 })
@@ -369,6 +375,9 @@ const editorStatusText = computed(() => {
         >
       </div>
       <div v-if="saveMessage" class="editor-page__message" role="status">{{ saveMessage }}</div>
+      <div v-if="isPublished" class="editor-page__message" role="status">
+        该知识已发布，内容为只读；如需调整请新建知识后重新发布。
+      </div>
 
       <div class="editor-page__workspace">
         <!-- 元数据轨 -->
@@ -382,7 +391,7 @@ const editorStatusText = computed(() => {
             placeholder="知识标题"
             aria-label="知识标题"
             size="large"
-            :disabled="submitting"
+            :disabled="submitting || isPublished"
             @input="autoSave.touch()"
             @blur="autoSave.flush()"
           />
@@ -408,7 +417,7 @@ const editorStatusText = computed(() => {
             placeholder="所属目录（默认库根）"
             aria-label="所属目录"
             :loading="directoriesLoading"
-            :disabled="!kbId || submitting"
+            :disabled="!kbId || submitting || isPublished"
             @change="autoSave.touch()"
           >
             <el-option label="（库根）" value="0" />
@@ -428,7 +437,7 @@ const editorStatusText = computed(() => {
             type="text"
             placeholder="标签（逗号分隔，如：Spring, Vue）"
             aria-label="标签"
-            :disabled="submitting"
+            :disabled="submitting || isPublished"
             @input="autoSave.touch()"
             @blur="autoSave.flush()"
           />
@@ -463,7 +472,7 @@ const editorStatusText = computed(() => {
           <MarkdownEditor
             v-model="content"
             class="editor-page__editor"
-            :disabled="submitting"
+            :disabled="submitting || isPublished"
             @update:model-value="autoSave.touch()"
             @blur="autoSave.flush()"
           />

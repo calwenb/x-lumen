@@ -62,9 +62,12 @@ public class ContentApiImpl implements ContentApi {
             wrapper.eq(KnowledgeEntity::getDirectoryId, query.getDirectoryId());
         }
         if (StrUtil.isNotBlank(query.getKeyword())) {
-            // MVP 先 LIKE 后 ES（V3 全文搜索）
-            wrapper.and(w -> w.like(KnowledgeEntity::getTitle, query.getKeyword().trim())
-                    .or().like(KnowledgeEntity::getSummary, query.getKeyword().trim()));
+            // MVP 先 LIKE 后 ES（V3 全文搜索）：按空白分词逐词 AND，每词命中标题或摘要；
+            // 整串 LIKE 会把「Redis 防重」当固定短语匹配，多词查询恒 0（BUG-034）。
+            for (String term : query.getKeyword().trim().split("\\s+")) {
+                wrapper.and(w -> w.like(KnowledgeEntity::getTitle, term)
+                        .or().like(KnowledgeEntity::getSummary, term));
+            }
         }
         if (StrUtil.isNotBlank(query.getTag())) {
             // JSON 数组精确匹配：JSON_CONTAINS(tags, JSON_QUOTE(#{tag}))，参数化防注入

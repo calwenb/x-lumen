@@ -56,7 +56,7 @@ function applyFilters(): void {
 
 async function handleDelete(item: KnowledgeListItem): Promise<void> {
   try {
-    await ElMessageBox.confirm(`确定删除「${item.title}」吗？删除后不可恢复。`, '删除确认', {
+    await ElMessageBox.confirm(`确定删除「${item.title}」吗？将移入回收站，30 天内可恢复。`, '删除确认', {
       confirmButtonText: '删除',
       cancelButtonText: '取消',
       type: 'warning',
