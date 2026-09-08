@@ -55,6 +55,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- x-monitor 监控台 client：向 SBA Server 自注册（管理端口绑 127.0.0.1，见 profile） -->
+        <dependency>
+            <groupId>de.codecentric</groupId>
+            <artifactId>spring-boot-admin-starter-client</artifactId>
+        </dependency>
 
         <!-- Redis：仅短期状态（决策 D6） -->
         <dependency>
