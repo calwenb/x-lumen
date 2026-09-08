@@ -4,18 +4,22 @@
 // KB-3 检索范围选择器（决策 D13/D16）：全部可见库（默认）/ 指定知识库；访客隐藏选择器默认全部。
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import {
+  Brush,
   CircleCloseFilled,
   Clock,
   Collection,
+  Delete,
   Plus,
   SuccessFilled,
   UserFilled,
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import { useSessionStore } from '@/stores/session'
 import {
+  clearConversationMessages,
   createConversation,
+  deleteConversation,
   fetchConversations,
   fetchMessages,
   streamChat,
@@ -218,6 +222,69 @@ function scrollToBottom(): void {
   })
 }
 
+/** 会话操作前置校验：流式中或未选中会话时拦截提示（按钮保持可点，不做置灰）。 */
+function guardConversationAction(): boolean {
+  if (sending.value) {
+    ElMessage.info('回复进行中，请稍候')
+    return false
+  }
+  if (!currentId.value) {
+    ElMessage.info('当前没有选中的会话')
+    return false
+  }
+  return true
+}
+
+/** 清空当前会话全部消息（保留会话条目）。 */
+async function clearCurrentConversation(): Promise<void> {
+  if (!guardConversationAction()) return
+  try {
+    await ElMessageBox.confirm('将清空当前会话的全部消息，会话本身保留。', '清空会话', {
+      type: 'warning',
+      confirmButtonText: '清空',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return // 取消弹窗
+  }
+  try {
+    await clearConversationMessages(currentId.value as string)
+    messages.value = []
+    scrollToBottom()
+    ElMessage.success('已清空当前会话')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '清空失败')
+  }
+}
+
+/** 删除指定会话（连同全部消息，不可恢复）；删的是当前会话时一并清空消息区。 */
+async function removeConversation(conversationId: string): Promise<void> {
+  if (sending.value) {
+    ElMessage.info('回复进行中，请稍候')
+    return
+  }
+  try {
+    await ElMessageBox.confirm('删除后该会话及其全部消息将被移除，不可恢复。', '删除会话', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return // 取消弹窗
+  }
+  try {
+    await deleteConversation(conversationId)
+    if (currentId.value === conversationId) {
+      currentId.value = null
+      messages.value = []
+    }
+    await loadConversations()
+    ElMessage.success('已删除会话')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '删除失败')
+  }
+}
+
 async function send(): Promise<void> {
   const query = draft.value.trim()
   if (!query || sending.value) return
@@ -367,16 +434,26 @@ onMounted(() => {
         <nav class="chat__conversations" aria-label="会话列表">
           <div v-if="conversationsLoading" class="chat__hint">会话加载中…</div>
           <div v-else-if="conversations.length === 0" class="chat__hint">暂无历史会话</div>
-          <button
+          <div
             v-for="conversation in conversations"
             :key="conversation.id"
-            type="button"
+            role="button"
+            tabindex="0"
             class="chat__conversation"
             :class="{ 'chat__conversation--active': conversation.id === currentId }"
             @click="selectConversation(conversation.id)"
+            @keydown.enter="selectConversation(conversation.id)"
           >
-            {{ conversation.title || '未命名对话' }}
-          </button>
+            <span class="chat__conversation-title"> {{ conversation.title || '未命名对话' }} </span>
+            <!-- 条目级删除：hover 显现，stop 防误触选中 -->
+            <span
+              class="chat__conversation-del"
+              title="删除会话"
+              @click.stop="removeConversation(conversation.id)"
+            >
+              <el-icon><Delete /></el-icon>
+            </span>
+          </div>
         </nav>
       </template>
       <p v-else class="chat__guest-hint">访客模式：单次问答，不保留会话历史。</p>
@@ -391,6 +468,12 @@ onMounted(() => {
         <el-button v-if="selectedKnowledgeIds.length > 0" size="small" text @click="clearCompare"
           >清除</el-button
         >
+        <!-- 会话操作（登录可用）：清空保留会话条目，删除按钮在左侧会话条目上 -->
+        <div v-if="session.loggedIn" class="chat__toolbar-actions">
+          <el-button size="small" text :icon="Brush" @click="clearCurrentConversation">
+            清空会话
+          </el-button>
+        </div>
       </div>
       <div ref="listEl" class="chat__messages">
         <div v-if="messages.length === 0" class="chat__empty">
@@ -693,6 +776,9 @@ onMounted(() => {
 }
 
 .chat__conversation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 8px 12px;
   border: none;
   border-radius: 8px;
@@ -701,11 +787,48 @@ onMounted(() => {
   font-size: 14px;
   text-align: left;
   cursor: pointer;
-  overflow-wrap: break-word;
 }
 
 .chat__conversation:hover {
   background: var(--xl-bg-secondary);
+}
+
+.chat__conversation:focus-visible {
+  outline: 2px solid var(--xl-color-primary);
+  outline-offset: -2px;
+}
+
+.chat__conversation-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 条目级删除：hover/选中时显现的垃圾桶小按钮 */
+.chat__conversation-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--xl-text-muted);
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.chat__conversation:hover .chat__conversation-del,
+.chat__conversation--active .chat__conversation-del {
+  opacity: 1;
+}
+
+.chat__conversation-del:hover {
+  background: color-mix(in srgb, var(--xl-color-danger) 12%, transparent);
+  color: var(--xl-color-danger);
 }
 
 .chat__conversation--active {
@@ -728,6 +851,13 @@ onMounted(() => {
   padding: var(--xl-space-2) var(--xl-space-4);
   border-bottom: 1px solid var(--xl-border);
   background: var(--xl-bg-surface);
+}
+
+.chat__toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
 }
 
 .chat__compare-badge {

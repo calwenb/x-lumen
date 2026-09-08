@@ -114,6 +114,20 @@ export async function createConversation(title: string): Promise<{ id: string }>
   return { id: String(unwrap(data)) }
 }
 
+/** 删除会话（连同全部消息）。 */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const { data } = await http.delete<ApiResponse<unknown>>(`/chat/conversations/${conversationId}`)
+  unwrap(data)
+}
+
+/** 清空会话消息（保留会话本身）。 */
+export async function clearConversationMessages(conversationId: string): Promise<void> {
+  const { data } = await http.delete<ApiResponse<unknown>>(
+    `/chat/conversations/${conversationId}/messages`,
+  )
+  unwrap(data)
+}
+
 /** 检索范围（KB-3，决策 D13）：kbId 限定单库；allVisible 是否检索全部可见库（默认 true）。 */
 export interface ChatScope {
   /** 限定检索的知识库 ID（可空；空=按 allVisible 决定范围）。 */
