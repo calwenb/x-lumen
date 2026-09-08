@@ -47,11 +47,12 @@ spring:
     allow-circular-references: true
 
 management:
-  # 健康检查（部署脚本轮询 /actuator/health 依赖）
+  # 健康检查（部署脚本轮询管理端口 /actuator/health 依赖）；
+  # 敏感端点（env/loggers/dump）全在 management.server.address=127.0.0.1 的独立管理端口上，业务端口不再暴露任何 /actuator
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,env,loggers,threaddump,heapdump
   endpoint:
     health:
       probes:

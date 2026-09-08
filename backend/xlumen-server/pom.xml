@@ -41,6 +41,7 @@
         <springdoc.version>3.1.0</springdoc.version>
         <lombok.version>1.18.46</lombok.version>
         <spring-ai.version>2.0.1</spring-ai.version>
+        <spring-boot-admin.version>4.1.2</spring-boot-admin.version>
     </properties>
 
     <dependencyManagement>
@@ -127,6 +128,13 @@
                 <version>${spring-ai.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Boot Admin client：注册到 x-monitor 监控台，4.1.2 同代适配 Boot 4.1 -->
+            <dependency>
+                <groupId>de.codecentric</groupId>
+                <artifactId>spring-boot-admin-starter-client</artifactId>
+                <version>${spring-boot-admin.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

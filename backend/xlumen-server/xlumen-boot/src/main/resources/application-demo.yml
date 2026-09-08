@@ -9,7 +9,25 @@
 server:
   port: <应用端口>
 
+# Actuator 独立管理端口（可选但强烈建议）：绑 127.0.0.1 后敏感端点不出本机；
+# 部署脚本轮询与 x-monitor 抓取都走这个端口（见 scripts/deploy-backend.sh 步骤 [6/6]）
+management:
+  server:
+    port: <管理端口>                        # 业务端口 +1，如 6061/5061
+    address: 127.0.0.1
+
 spring:
+  # x-monitor 监控台注册（可选：不填 url 即不注册，应用照常启动）
+  boot:
+    admin:
+      client:
+        url: http://127.0.0.1:5070          # x-monitor 监控台（单环境 5070；与被监控应用须同机）
+        username: monitor
+        password: <监控台登录密码>
+        instance:
+          metadata:
+            project: xlumen
+            env: <dev|test|prod>
   datasource:
     url: jdbc:mysql://<MySQL地址>:3306/<库名>?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: <用户名>
