@@ -7,7 +7,6 @@ import { Lock, User } from '@element-plus/icons-vue'
 
 import { useSessionStore } from '@/stores/session'
 import type { SessionSnapshot } from '@/stores/session'
-import XlLogo from '@/components/XlLogo.vue'
 
 import { loginApi, registerApi } from '../api/auth'
 
@@ -67,18 +66,30 @@ async function submit(): Promise<void> {
 
 <template>
   <main class="auth">
-    <!-- 品牌区（42）：Paper 底，静态主 Logo + 标题 + 副标题 -->
-    <section class="auth__brand">
-      <div class="auth__brand-inner">
-        <XlLogo variant="full" :size="42" class="auth__logo" />
-        <h1 class="auth__title">欢迎使用 xLumen</h1>
-        <p class="auth__subtitle">注册即创建个人工作空间</p>
+    <!-- 左侧：深 Ink 品牌面，静态主 Logo + 受控光柱（与管理后台登录页同款） -->
+    <section class="auth__brand-panel" aria-label="xLumen">
+      <div class="auth__pillars" aria-hidden="true">
+        <span class="auth__pillar auth__pillar--left" />
+        <span class="auth__pillar auth__pillar--right" />
+      </div>
+      <div class="auth__brand-content">
+        <div class="auth__brand-logo">
+          <img src="/brand/xlumen-logo-primary-generated.png" alt="xLumen" />
+        </div>
+        <span class="auth__eyebrow">AI KNOWLEDGE PLATFORM</span>
+        <h1 class="auth__title">xLumen 知识平台</h1>
+        <p class="auth__subtitle">登录创作，注册即创建个人工作空间</p>
       </div>
     </section>
 
-    <!-- 表单区（58）：白底，约 420px 居中表单 -->
-    <section class="auth__panel">
-      <div class="auth__card">
+    <!-- 右侧：Paper 背景，轻量卡片表单 -->
+    <section class="auth__form-panel">
+      <div class="auth__form-wrap">
+        <div class="auth__form-heading">
+          <span class="auth__form-kicker">WELCOME BACK</span>
+          <h2>登录 / 注册</h2>
+          <p>登录后继续创作与阅读，新用户可直接注册个人空间。</p>
+        </div>
         <el-tabs v-model="mode" class="auth__tabs" @tab-change="onTabChange">
           <el-tab-pane label="登录" name="login" />
           <el-tab-pane label="注册" name="register" />
@@ -127,7 +138,7 @@ async function submit(): Promise<void> {
             show-icon
           />
           <el-button type="primary" native-type="submit" class="auth__submit" :loading="loading">
-            {{ loading ? '处理中…' : isLogin ? '登录' : '注册' }}
+            {{ loading ? '处理中…' : isLogin ? '登 录' : '注 册' }}
           </el-button>
         </el-form>
       </div>
@@ -137,74 +148,156 @@ async function submit(): Promise<void> {
 
 <style scoped>
 .auth {
-  display: grid;
-  grid-template-columns: 42% minmax(0, 1fr);
-  min-height: calc(100vh - var(--xl-header-h));
-  background: var(--xl-bg-page);
+  display: flex;
+  min-height: 100vh;
 }
 
-/* ===== 品牌区 ===== */
-.auth__brand {
+/* ===== 左侧 44%：深 Ink 品牌面（与管理后台登录页同款） ===== */
+.auth__brand-panel {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 44%;
   overflow: hidden;
   background:
-    radial-gradient(
-      90% 70% at 20% 10%,
-      color-mix(in srgb, var(--xl-color-primary) 10%, transparent),
-      transparent 60%
-    ),
-    var(--xl-bg-page);
+    radial-gradient(circle at 28% 30%, rgb(83 103 232 / 20%), transparent 34%),
+    radial-gradient(circle at 78% 72%, rgb(18 165 148 / 11%), transparent 32%),
+    var(--xl-text-primary);
 }
 
-.auth__brand-inner {
+/* 两条低对比 Indigo 光柱，作为空间结构而非满屏背景块 */
+.auth__pillars {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 360px;
+  height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 96px;
+  opacity: 0.58;
+  transform: translate(-50%, -50%) rotate(-8deg);
+}
+
+.auth__pillar {
+  width: 52px;
+  height: 380px;
+  border: 1px solid rgb(130 147 255 / 18%);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(83 103 232 / 34%), rgb(83 103 232 / 5%));
+  box-shadow: 0 0 80px rgb(83 103 232 / 18%);
+}
+
+.auth__pillar--left {
+  transform: translateY(-18px);
+}
+
+.auth__pillar--right {
+  transform: translateY(18px);
+}
+
+.auth__brand-content {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--xl-space-3);
+  gap: var(--xl-space-4);
   text-align: center;
+  color: #fff;
 }
 
-.auth__logo {
-  margin-bottom: var(--xl-space-2);
+.auth__brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 22px;
+  border: 1px solid rgb(255 255 255 / 62%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 18px 42px rgb(0 0 0 / 18%);
+}
+
+.auth__brand-logo img {
+  display: block;
+  width: auto;
+  height: 38px;
+}
+
+.auth__eyebrow {
+  margin-top: var(--xl-space-2);
+  color: color-mix(in srgb, var(--xl-color-ai) 82%, #fff);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
 }
 
 .auth__title {
-  margin: var(--xl-space-3) 0 0;
-  color: var(--xl-text-primary);
-  font-size: var(--xl-fs-h1);
-  font-weight: var(--xl-fs-h1-w);
-  line-height: var(--xl-fs-h1-lh);
-  letter-spacing: var(--xl-fs-h1-track);
+  margin: var(--xl-space-2) 0 0;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .auth__subtitle {
   margin: 0;
-  color: var(--xl-text-secondary);
+  color: color-mix(in srgb, #fff 62%, transparent);
   font-size: var(--xl-fs-body);
 }
 
-/* ===== 表单区 ===== */
-.auth__panel {
+/* ===== 右侧 56%：Paper 背景 + 约 480px 卡片表单 ===== */
+.auth__form-panel {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--xl-space-8) var(--xl-space-6);
-  background: var(--xl-bg-surface);
+  width: 56%;
+  padding: var(--xl-space-8) clamp(24px, 7vw, 120px);
+  background:
+    radial-gradient(circle at 75% 15%, rgb(83 103 232 / 7%), transparent 30%), var(--xl-bg-page);
+  box-sizing: border-box;
 }
 
-.auth__card {
+.auth__form-wrap {
   width: 100%;
-  max-width: 420px;
-  padding: var(--xl-space-6) 0;
+  max-width: 480px;
+  padding: 44px 48px 48px;
+  border: 1px solid var(--xl-border);
+  border-radius: 24px;
+  background: var(--xl-bg-surface);
+  box-shadow: 0 24px 60px rgb(22 32 51 / 8%);
+  box-sizing: border-box;
+}
+
+.auth__form-heading {
+  margin-bottom: var(--xl-space-6);
+}
+
+.auth__form-kicker {
+  color: var(--xl-color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.auth__form-heading h2 {
+  margin: var(--xl-space-2) 0 var(--xl-space-2);
+  color: var(--xl-text-primary);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.auth__form-heading p {
+  margin: 0;
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-body);
+  line-height: 1.7;
 }
 
 .auth__tabs :deep(.el-tabs__header) {
-  margin-bottom: var(--xl-space-6);
+  margin-bottom: var(--xl-space-4);
 }
 
 .auth__tabs :deep(.el-tabs__item) {
@@ -232,15 +325,25 @@ async function submit(): Promise<void> {
 
 .auth__submit {
   width: 100%;
+  margin-top: var(--xl-space-2);
 }
 
 @media (width <= 800px) {
   .auth {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
-  .auth__brand {
-    min-height: 260px;
+  .auth__brand-panel,
+  .auth__form-panel {
+    width: 100%;
+  }
+
+  .auth__brand-panel {
+    min-height: 300px;
+  }
+
+  .auth__form-wrap {
+    max-width: 520px;
   }
 }
 </style>

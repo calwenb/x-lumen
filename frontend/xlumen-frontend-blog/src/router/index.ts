@@ -3,11 +3,13 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 
 // 路由元数据访问级别（FRONTEND.md §9）：guest 未登录可访问 / authenticated 需登录 / workspace 需登录且已选空间
+// bare：沉浸式页面，隐藏全局顶部导航栏（登录/注册）
 declare module 'vue-router' {
   interface RouteMeta {
     guest?: boolean
     authenticated?: boolean
     workspace?: boolean
+    bare?: boolean
     title?: string
   }
 }
@@ -73,13 +75,13 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('@/modules/identity/pages/LoginPage.vue'),
-      meta: { guest: true, title: '登录' },
+      meta: { guest: true, bare: true, title: '登录' },
     },
     {
       path: '/register',
       name: 'register',
       component: () => import('@/modules/identity/pages/LoginPage.vue'),
-      meta: { guest: true, title: '注册' },
+      meta: { guest: true, bare: true, title: '注册' },
     },
     {
       path: '/studio',
