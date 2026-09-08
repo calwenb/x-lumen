@@ -121,7 +121,8 @@ public class ChatRuntimeImpl implements ChatRuntime {
         int tokensIn = 0;
         int tokensOut = 0;
         try {
-            ChatResponse response = model.call(new Prompt(messages, openAiOptions(sm, temperature, maxTokens)));
+            ChatResponse response = model.call(new Prompt(messages, openAiOptions(sm.getProviderName(),
+                    sm.getModel(), temperature, maxTokens)));
             recordSuccess(key);
             success = true;
             int[] usage = usageOf(response);
@@ -156,7 +157,8 @@ public class ChatRuntimeImpl implements ChatRuntime {
         int tokensIn = 0;
         int tokensOut = 0;
         try {
-            ChatResponse response = model.call(new Prompt(messages, openAiOptions(modelName, temperature, maxTokens)));
+            ChatResponse response = model.call(new Prompt(messages, openAiOptions(provider, modelName,
+                    temperature, maxTokens)));
             recordSuccess(key);
             success = true;
             int[] usage = usageOf(response);
@@ -195,7 +197,8 @@ public class ChatRuntimeImpl implements ChatRuntime {
         AtomicBoolean errored = new AtomicBoolean(false);
         int[] usage = {0, 0};
         try {
-            model.stream(new Prompt(messages, openAiOptions(sm, temperature, maxTokens)))
+            model.stream(new Prompt(messages, openAiOptions(sm.getProviderName(), sm.getModel(),
+                    temperature, maxTokens)))
                     .doOnNext(r -> {
                         String text = textOf(r);
                         if (StrUtil.isNotBlank(text)) {
@@ -257,6 +260,7 @@ public class ChatRuntimeImpl implements ChatRuntime {
                             .model(sm.getModel())
                             .temperature(temperature)
                             .maxTokens(maxTokens)
+                            .extraBody(noThinking(sm.getProviderName()))
                             .toolCallbacks(callbacks.toArray(ToolCallback[]::new))
                             .toolContext(toolContextMap(run)))
                     .call()
@@ -307,6 +311,7 @@ public class ChatRuntimeImpl implements ChatRuntime {
                             .model(sm.getModel())
                             .temperature(temperature)
                             .maxTokens(maxTokens)
+                            .extraBody(noThinking(sm.getProviderName()))
                             .toolCallbacks(callbacks.toArray(ToolCallback[]::new))
                             .toolContext(toolContextMap(run)))
                     .stream()
@@ -353,7 +358,7 @@ public class ChatRuntimeImpl implements ChatRuntime {
     public boolean test(String providerName, String model) {
         ChatModel chatModel = resolveModelStrict(providerName);
         Prompt prompt = new Prompt(List.of(new UserMessage("ping")),
-                OpenAiChatOptions.builder().model(model).temperature(0.0).maxTokens(16).build());
+                openAiOptions(providerName, model, 0.0, 16));
         try {
             ChatResponse resp = chatModel.call(prompt);
             return StrUtil.isNotBlank(textOf(resp));
@@ -440,14 +445,11 @@ public class ChatRuntimeImpl implements ChatRuntime {
         return OpenAiChatModel.builder().options(options).build();
     }
 
-    /** 逐请求 options：模型名按场景解析下发，temperature/maxTokens 可空。 */
-    private OpenAiChatOptions openAiOptions(SceneModel sm, Double temperature, Integer maxTokens) {
-        return openAiOptions(sm.getModel(), temperature, maxTokens);
-    }
-
-    /** 逐请求 options：显式模型名（专用模型路径），temperature/maxTokens 可空。 */
-    private OpenAiChatOptions openAiOptions(String model, Double temperature, Integer maxTokens) {
-        OpenAiChatOptions.Builder builder = OpenAiChatOptions.builder().model(model);
+    /** 逐请求 options：provider 用于决定是否关思考，temperature/maxTokens 可空。 */
+    private OpenAiChatOptions openAiOptions(String provider, String model, Double temperature, Integer maxTokens) {
+        var builder = OpenAiChatOptions.builder()
+                .model(model)
+                .extraBody(noThinking(provider));
         if (temperature != null) {
             builder.temperature(temperature);
         }
@@ -455,6 +457,11 @@ public class ChatRuntimeImpl implements ChatRuntime {
             builder.maxTokens(maxTokens);
         }
         return builder.build();
+    }
+
+    /** 百炼 Qwen3 混合思考模型默认开思考，统一关闭（省输出 Token、降首字延迟）；enable_thinking 为非标准字段经 extraBody 透传。 */
+    private Map<String, Object> noThinking(String provider) {
+        return "BAILIAN".equalsIgnoreCase(provider) ? Map.of("enable_thinking", false) : Map.of();
     }
 
     /** 从 ChatResponse 提取文本（无结果返回空串）。 */

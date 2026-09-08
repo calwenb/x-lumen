@@ -23,8 +23,8 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: 10                # 个人博客并发假设（PRODUCT §11 NFR）
-      connection-timeout: 5000             # 防连接耗尽挂起
+      maximum-pool-size: 10
+      connection-timeout: 5000
   mail:
     properties:
       mail:
@@ -44,7 +44,7 @@ spring:
       charset: UTF-8
       force: true
   main:
-    allow-circular-references: true        # 模块间存在循环依赖
+    allow-circular-references: true
 
 management:
   # 健康检查（部署脚本轮询 /actuator/health 依赖）
@@ -69,13 +69,14 @@ xlumen:
   bailian:
     base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
     tts-url: https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
-    model-writing: qwen-plus
-    model-reviewer: qwen-max               # 审校须与写作异模型（同供应商时 checkHeterogeneous 拦截同源）
-    model-qa: qwen-plus
-    model-summary: qwen-plus
-    model-vision: qwen3-vl-flash
-    model-tts: qwen3-tts-flash
-    model-embedding: text-embedding-v4
+    # 2026-09 性价比重选：flash 新代（0.2/0.8 元每百万 Token，≤32K 档）替代旧代 plus（0.8/2+思考8）
+    model-writing: qwen3.7-flash
+    model-reviewer: qwen3.8-flash          # 0.8/2.7 元 ≤1M 一口价；与写作异模型名即过 checkHeterogeneous（仅拦 provider+model 全同）
+    model-qa: qwen3.7-flash
+    model-summary: qwen3.7-flash
+    model-vision: qwen3-vl-flash           # VL 档最低（0.15/1.5），维持
+    model-tts: qwen3-tts-flash             # 0.8 元/万字符，维持
+    model-embedding: qwen3.7-text-embedding-flash  # 0.125 元/百万 Token（v4 的 1/4）；compatible-mode 可用，默认 1024 维与现集合一致，但向量空间不同——切换后须 drop kb_chunks 并全量 reindex
   deepseek:
     base-url: https://api.deepseek.com
     model-writing: deepseek-chat
@@ -89,7 +90,7 @@ xlumen:
   reviewer-agent-max-rounds: 2
   writing-max-chapters: 8
   writing-rag-enabled: true
-  trace-cost-per-1k: 0.004
+  trace-cost-per-1k: 0.001                 # 追踪日志粗算单价：按 qwen3.7-flash 输入/输出混合约 1 元/百万 Token
   tts-voice: Cherry
 
 logging:
