@@ -53,8 +53,10 @@ const dirParentId = ref('')
 /** 右键菜单实例（open(event, node?) 由目录树 contextmenu 调用，node 省略 = 树根「全部知识」）。 */
 const dirMenu = ref<InstanceType<typeof DirectoryTreeContextMenu> | null>(null)
 
-/** 目录总数（扁平化树节点）。 */
+/** 目录总数（扁平化树节点）；公开库访客由公开目录树填充，非恒 0。 */
 const directoryCount = computed(() => countDirectories(directories.value))
+/** 目录面板显隐：库主始终显示（空目录走中文空态）；访客/非库主仅在公开目录树非空时显示只读面板。 */
+const showDirectoryPanel = computed(() => isOwner.value || directories.value.length > 0)
 /** 目录选择器选项（缩进表示层级，'' = 根目录）。 */
 const dirOptions = computed(() => flattenDirectories(directories.value))
 /** 可见性徽标文案。 */
@@ -93,12 +95,13 @@ const infinite = useInfinitePage<KnowledgeCard>({
 const knowledges = infinite.items
 const loading = infinite.loading
 
-/** AI 库洞察：基于当前可见文档列表生成主题概览（复用 assist kb_insight，登录可用）。 */
+/** AI 库洞察：基于库内知识生成主题概览（复用 assist kb_insight，登录可用）。 */
 const insight = ref('')
 const insightLoading = ref(false)
 const insightError = ref('')
 const insightHtml = computed(() => (insight.value ? renderMarkdown(insight.value) : ''))
-const docCount = computed(() => knowledges.value.length)
+/** 库内知识总数（与页头「知识 N」同口径；详情未就绪时回退当前可见条数）。 */
+const kbKnowledgeCount = computed(() => kbDetail.value?.knowledgeCount ?? knowledges.value.length)
 
 async function loadInsight(): Promise<void> {
   if (!session.loggedIn || knowledges.value.length < 2) {
@@ -132,15 +135,14 @@ async function loadOwnerInfo(): Promise<void> {
   directories.value = await fetchDirectoryTree(kbId.value)
 }
 
-/** 公开探测：登录态本人库豁免；其余先探测公开可读性，私有不达置不可访问态。 */
+/** 公开探测：登录态本人库豁免；其余（访客与登录非库主）都消费公开响应，私有不达置不可访问态。 */
 async function probePublicKb(): Promise<void> {
   if (isOwner.value) return
   try {
     const kb = await fetchPublicKnowledgeBase(kbId.value)
-    if (!session.loggedIn) {
-      // 访客：公开库展示库名头部（不再显示通用的「公开知识库」占位）
-      kbDetail.value = kb
-    }
+    // 访客与登录非库主一致：展示真实库名/简介，并用公开计数与公开目录树填充页头与只读目录面板
+    kbDetail.value = kb
+    directories.value = kb.directories ?? []
   } catch {
     notFound.value = true
   }
@@ -150,6 +152,17 @@ async function probePublicKb(): Promise<void> {
 function selectDirectory(id: string): void {
   selectedDirectoryId.value = id
   void infinite.loadFirst()
+}
+
+/** 目录右键菜单仅库主可用（访客/非库主的面板只读：命中直接返回，不弹菜单）。 */
+function openRootMenu(event: MouseEvent): void {
+  if (!isOwner.value) return
+  dirMenu.value?.open(event)
+}
+
+function openNodeMenu(event: MouseEvent, node: DirectoryNode): void {
+  if (!isOwner.value) return
+  dirMenu.value?.open(event, { id: node.id, name: node.name })
 }
 
 /** 编辑库资料（库主）：name 必填，intro/cover 可空。 */
@@ -270,7 +283,7 @@ onMounted(async () => {
           </div>
           <div class="kb-detail__head-side">
             <div class="kb-detail__stats">
-              知识 {{ kbDetail?.knowledgeCount ?? 0 }} · 目录 {{ directoryCount }}
+              知识 {{ kbKnowledgeCount }} · 目录 {{ directoryCount }}
             </div>
             <div v-if="isOwner && kbDetail" class="kb-detail__owner-actions">
               <el-button size="small" plain @click="openEdit">
@@ -286,7 +299,7 @@ onMounted(async () => {
         </div>
       </header>
 
-      <!-- AI 库洞察：薄型带（登录态，未生成时提示 + 生成洞察） -->
+      <!-- AI 库洞察：薄型带（登录态渲染，未生成时提示 + 生成洞察） -->
       <section v-if="session.loggedIn" class="kb-detail__insight">
         <div class="kb-detail__insight-head">
           <span class="kb-detail__insight-title">✦ AI 库洞察</span>
@@ -308,18 +321,21 @@ onMounted(async () => {
           v-html="insightHtml"
         ></div>
         <div v-else class="kb-detail__insight-body kb-detail__insight-body--hint">
-          基于库内 {{ docCount }} 篇知识生成主题概览与亮点，登录后可用。
+          基于库内 {{ kbKnowledgeCount }} 篇知识生成主题概览与亮点。
         </div>
       </section>
 
-      <div class="kb-detail__layout">
-        <aside v-if="isOwner" class="kb-detail__side">
+      <div
+        class="kb-detail__layout"
+        :class="{ 'kb-detail__layout--single': !showDirectoryPanel }"
+      >
+        <aside v-if="showDirectoryPanel" class="kb-detail__side">
           <button
             type="button"
             class="kb-detail__all"
             :class="{ 'kb-detail__all--active': selectedDirectoryId === '' }"
             @click="selectDirectory('')"
-            @contextmenu="dirMenu?.open($event)"
+            @contextmenu="openRootMenu"
           >
             <el-icon><Collection /></el-icon>
             全部知识
@@ -330,12 +346,10 @@ onMounted(async () => {
             :props="{ label: 'name', children: 'children' }"
             :expand-on-click-node="false"
             default-expand-all
+            empty-text="还没有目录"
             class="kb-detail__tree"
             @node-click="(data: DirectoryNode) => selectDirectory(data.id)"
-            @node-contextmenu="
-              (event: MouseEvent, data: DirectoryNode) =>
-                dirMenu?.open(event, { id: data.id, name: data.name })
-            "
+            @node-contextmenu="openNodeMenu"
           >
             <template #default="{ data }">
               <span
@@ -639,6 +653,11 @@ onMounted(async () => {
   gap: var(--xl-space-8);
   align-items: start;
   margin-top: var(--xl-space-6);
+}
+
+/* 无目录面板（无目录/不可用）时收成单列，避免预留空列把知识卡片挤窄 */
+.kb-detail__layout--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .kb-detail__side {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// A04 审计日志：时间/操作人/动作/目标/详情表格 + 分页 + action 筛选；detailJson 弹窗格式化展示。
-// 关键状态：加载骨架、失败重试、空态。
+// A04 审计日志：时间/操作人/动作/目标/详情表格 + 分页 + 动作关键字（子串）筛选；detailJson 弹窗格式化展示。
+// 关键状态：加载骨架、失败重试、空态（区分「筛选无结果」与「无日志」）。
 import { onMounted, ref } from 'vue'
 import { Document } from '@element-plus/icons-vue'
 
@@ -15,7 +15,9 @@ const pageNo = ref(1)
 const loading = ref(true)
 const loadError = ref(false)
 
+// 输入框内容与已提交的关键字分开：翻页沿用已提交值，避免未点击「筛选」的新输入影响分页。
 const actionFilter = ref('')
+const appliedAction = ref('')
 
 // 详情弹窗：当前查看的日志记录
 const detailVisible = ref(false)
@@ -56,7 +58,7 @@ async function load(targetPage = pageNo.value): Promise<void> {
     const page = await fetchAuditLogs({
       pageNo: targetPage,
       pageSize: PAGE_SIZE,
-      ...(actionFilter.value.trim() ? { action: actionFilter.value.trim() } : {}),
+      ...(appliedAction.value ? { action: appliedAction.value } : {}),
     })
     records.value = page.records
     total.value = page.total
@@ -68,7 +70,16 @@ async function load(targetPage = pageNo.value): Promise<void> {
   }
 }
 
+/** 提交关键字筛选（从第 1 页开始，total 随筛选结果更新）。 */
 function applyFilter(): void {
+  appliedAction.value = actionFilter.value.trim()
+  void load(1)
+}
+
+/** 清空筛选并回到全量列表。 */
+function clearFilter(): void {
+  actionFilter.value = ''
+  appliedAction.value = ''
   void load(1)
 }
 
@@ -88,7 +99,7 @@ onMounted(() => {
           <el-input
             v-model="actionFilter"
             class="audit__filter-input"
-            placeholder="动作筛选，如 LOGIN"
+            placeholder="动作关键字（子串匹配，如 workspace）"
             aria-label="动作筛选"
             clearable
             @keyup.enter="applyFilter"
@@ -105,7 +116,12 @@ onMounted(() => {
         </div>
         <div v-else-if="records.length === 0" class="audit__state">
           <el-icon class="audit__state-icon"><Document /></el-icon>
-          <p>暂无审计日志</p>
+          <template v-if="appliedAction">
+            <p>没有匹配「{{ appliedAction }}」的审计日志</p>
+            <p class="audit__state-hint">可尝试更短的关键字，或清空筛选查看全部日志</p>
+            <el-button type="primary" plain @click="clearFilter">清空筛选</el-button>
+          </template>
+          <p v-else>暂无审计日志</p>
         </div>
         <template v-else>
           <el-table
@@ -218,6 +234,16 @@ onMounted(() => {
 
 .audit__state p {
   margin: 0;
+}
+
+.audit__state-hint {
+  margin-top: var(--xl-space-2) !important;
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.audit__state .el-button {
+  margin-top: var(--xl-space-4);
 }
 
 .audit__state :deep(.el-skeleton) {

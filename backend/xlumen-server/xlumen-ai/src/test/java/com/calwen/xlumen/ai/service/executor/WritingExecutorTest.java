@@ -214,4 +214,67 @@ class WritingExecutorTest {
 
         verify(knowledgeApi, never()).search(any(SearchRequestDTO.class));
     }
+
+    @Test
+    void ragEnabled_searchRequestHasNoWorkspaceClause() {
+        aiProperties.setWritingRagEnabled(true);
+        when(knowledgeApi.resolveVisibleKbIds(anyLong())).thenReturn(List.of(10L, 20L));
+        when(knowledgeApi.search(any(SearchRequestDTO.class))).thenReturn(List.of());
+        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
+                .thenReturn(outlineJson(1));
+        scriptStream("正文");
+
+        executor.execute(task, ctx);
+
+        // 写作 RAG 与对话检索同口径：只按可见库集合过滤，不附加 workspace（跨空间公开知识可召回）
+        ArgumentCaptor<SearchRequestDTO> captor = ArgumentCaptor.forClass(SearchRequestDTO.class);
+        verify(knowledgeApi).search(captor.capture());
+        assertThat(captor.getValue().getWorkspaceId()).isNull();
+        assertThat(captor.getValue().getKbIds()).containsExactly(10L, 20L);
+    }
+
+    @Test
+    void topicOnly_fallsBackToTopicAsTitle() {
+        // 只给主题、产出正文无 # 标题行 → 标题取主题，不得退化为通用占位
+        task.setInputJson("{\"topic\":\"分布式事务 Seata AT 模式常见坑\"}");
+        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
+                .thenReturn(outlineJson(1));
+        scriptStream("正文内容，没有标题行");
+
+        executor.execute(task, ctx);
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(ctx).complete(captor.capture());
+        assertThat(captor.getValue()).contains("分布式事务 Seata AT 模式常见坑");
+        assertThat(captor.getValue()).doesNotContain("AI 生成文章");
+    }
+
+    @Test
+    void contentHeadingWinsOverInputTitleAndTopic() {
+        task.setInputJson("{\"topic\":\"主题\",\"title\":\"输入标题\"}");
+        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
+                .thenReturn(outlineJson(1));
+        scriptStream("# 产出标题\n正文内容");
+
+        executor.execute(task, ctx);
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(ctx).complete(captor.capture());
+        // 既有行为不变：产出首个 # 标题优先于输入 title/topic
+        assertThat(captor.getValue()).contains("\"title\":\"产出标题\"");
+    }
+
+    @Test
+    void inputTitlePreferredOverTopicWhenNoHeading() {
+        task.setInputJson("{\"topic\":\"主题\",\"title\":\"输入标题\"}");
+        when(chatRuntime.chat(eq(1L), eq(AiScene.WRITING), any(), any(), any()))
+                .thenReturn(outlineJson(1));
+        scriptStream("正文内容，没有标题行");
+
+        executor.execute(task, ctx);
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(ctx).complete(captor.capture());
+        assertThat(captor.getValue()).contains("\"title\":\"输入标题\"");
+    }
 }

@@ -330,8 +330,12 @@ onMounted(() => {
           <header class="review-detail__header">
             <h2 class="review-detail__title">{{ selected.knowledgeTitle }}</h2>
             <div class="review-detail__header-actions">
-              <RouterLink class="review-detail__view" :to="`/knowledge/${selected.knowledgeId}`"
-                >查看原文</RouterLink
+              <!-- 审核中的知识尚未公开（草稿/待审核/待发布），公开详情页会渲染不可访问态；
+                   统一指向作者编辑器，既能预览原文也可直接修改，避免必然 404 的死胡同。 -->
+              <RouterLink
+                class="review-detail__view"
+                :to="`/studio/knowledge/${selected.knowledgeId}/edit`"
+                >{{ selected.status === 'REJECTED' ? '去修改' : '打开编辑器' }}</RouterLink
               >
               <button type="button" class="review-detail__close" @click="closeDetail">收起</button>
             </div>
@@ -374,6 +378,17 @@ onMounted(() => {
             <p><strong>驳回原因：</strong>{{ selected.rejectReason }}</p>
             <p><strong>驳回位置：</strong>{{ selected.rejectPosition }}</p>
             <p><strong>期望修改：</strong>{{ selected.rejectExpectation }}</p>
+            <!-- 驳回后知识回到草稿，公开详情页不可达；此处提供直达编辑入口，与站内通知「修改后重新提交」口径一致。 -->
+            <div class="review-detail__reject-actions">
+              <RouterLink
+                class="review-detail__edit"
+                :to="`/studio/knowledge/${selected.knowledgeId}/edit`"
+                >去修改后重新提交</RouterLink
+              >
+              <span class="review-detail__hint"
+                >在编辑器中按上述意见修改，保存后重新提交发布即可再次进入审核。</span
+              >
+            </div>
           </div>
 
           <div v-if="selected.status === 'APPROVED'" class="review-detail__decision">
@@ -729,6 +744,32 @@ onMounted(() => {
 
 .review-detail__reject-info p:last-child {
   margin-bottom: 0;
+}
+
+.review-detail__reject-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--xl-space-3);
+  margin-top: var(--xl-space-3);
+  padding-top: var(--xl-space-3);
+  border-top: 1px dashed var(--xl-border);
+}
+
+.review-detail__edit {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: var(--xl-color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--xl-transition);
+}
+
+.review-detail__edit:hover {
+  background: color-mix(in srgb, var(--xl-color-primary) 85%, black);
 }
 
 .review-detail__decision {

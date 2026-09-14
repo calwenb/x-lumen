@@ -180,6 +180,10 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
         if (kb == null || !Integer.valueOf(1).equals(kb.getVisibility())) {
             throw new BizException(ErrorCode.NOT_FOUND, "知识库不存在或无权访问");
         }
+        // 公开口径（跨空间 + 仅已发布 + 未回收）：与认证路径统计（按空间过滤、含草稿）不同，
+        // 覆盖 getKnowledgeBaseById 返回的 0，并补公开只读目录树供前台渲染目录面板
+        kb.setKnowledgeCount(knowledgeApi.countPublishedKnowledge(kbId));
+        kb.setDirectories(knowledgeApi.getPublishedDirectoryTree(kbId));
         return kb;
     }
 

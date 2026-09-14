@@ -137,17 +137,32 @@ async function load(): Promise<void> {
   loading.value = true
   loadError.value = false
   try {
-    const items = await fetchModelConfigs()
-    for (const item of items) {
-      item.dailyQuota = item.dailyQuota ?? 0
-    }
-    configs.value = items
+    configs.value = normalize(await fetchModelConfigs())
     rebuildDrafts()
   } catch {
     loadError.value = true
   } finally {
     loading.value = false
   }
+}
+
+/** 归一化后端可空字段，保证表单可直接编辑（无覆盖行的场景 provider/model 为空串）。 */
+function normalize(items: ModelConfig[]): ModelConfig[] {
+  for (const item of items) {
+    item.provider = item.provider ?? ''
+    item.model = item.model ?? ''
+    item.dailyQuota = item.dailyQuota ?? 0
+    // 兼容未返回生效字段的场景：按覆盖值推断来源与生效值（覆盖行存在即运行时取值）。
+    item.source = item.source ?? (item.model ? 'DB' : 'ENV')
+    item.effectiveProvider = item.effectiveProvider ?? item.provider
+    item.effectiveModel = item.effectiveModel ?? item.model
+  }
+  return items
+}
+
+/** 生效来源展示文案：数据库覆盖优先于环境默认。 */
+function sourceLabel(item: ModelConfig): string {
+  return item.source === 'DB' ? '数据库覆盖' : '环境默认'
 }
 
 /** 每日配额输入：清空输入按 0（不限）处理。 */
@@ -171,7 +186,7 @@ async function save(item: ModelConfig): Promise<boolean> {
       draft.dirty = false
     }
     const updated = await updateModelConfig(item.scene, payload)
-    Object.assign(item, updated)
+    Object.assign(item, normalize([updated])[0])
     promptDrafts.set(item.scene, buildDraft(item.scene, item.prompt))
     ElMessage.success('已保存')
     return true
@@ -247,7 +262,7 @@ async function restorePromptDefault(): Promise<void> {
       prompt: '',
     }
     const updated = await updateModelConfig(item.scene, payload)
-    Object.assign(item, updated)
+    Object.assign(item, normalize([updated])[0])
     const fresh = buildDraft(item.scene, updated.prompt ?? '')
     promptDrafts.set(item.scene, fresh)
     promptEditorDraft.value = fresh
@@ -279,7 +294,10 @@ onMounted(() => {
 <template>
   <main class="models">
     <h1 class="models__title">模型配置</h1>
-    <p class="models__hint">API Key 在服务器 .env 配置，界面不展示；每日配额为 0 表示不限</p>
+    <p class="models__hint">
+      API Key 在服务器环境配置文件（profile YAML）中配置，界面不展示；「生效配置」为运行时实际调用值，
+      存在数据库覆盖时以覆盖值为准，否则取环境默认；每日配额为 0 表示不限
+    </p>
 
     <div class="models__layout">
       <!-- A02 左侧 ~68%：配置表 + 底部连通性测试 -->
@@ -301,12 +319,29 @@ onMounted(() => {
             class="models__table"
             :header-cell-style="{ background: 'var(--xl-bg-secondary)' }"
           >
-            <el-table-column label="场景" min-width="100">
+            <el-table-column label="场景" min-width="80">
               <template #default="{ row }">{{ SCENE_LABELS[row.scene] ?? row.scene }}</template>
             </el-table-column>
-            <el-table-column label="供应商" min-width="140">
+            <el-table-column label="生效配置" min-width="160">
               <template #default="{ row }">
-                <el-select v-model="row.provider" class="models__select" aria-label="供应商">
+                <span class="models__effective">{{ row.effectiveProvider }} / {{ row.effectiveModel }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="来源" min-width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.source === 'DB' ? 'warning' : 'info'" size="small" effect="plain">
+                  {{ sourceLabel(row) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="覆盖供应商" min-width="100">
+              <template #default="{ row }">
+                <el-select
+                  v-model="row.provider"
+                  class="models__select"
+                  placeholder="环境默认"
+                  aria-label="覆盖供应商"
+                >
                   <el-option
                     v-for="opt in providerOptions(row.provider)"
                     :key="opt.value"
@@ -316,12 +351,16 @@ onMounted(() => {
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="模型" min-width="160">
+            <el-table-column label="覆盖模型" min-width="140">
               <template #default="{ row }">
-                <el-input v-model="row.model" class="models__model-input" placeholder="模型名称" />
+                <el-input
+                  v-model="row.model"
+                  class="models__model-input"
+                  :placeholder="`留空用环境默认：${row.effectiveModel}`"
+                />
               </template>
             </el-table-column>
-            <el-table-column label="每日配额" min-width="130">
+            <el-table-column label="每日配额" min-width="90">
               <template #default="{ row }">
                 <el-input-number
                   :model-value="row.dailyQuota"
@@ -334,17 +373,17 @@ onMounted(() => {
                 />
               </template>
             </el-table-column>
-            <el-table-column label="Prompt 配置" min-width="120">
+            <el-table-column label="Prompt 配置" min-width="90">
               <template #default="{ row }">
                 <el-button type="primary" link @click="openPromptEditor(row)"
                   >编辑 Prompt</el-button
                 >
               </template>
             </el-table-column>
-            <el-table-column label="更新时间" min-width="140">
+            <el-table-column label="覆盖更新时间" min-width="100">
               <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
             </el-table-column>
-            <el-table-column label="操作" width="110">
+            <el-table-column label="操作" width="80">
               <template #default="{ row }">
                 <el-button
                   type="primary"
@@ -528,12 +567,19 @@ onMounted(() => {
   width: 100%;
 }
 
+.models__effective {
+  color: var(--xl-text-primary);
+  font-family: var(--xl-font-mono);
+  font-size: var(--xl-fs-caption);
+  overflow-wrap: anywhere;
+}
+
 .models__model-input {
   max-width: 220px;
 }
 
 .models__quota-input {
-  width: 120px;
+  width: 100px;
 }
 
 .models__test {

@@ -6,7 +6,9 @@ import com.calwen.xlumen.common.context.WorkspaceContext;
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
 import com.calwen.xlumen.content.api.ContentApi;
-import com.calwen.xlumen.identity.api.WorkspaceApi;
+import com.calwen.xlumen.content.api.dto.KnowledgeDetailDTO;
+import com.calwen.xlumen.knowledge.api.KnowledgeApi;
+import com.calwen.xlumen.knowledge.vo.KnowledgeBaseVO;
 import com.calwen.xlumen.publishing.dto.CreateFeedbackDTO;
 import com.calwen.xlumen.publishing.entity.FeedbackEntity;
 import com.calwen.xlumen.publishing.mapper.FeedbackMapper;
@@ -20,10 +22,12 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 读者纠错服务实现：匿名可提交（user_id 可空），同一 IP 每分钟 1 条限流（M11，Redis 降级放行）。
- * 工作空间取默认空间（MVP 单空间，决策 D9）。
+ * 纠错面向任意空间公开且已发布的知识（多用户平台 D9）：可见性口径与公开详情一致，
+ * 纠错记录落知识自身归属空间（先取知识、再取所属库 workspaceId），不使用默认空间。
  *
  * @author calwen
  * @date 2026/8/13
@@ -47,24 +51,29 @@ public class FeedbackServiceImpl implements FeedbackService {
     private ContentApi contentApi;
 
     @Resource
-    private WorkspaceApi workspaceApi;
+    private KnowledgeApi knowledgeApi;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public FeedbackVO createFeedback(Long knowledgeId, CreateFeedbackDTO dto) {
-        Long workspaceId = workspaceApi.getDefaultWorkspaceId();
-        if (workspaceId == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "博客空间未初始化");
-        }
-        checkRateLimit(dto.getIp());
-        if (contentApi.getEditorKnowledge(workspaceId, knowledgeId) == null) {
+        // 可见性：访客视角公开库集合（仅公开且已发布知识可纠错），不放宽非公开/未发布/不存在的判定；
+        // 存在性校验先于限流，失败不消耗额度，且错误语义不暴露资源存在性
+        List<Long> visibleKbIds = knowledgeApi.resolveVisibleKbIds(null);
+        KnowledgeDetailDTO knowledge = contentApi.getPublished(null, knowledgeId, visibleKbIds);
+        if (knowledge == null || knowledge.getKbId() == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
         }
+        // 纠错记录落知识自身归属空间（多用户平台 D9：不绑定默认空间）
+        KnowledgeBaseVO kb = knowledgeApi.getKnowledgeBaseById(knowledge.getKbId());
+        if (kb == null || kb.getWorkspaceId() == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "知识不存在");
+        }
+        checkRateLimit(dto.getIp());
 
         FeedbackEntity entity = new FeedbackEntity();
-        entity.setWorkspaceId(workspaceId);
+        entity.setWorkspaceId(kb.getWorkspaceId());
         entity.setKnowledgeId(knowledgeId);
         entity.setUserId(WorkspaceContext.userId());
         entity.setPosition(dto.getPosition());
@@ -81,7 +90,8 @@ public class FeedbackServiceImpl implements FeedbackService {
                 .createdAt(entity.getCreatedAt()).build();
     }
 
-    /** IP 限流：每分钟最多 1 条（M11 契约）；Redis 异常降级放行（不阻断合法提交）。 */
+    /** IP 限流：每分钟最多 1 条（M11 契约），仅在受理提交时计数（校验失败不调用）；
+     *  increment 原子递增保证并发下同 IP 上限，超限 429；Redis 异常降级放行（不阻断合法提交）。 */
     private void checkRateLimit(String ip) {
         if (StrUtil.isBlank(ip)) {
             return;

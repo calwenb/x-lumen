@@ -212,9 +212,15 @@ export function parseCitations(json: string): Citation[] {
 export function parseToolCalls(json: string): ToolCallRecord[] {
   try {
     const parsed: unknown = JSON.parse(json)
-    if (!Array.isArray(parsed)) return []
+    // 后端历史轨迹可能是数组（多工具），也可能是单个对象（单工具字符串化存储）；
+    // 统一包装为数组，避免单工具会话的历史轨迹被整条丢弃。
+    const list = Array.isArray(parsed)
+      ? parsed
+      : parsed && typeof parsed === 'object'
+        ? [parsed]
+        : []
     const calls: ToolCallRecord[] = []
-    for (const raw of parsed) {
+    for (const raw of list) {
       const item = raw as Record<string, unknown>
       calls.push({
         id: typeof item.id === 'string' ? item.id : '',

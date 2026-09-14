@@ -18,6 +18,8 @@ import java.util.Set;
 /**
  * knowledge.search 工具：包装 KnowledgeApi.search（只读，红线合规）。
  * 权限规则：kbId 必须在 resolveVisibleKbIds(userId) 集合内，否则错误信封；未传 kbId 按可见库全集检索（D13）；
+ * 检索过滤只以可见库集合 kbIds 为边界，不附加调用者 workspace 条件——可见集合本身已含跨空间公开库，
+ * 附加空间条件会把它空间公开知识全部排除，与公开语义检索路径口径不一致；
  * 命中结果同时上报 citationCollector 聚合进引用事件。
  *
  * @author calwen
@@ -92,8 +94,9 @@ public class KnowledgeSearchTool implements AgentTool {
                 kbIds = visible == null ? List.of() : visible;
             }
             List<SearchResultDTO> results;
+            // 权限边界=可见库集合（含跨空间公开库）；不传 workspaceId，避免把其它空间的公开知识排除，
+            // 与公开语义检索路径保持同一口径（空间隔离由 kbIds 精确覆盖）。
             SearchRequestDTO.SearchRequestDTOBuilder searchBuilder = SearchRequestDTO.builder()
-                    .workspaceId(ctx.getWorkspaceId())
                     .query(query)
                     .kbIds(kbIds)
                     .topK(topK);

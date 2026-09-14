@@ -134,7 +134,7 @@ public class WritingExecutor implements AiTaskExecutor {
             log.info("写作多步：自审失败，跳过修订直接交付 taskId={}", task.getId());
         }
 
-        String[] parts = splitTitle(revised, title);
+        String[] parts = splitTitle(revised, title, topic);
         String resultJson = JSONUtil.toJsonStr(JSONUtil.createObj()
                 .set("title", parts[0])
                 .set("content", parts[1])
@@ -158,8 +158,8 @@ public class WritingExecutor implements AiTaskExecutor {
             if (kbIds == null || kbIds.isEmpty()) {
                 return List.of();
             }
+            // 只以可见库集合为过滤边界（含跨空间公开库），不附加调用者 workspace 条件，避免漏掉其它空间的公开知识。
             return knowledgeApi.search(SearchRequestDTO.builder()
-                    .workspaceId(task.getWorkspaceId())
                     .query(query)
                     .kbIds(kbIds)
                     .topK(RAG_TOP_K)
@@ -278,7 +278,7 @@ public class WritingExecutor implements AiTaskExecutor {
                             new SystemMessage(promptResolver.resolveWriting(task.getWorkspaceId(), "self_review")),
                             new UserMessage(fullText)),
                     0.2, 2048);
-            JSONArray arr = AiJson.extractArray(content);
+            JSONArray arr = AiJson.extractArrayLenient(content);
             if (arr == null) {
                 return null;
             }
@@ -345,8 +345,11 @@ public class WritingExecutor implements AiTaskExecutor {
         return sb.toString();
     }
 
-    /** 解析首行 # 标题，其余为正文；无标题行时回退输入标题或默认标题。 */
-    private String[] splitTitle(String full, String fallbackTitle) {
+    /**
+     * 解析正文首个 # 标题，其余为正文；无标题行时按回退链取标题：
+     * 输入 title → 输入 topic → 常量默认（只给主题时不再退化为通用标题）。
+     */
+    private String[] splitTitle(String full, String title, String topic) {
         String text = full == null ? "" : full.trim();
         if (text.startsWith("# ")) {
             int idx = text.indexOf('\n');
@@ -355,7 +358,8 @@ public class WritingExecutor implements AiTaskExecutor {
             }
             return new String[]{text.substring(2).trim(), ""};
         }
-        String t = StrUtil.isNotBlank(fallbackTitle) ? fallbackTitle : "AI 生成文章";
+        String t = StrUtil.isNotBlank(title) ? title
+                : StrUtil.isNotBlank(topic) ? topic : "AI 生成文章";
         return new String[]{t, text};
     }
 

@@ -18,4 +18,12 @@ public interface KnowledgeCountApi {
 
     /** 统计指定库下一批目录（不含库根 0）的非回收站知识数（键为 directoryId，缺省 0）。 */
     Map<Long, Long> countByDirectoryIds(Long workspaceId, Long kbId, Collection<Long> directoryIds);
+
+    /** 统计一批知识库下已发布（status=6）且未回收的知识数（键为 kbId，缺省 0）；
+     *  公开读口径：跨空间统计，不做 workspace 过滤（认证路径请用 countByKbIds）。 */
+    Map<Long, Long> countPublishedByKbIds(Collection<Long> kbIds);
+
+    /** 统计指定库下一批目录（不含库根 0）已发布（status=6）且未回收的知识数（键为 directoryId，缺省 0）；
+     *  公开读口径：跨空间统计，不做 workspace 过滤（认证路径请用 countByDirectoryIds）。 */
+    Map<Long, Long> countPublishedByDirectoryIds(Long kbId, Collection<Long> directoryIds);
 }

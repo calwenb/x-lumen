@@ -41,10 +41,12 @@ public final class PromptTemplates {
             + "核对后输出一个严格的 JSON 数组，每个元素包含四个字段："
             + "severity（取值为 error|warning|info）、position（原文位置引用）、evidence（证据）、suggestion（修改建议），"
             + "矛盾类问题可附可选字段 evidenceKnowledgeId（库内证据知识 ID）与 evidenceQuote（库内证据原文引用）。"
+            + "只报你确认的最高严重度问题，最多输出 10 条，同一问题不要重复报告，保证数组是完整合法的 JSON。"
             + "工具检索失败不影响审校：基于已有文本层检查继续输出。只输出 JSON 数组，不要输出任何其他内容。";
 
     /** 审校-重试追加提示。 */
-    public static final String REVIEWER_RETRY_HINT = "\n\n请重新输出，必须是 JSON 数组，每个元素含 severity/position/evidence/suggestion 四个字段。";
+    public static final String REVIEWER_RETRY_HINT = "\n\n请重新输出，必须是 JSON 数组（最多 10 条），"
+            + "每个元素含 severity/position/evidence/suggestion 四个字段，确保 JSON 完整闭合。";
 
     /** 摘要（SUMMARY）：摘要 + 2~4 条导读要点（guide 为可选字段，旧输出兼容）。 */
     public static final String SUMMARY = "你是小光，一名内容摘要助手。请为给定内容生成简洁摘要与导读要点，"
