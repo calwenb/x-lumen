@@ -410,7 +410,8 @@ onMounted(() => {
 <template>
   <main class="search">
     <!-- 顶部搜索命令条：小型模式切换 + 大搜索框（关键词/向量语义共用） -->
-    <header class="search__head">
+    <!-- 向量语义无左侧筛选轨，整块收进一列居中（与下方结果画布同列对齐） -->
+    <header class="search__head" :class="{ 'search__head--semantic': mode === 'semantic' }">
       <el-radio-group :model-value="mode" class="search__modes" @change="onModeChange">
         <el-radio-button value="keyword">关键词</el-radio-button>
         <el-tooltip content="登录后可用语义检索（向量相似度）" :disabled="session.loggedIn">
@@ -421,12 +422,7 @@ onMounted(() => {
         </el-tooltip>
       </el-radio-group>
 
-      <form
-        v-if="mode !== 'ask'"
-        class="search__command"
-        :class="{ 'search__command--semantic': mode === 'semantic' }"
-        @submit.prevent="onSearchSubmit"
-      >
+      <form v-if="mode !== 'ask'" class="search__command" @submit.prevent="onSearchSubmit">
         <el-input
           v-model="keyword"
           class="search__input"
@@ -516,7 +512,7 @@ onMounted(() => {
     </div>
 
     <!-- 关键词 / 向量语义 -->
-    <div v-else class="search__layout">
+    <div v-else class="search__layout" :class="{ 'search__layout--semantic': mode === 'semantic' }">
       <!-- 关键词：约 220px 左侧筛选轨 -->
       <aside v-if="mode === 'keyword'" class="search__rail">
         <form class="search__filters" @submit.prevent="onSearchSubmit">
@@ -653,6 +649,12 @@ onMounted(() => {
   border-bottom: 1px solid var(--xl-border);
 }
 
+/* 向量语义：命令条与结果画布共用同一列居中 920px（避免二者各居一侧、对不齐） */
+.search__head--semantic {
+  max-width: 920px;
+  margin-inline: auto;
+}
+
 .search__modes {
   margin-bottom: var(--xl-space-6);
 }
@@ -697,11 +699,6 @@ onMounted(() => {
   align-items: center;
 }
 
-.search__command--semantic {
-  max-width: 920px;
-  margin: 0 auto;
-}
-
 .search__input {
   flex: 1;
 }
@@ -732,6 +729,11 @@ onMounted(() => {
   gap: var(--xl-space-8);
   align-items: start;
   margin-top: var(--xl-space-6);
+}
+
+/* 向量语义无筛选轨：收成单列，否则 220px 轨道仍被保留、结果被压进窄列（且与上方搜索框对不齐） */
+.search__layout--semantic {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .search__rail {
@@ -775,7 +777,7 @@ onMounted(() => {
 
 .search__canvas--semantic {
   max-width: 920px;
-  margin: 0 auto;
+  margin-inline: auto;
   padding-top: var(--xl-space-6);
 }
 

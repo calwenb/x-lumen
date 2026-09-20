@@ -88,6 +88,7 @@ xlumen:
     model-reviewer: deepseek-chat
     model-qa: deepseek-chat
     model-summary: deepseek-chat
+  retrieval-min-score: 0.40
   agent-max-rounds: 5
   agent-tool-timeout-millis: 10000
   agent-max-tool-calls: 8

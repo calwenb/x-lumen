@@ -2,26 +2,32 @@ package com.calwen.xlumen.publishing.service.impl;
 
 import com.calwen.xlumen.common.exception.BizException;
 import com.calwen.xlumen.common.web.ErrorCode;
+import com.calwen.xlumen.content.api.ContentApi;
 import com.calwen.xlumen.knowledge.api.KnowledgeApi;
 import com.calwen.xlumen.knowledge.api.dto.SearchResultDTO;
 import com.calwen.xlumen.knowledge.vo.DirectoryVO;
 import com.calwen.xlumen.knowledge.vo.KnowledgeBaseVO;
 import com.calwen.xlumen.publishing.dto.KnowledgeCardVO;
+import com.calwen.xlumen.publishing.dto.KnowledgeQueryDTO;
+import com.calwen.xlumen.publishing.dto.PageResult;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * 公开读服务单测：语义检索段落聚合（按知识聚合、片段拼接、最高分、首个锚点、计数）
- * 与公开库详情（已发布计数 + 公开目录树 + 私有库统一 404）。
+ * 公开读服务单测：语义检索相关度裁剪与段落聚合（按知识聚合、片段拼接、最高分、首个锚点、计数）、
+ * 语义无相关知识不回退关键词，以及公开库详情（已发布计数 + 公开目录树 + 私有库统一 404）。
  *
  * @author calwen
  * @date 2026/8/26
@@ -29,11 +35,60 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class PublicKnowledgeServiceImplTest {
 
+    /** 相关度下限（xlumen.retrieval-min-score 的测试值）。 */
+    private static final float MIN_SCORE = 0.40f;
+
     @Mock
     private KnowledgeApi knowledgeApi;
 
+    @Mock
+    private ContentApi contentApi;
+
     @InjectMocks
     private PublicKnowledgeServiceImpl publicKnowledgeService;
+
+    /** 语义检索入参（可见库集合由 mock 返回）。 */
+    private KnowledgeQueryDTO semanticQuery() {
+        return KnowledgeQueryDTO.builder()
+                .keyword("防重复提交").mode("semantic").pageNo(1).pageSize(50).build();
+    }
+
+    @Test
+    void semanticSearch_dropsHitsBelowRelevanceFloorAndKeepsKnowledgeOrder() {
+        ReflectionTestUtils.setField(publicKnowledgeService, "retrievalMinScore", MIN_SCORE);
+        when(knowledgeApi.resolveVisibleKbIds(null)).thenReturn(List.of(7L));
+        when(knowledgeApi.search(any())).thenReturn(List.of(
+                SearchResultDTO.builder().knowledgeId(1L).title("Redis 防重").headingAnchor("结论")
+                        .chunkText("SETNX 只是第一步").score(0.52f).build(),
+                SearchResultDTO.builder().knowledgeId(2L).title("无关知识").headingAnchor("")
+                        .chunkText("相似度偏低的段落").score(0.31f).build(),
+                SearchResultDTO.builder().knowledgeId(1L).title("Redis 防重").headingAnchor("Lua")
+                        .chunkText("校验与删除原子化").score(0.44f).build()));
+
+        PageResult<KnowledgeCardVO> page = publicKnowledgeService.listKnowledge(semanticQuery());
+
+        // 0.31 的无关知识被裁掉；同一知识的两段（0.52/0.44）都在下限之上，计数与最高分照常聚合
+        assertThat(page.getRecords()).hasSize(1);
+        assertThat(page.getRecords().get(0).getId()).isEqualTo(1L);
+        assertThat(page.getRecords().get(0).getSemanticScore()).isEqualTo(0.52f);
+        assertThat(page.getRecords().get(0).getChunkCount()).isEqualTo(2);
+        assertThat(page.getTotal()).isEqualTo(1L);
+    }
+
+    @Test
+    void semanticSearch_allHitsBelowFloor_returnsEmptyPageWithoutKeywordFallback() {
+        ReflectionTestUtils.setField(publicKnowledgeService, "retrievalMinScore", MIN_SCORE);
+        when(knowledgeApi.resolveVisibleKbIds(null)).thenReturn(List.of(7L));
+        when(knowledgeApi.search(any())).thenReturn(List.of(
+                SearchResultDTO.builder().knowledgeId(1L).title("无关知识").chunkText("整库最近邻").score(0.28f).build()));
+
+        PageResult<KnowledgeCardVO> page = publicKnowledgeService.listKnowledge(semanticQuery());
+
+        // 链路正常但无相关知识：空页（而非回退关键词——语义页不该展示关键词结果）
+        assertThat(page.getRecords()).isEmpty();
+        assertThat(page.getTotal()).isZero();
+        verifyNoInteractions(contentApi);
+    }
 
     @Test
     void aggregateSemantic_groupsByKnowledgeWithScoreAndAnchor() {
