@@ -12,6 +12,7 @@ import { logoutApi } from '@/modules/identity/api/auth'
 import NotificationBell from '@/modules/notification/components/NotificationBell.vue'
 import FloatingAssistant from '@/modules/chat/components/FloatingAssistant.vue'
 import SiteTour from '@/modules/blog/components/SiteTour.vue'
+import SiteFooter from '@/components/SiteFooter.vue'
 import XlLogo from '@/components/XlLogo.vue'
 import InitialAvatar from '@/components/InitialAvatar.vue'
 
@@ -21,6 +22,8 @@ const session = useSessionStore()
 
 // bare 沉浸式路由（登录/注册）：隐藏全局顶部导航栏
 const barePage = computed(() => route.meta.bare === true)
+
+const showFooter = computed(() => !barePage.value && route.name !== 'chat')
 
 const keyword = ref('')
 
@@ -185,6 +188,7 @@ function handleNavCommand(command: string): void {
     </header>
 
     <RouterView />
+    <SiteFooter v-if="showFooter" />
     <!-- 全站悬浮小光：登录/访客均可用，右下角悬浮球 -->
     <FloatingAssistant />
     <!-- 站点 AI 导游：首次访问自动弹出的分步导览（登录/注册页不放行） -->
