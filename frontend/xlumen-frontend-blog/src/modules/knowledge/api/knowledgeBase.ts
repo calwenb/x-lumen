@@ -13,6 +13,8 @@ export interface KnowledgeBase {
   cover: string
   visibility: 0 | 1
   knowledgeCount: number
+  /** 公开目录树（仅公开库详情接口返回；其余接口无此字段）。 */
+  directories?: DirectoryNode[]
   createdAt: string
   updatedAt: string
 }
@@ -69,6 +71,11 @@ interface RawKnowledgeBase {
   updatedAt: string
 }
 
+/** 公开库详情原始响应：在库字段基础上携公开目录树。 */
+interface RawPublicKnowledgeBase extends RawKnowledgeBase {
+  directories?: RawDirectoryNode[]
+}
+
 interface RawDirectoryNode {
   id: string
   kbId: string
@@ -94,13 +101,19 @@ export async function fetchKnowledgeBases(): Promise<KnowledgeBase[]> {
 }
 
 /**
- * 公开知识库探测：公开库返回库信息；私有库/不存在抛「知识库不存在或无权访问」。
+ * 公开知识库探测：公开库返回库信息（含已发布知识数与公开目录树）；私有库/不存在抛「知识库不存在或无权访问」。
  * 供 /kb/[id] 页区分「公开可读 / 私有不可达」两种直链场景，避免静默回退。
  */
 export async function fetchPublicKnowledgeBase(kbId: string): Promise<KnowledgeBase> {
-  const { data } = await http.get<ApiResponse<RawKnowledgeBase>>(`/public/knowledge-bases/${kbId}`)
-  const kb = unwrap(data)
-  return { ...kb, knowledgeCount: toNumber(kb.knowledgeCount) }
+  const { data } = await http.get<ApiResponse<RawPublicKnowledgeBase>>(
+    `/public/knowledge-bases/${kbId}`,
+  )
+  const { directories, ...kb } = unwrap(data)
+  return {
+    ...kb,
+    knowledgeCount: toNumber(kb.knowledgeCount),
+    directories: (directories ?? []).map((node) => mapDirectory(node)),
+  }
 }
 
 /** 创建知识库。 */

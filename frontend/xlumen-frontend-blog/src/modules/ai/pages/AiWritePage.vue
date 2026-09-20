@@ -19,6 +19,9 @@ import type { SseEvent } from '@/modules/ai/utils/sse'
 type WriteMode = 'topic' | 'draft' | 'content'
 type WritePhase = 'idle' | 'submitting' | 'streaming' | 'done' | 'error'
 
+/** 后端未产出标题时的通用占位；前端不应把它作为落库标题。 */
+const FALLBACK_TITLE = 'AI 生成文章'
+
 const MODES: ReadonlyArray<{ value: WriteMode; label: string }> = [
   { value: 'topic', label: '按主题' },
   { value: 'draft', label: '按草稿' },
@@ -181,6 +184,7 @@ async function handleDone(id: string, data: string): Promise<void> {
     // 结果不可解析时回退为流式文本
     resultContent.value = streamText.value
   }
+  normalizeTitle()
   phase.value = 'done'
   controller?.abort()
 }
@@ -193,6 +197,39 @@ function applyResult(resultJson: string): void {
   } catch {
     resultContent.value = streamText.value
   }
+  normalizeTitle()
+}
+
+/** 后端未给出可用标题时（空或通用占位），回退为正文标题/用户输入，避免展示与落库都用占位标题。 */
+function normalizeTitle(): void {
+  const parsed = resultTitle.value.trim()
+  if (parsed && parsed !== FALLBACK_TITLE) return
+  resultTitle.value = resolveKnowledgeTitle()
+}
+
+/**
+ * 落库/展示标题回退链：生成结果标题（非通用占位）→ 正文首个一级标题 →
+ * 用户输入的写作主题/知识标题 → 兜底常量。避免用户只给主题时标题恒为「AI 生成文章」。
+ */
+function resolveKnowledgeTitle(): string {
+  const parsed = resultTitle.value.trim()
+  if (parsed && parsed !== FALLBACK_TITLE) return parsed
+  const heading = extractHeadingTitle(resultContent.value)
+  if (heading && heading !== FALLBACK_TITLE) return heading
+  const userInput =
+    mode.value === 'topic'
+      ? topic.value.trim()
+      : mode.value === 'content'
+        ? contentTitle.value.trim()
+        : ''
+  if (userInput) return userInput
+  return parsed || FALLBACK_TITLE
+}
+
+/** 提取 Markdown 正文的首个一级标题（`# 标题`），无则返回空串。 */
+function extractHeadingTitle(markdown: string): string {
+  const match = markdown.match(/^[ \t]*#[ \t]+(.+?)[ \t]*$/m)
+  return match?.[1]?.trim() ?? ''
 }
 
 async function handleRetry(): Promise<void> {
@@ -222,9 +259,9 @@ function reset(): void {
 }
 
 async function saveAsKnowledge(): Promise<void> {
-  const title = resultTitle.value.trim()
+  const title = resolveKnowledgeTitle()
   const body = resultContent.value.trim()
-  if (!title || !body) {
+  if (!body) {
     saveMessage.value = '生成内容不完整，请重新生成后再保存'
     return
   }
@@ -232,6 +269,8 @@ async function saveAsKnowledge(): Promise<void> {
     saveMessage.value = '请选择知识库'
     return
   }
+  // 落库前回填解析后的标题，保证跳转编辑器时标题为有意义的值
+  resultTitle.value = title
   saving.value = true
   saveMessage.value = ''
   try {

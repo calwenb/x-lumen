@@ -29,7 +29,7 @@ public interface ActivityLogService {
     /**
      * 分页查询当前空间的审计日志（只读）。
      *
-     * @param query action 筛选 + 分页参数（action 可空 = 全部）
+     * @param query 动作关键字（子串、大小写不敏感）+ 分页参数（action 可空 = 全部）
      * @return 审计日志分页
      */
     PageVO<AuditLogVO> listAuditLogs(AuditLogQueryDTO query);

@@ -1,9 +1,13 @@
 package com.calwen.xlumen.knowledge.service.impl;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.calwen.xlumen.knowledge.api.KnowledgeApi;
+import com.calwen.xlumen.knowledge.api.KnowledgeCountApi;
 import com.calwen.xlumen.knowledge.api.dto.IndexRequestDTO;
 import com.calwen.xlumen.knowledge.api.dto.SearchRequestDTO;
 import com.calwen.xlumen.knowledge.api.dto.SearchResultDTO;
+import com.calwen.xlumen.knowledge.entity.KbDirectoryEntity;
+import com.calwen.xlumen.knowledge.mapper.KbDirectoryMapper;
 import com.calwen.xlumen.knowledge.service.DirectoryService;
 import com.calwen.xlumen.knowledge.service.IndexPipelineService;
 import com.calwen.xlumen.knowledge.service.KnowledgeBaseService;
@@ -13,9 +17,14 @@ import com.calwen.xlumen.knowledge.service.VisibilityService;
 import com.calwen.xlumen.knowledge.vo.DirectoryVO;
 import com.calwen.xlumen.knowledge.vo.KnowledgeBaseVO;
 import jakarta.annotation.Resource;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 知识模块对外接口实现（KnowledgeApi，M05）：索引/检索委托索引流水线与检索服务；
@@ -40,6 +49,11 @@ public class KnowledgeApiImpl implements KnowledgeApi {
     private VisibilityService visibilityService;
     @Resource
     private RecycleBinService recycleBinService;
+    @Resource
+    private KbDirectoryMapper directoryMapper;
+    /** 知识数统计（反向 SPI）：实现由 content 模块提供，缺省时按 0 展示。 */
+    @Resource
+    private ObjectProvider<KnowledgeCountApi> knowledgeCountApiProvider;
 
     @Override
     public void indexKnowledge(IndexRequestDTO request) {
@@ -85,6 +99,55 @@ public class KnowledgeApiImpl implements KnowledgeApi {
     @Override
     public List<DirectoryVO> getDirectoryTree(Long kbId) {
         return directoryService.tree(kbId);
+    }
+
+    @Override
+    public List<DirectoryVO> getPublishedDirectoryTree(Long kbId) {
+        if (kbId == null) {
+            return List.of();
+        }
+        // 跨空间只读：直接按 kbId 取目录，不经 DirectoryService（后者按会话空间校验，
+        // 登录的非库主读公开库会被误判为无权而 404）；目录按名称排序由 SQL 保证
+        List<KbDirectoryEntity> dirs = directoryMapper.selectList(Wrappers.<KbDirectoryEntity>lambdaQuery()
+                .eq(KbDirectoryEntity::getKbId, kbId)
+                .orderByAsc(KbDirectoryEntity::getName));
+        if (dirs.isEmpty()) {
+            return List.of();
+        }
+        List<Long> directoryIds = dirs.stream().map(KbDirectoryEntity::getId).toList();
+        KnowledgeCountApi counter = knowledgeCountApiProvider.getIfAvailable();
+        Map<Long, Long> counts = counter == null
+                ? Map.of() : counter.countPublishedByDirectoryIds(kbId, directoryIds);
+        // 构造新 VO 实例：不复用认证路径的 DirectoryVO 统计口径，避免公开口径污染既有语义
+        Map<Long, List<DirectoryVO>> byParent = dirs.stream()
+                .map(d -> toPublishedDirectoryVO(d, counts.getOrDefault(d.getId(), 0L)))
+                .collect(Collectors.groupingBy(DirectoryVO::getParentId, LinkedHashMap::new, Collectors.toList()));
+        byParent.values().forEach(list -> list.forEach(vo -> vo.setChildren(byParent.getOrDefault(vo.getId(), List.of()))));
+        return byParent.getOrDefault(0L, List.of());
+    }
+
+    @Override
+    public long countPublishedKnowledge(Long kbId) {
+        if (kbId == null) {
+            return 0L;
+        }
+        KnowledgeCountApi counter = knowledgeCountApiProvider.getIfAvailable();
+        if (counter == null) {
+            return 0L;
+        }
+        return counter.countPublishedByKbIds(List.of(kbId)).getOrDefault(kbId, 0L);
+    }
+
+    /** 公开口径目录视图：knowledgeCount 为已发布且未回收的知识数（调用方提供）。 */
+    private DirectoryVO toPublishedDirectoryVO(KbDirectoryEntity d, Long knowledgeCount) {
+        return DirectoryVO.builder()
+                .id(d.getId())
+                .kbId(d.getKbId())
+                .parentId(d.getParentId())
+                .name(d.getName())
+                .knowledgeCount(knowledgeCount)
+                .children(new ArrayList<>())
+                .build();
     }
 
     @Override

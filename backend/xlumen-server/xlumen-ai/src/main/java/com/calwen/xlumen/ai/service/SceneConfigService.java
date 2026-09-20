@@ -23,12 +23,22 @@ public interface SceneConfigService {
     SceneModel resolve(Long workspaceId, AiScene scene);
 
     /**
-     * 查询工作空间下的场景配置列表（密钥永不返回）。
+     * 查询工作空间下的全部场景配置（密钥永不返回）：覆盖配置（ai_scene_config 行，可为空）
+     * 与运行时生效配置及来源（数据库覆盖 / 环境默认）一并返回，未落库场景同样列出。
      *
      * @param workspaceId 工作空间 ID
-     * @return 配置列表
+     * @return 配置列表（按 AiScene 声明顺序）
      */
     List<ModelConfigVO> list(Long workspaceId);
+
+    /**
+     * 查询单个场景配置：覆盖配置与生效配置及来源，语义与 {@link #list(Long)} 一致。
+     *
+     * @param workspaceId 工作空间 ID
+     * @param scene       场景
+     * @return 场景配置视图
+     */
+    ModelConfigVO get(Long workspaceId, AiScene scene);
 
     /**
      * 新增或更新场景配置（provider/model/paramsJson/prompt/dailyQuota，密钥不入表）。

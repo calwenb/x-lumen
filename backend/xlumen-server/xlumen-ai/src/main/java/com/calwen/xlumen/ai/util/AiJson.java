@@ -64,4 +64,67 @@ public final class AiJson {
             return null;
         }
     }
+
+    /**
+     * 宽容提取 JSON 数组：先按 {@link #extractArray} 严格解析；整段因模型输出被 maxTokens 截断而无法解析时，
+     * 按字符串无关的括号平衡扫描，截取到最后一个完整的顶层元素（末尾补 {@code ]}）再解析，
+     * 尽量抢救出截断点之前已经完整的对象。完全无数组或连一个完整元素都没有时返回 null。
+     * 既有 {@link #extractArray} 语义不变，本方法只在需要容错调用时使用。
+     */
+    public static JSONArray extractArrayLenient(String raw) {
+        JSONArray strict = extractArray(raw);
+        if (strict != null) {
+            return strict;
+        }
+        String s = extractArrayText(raw);
+        int open = s.indexOf('[');
+        if (open < 0) {
+            return null;
+        }
+        int lastComplete = lastCompleteElementEnd(s, open);
+        if (lastComplete < 0) {
+            return null;
+        }
+        try {
+            return JSONUtil.parseArray(s.substring(open, lastComplete + 1) + "]");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 从数组起始括号开始扫描，返回最后一个完整顶层元素的结束下标（其后的 {@code }}）；无完整元素返回 -1。
+     * 扫描感知 JSON 字符串与转义，不受元素内文本的括号干扰。
+     */
+    private static int lastCompleteElementEnd(String s, int open) {
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+        int lastComplete = -1;
+        for (int i = open; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+            } else if (c == '{' || c == '[') {
+                depth++;
+            } else if (c == '}' || c == ']') {
+                depth--;
+                if (c == '}' && depth == 1) {
+                    // depth 归 1 = 该顶层元素闭合（数组括号本身占 1 层）
+                    lastComplete = i;
+                }
+            }
+        }
+        return lastComplete;
+    }
 }

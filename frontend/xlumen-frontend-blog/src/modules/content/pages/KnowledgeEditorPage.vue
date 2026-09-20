@@ -10,6 +10,7 @@ import {
   autosaveDraft,
   createKnowledge,
   fetchKnowledge,
+  KnowledgeConflictError,
   updateKnowledge,
   STATUS_LABELS,
 } from '@/modules/content/api/knowledge'
@@ -64,6 +65,8 @@ const lastKbId = ref('')
 const lastDirectoryId = ref('0')
 const lastTagsInput = ref('')
 const conflict = ref(false)
+/** 冲突时服务端的原始提示，原样展示，不吞成泛化文案。 */
+const conflictDetail = ref('')
 
 interface EditorSnapshot {
   title: string
@@ -100,37 +103,77 @@ const isDirty = () =>
   directoryId.value !== lastDirectoryId.value ||
   tagsInput.value !== lastTagsInput.value
 
-/** 自动保存回调：新建草稿必须有归属库（决策 D16），未选库时跳过。 */
+/**
+ * 保存串行化：同一时刻至多一个在途保存请求。
+ * 手动保存排队在在途自动保存之后，因此读取到的是自动保存已同步的最新版本号，
+ * 消除单客户端内自动保存与手动保存互相触发 409 的自竞争。
+ */
+let saveQueue: Promise<unknown> = Promise.resolve()
+
+function enqueueSave<T>(task: () => Promise<T>): Promise<T> {
+  const run = saveQueue.then(task, task)
+  saveQueue = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
+/** 自动保存回调：新建草稿必须有归属库（决策 D16），未选库或正文为空时跳过。 */
 async function doAutoSave(): Promise<{ id: string; version: string } | null> {
-  if (isPublished.value || !title.value.trim() || !kbId.value) {
+  // 正文校验只针对显式保存/发布：用户清空重写过程中自动保存静默跳过，避免报错刷屏。
+  if (isPublished.value || !title.value.trim() || !content.value.trim() || !kbId.value) {
     return null
   }
-  const snapshot = takeEditorSnapshot()
-  const firstSave = !knowledgeId.value
-  const saved = await autosaveDraft({
-    ...(knowledgeId.value ? { knowledgeId: knowledgeId.value, version: version.value } : {}),
-    title: snapshot.title,
-    content: snapshot.content,
-    kbId: snapshot.kbId,
-    directoryId: snapshot.directoryId,
-    tags: snapshot.tags,
-  })
-  knowledgeId.value = saved.id
-  version.value = saved.version
-  markSavedSnapshot(snapshot)
-  if (firstSave) {
-    await router.replace({ name: 'knowledge-edit', params: { id: saved.id } })
+  try {
+    return await enqueueSave(async () => {
+      const snapshot = takeEditorSnapshot()
+      const firstSave = !knowledgeId.value
+      const saved = await autosaveDraft({
+        ...(knowledgeId.value ? { knowledgeId: knowledgeId.value, version: version.value } : {}),
+        title: snapshot.title,
+        content: snapshot.content,
+        kbId: snapshot.kbId,
+        directoryId: snapshot.directoryId,
+        tags: snapshot.tags,
+      })
+      knowledgeId.value = saved.id
+      version.value = saved.version
+      markSavedSnapshot(snapshot)
+      if (firstSave) {
+        await router.replace({ name: 'knowledge-edit', params: { id: saved.id } })
+      }
+      return { id: saved.id, version: saved.version }
+    })
+  } catch (error) {
+    // 自动保存遇真冲突：统一在页面冲突面板处理并保留本地内容，不让组合式函数再置 error 文案
+    if (error instanceof KnowledgeConflictError) {
+      conflict.value = true
+      conflictDetail.value = error.serverMessage
+      saveMessage.value = ''
+      return null
+    }
+    throw error
   }
-  return { id: saved.id, version: saved.version }
 }
 
 const autoSave = useAutoSave(isDirty, doAutoSave, () => {
   conflict.value = true
 })
 
-/** 切换知识库时重新加载目录树并复位目录选择。 */
+/**
+ * 详情加载带入的目标目录：目录树异步返回，先记录目标值，
+ * 目录 watch 触发时不再无条件复位为库根，避免「详情先到、目录树后到」把回显冲掉。
+ */
+let pendingDirectoryId: string | null = null
+
+/** 切换知识库时重新加载目录树；新建时目录复位为库根。 */
 watch(kbId, async (next) => {
-  directoryId.value = '0'
+  const restoredDirectoryId = pendingDirectoryId
+  pendingDirectoryId = null
+  if (!restoredDirectoryId) {
+    directoryId.value = '0'
+  }
   if (!next) {
     directoryOptions.value = []
     return
@@ -143,10 +186,6 @@ watch(kbId, async (next) => {
     directoryOptions.value = []
   } finally {
     directoriesLoading.value = false
-  }
-  // 已有知识加载完成后设置目录，避免被 watch 复位
-  if (restoring.value) {
-    restoring.value = false
   }
 })
 
@@ -163,13 +202,36 @@ function flattenDirectories(
   return result
 }
 
-/** 编辑模式加载过程中抑制目录 watch 复位（加载完统一回填）。 */
-const restoring = ref(false)
+/** 复制本地未保存内容：冲突时让用户可先自行备份，再决定是否加载服务端版本。 */
+async function handleCopyLocal(): Promise<void> {
+  const text = `${title.value}\n\n${content.value}`
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('本地内容已复制到剪贴板')
+  } catch {
+    ElMessage.warning('浏览器未授权剪贴板访问，请手动选中复制')
+  }
+}
 
+/** 409 恢复入口：确认后加载服务端最新版本覆盖本地（不静默覆盖未保存内容）。 */
 async function handleConflict(): Promise<void> {
-  // 409 恢复入口：重新拉取服务端最新内容覆盖本地
-  if (knowledgeId.value) {
-    const latest = await fetchKnowledge(knowledgeId.value)
+  if (!knowledgeId.value) {
+    conflict.value = false
+    return
+  }
+  if (isDirty()) {
+    try {
+      await ElMessageBox.confirm(
+        '加载服务端最新版本会替换当前编辑器内容，本地未保存的修改将不再显示（可先点「复制本地内容」备份）。是否继续？',
+        '加载服务端最新版本',
+        { confirmButtonText: '加载最新版本', cancelButtonText: '取消', type: 'warning' },
+      )
+    } catch {
+      return
+    }
+  }
+  await enqueueSave(async () => {
+    const latest = await fetchKnowledge(knowledgeId.value as string)
     title.value = latest.title
     content.value = latest.content
     kbId.value = latest.kbId ?? ''
@@ -177,11 +239,13 @@ async function handleConflict(): Promise<void> {
     tagsInput.value = latest.tags.join(', ')
     version.value = latest.version
     markSavedSnapshot()
-  }
+  })
   conflict.value = false
+  conflictDetail.value = ''
+  saveMessage.value = '已加载服务端最新版本'
 }
 
-/** 显式保存（创建或更新）：与自动保存同一幂等通道。 */
+/** 显式保存（创建或更新）：与自动保存串行同一幂等通道。 */
 async function handleSave(): Promise<boolean> {
   if (isPublished.value) {
     saveMessage.value = '已发布版本不可修改，如需调整请新建知识后重新发布'
@@ -191,45 +255,54 @@ async function handleSave(): Promise<boolean> {
     saveMessage.value = '请先填写标题'
     return false
   }
+  if (!content.value.trim()) {
+    saveMessage.value = '请先填写正文'
+    return false
+  }
   if (!kbId.value) {
     saveMessage.value = '请选择知识库'
     return false
   }
   saving.value = true
-  conflict.value = false
   saveMessage.value = ''
-  const snapshot = takeEditorSnapshot()
   try {
-    if (isNew.value && !knowledgeId.value) {
-      const created = await createKnowledge({
-        title: snapshot.title,
-        content: snapshot.content,
-        kbId: snapshot.kbId,
-        directoryId: snapshot.directoryId,
-        tags: snapshot.tags,
-      })
-      knowledgeId.value = created.id
-      version.value = created.version
-      status.value = created.status
-      markSavedSnapshot(snapshot)
-      await router.replace({ name: 'knowledge-edit', params: { id: created.id } })
-    } else if (knowledgeId.value) {
-      const updated = await updateKnowledge(knowledgeId.value, version.value, {
-        title: snapshot.title,
-        content: snapshot.content,
-        kbId: snapshot.kbId,
-        directoryId: snapshot.directoryId,
-        tags: snapshot.tags,
-      })
-      version.value = updated.version
-      status.value = updated.status
-      markSavedSnapshot(snapshot)
-    }
-    saveMessage.value = '已保存'
-    return true
+    return await enqueueSave(async () => {
+      const snapshot = takeEditorSnapshot()
+      if (isNew.value && !knowledgeId.value) {
+        const created = await createKnowledge({
+          title: snapshot.title,
+          content: snapshot.content,
+          kbId: snapshot.kbId,
+          directoryId: snapshot.directoryId,
+          tags: snapshot.tags,
+        })
+        knowledgeId.value = created.id
+        version.value = created.version
+        status.value = created.status
+        markSavedSnapshot(snapshot)
+        await router.replace({ name: 'knowledge-edit', params: { id: created.id } })
+      } else if (knowledgeId.value) {
+        const updated = await updateKnowledge(knowledgeId.value, version.value, {
+          title: snapshot.title,
+          content: snapshot.content,
+          kbId: snapshot.kbId,
+          directoryId: snapshot.directoryId,
+          tags: snapshot.tags,
+        })
+        version.value = updated.version
+        status.value = updated.status
+        markSavedSnapshot(snapshot)
+      }
+      conflict.value = false
+      conflictDetail.value = ''
+      saveMessage.value = '已保存'
+      return true
+    })
   } catch (error) {
-    if (error instanceof Error && error.message.includes('冲突')) {
+    if (error instanceof KnowledgeConflictError) {
       conflict.value = true
+      conflictDetail.value = error.serverMessage
+      saveMessage.value = ''
     } else {
       saveMessage.value = error instanceof Error ? error.message : '保存失败'
     }
@@ -243,6 +316,10 @@ async function handleSave(): Promise<boolean> {
 async function handleAutoPublish(): Promise<void> {
   if (!title.value.trim()) {
     saveMessage.value = '请先填写标题'
+    return
+  }
+  if (!content.value.trim()) {
+    saveMessage.value = '请先填写正文'
     return
   }
   if (!kbId.value) {
@@ -295,21 +372,24 @@ onMounted(async () => {
     knowledgeBases.value = []
   }
   if (!isNew.value) {
-    restoring.value = true
     try {
       const knowledge = await fetchKnowledge(String(route.params.id))
       knowledgeId.value = knowledge.id
       version.value = knowledge.version
       title.value = knowledge.title
       content.value = knowledge.content
-      kbId.value = knowledge.kbId ?? ''
-      directoryId.value = knowledge.directoryId ?? '0'
+      const loadedKbId = knowledge.kbId ?? ''
+      const loadedDirectoryId = knowledge.directoryId ?? '0'
+      // 目录树异步加载：先登记目标目录，kbId watch 据此跳过「复位库根」
+      pendingDirectoryId = loadedDirectoryId
+      kbId.value = loadedKbId
+      directoryId.value = loadedDirectoryId
       status.value = knowledge.status
       tagsInput.value = knowledge.tags.join(', ')
       lastSaved.value = knowledge.content
       lastTitle.value = knowledge.title
-      lastKbId.value = knowledge.kbId ?? ''
-      lastDirectoryId.value = knowledge.directoryId ?? '0'
+      lastKbId.value = loadedKbId
+      lastDirectoryId.value = loadedDirectoryId
       lastTagsInput.value = knowledge.tags.join(', ')
     } catch {
       loadError.value = true
@@ -325,7 +405,7 @@ onMounted(async () => {
 const canAutoPublish = computed(() => status.value === 2 || status.value === 4)
 
 const editorStatusText = computed(() => {
-  if (conflict.value) return '版本冲突'
+  if (conflict.value) return '版本冲突：内容已在其他地方被修改'
   if (submitting.value) return 'AI 审核中，请勿关闭页面…'
   if (autoSave.saving.value || saving.value) return '保存中…'
   if (autoSave.error.value) return autoSave.error.value
@@ -369,10 +449,14 @@ const editorStatusText = computed(() => {
     </div>
     <template v-else>
       <div v-if="conflict" class="editor-page__conflict" role="alert">
-        <p>知识在其他地方已被修改，为避免覆盖，请选择：</p>
-        <el-button type="warning" plain size="small" @click="handleConflict"
-          >加载服务端最新版本</el-button
-        >
+        <p>内容已在其他地方被修改。本地未保存的内容会一直保留，直到你选择如何处理，不会被静默覆盖。</p>
+        <p v-if="conflictDetail" class="editor-page__conflict-detail">服务端提示：{{ conflictDetail }}</p>
+        <div class="editor-page__conflict-actions">
+          <el-button type="warning" plain size="small" @click="handleConflict"
+            >加载服务端最新版本</el-button
+          >
+          <el-button plain size="small" @click="handleCopyLocal">复制本地内容</el-button>
+        </div>
       </div>
       <div v-if="saveMessage" class="editor-page__message" role="status">{{ saveMessage }}</div>
       <div v-if="isPublished" class="editor-page__message" role="status">
@@ -572,6 +656,17 @@ const editorStatusText = computed(() => {
 
 .editor-page__conflict p {
   margin: 0 0 8px;
+}
+
+.editor-page__conflict-detail {
+  color: var(--xl-text-secondary);
+  font-size: var(--xl-fs-caption);
+}
+
+.editor-page__conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .editor-page__message {

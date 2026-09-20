@@ -58,7 +58,8 @@ public class ActivityLogServiceImpl implements ActivityLogService {
         Page<ActivityLogEntity> page = activityLogMapper.selectPage(new Page<>(query.getPageNo(), query.getPageSize()),
                 Wrappers.<ActivityLogEntity>lambdaQuery()
                         .eq(ActivityLogEntity::getWorkspaceId, workspaceId)
-                        .eq(StrUtil.isNotBlank(query.getAction()), ActivityLogEntity::getAction, query.getAction())
+                        // 动作筛选按子串匹配（大小写不敏感由库排序规则保证），未命中由调用方与空数据区分。
+                        .like(StrUtil.isNotBlank(query.getAction()), ActivityLogEntity::getAction, query.getAction())
                         .orderByDesc(ActivityLogEntity::getCreatedAt));
         List<AuditLogVO> records = page.getRecords().stream()
                 .map(e -> AuditLogVO.builder()

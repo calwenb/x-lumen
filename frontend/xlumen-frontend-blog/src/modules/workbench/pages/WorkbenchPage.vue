@@ -2,8 +2,21 @@
 // 创作工作台（B09）：内容创作链路聚合入口（知识管理/写作/审核/发布）。
 // 依赖各里程碑逐个接入：M04 知识管理；AI 写作随 M07、审核随 M10、发布随 M10 接入路由后启用。
 // 恢复「审核中心」入口/studio/review → ReviewCenterPage，B12）。
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { DocumentChecked, EditPen, Promotion, Stamp } from '@element-plus/icons-vue'
+import {
+  Delete,
+  DocumentChecked,
+  EditPen,
+  FolderOpened,
+  Plus,
+  Promotion,
+  Stamp,
+} from '@element-plus/icons-vue'
+
+import { fetchKnowledges } from '@/modules/content/api/knowledge'
+import { fetchKnowledgeBases } from '@/modules/knowledge/api/knowledgeBase'
+import { fetchReviews } from '@/modules/publishing/api/review'
 
 /** 工作台入口定义：路由可用则展示。 */
 const entries = [
@@ -37,6 +50,65 @@ const entries = [
     enabled: true,
   },
 ] as const
+
+/** 快捷入口：均为真实可达路由，避免占位死链。 */
+const quickLinks = [
+  { label: '创建知识', to: { name: 'knowledge-new' }, icon: Plus },
+  { label: '知识库管理', to: { name: 'kb-manage' }, icon: FolderOpened },
+  { label: '回收站', to: { name: 'recycle-bin' }, icon: Delete },
+] as const
+
+/** 概览指标：取不到时为 null，界面降级为「—」而非 NaN/白屏。 */
+interface WorkbenchMetrics {
+  pendingReview: number | null
+  draft: number | null
+  published: number | null
+  privateKnowledge: number | null
+}
+
+const metrics = ref<WorkbenchMetrics>({
+  pendingReview: null,
+  draft: null,
+  published: null,
+  privateKnowledge: null,
+})
+
+const metricsDegraded = computed(
+  () =>
+    metrics.value.pendingReview === null ||
+    metrics.value.draft === null ||
+    metrics.value.published === null ||
+    metrics.value.privateKnowledge === null,
+)
+
+function metricText(value: number | null): string {
+  return value === null ? '—' : String(value)
+}
+
+/** 概览取数：全部走既有接口，单项失败只降级该项。 */
+async function loadMetrics(): Promise<void> {
+  const [reviewResult, draftResult, publishedResult, kbResult] = await Promise.allSettled([
+    fetchReviews({ status: 'PENDING', pageNo: 1, pageSize: 1 }),
+    fetchKnowledges({ status: 2, pageNo: 1, pageSize: 1 }),
+    fetchKnowledges({ status: 6, pageNo: 1, pageSize: 1 }),
+    fetchKnowledgeBases(),
+  ])
+  metrics.value.pendingReview =
+    reviewResult.status === 'fulfilled' ? reviewResult.value.total : null
+  metrics.value.draft = draftResult.status === 'fulfilled' ? draftResult.value.total : null
+  metrics.value.published =
+    publishedResult.status === 'fulfilled' ? publishedResult.value.total : null
+  metrics.value.privateKnowledge =
+    kbResult.status === 'fulfilled'
+      ? kbResult.value
+          .filter((kb) => kb.visibility === 0)
+          .reduce((sum, kb) => sum + kb.knowledgeCount, 0)
+      : null
+}
+
+onMounted(() => {
+  void loadMetrics()
+})
 </script>
 
 <template>
@@ -46,7 +118,46 @@ const entries = [
       <p class="workbench__intro">
         从这里开始内容创作：写知识 → 发布前自动 AI 审校 → 发布 → 自动索引，形成完整闭环。
       </p>
+      <!-- 快捷入口：创建知识 + 知识库/回收站直达（均为真实路由） -->
+      <nav class="workbench__quickbar" aria-label="快捷操作">
+        <RouterLink
+          v-for="link in quickLinks"
+          :key="link.label"
+          class="workbench__quick-link"
+          :to="link.to"
+        >
+          <el-icon aria-hidden="true"><component :is="link.icon" /></el-icon>
+          <span>{{ link.label }}</span>
+        </RouterLink>
+      </nav>
     </header>
+
+    <!-- 概览指标：数据来自既有接口；单项取数失败降级为「—」 -->
+    <section class="workbench__metrics" aria-label="创作概览">
+      <RouterLink class="workbench__metric" :to="{ name: 'review-center' }">
+        <span class="workbench__metric-value">{{ metricText(metrics.pendingReview) }}</span>
+        <span class="workbench__metric-label">待我审核</span>
+        <span class="workbench__metric-hint">审核中心</span>
+      </RouterLink>
+      <RouterLink class="workbench__metric" :to="{ name: 'knowledge-list' }">
+        <span class="workbench__metric-value">{{ metricText(metrics.draft) }}</span>
+        <span class="workbench__metric-label">草稿待完善</span>
+        <span class="workbench__metric-hint">进行中的创作</span>
+      </RouterLink>
+      <RouterLink class="workbench__metric" :to="{ name: 'release-list' }">
+        <span class="workbench__metric-value">{{ metricText(metrics.published) }}</span>
+        <span class="workbench__metric-label">已发布知识</span>
+        <span class="workbench__metric-hint">累计发布</span>
+      </RouterLink>
+      <RouterLink class="workbench__metric" :to="{ name: 'kb-manage' }">
+        <span class="workbench__metric-value">{{ metricText(metrics.privateKnowledge) }}</span>
+        <span class="workbench__metric-label">私有库知识</span>
+        <span class="workbench__metric-hint">知识库管理</span>
+      </RouterLink>
+    </section>
+    <p v-if="metricsDegraded" class="workbench__metrics-note" role="status">
+      部分指标暂不可用，可稍后刷新重试。
+    </p>
 
     <div class="workbench__path">
       <svg
@@ -99,13 +210,6 @@ const entries = [
           <span class="workbench__chip">草稿箱</span>
           <span class="workbench__chip">我的知识</span>
           <span class="workbench__chip">可见性设置</span>
-        </div>
-        <div class="workbench__quick">
-          <span class="workbench__quick-label">快速入口</span>
-          <span class="workbench__chip">产品文档</span>
-          <span class="workbench__chip">技术指南</span>
-          <span class="workbench__chip">最佳实践</span>
-          <span class="workbench__chip">模板中心</span>
         </div>
       </article>
 
@@ -214,6 +318,87 @@ const entries = [
   color: var(--xl-text-secondary);
   font-size: var(--xl-fs-body);
   line-height: var(--xl-fs-body-lh);
+}
+
+/* 快捷入口（header 内）：创建知识 / 知识库管理 / 回收站 */
+.workbench__quickbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--xl-space-2);
+  margin-top: var(--xl-space-4);
+}
+
+.workbench__quick-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--xl-border);
+  border-radius: 999px;
+  background: var(--xl-bg-surface);
+  color: var(--xl-text-primary);
+  font-size: 14px;
+  text-decoration: none;
+  transition:
+    border-color var(--xl-transition),
+    color var(--xl-transition);
+}
+
+.workbench__quick-link:hover {
+  border-color: var(--xl-color-primary);
+  color: var(--xl-color-primary);
+}
+
+/* 概览指标卡：四张真实取数卡片，点击直达对应模块 */
+.workbench__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--xl-space-4);
+}
+
+.workbench__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 18px 20px;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-card);
+  background: var(--xl-bg-surface);
+  box-shadow: var(--xl-shadow-sm);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color var(--xl-transition),
+    box-shadow var(--xl-transition);
+}
+
+.workbench__metric:hover {
+  border-color: color-mix(in srgb, var(--xl-color-primary) 40%, var(--xl-border));
+  box-shadow: var(--xl-shadow-md);
+}
+
+.workbench__metric-value {
+  color: var(--xl-text-primary);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.workbench__metric-label {
+  color: var(--xl-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.workbench__metric-hint {
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.workbench__metrics-note {
+  margin: var(--xl-space-2) 0 0;
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
 }
 
 /* 创作路径：细光轨 + 四段入口，从左上走向右下 */
@@ -392,22 +577,6 @@ const entries = [
   border-top: 1px solid var(--xl-border);
 }
 
-.workbench__quick {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--xl-space-2);
-  margin-top: var(--xl-space-4);
-  padding-top: var(--xl-space-3);
-  border-top: 1px solid var(--xl-border);
-}
-
-.workbench__quick-label {
-  color: var(--xl-text-secondary);
-  font-size: var(--xl-fs-caption);
-  font-weight: 600;
-}
-
 .workbench__chip {
   padding: 3px 10px;
   border: 1px solid var(--xl-border);
@@ -425,6 +594,10 @@ const entries = [
 }
 
 @media (width <= 900px) {
+  .workbench__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .workbench__path {
     grid-template-columns: 1fr;
   }

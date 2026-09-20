@@ -116,6 +116,14 @@ export async function toggleDislike(knowledgeId: string): Promise<ReactionResult
   return unwrap(data)
 }
 
+/** 当前用户反应状态（需登录）：详情接口仅回 liked 布尔，无法区分「已踩」，用本接口校正初始态。 */
+export async function fetchReactionStatus(knowledgeId: string): Promise<Reaction> {
+  const { data } = await http.get<ApiResponse<ReactionResult>>(
+    knowledgeUrl(knowledgeId, '/like/status'),
+  )
+  return unwrap(data).reaction
+}
+
 /** 收藏 toggle（需登录）：返回 true=已收藏 / false=已取消。 */
 export async function toggleFavorite(knowledgeId: string): Promise<boolean> {
   const { data } = await http.post<ApiResponse<boolean>>(knowledgeUrl(knowledgeId, '/favorite'))

@@ -18,18 +18,28 @@ export const SCENE_LABELS: Record<string, string> = {
   REVIEWER: '审核',
   QA: '问答',
   SUMMARY: '摘要',
+  SEO: 'SEO',
 }
 
 export interface ModelConfig {
   scene: string
+  /** 覆盖供应商（ai_scene_config 行；无覆盖时后端返回 null，页面加载时归一化为空串）。 */
   provider: string
+  /** 覆盖模型（无覆盖时后端返回 null，页面加载时归一化为空串）。 */
   model: string
   paramsJson?: string
   /** 场景 Prompt（WRITING 场景为 JSON 文本；空字符串表示默认）。 */
   prompt?: string
   /** 每日配额：0 表示不限。 */
   dailyQuota: number
+  /** 覆盖行更新时间；无覆盖行时为空。 */
   updatedAt: string
+  /** 运行时生效的供应商（数据库覆盖优先，否则环境默认）。 */
+  effectiveProvider: string
+  /** 运行时生效的模型（数据库覆盖优先，否则环境默认）。 */
+  effectiveModel: string
+  /** 生效来源：DB=数据库覆盖，ENV=环境默认（profile YAML）。 */
+  source: 'DB' | 'ENV'
 }
 
 /** 更新入参（prompt/dailyQuota 缺省或 null 时后端保持原值）。 */

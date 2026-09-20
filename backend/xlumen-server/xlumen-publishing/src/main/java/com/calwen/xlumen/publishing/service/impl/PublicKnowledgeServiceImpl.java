@@ -26,6 +26,7 @@ import com.calwen.xlumen.publishing.service.PublicKnowledgeService;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -53,6 +54,13 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
     /** 阅读量防刷窗口（小时）。 */
     private static final Duration VIEW_DEDUP_TTL = Duration.ofHours(24);
     private static final String VIEW_KEY_PREFIX = "xlumen:view:";
+
+    /** 语义检索召回条数（同时也是单页上限，语义检索单次请求不分页）。 */
+    private static final int SEMANTIC_TOP_K = 50;
+
+    /** 语义检索相关度下限（余弦相似度），见 xlumen.retrieval-min-score；低于此值视为不相关。 */
+    @Value("${xlumen.retrieval-min-score}")
+    private float retrievalMinScore;
 
     @Resource
     private ContentApi contentApi;
@@ -180,6 +188,10 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
         if (kb == null || !Integer.valueOf(1).equals(kb.getVisibility())) {
             throw new BizException(ErrorCode.NOT_FOUND, "知识库不存在或无权访问");
         }
+        // 公开口径（跨空间 + 仅已发布 + 未回收）：与认证路径统计（按空间过滤、含草稿）不同，
+        // 覆盖 getKnowledgeBaseById 返回的 0，并补公开只读目录树供前台渲染目录面板
+        kb.setKnowledgeCount(knowledgeApi.countPublishedKnowledge(kbId));
+        kb.setDirectories(knowledgeApi.getPublishedDirectoryTree(kbId));
         return kb;
     }
 
@@ -243,20 +255,31 @@ public class PublicKnowledgeServiceImpl implements PublicKnowledgeService {
         return hotKnowledgeCacheService.getTags(() -> contentApi.listTags(null));
     }
 
-    /** 语义检索（登录可用）：query→Embedding→Milvus 可见库过滤→按知识段落聚合；任一环节失败/无命中返回 null 触发关键词回退。 */
+    /** 语义检索（登录可用）：query→Embedding→Milvus 可见库过滤→相关度下限裁剪→按知识段落聚合。
+     *  检索链路不可用（异常）返回 null 触发关键词回退；链路正常但无相关知识返回空页，不回退。 */
     private PageResult<KnowledgeCardVO> semanticSearch(KnowledgeQueryDTO query, List<Long> visibleKbIds) {
         try {
             List<SearchResultDTO> results = knowledgeApi.search(SearchRequestDTO.builder()
                     .query(query.getKeyword())
                     .kbIds(visibleKbIds)
-                    .topK(50)
+                    .topK(SEMANTIC_TOP_K)
                     .build());
             if (results == null || results.isEmpty()) {
                 return null;
             }
-            List<KnowledgeCardVO> records = aggregateSemantic(results);
+            // 相关度下限（xlumen.retrieval-min-score）：向量检索只保证「最近」不保证「相关」，
+            // 不裁剪时任意查询都会把全库知识带上页（相关度 0.2~0.3 的也算命中）
+            List<SearchResultDTO> relevant = results.stream()
+                    .filter(r -> r.getScore() >= retrievalMinScore)
+                    .toList();
+            if (relevant.isEmpty()) {
+                return PageResult.<KnowledgeCardVO>builder()
+                        .total(0L).pageNo(query.getPageNo()).pageSize(query.getPageSize())
+                        .records(List.of()).build();
+            }
+            List<KnowledgeCardVO> records = aggregateSemantic(relevant);
             return PageResult.<KnowledgeCardVO>builder()
-                    .total(records.size()).pageNo(1).pageSize(50).records(records).build();
+                    .total(records.size()).pageNo(1).pageSize(SEMANTIC_TOP_K).records(records).build();
         } catch (Exception e) {
             log.warn("语义检索不可用，回退关键词检索 query={}", query.getKeyword(), e);
             return null;

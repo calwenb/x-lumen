@@ -156,6 +156,29 @@ function toChatItem(message: ChatMessage): ChatItem {
   }
 }
 
+/**
+ * 历史回放归一化：含工具调用的会话里，每次工具往返都会留下 content 为空的
+ * ASSISTANT 中间行（接口原样返回），逐行渲染会出现只有头像/昵称的空气泡。
+ * 这里把空内容行的工具调用合并进同一轮的正文回答，空行本身不再占消息位；
+ * 若整轮只有工具调用而无正文，则丢弃该中间行（无可展示回答，右轨亦无内容可挂）。
+ */
+function toChatItems(history: ChatMessage[]): ChatItem[] {
+  const items: ChatItem[] = []
+  let pendingToolCalls: ToolCallRecord[] = []
+  for (const message of history) {
+    if (message.role === 'assistant' && message.content.trim() === '') {
+      if (message.toolCalls.length > 0) pendingToolCalls.push(...message.toolCalls)
+      continue
+    }
+    if (message.role === 'assistant' && pendingToolCalls.length > 0) {
+      message.toolCalls = [...pendingToolCalls, ...message.toolCalls]
+      pendingToolCalls = []
+    }
+    items.push(toChatItem(message))
+  }
+  return items
+}
+
 async function loadConversations(): Promise<void> {
   if (!session.loggedIn) return
   conversationsLoading.value = true
@@ -186,7 +209,7 @@ async function selectConversation(id: string): Promise<void> {
   messages.value = []
   try {
     const history = await fetchMessages(id)
-    messages.value = history.map(toChatItem)
+    messages.value = toChatItems(history)
     // 历史回放：为每条 assistant 消息关联其前置用户问题（存草稿时的标题来源）
     let lastQuestion = ''
     for (const message of messages.value) {

@@ -52,8 +52,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**", "/api/v1/system/**", "/actuator/**",
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        // 博客前台公开读（~B01~B04）：GET 全部匿名；阅读量上报匿名；读者纠错匿名；评论/点赞需登录
+                        // 博客前台公开读（~B01~B04）：GET/HEAD 全部匿名（HEAD 供探针/校验类客户端）；
+                        // 阅读量上报匿名；读者纠错匿名；评论/点赞需登录
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/api/v1/public/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/public/knowledge/*/view").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/public/knowledge/*/feedback").permitAll()
                         // 访客问答（匿名，控制器内按 IP 限流）

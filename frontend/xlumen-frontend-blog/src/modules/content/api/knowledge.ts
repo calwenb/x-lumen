@@ -1,9 +1,34 @@
 // content 模块 API：知识管理（B10 创作中心）。
 // ID 与版本为 string（雪花 ID 超出 JS 安全整数，后端 Long 序列化为 String，BACKEND.md §5.3）；
 // 统计数值在 API 层 Number() 还原，页面代码不感知。
+import { isAxiosError } from 'axios'
+
 import { http, unwrap } from '@/api/http'
 
 import type { ApiResponse } from '@/api/types'
+
+/**
+ * 版本冲突（HTTP 409）：保留服务端原始提示，供页面区分「冲突」与普通失败，
+ * 避免依赖 message 文案做判断（后端不同接口的冲突文案不一致）。
+ */
+export class KnowledgeConflictError extends Error {
+  readonly serverMessage: string
+
+  constructor(serverMessage: string) {
+    super(serverMessage)
+    this.name = 'KnowledgeConflictError'
+    this.serverMessage = serverMessage
+  }
+}
+
+/** 将 409 转为可判别错误，其余错误原样抛出。 */
+function rethrowKnowledgeError(error: unknown): never {
+  if (isAxiosError(error) && error.response?.status === 409) {
+    const message = (error.response.data as { message?: string } | undefined)?.message
+    throw new KnowledgeConflictError(message?.trim() || '内容已在其他地方被修改')
+  }
+  throw error
+}
 
 /** 状态枚举 → 展示文案（与后端 KnowledgeStatus 一致）。 */
 export const STATUS_LABELS: Record<number, string> = {
@@ -149,17 +174,21 @@ export async function createKnowledge(payload: KnowledgeSavePayload): Promise<Kn
   return normalize(unwrap(data))
 }
 
-/** 更新知识：携带版本号乐观锁，冲突 409。 */
+/** 更新知识：携带版本号乐观锁，冲突 409 抛 KnowledgeConflictError。 */
 export async function updateKnowledge(
   id: string,
   version: string,
   payload: KnowledgeSavePayload,
 ): Promise<KnowledgeDetail> {
-  const { data } = await http.put<ApiResponse<RawKnowledge>>(`/knowledge/${id}`, {
-    ...payload,
-    version,
-  })
-  return normalize(unwrap(data))
+  try {
+    const { data } = await http.put<ApiResponse<RawKnowledge>>(`/knowledge/${id}`, {
+      ...payload,
+      version,
+    })
+    return normalize(unwrap(data))
+  } catch (error) {
+    rethrowKnowledgeError(error)
+  }
 }
 
 /** 草稿自动保存：knowledgeId 为空新建草稿（需 kbId 归属，决策 D16）；服务端幂等去重。 */
@@ -172,8 +201,12 @@ export async function autosaveDraft(payload: {
   tags?: string[]
   version?: string
 }): Promise<KnowledgeDetail> {
-  const { data } = await http.post<ApiResponse<RawKnowledge>>('/knowledge/autosave', payload)
-  return normalize(unwrap(data))
+  try {
+    const { data } = await http.post<ApiResponse<RawKnowledge>>('/knowledge/autosave', payload)
+    return normalize(unwrap(data))
+  } catch (error) {
+    rethrowKnowledgeError(error)
+  }
 }
 
 /** 删除知识：仅构思/草稿可删除。 */

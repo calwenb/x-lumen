@@ -96,6 +96,26 @@ public interface KnowledgeApi {
     List<DirectoryVO> getDirectoryTree(Long kbId);
 
     /**
+     * 公开库目录树（多用户公开读，跨空间只读）：不做会话空间校验，
+     * 仅按 kbId 取目录并按「已发布（status=6）且未回收」口径统计每个目录的知识数，
+     * 供博客前台公开库详情渲染只读目录面板；库不存在返回空列表。
+     * 与认证路径 getDirectoryTree（按会话空间校验、统计含草稿）语义不同，两者不互相复用返回值。
+     *
+     * @param kbId 知识库 ID
+     * @return 目录树列表（一级平铺，含子目录；knowledgeCount 为公开口径）
+     */
+    List<DirectoryVO> getPublishedDirectoryTree(Long kbId);
+
+    /**
+     * 公开库已发布知识数（多用户公开读，跨空间只读）：status=6 且未回收，
+     * 不做 workspace 过滤，供公开库详情头部计数（认证路径计数口径含草稿且按空间过滤，勿混用）。
+     *
+     * @param kbId 知识库 ID
+     * @return 已发布且未回收的知识数
+     */
+    long countPublishedKnowledge(Long kbId);
+
+    /**
      * 库/目录归属校验，决策 D16）：directoryId 为 0（库根）时仅校验库；
      * 目录必须属于指定库；不存在或跨空间返回 false。
      *

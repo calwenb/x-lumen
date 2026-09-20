@@ -17,6 +17,7 @@ import { renderMarkdown } from '@/modules/publishing/utils/markdown'
 import CitationCard from '@/modules/chat/components/CitationCard.vue'
 import { activeTools, doneTools } from '@/modules/chat/utils/toolPanel'
 
+import type { LocationQuery } from 'vue-router'
 import type { DirectoryNode, KnowledgeBase } from '@/modules/knowledge/api/knowledgeBase'
 import type { CategoryCount, KnowledgeCard } from '@/modules/publishing/api/public'
 import type { Citation, ToolEvent } from '@/modules/chat/api/chat'
@@ -30,12 +31,18 @@ function normalizeMode(value: unknown): SearchMode {
   return value === 'semantic' || value === 'ask' ? value : 'keyword'
 }
 
+/** 关键词读取：兼容外部深链的 q 参数（q 优先），应用内部统一使用 keyword。 */
+function readKeyword(query: LocationQuery): string {
+  const q = typeof query.q === 'string' ? query.q : ''
+  return q !== '' ? q : ((query.keyword as string | undefined) ?? '')
+}
+
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 
 const mode = ref<SearchMode>(normalizeMode(route.query.mode))
-const keyword = ref((route.query.keyword as string | undefined) ?? '')
+const keyword = ref(readKeyword(route.query))
 const kbId = ref((route.query.kbId as string | undefined) ?? '')
 const directoryId = ref((route.query.directoryId as string | undefined) ?? '')
 const tag = ref((route.query.tag as string | undefined) ?? '')
@@ -151,6 +158,29 @@ function onSearchSubmit(): void {
   } else {
     void runSemanticSearch()
   }
+}
+
+/** 是否有生效的筛选条件：无参直达时不静默展示全量列表，改给引导空态。 */
+const hasActiveFilters = computed(
+  () => keyword.value.trim() !== '' || tag.value !== '' || kbId.value !== '',
+)
+
+/** 无参直达（关键词模式且无任何筛选）时单独渲染引导空态。 */
+const showUnfilteredGuide = computed(() => mode.value === 'keyword' && !hasActiveFilters.value)
+
+/** 深链规范化：外部以 ?q= 直达时改写为应用内部的 ?keyword=（replace 不产生历史冗余）。
+ *  改写后 query 不再含 q，条件不成立，因此不会参数抖动或死循环。 */
+function normalizeDeepLinkKeyword(query: LocationQuery): void {
+  const raw = typeof query.q === 'string' ? query.q : ''
+  const existing = (query.keyword as string | undefined) ?? ''
+  if (raw === '' || raw === existing) return
+  const normalized: Record<string, string> = {}
+  for (const [key, value] of Object.entries(query)) {
+    if (key === 'q' || key === 'keyword') continue
+    if (typeof value === 'string' && value !== '') normalized[key] = value
+  }
+  normalized.keyword = raw
+  void router.replace({ name: 'search', query: normalized })
 }
 
 /** keyword 模式提交筛选：更新 URL 查询参数（组合筛选的单一事实源）。 */
@@ -337,14 +367,28 @@ watch(
   () => route.query,
   (query) => {
     const nextMode = normalizeMode(query.mode)
+    const nextKeyword = readKeyword(query)
+    const nextTag = (query.tag as string | undefined) ?? ''
+    const nextKbId = (query.kbId as string | undefined) ?? ''
+    const nextDirectoryId = nextKbId ? ((query.directoryId as string | undefined) ?? '') : ''
+    // 仅当筛选状态真正变化时才重新请求：深链规范化产生的同值 query 不触发重复加载
+    const changed =
+      nextMode !== mode.value ||
+      nextKeyword !== keyword.value ||
+      nextTag !== tag.value ||
+      nextKbId !== kbId.value ||
+      nextDirectoryId !== directoryId.value
     mode.value = nextMode
-    keyword.value = (query.keyword as string | undefined) ?? ''
-    tag.value = (query.tag as string | undefined) ?? ''
-    kbId.value = (query.kbId as string | undefined) ?? ''
-    directoryId.value = kbId.value ? ((query.directoryId as string | undefined) ?? '') : ''
+    keyword.value = nextKeyword
+    tag.value = nextTag
+    kbId.value = nextKbId
+    directoryId.value = nextDirectoryId
+    normalizeDeepLinkKeyword(query)
+    if (!changed) return
     if (mode.value === 'keyword') {
       if (!supportLoaded.value) void loadSupportData()
-      void infinite.loadFirst()
+      // 无筛选条件时不请求全量列表，交由引导空态呈现
+      if (hasActiveFilters.value) void infinite.loadFirst()
     } else if (mode.value === 'semantic' && session.loggedIn) {
       void runSemanticSearch()
     }
@@ -353,9 +397,10 @@ watch(
 )
 
 onMounted(() => {
+  normalizeDeepLinkKeyword(route.query)
   if (mode.value === 'keyword') {
-    void infinite.loadFirst()
     void loadSupportData()
+    if (hasActiveFilters.value) void infinite.loadFirst()
   } else if (mode.value === 'semantic' && session.loggedIn) {
     void runSemanticSearch()
   }
@@ -365,7 +410,8 @@ onMounted(() => {
 <template>
   <main class="search">
     <!-- 顶部搜索命令条：小型模式切换 + 大搜索框（关键词/向量语义共用） -->
-    <header class="search__head">
+    <!-- 向量语义无左侧筛选轨，整块收进一列居中（与下方结果画布同列对齐） -->
+    <header class="search__head" :class="{ 'search__head--semantic': mode === 'semantic' }">
       <el-radio-group :model-value="mode" class="search__modes" @change="onModeChange">
         <el-radio-button value="keyword">关键词</el-radio-button>
         <el-tooltip content="登录后可用语义检索（向量相似度）" :disabled="session.loggedIn">
@@ -376,12 +422,7 @@ onMounted(() => {
         </el-tooltip>
       </el-radio-group>
 
-      <form
-        v-if="mode !== 'ask'"
-        class="search__command"
-        :class="{ 'search__command--semantic': mode === 'semantic' }"
-        @submit.prevent="onSearchSubmit"
-      >
+      <form v-if="mode !== 'ask'" class="search__command" @submit.prevent="onSearchSubmit">
         <el-input
           v-model="keyword"
           class="search__input"
@@ -471,7 +512,7 @@ onMounted(() => {
     </div>
 
     <!-- 关键词 / 向量语义 -->
-    <div v-else class="search__layout">
+    <div v-else class="search__layout" :class="{ 'search__layout--semantic': mode === 'semantic' }">
       <!-- 关键词：约 220px 左侧筛选轨 -->
       <aside v-if="mode === 'keyword'" class="search__rail">
         <form class="search__filters" @submit.prevent="onSearchSubmit">
@@ -517,7 +558,13 @@ onMounted(() => {
 
       <!-- 结果画布（关键词右区 / 向量语义居中 ~920px） -->
       <section class="search__canvas" :class="{ 'search__canvas--semantic': mode === 'semantic' }">
-        <div v-if="listLoading" class="search__state">
+        <!-- 无参直达：不展示全量列表，给出可理解的引导空态 -->
+        <div v-if="showUnfilteredGuide" class="search__state">
+          <p class="search__state-text">
+            输入关键词开始搜索，或从左侧按知识库、目录与标签筛选公开知识。
+          </p>
+        </div>
+        <div v-else-if="listLoading" class="search__state">
           <div v-for="i in 3" :key="i" class="search__skeleton" aria-hidden="true" />
         </div>
         <div v-else-if="listError" class="search__state">
@@ -602,6 +649,12 @@ onMounted(() => {
   border-bottom: 1px solid var(--xl-border);
 }
 
+/* 向量语义：命令条与结果画布共用同一列居中 920px（避免二者各居一侧、对不齐） */
+.search__head--semantic {
+  max-width: 920px;
+  margin-inline: auto;
+}
+
 .search__modes {
   margin-bottom: var(--xl-space-6);
 }
@@ -646,11 +699,6 @@ onMounted(() => {
   align-items: center;
 }
 
-.search__command--semantic {
-  max-width: 920px;
-  margin: 0 auto;
-}
-
 .search__input {
   flex: 1;
 }
@@ -681,6 +729,11 @@ onMounted(() => {
   gap: var(--xl-space-8);
   align-items: start;
   margin-top: var(--xl-space-6);
+}
+
+/* 向量语义无筛选轨：收成单列，否则 220px 轨道仍被保留、结果被压进窄列（且与上方搜索框对不齐） */
+.search__layout--semantic {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .search__rail {
@@ -724,7 +777,7 @@ onMounted(() => {
 
 .search__canvas--semantic {
   max-width: 920px;
-  margin: 0 auto;
+  margin-inline: auto;
   padding-top: var(--xl-space-6);
 }
 

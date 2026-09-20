@@ -48,11 +48,11 @@ spring:
 
 management:
   # 健康检查（部署脚本轮询管理端口 /actuator/health 依赖）；
-  # 敏感端点（env/loggers/dump/logfile）全在 management.server.address=127.0.0.1 的独立管理端口上，业务端口不再暴露任何 /actuator
+  # 端点全开放（"*"）；shutdown 仍默认禁用不受 "*" 激活，heapdump/env 等最敏感端点靠 management.server.address=127.0.0.1 的独立管理端口兜底，业务端口不再暴露任何 /actuator
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env,loggers,threaddump,heapdump,logfile
+        include: "*"
   endpoint:
     health:
       probes:
@@ -88,6 +88,7 @@ xlumen:
     model-reviewer: deepseek-chat
     model-qa: deepseek-chat
     model-summary: deepseek-chat
+  retrieval-min-score: 0.40
   agent-max-rounds: 5
   agent-tool-timeout-millis: 10000
   agent-max-tool-calls: 8

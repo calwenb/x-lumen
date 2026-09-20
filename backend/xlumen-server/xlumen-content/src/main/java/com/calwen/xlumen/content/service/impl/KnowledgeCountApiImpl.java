@@ -2,6 +2,7 @@ package com.calwen.xlumen.content.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.calwen.xlumen.content.entity.KnowledgeEntity;
+import com.calwen.xlumen.content.enums.KnowledgeStatus;
 import com.calwen.xlumen.content.mapper.KnowledgeMapper;
 import com.calwen.xlumen.knowledge.api.KnowledgeCountApi;
 import jakarta.annotation.Resource;
@@ -48,6 +49,36 @@ public class KnowledgeCountApiImpl implements KnowledgeCountApi {
                 .select("directory_id AS directoryId", "COUNT(*) AS cnt")
                 .eq("workspace_id", workspaceId)
                 .eq("kb_id", kbId)
+                .eq("recycle_status", 0)
+                .in("directory_id", directoryIds)
+                .groupBy("directory_id"));
+        return toCountMap(rows, "directoryId");
+    }
+
+    @Override
+    public Map<Long, Long> countPublishedByKbIds(Collection<Long> kbIds) {
+        if (kbIds == null || kbIds.isEmpty()) {
+            return Map.of();
+        }
+        // 公开读口径：跨空间 + 仅已发布 + 未回收
+        List<Map<String, Object>> rows = knowledgeMapper.selectMaps(Wrappers.<KnowledgeEntity>query()
+                .select("kb_id AS kbId", "COUNT(*) AS cnt")
+                .eq("status", KnowledgeStatus.PUBLISHED.getValue())
+                .eq("recycle_status", 0)
+                .in("kb_id", kbIds)
+                .groupBy("kb_id"));
+        return toCountMap(rows, "kbId");
+    }
+
+    @Override
+    public Map<Long, Long> countPublishedByDirectoryIds(Long kbId, Collection<Long> directoryIds) {
+        if (kbId == null || directoryIds == null || directoryIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Map<String, Object>> rows = knowledgeMapper.selectMaps(Wrappers.<KnowledgeEntity>query()
+                .select("directory_id AS directoryId", "COUNT(*) AS cnt")
+                .eq("kb_id", kbId)
+                .eq("status", KnowledgeStatus.PUBLISHED.getValue())
                 .eq("recycle_status", 0)
                 .in("directory_id", directoryIds)
                 .groupBy("directory_id"));

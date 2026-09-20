@@ -15,6 +15,7 @@ import ReactionBar from '@/modules/engagement/components/ReactionBar.vue'
 import KnowledgeQaDialog from '@/modules/chat/components/KnowledgeQaDialog.vue'
 import InitialAvatar from '@/components/InitialAvatar.vue'
 import { assistAction, explainTerm } from '@/modules/ai/api/assist'
+import { fetchReactionStatus } from '@/modules/engagement/api/engagement'
 import { useSessionStore } from '@/stores/session'
 import {
   fetchKnowledge,
@@ -25,6 +26,7 @@ import {
 import { extractToc, renderMarkdown } from '@/modules/publishing/utils/markdown'
 
 import type { AssistAction, TermExplainResult } from '@/modules/ai/api/assist'
+import type { Reaction } from '@/modules/engagement/api/engagement'
 import type { KnowledgeDetail, RelatedKnowledge } from '@/modules/publishing/api/public'
 import type { TocItem } from '@/modules/publishing/utils/markdown'
 
@@ -36,6 +38,12 @@ const loading = ref(true)
 const loadError = ref(false)
 const notFound = ref(false)
 const commentCount = ref(0)
+
+// 赞/踩当前反应（含「已踩」三态）：详情接口只回 liked 布尔，登录后再以反应状态接口校正初始态；
+// 计数与反应由 ReactionBar 的服务端结果回传为单一事实源，避免互斥切换后旧计数残留。
+const reaction = ref<Exclude<Reaction, 'NONE'> | null>(null)
+// 用户已在本页做过互动：迟到的初始状态响应不得覆盖本地结论
+let reactionTouched = false
 
 const knowledgeId = computed(() => String(route.params.id))
 const toc = computed<TocItem[]>(() => (knowledge.value ? extractToc(knowledge.value.content) : []))
@@ -464,6 +472,8 @@ async function load(): Promise<void> {
   try {
     knowledge.value = await fetchKnowledge(knowledgeId.value)
     commentCount.value = knowledge.value.commentCount
+    // 先用详情接口的 liked 推断，登录后再查询更精确的三态反应
+    reaction.value = knowledge.value.liked ? 'LIKE' : null
   } catch (error) {
     // 后端 404（NOT_FOUND）统一提示不可访问解释；其余按加载失败可重试处理
     if (error instanceof Error && error.message.includes('不存在')) {
@@ -481,16 +491,32 @@ function scrollToAnchor(anchor: string): void {
   document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-/** 赞/踩计数同步：ReactionBar 以服务端结果校正后回传（含 reaction，供两处按钮组联动）。 */
+/** 赞/踩计数与反应同步：ReactionBar 以服务端结果校正后回传，作为本页两处展示的单一事实源。 */
 function onCountsChange(state: {
   likeCount: number
   dislikeCount: number
   reaction: 'LIKE' | 'DISLIKE' | null
 }): void {
   if (!knowledge.value) return
+  reactionTouched = true
+  reaction.value = state.reaction
   knowledge.value.likeCount = state.likeCount
   knowledge.value.dislikeCount = state.dislikeCount
   knowledge.value.liked = state.reaction === 'LIKE'
+}
+
+/** 登录后校正初始反应（区分「已踩」）：失败保留详情接口的 liked 推断，不阻塞阅读。 */
+async function refreshReaction(): Promise<void> {
+  if (!session.loggedIn || !knowledge.value) return
+  const id = knowledgeId.value
+  try {
+    const state = await fetchReactionStatus(id)
+    // 切换知识后的迟到响应、或用户已自行互动时不覆盖当前状态
+    if (reactionTouched || knowledgeId.value !== id || !knowledge.value) return
+    reaction.value = state === 'NONE' ? null : state
+  } catch {
+    // 未登录/网络异常：保持 liked 推断
+  }
 }
 
 /** 收藏状态同步。 */
@@ -504,6 +530,7 @@ function onFavoriteChange(state: { favorited: boolean; count: number }): void {
 async function reload(): Promise<void> {
   await load()
   if (!notFound.value && !loadError.value) {
+    void refreshReaction()
     // 阅读量上报：失败不影响阅读
     reportView(knowledgeId.value).catch(() => undefined)
     // 相关推荐：失败静默，无数据不渲染区块
@@ -527,6 +554,8 @@ async function reloadForNewKnowledge(): Promise<void> {
   guideOpen.value = true
   // knowledge 置空会整体卸载正文/评论区块，评论区等子组件随之重挂载
   knowledge.value = null
+  reaction.value = null
+  reactionTouched = false
   related.value = []
   commentCount.value = 0
   activeAnchor.value = ''
@@ -715,7 +744,7 @@ watch(renderedHtml, () => {
         <ReactionBar
           class="detail__rail-item detail__rail-item--block"
           :knowledge-id="knowledge.id"
-          :initial-reaction="knowledge.liked ? 'LIKE' : null"
+          :initial-reaction="reaction"
           :like-count="knowledge.likeCount"
           :dislike-count="knowledge.dislikeCount"
           @update:counts="onCountsChange"

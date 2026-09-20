@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // 知识列表页（B10，KB-4 适配决策 D16）：作者知识管理（状态/关键词筛选 + 新建/编辑/删除/提交审核）。
-// 关键状态：加载骨架、空态（引导新建）、失败可重试；删除仅构思/草稿可用（已发布需先下架）。
-import { onMounted, ref } from 'vue'
+// 关键状态：加载骨架、两类空态（筛选无结果给清空筛选引导 / 确实无数据给新建引导）、失败可重试；
+// 删除仅构思/草稿可用（已发布需先下架）。
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
@@ -17,6 +18,11 @@ const sentinel = ref<HTMLElement | null>(null)
 
 const filterStatus = ref('')
 const keyword = ref('')
+
+// 已提交的筛选条件快照：区分「筛选无结果」与「确实一条数据都没有」两类空态
+const appliedStatus = ref('')
+const appliedKeyword = ref('')
+const hasActiveFilters = computed(() => appliedStatus.value !== '' || appliedKeyword.value !== '')
 
 /** 状态徽标语义色（el-tag type）：未发布灰/已发布绿/其他主色。 */
 function statusTagType(status: number): 'success' | 'primary' | 'info' {
@@ -51,7 +57,16 @@ const loadMoreError = infinite.loadMoreError
 const hasMore = infinite.hasMore
 
 function applyFilters(): void {
+  appliedStatus.value = filterStatus.value
+  appliedKeyword.value = keyword.value.trim()
   void infinite.loadFirst()
+}
+
+/** 清空筛选：状态与关键词一次性复位后重新加载（空态引导的恢复路径）。 */
+function resetFilters(): void {
+  filterStatus.value = ''
+  keyword.value = ''
+  applyFilters()
 }
 
 async function handleDelete(item: KnowledgeListItem): Promise<void> {
@@ -136,6 +151,20 @@ onMounted(() => {
         <div v-else-if="loadError" class="knowledge-list__state">
           <p>加载失败，请稍后重试。</p>
           <el-button type="primary" plain @click="infinite.retry()">重试</el-button>
+        </div>
+        <!-- 筛选无结果：与「确实无数据」区分，给清空筛选引导而非新建引导 -->
+        <div v-else-if="knowledges.length === 0 && hasActiveFilters" class="knowledge-list__state">
+          <el-icon class="knowledge-list__state-icon"><Document /></el-icon>
+          <p>没有符合当前筛选条件的知识。</p>
+          <p class="knowledge-list__state-hint">试试清空状态与关键词筛选，或调整条件后重新筛选。</p>
+          <el-button
+            type="primary"
+            plain
+            class="knowledge-list__state-action"
+            @click="resetFilters"
+          >
+            清空筛选
+          </el-button>
         </div>
         <div v-else-if="knowledges.length === 0" class="knowledge-list__state">
           <el-icon class="knowledge-list__state-icon"><Document /></el-icon>
@@ -306,6 +335,16 @@ onMounted(() => {
 
 .knowledge-list__state p {
   margin: 0;
+}
+
+.knowledge-list__state .knowledge-list__state-hint {
+  margin-top: 6px;
+  color: var(--xl-text-muted);
+  font-size: var(--xl-fs-caption);
+}
+
+.knowledge-list__state-action {
+  margin-top: var(--xl-space-4);
 }
 
 .knowledge-list__state :deep(.el-skeleton) {

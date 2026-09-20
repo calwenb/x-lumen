@@ -48,12 +48,12 @@ public class IndexController {
      */
     @PostMapping("/retrieval-test")
     public ApiResponse<List<SearchResultDTO>> retrievalTest(@Valid @RequestBody RetrievalTestRequestDTO request) {
-        Long workspaceId = requireWorkspace();
+        requireWorkspace();
         Long userId = WorkspaceContext.userId();
+        // 权限边界＝可见库集合（公开库 + 自己私有库，决策 D13）；不额外按调用者空间过滤，
+        // 否则跨空间的公开库向量会被整体排除，与公开语义检索路径口径不一致
         SearchRequestDTO searchRequest = SearchRequestDTO.builder()
-                .workspaceId(workspaceId)
                 .query(request.getQuery())
-                // 检索范围：当前用户全部可见库（公开库 + 自己私有库，决策 D13）
                 .kbIds(knowledgeApi.resolveVisibleKbIds(userId))
                 .topK(request.resolvedTopK())
                 .build();

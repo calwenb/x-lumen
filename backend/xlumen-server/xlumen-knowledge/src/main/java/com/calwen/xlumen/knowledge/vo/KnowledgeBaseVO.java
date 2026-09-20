@@ -1,11 +1,13 @@
 package com.calwen.xlumen.knowledge.vo;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 知识库视图（决策 D16）：内容容器与权限边界，可见性库级决定。
@@ -39,6 +41,10 @@ public class KnowledgeBaseVO {
 
     /** 库内知识总数（统计口径：未删除知识，含草稿）。 */
     private Long knowledgeCount;
+
+    /** 公开目录树（仅公开库详情填充：各目录已发布且未回收的知识数；认证路径为 null 不序列化）。 */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private List<DirectoryVO> directories;
 
     /** 创建时间。 */
     private LocalDateTime createdAt;
